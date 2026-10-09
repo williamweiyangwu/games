@@ -442,6 +442,8 @@
       the AI nations fight each other too, so a war can be won without fighting the whole continent.<br>
       Units fight at their best on friendly soil, and hardest of all in their homeland. Tanks, artillery and bombers
       cost upkeep every day, so a huge army can bankrupt you.<br>
+      Big countries field bigger garrisons &mdash; a garrison cap scaled to each nation's size, from about <b>6</b> for
+      the smallest states to <b>17</b> for the Soviet Union.<br>
       You win by holding <b>every</b> territory. You lose if you hold none.
     </p>
     <div id="pick"></div>
@@ -1171,6 +1173,27 @@ function unitsOf(c){ return S.units.filter(function(u){ return u.owner===c && u.
 function upkeep(c){ return unitsOf(c).reduce(function(s,u){ return s+UNITS[u.type].up; },0); }
 function mineCount(c){ var t=0; for(var id in S.prov) if(S.prov[id].owner===c) t+=S.prov[id].mines; return t; }
 function income(c){ return mineCount(c)*MINE_GOLD - upkeep(c); }
+
+/* ---- garrison capacity: big nations field bigger armies ---- */
+var SIZE_AREA={};
+function areaOf(c){
+  if(SIZE_AREA[c]!==undefined) return SIZE_AREA[c];
+  var polys=GEO[c]||[], a=0, i, j;
+  for(i=0;i<polys.length;i++){
+    var poly=polys[i];
+    for(j=0;j<poly.length-1;j++){
+      var x1=px(poly[j][0]), y1=py(poly[j][1]);
+      var x2=px(poly[j+1][0]), y2=py(poly[j+1][1]);
+      a += x1*y2 - x2*y1;
+    }
+  }
+  SIZE_AREA[c]=Math.abs(a)/2;
+  return SIZE_AREA[c];
+}
+function capacity(c){
+  var a=areaOf(c)||1500;
+  return Math.max(6, Math.min(18, Math.round(7 + 1.6*Math.log(a/1500)/Math.log(2))));
+}
 function power(u,loc){
   var t=UNITS[u.type], m=(S.prov[loc].owner===u.owner)?t.def:1;
   if(m>1 && loc===u.owner) m*=CAPITAL_DEF;   /* homeland fighting is fiercer */
@@ -1383,7 +1406,7 @@ function aiTurn(){
       else if(gold>=artU.cost && (threat||Math.random()<0.3)) choice=artU.type;
       else if(gold>=tankU.cost && (threat || Math.random()<0.35)) choice=tankU.type;
       else choice=ar[0].type;
-      if(UNITS[choice].cost<=gold && unitsOf(n.id).length<14){
+      if(UNITS[choice].cost<=gold && unitsOf(n.id).length<capacity(n.id)){
         var spot=pickRecruit(n.id);
         if(spot){
           spawn(choice,spot,n.id);
@@ -1489,7 +1512,7 @@ function recruit(type){
   var id=S.sel;
   var u=UNITS[type];
   if(!S.prov[id] || S.prov[id].owner!==S.player){ flash('Select one of your own territories to recruit.'); return; }
-  if(unitsAt(id).length>=10){ flash('Garrison is full (10 units).'); return; }
+  if(unitsAt(id).length>=capacity(S.player)){ flash('Garrison is full ('+capacity(S.player)+' units).'); return; }
   if((S.gold[S.player]||0)<u.cost){ flash('Not enough gold for a '+u.name.toLowerCase()+' ('+u.cost+').'); return; }
   S.gold[S.player]-=u.cost;
   spawn(type,id,S.player);
@@ -1577,9 +1600,10 @@ function paintShop(el, provId){
   var mine=(S.prov[provId] && S.prov[provId].owner===S.player);
   var gold=S.gold[S.player]||0;
   var here=unitsAt(provId).length;
+  var cap=capacity(S.player);
   Array.prototype.forEach.call(el.querySelectorAll('.unit'),function(e){
     var t=UNITS[e.getAttribute('data-t')];
-    e.disabled=!mine || gold<t.cost || here>=10;
+    e.disabled=!mine || gold<t.cost || here>=cap;
   });
   var cnt=document.getElementById('shopCount');
   if(cnt){
@@ -1589,9 +1613,9 @@ function paintShop(el, provId){
   var hint=document.getElementById('shopHint');
   hint.innerHTML=!mine
     ? 'Click a country <b>you own</b> on the map to buy units there.'
-    : (here>=10
-        ? '<b>'+NBY[provId].name+'</b> is full (10/10). Send some units out first.'
-        : 'Buying in <b>'+NBY[provId].name+'</b> &middot; you have <b>'+gold+'g</b> &middot; '+here+'/10 in garrison');
+    : (here>=cap
+        ? '<b>'+NBY[provId].name+'</b> is full ('+cap+'/'+cap+'). Send some units out first.'
+        : 'Buying in <b>'+NBY[provId].name+'</b> &middot; you have <b>'+gold+'g</b> &middot; '+here+'/'+cap+' in garrison');
 }
 
 /* =======================================================================
@@ -2438,7 +2462,7 @@ function netApplyCmd(nat,msg){
   } else if(msg.k==='r' && msg.t && msg.loc){
     var uu=UNITS[msg.t]; if(!uu) return;
     if(!S.prov[msg.loc] || S.prov[msg.loc].owner!==nat) return;
-    if(unitsAt(msg.loc).length>=10) return;
+    if(unitsAt(msg.loc).length>=capacity(nat)) return;
     if((S.gold[nat]||0)<uu.cost) return;
     S.gold[nat]-=uu.cost;
     spawn(msg.t,msg.loc,nat);
