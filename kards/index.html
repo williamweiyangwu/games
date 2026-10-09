@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KARDS Lite - WWII Card Game</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: "Arial Black", "Segoe UI", Arial, sans-serif;
+    background: radial-gradient(circle at 50% 30%, #3a4d33 0%, #1e2a1c 60%, #121a10 100%);
+    color: #e8e0c8;
+    overflow: hidden;
+    user-select: none;
+  }
+  #fit { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  #stage { transform-origin: center center; }
+
+  header { width: 100%; text-align: center; padding: 8px 0 2px; }
+  header h1 {
+    font-size: 20px;
+    letter-spacing: 5px;
+    color: #c9b458;
+    text-shadow: 2px 2px 0 #000000, 0 0 12px rgba(201,180,88,.4);
+  }
+  #turnbar {
+    display: inline-block;
+    margin-top: 4px;
+    padding: 4px 18px;
+    border: 2px solid #c9b458;
+    border-radius: 20px;
+    background: rgba(0,0,0,.45);
+    font-size: 13px;
+    letter-spacing: 2px;
+    color: #f0e6c8;
+  }
+  #log {
+    margin: 4px auto;
+    min-height: 30px;
+    max-width: 700px;
+    padding: 4px 12px;
+    font-family: Consolas, monospace;
+    font-size: 11px;
+    color: #a8b89c;
+    text-align: center;
+  }
+
+  .panel { display: flex; flex-direction: column; align-items: center; width: 100%; }
+
+  .prow { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 92%; max-width: 760px; }
+
+  .hqbox { display: inline-flex; align-items: center; gap: 8px; }
+  .hqcard {
+    width: 80px; height: 104px;
+    background: linear-gradient(160deg, #4c5a44, #232d20);
+    border: 3px solid #c9b458;
+    border-radius: 8px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    position: relative; cursor: default;
+  }
+  .hqcard .star { position: absolute; top: 5px; left: 50%; transform: translateX(-50%); font-size: 11px; color: #c9b458; letter-spacing: 1px; }
+  .hqcard .hpbar-wrap { position: absolute; bottom: 5px; left: 5px; right: 5px; }
+  .hpbar-wrap { height: 10px; background: rgba(0,0,0,.55); border-radius: 6px; overflow: hidden; border: 1px solid #000; }
+  .hpbar { height: 100%; background: linear-gradient(180deg, #6fc96f, #2f7d2f); transition: width .3s; }
+  .hpbar.low { background: linear-gradient(180deg, #e08a5a, #b3382a); }
+  .hpnum { font-size: 15px; color: #fff; text-shadow: 1px 1px 0 #000; }
+  .hqcard.targetable { cursor: crosshair; border-color: #ffd95e; box-shadow: 0 0 14px 3px rgba(255,217,94,.55); }
+
+  .stackbox { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 10px; color: #b9c4a8; letter-spacing: 1px; }
+  .stackcard { width: 36px; height: 48px; background: repeating-linear-gradient(45deg, #33301f, #33301f 5px, #45412a 5px, #45412a 10px); border: 2px solid #5a563c; border-radius: 6px; }
+
+  .hand { display: flex; justify-content: center; gap: 6px; min-height: 140px; padding: 8px 4px; flex-wrap: wrap; }
+  .hand .cardwrap { cursor: default; }
+
+  .boardrow { display: flex; justify-content: center; gap: 10px; min-height: 144px; padding: 6px 4px; }
+
+  .cardwrap { width: 98px; text-align: center; }
+  .card {
+    width: 94px; height: 126px; margin: 0 auto;
+    border: 3px solid #6f6040; border-radius: 8px;
+    background: linear-gradient(170deg, #d9d0b0, #b0a67f);
+    position: relative; color: #26220f;
+    box-shadow: 0 4px 8px rgba(0,0,0,.55);
+    transition: transform .15s, box-shadow .15s, filter .15s;
+  }
+  .card:hover { transform: translateY(-6px); }
+  .card .cost {
+    position: absolute; top: -4px; left: -4px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: #24407a; border: 2px solid #fff;
+    color: #fff; font-size: 13px; line-height: 18px; text-align: center;
+  }
+  .card .atk { position: absolute; left: -4px; bottom: -4px; width: 22px; height: 22px; border-radius: 50%; background: #7a2424; border: 2px solid #fff; color: #fff; font-size: 13px; line-height: 18px; text-align: center; }
+  .card .hp { position: absolute; right: -4px; bottom: -4px; width: 22px; height: 22px; border-radius: 50%; background: #25742c; border: 2px solid #fff; color: #fff; font-size: 13px; line-height: 18px; text-align: center; }
+  .card .cname {
+    position: absolute; top: 7px; left: 20px; right: 4px;
+    font-size: 10px; text-align: center; white-space: nowrap; overflow: hidden;
+  }
+  .card .art { position: absolute; top: 28px; left: 6px; right: 6px; height: 68px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 34px; color: #3d3a2a; background: rgba(60,80,60,.28); }
+  .card.guard .art::after, .card.air .art::after { content: ""; display: none; }
+  .badge {
+    position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%);
+    font-size: 8px; letter-spacing: 1px; padding: 1px 6px; border-radius: 8px; color: #fff;
+  }
+  .badge.guard { background: #5a5c8c; }
+  .badge.air { background: #7a4c8c; }
+  .badge.exhausted { background: #8a4c22; }
+  .card.exhausted { filter: grayscale(.85) brightness(.92); }
+  .card.playable { border-color: #ffd95e; box-shadow: 0 0 12px 2px rgba(255,217,94,.45); }
+  .card.unplayable { filter: brightness(.55); }
+  .card.selected { border-color: #ff7a5e; box-shadow: 0 0 16px 4px rgba(255,122,94,.7); }
+  .card.targetable { border-color: #ffd95e; box-shadow: 0 0 14px 3px rgba(255,217,94,.6); cursor: crosshair; }
+  .card.incapable { opacity: .45; }
+  .card.order { border-color: #c9b458; background: linear-gradient(170deg, #f0e6c0, #cbbd85); }
+  .card.order .art { background: rgba(150,125,45,.28); color: #4a411c; }
+  .otext { position: absolute; bottom: 8px; left: 6px; right: 6px; font-size: 8px; line-height: 1.15; text-align: center; color: #5a4f1e; }
+
+  .cardback { width: 70px; height: 96px; border: 3px solid #6f6040; border-radius: 8px; background: repeating-linear-gradient(45deg, #2c2a1c, #2c2a1c 7px, #3c3a26 7px, #3c3a26 14px); position: relative; }
+  .cardback::after { content: "★"; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); color: #c9b458; font-size: 18px; }
+
+  #menu { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 8px 0 2px; }
+  #menu .mgroup { display: flex; gap: 8px; }
+  .btn.mmode { padding: 6px 18px; font-size: 12px; }
+  .btn.mmode.active { background: rgba(201,180,88,.35); color: #fff; border-color: #ffd95e; }
+  #onlinePanel { display: none; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center; }
+  #onlinePanel input {
+    font-family: inherit; font-size: 12px; padding: 6px 10px; width: 130px;
+    background: rgba(0,0,0,.4); color: #f0e6c8; border: 2px solid #6f6040; border-radius: 8px; outline: none;
+  }
+  #onlinePanel input:focus { border-color: #c9b458; }
+  #onlinePanel .btn { padding: 6px 16px; font-size: 12px; }
+
+  #lobby { display: none; flex-direction: column; align-items: center; gap: 6px; margin-top: 6px; padding: 10px 18px; border: 1px solid #565c3d; border-radius: 8px; background: rgba(0,0,0,.25); min-width: 240px; }
+  #lobby .lobbyRow { display: flex; gap: 10px; width: 100%; justify-content: space-between; font-size: 12px; color: #e6e9d5; }
+  #lobby .lobbyRow .lbl { color: #8a917c; }
+  #lobby .lobbyRow #lobbyRoom { color: #c9b458; font-size: 15px; letter-spacing: 2px; }
+  #lobby #lobbyStart { margin-top: 6px; }
+  #lobby #lobbyStart[disabled] { opacity: .4; }
+  #lobby #lobbyWait { font-size: 11px; color: #b9c4a8; min-height: 14px; }
+  #onlineStatus { font-size: 12px; color: #b9c4a8; letter-spacing: 1px; min-height: 16px; }
+
+  footer { display: flex; gap: 16px; padding: 10px 0 16px; }
+  .btn {
+    font-family: inherit; font-size: 13px; letter-spacing: 2px;
+    padding: 8px 24px; border-radius: 8px; border: 2px solid #c9b458;
+    background: rgba(0,0,0,.4); color: #f0e6c8; cursor: pointer;
+  }
+  .btn:hover { background: rgba(201,180,88,.25); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  #modal {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.72);
+    align-items: center; justify-content: center; z-index: 50;
+  }
+  #modal.show { display: flex; }
+  #modal .box {
+    padding: 24px 34px; text-align: center;
+    background: linear-gradient(160deg, #33371f, #1c2012);
+    border: 3px solid #c9b458; border-radius: 12px;
+  }
+  #modal .box h2 { font-size: 18px; letter-spacing: 3px; margin-bottom: 4px; color: #c9b458; }
+  #modal .box p { font-size: 12px; color: #b9c4a8; margin-bottom: 16px; }
+  #modal .tip { font-size: 10px; color: #8a917c; margin-top: -10px; margin-bottom: 14px; }
+
+  #roomlist { display: none; position: fixed; top: 0; left: 0; bottom: 0; right: 0; background: rgba(0,0,0,.6); align-items: center; justify-content: center; z-index: 50; }
+  #roomlist.show { display: flex; }
+  #roomlist .rbox { max-height: 72vh; overflow: auto; background: linear-gradient(160deg, #33371f, #1c2012); border: 3px solid #c9b458; border-radius: 12px; padding: 18px 22px; width: 330px; }
+  #roomlist h2 { font-size: 16px; letter-spacing: 3px; color: #c9b458; text-align: center; margin-bottom: 10px; }
+  #roomlist .rrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 0; border-bottom: 1px solid #3a4030; font-size: 13px; color: #e6e9d5; }
+  #roomlist .rrow .rrowc { color: #c9b458; letter-spacing: 1px; font-weight: bold; }
+  #roomlist .rrow .btn { padding: 4px 12px; font-size: 11px; }
+  #roomlist .tip { font-size: 11px; color: #8a917c; text-align: center; margin: 12px 0; }
+  #roomlist .btns { display: flex; gap: 8px; justify-content: center; margin-top: 12px; }
+</style>
+</head>
+<body>
+  <div id="fit">
+    <div id="stage">
+      <header>
+        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v6</span></h1>
+        <div id="turnbar">Player 1's Turn</div>
+      </header>
+
+      <div id="menu">
+        <div class="mgroup">
+          <button class="btn mmode active" id="modeLocal" onclick="setMode('local')">LOCAL</button>
+          <button class="btn mmode" id="modeOnline" onclick="setMode('online')">ONLINE</button>
+        </div>
+        <div id="onlinePanel">
+          <input id="nameIn" maxlength="12" value="Player#1" onfocus="if(this.value==='Player#1'){this.value='';}" onblur="if(this.value===''){this.value='Player#1';}">
+          <input id="roomIn" maxlength="6" placeholder="Room code" onkeydown="if(event.key==='Enter')joinGame();">
+          <button class="btn" onclick="hostGame()">HOST</button>
+          <button class="btn" onclick="joinGame()">JOIN</button>
+          <button class="btn" onclick="browseRooms()">ROOMS</button>
+        </div>
+        <div id="lobby">
+          <div class="lobbyRow"><span class="lbl">ROOM</span><span id="lobbyRoom"></span></div>
+          <div class="lobbyRow"><span class="lbl">HOST</span><span id="lobbyHost"></span></div>
+          <div class="lobbyRow"><span class="lbl">PLAYER 2</span><span id="lobbyP2"></span></div>
+          <button class="btn" id="lobbyStart" onclick="lobbyStart()" disabled>START BATTLE</button>
+          <div id="lobbyWait"></div>
+        </div>
+        <div id="onlineStatus"></div>
+      </div>
+
+      <div id="log"></div>
+
+      <div class="panel" id="panelTop"></div>
+      <div class="panel" id="panelMid"></div>
+      <div class="panel" id="panelBottom"></div>
+
+      <footer>
+        <button class="btn" id="endBtn">END TURN</button>
+        <button class="btn" id="newBtn">NEW GAME</button>
+      </footer>
+    </div>
+  </div>
+
+  <div id="modal">
+    <div class="box">
+      <h2 id="mTitle"></h2>
+      <p id="mText"></p>
+      <p class="tip" id="mTip"></p>
+      <button class="btn" id="mBtn">Continue</button>
+    </div>
+  </div>
+
+<div id="roomlist">
+    <div class="rbox">
+      <h2>OPEN ROOMS</h2>
+      <div id="roomRows"></div>
+      <div id="roomHint" class="tip">No rooms open right now.</div>
+      <div class="btns">
+        <button class="btn" onclick="refreshRooms()">REFRESH</button>
+        <button class="btn" onclick="closeRooms()">CLOSE</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+// ---------------- Card definitions ----------------
+var DEFS = {
+  infantry:  { name: "Infantry",   cost: 1, atk: 2, hp: 2, art: "▲", text: "" },
+  medic:     { name: "Medic",      cost: 2, atk: 1, hp: 3, art: "✚", text: "Heals HQ for 3" },
+  grenadier: { name: "Grenadier",  cost: 2, atk: 2, hp: 2, art: "★", text: "Deals 1 to all enemy units" },
+  artillery: { name: "Artillery",  cost: 3, atk: 2, hp: 3, art: "◎", text: "Deals 2 to a random enemy unit" },
+  tank:      { name: "Tank",       cost: 4, atk: 3, hp: 5, art: "▣", guard: true, text: "Guard - enemies must fight it first" },
+  bomber:    { name: "Bomber",     cost: 5, atk: 4, hp: 3, art: "≫", air: true, text: "Breakthrough - ignores Guard" },
+  produce:   { name: "Produce",    cost: 0, type: "order", art: "◆", text: "Gain 1 resource" },
+  explode:   { name: "Explode",    cost: 1, type: "order", art: "✶", text: "Deal 1 damage to a unit" },
+  plan:      { name: "Plan",       cost: 2, type: "order", art: "✎", text: "Draw a card" }
+};
+
+var MAX_HAND = 5;
+var MAX_BOARD = 4;
+var MAX_RES = 12;
+
+// ---------------- Game state ----------------
+var S = null;
+
+function freshPlayer() {
+  return { hq: 20, res: 0, hand: [], board: [], deck: [], turnNum: 0 };
+}
+
+function buildDeck() {
+  var list = [];
+  var comp = [ ["infantry",6], ["medic",5], ["grenadier",4], ["artillery",3], ["tank",3], ["bomber",3], ["produce",2], ["explode",3], ["plan",2] ];
+  comp.forEach(function (c) { for (var i = 0; i < c[1]; i++) list.push(c[0]); });
+  for (var i = list.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = list[i]; list[i] = list[j]; list[j] = t;
+  }
+  return list;
+}
+
+function makeInst(key) {
+  var d = DEFS[key];
+  return { key: key, name: d.name, cost: d.cost, type: d.type || "unit", atk: d.atk, hp: d.hp, maxHp: d.hp, guard: !!d.guard, air: !!d.air, canAttack: false };
+}
+
+function other(p) { return 1 - p; }
+
+function log(msg) {
+  var el = document.getElementById("log");
+  el.textContent = msg;
+}
+
+var LAST_MSG = "";
+function say(msg) { LAST_MSG = msg; log(msg); }
+
+function flipPOV(s) {
+  return s.replace(/Your |Enemy |the enemy HQ|your HQ/g, function (m) {
+    if (m === "Your ") return "Enemy ";
+    if (m === "Enemy ") return "Your ";
+    if (m === "the enemy HQ") return "your HQ";
+    return "the enemy HQ";
+  });
+}
+
+function setTurnBar(name) {
+  document.getElementById("turnbar").textContent = name + "'s Turn";
+}
+
+// ---------------- Turn flow ----------------
+function newGame() {
+  S = { cur: 0, over: false, winner: 0, attackSel: null, readyOrder: null, overShown: false, pub: { hand: [0, 0], deck: [0, 0] } };
+  S.players = [freshPlayer(), freshPlayer()];
+  S.players[0].deck = buildDeck();
+  S.players[1].deck = buildDeck();
+  for (var i = 0; i < 2; i++) draw(S.players[i], 4);
+  syncPub(0); syncPub(1);
+  beginTurn(0);
+}
+
+function draw(p, n) {
+  for (var i = 0; i < n; i++) {
+    if (p.deck.length === 0 || p.hand.length >= MAX_HAND) break;
+    p.hand.push(makeInst(p.deck.shift()));
+  }
+  syncPub(S.players.indexOf(p));
+}
+
+function beginTurn(p) {
+  if (S.over) return;
+  var pl = S.players[p];
+  pl.turnNum++;
+  pl.res = Math.min(pl.turnNum, MAX_RES);
+  pl.board.forEach(function (u) { u.canAttack = true; });
+  draw(pl, 1);
+  S.cur = p;
+  setTurnBar("Player " + (p + 1));
+  render();
+}
+
+function endTurn() {
+  if (S.over) return;
+  if (MODE === "online") { onlineEndTurn(); return; }
+  S.readyOrder = null;
+  var next = other(S.cur);
+  S.cur = next;
+  beginTurn(next);
+  showModal("Hand to Player " + (next + 1),
+            "Click Continue when Player " + (next + 1) + " is ready.",
+            "Continue", function () { hideModal(); });
+}
+
+// ---------------- Playing cards ----------------
+function play(hidx) {
+  if (!canAct()) return;
+  if (S.over) return;
+  if (S.readyOrder !== null) {
+    if (S.readyOrder.hidx === hidx) { S.readyOrder = null; render(); }
+    else log("Finish targeting " + S.players[S.cur].hand[S.readyOrder.hidx].name + " first.");
+    return;
+  }
+  var pl = S.players[S.cur];
+  var inst = pl.hand[hidx];
+  if (!inst) return;
+  if (inst.cost > pl.res) return;
+  if (inst.key === "explode") {
+    if (S.players[other(S.cur)].board.length === 0) { log("No enemy units to target!"); return; }
+    S.readyOrder = { hidx: hidx, key: "explode" };
+    log("Choose a target for Explode. Click the card again to cancel.");
+    render();
+    return;
+  }
+  if (inst.type !== "order" && pl.board.length >= MAX_BOARD) { log("Board is full!"); return; }
+  pl.res -= inst.cost;
+  pl.hand.splice(hidx, 1);
+  if (inst.type === "order") {
+    resolveOrder(inst, S.cur);
+    syncPub(S.cur);
+    render();
+    if (MODE === "online") publish();
+    if (checkVictory()) return;
+    return;
+  }
+  pl.board.push(inst);
+  resolveBattlecry(inst, S.cur);
+  syncPub(S.cur);
+  render();
+  if (MODE === "online") publish();
+  if (checkVictory()) return;
+}
+
+function resolveOrderTarget(tidx) {
+  if (!canAct()) return;
+  if (S.readyOrder === null) return;
+  var pl = S.players[S.cur];
+  var inst = pl.hand[S.readyOrder.hidx];
+  var foe = S.players[other(S.cur)];
+  var def = foe.board[tidx];
+  if (!inst || !def) return;
+  pl.res -= inst.cost;
+  pl.hand.splice(S.readyOrder.hidx, 1);
+  def.hp -= 1;
+  say("Explode hits " + def.name + " for 1!");
+  cleanBoard(foe);
+  S.readyOrder = null;
+  syncPub(S.cur);
+  render();
+  if (MODE === "online") publish();
+  if (checkVictory()) return;
+}
+
+function resolveOrder(inst, p) {
+  var me = S.players[p];
+  if (inst.key === "produce") {
+    me.res = Math.min(me.res + 1, MAX_RES);
+    say("Produce: +1 resource!");
+  } else if (inst.key === "plan") {
+    draw(me, 1);
+    say("Plan: drew a card!");
+  }
+}
+
+function resolveBattlecry(inst, p) {
+  var me = S.players[p], foe = S.players[other(p)];
+  if (inst.key === "medic") {
+    me.hq += 3;
+    say("Medic heals your HQ for 3.");
+  } else if (inst.key === "grenadier") {
+    for (var i = 0; i < foe.board.length; i++) {
+      foe.board[i].hp -= 1;
+      if (foe.board[i].hp <= 0) say(foe.board[i].name + " was destroyed!");
+    }
+    cleanBoard(foe);
+  } else if (inst.key === "artillery") {
+    var targets = foe.board.filter(function (u) { return u.hp > 0; });
+    if (targets.length > 0) {
+      var t = targets[Math.floor(Math.random() * targets.length)];
+      t.hp -= 2;
+      say("Artillery hits " + t.name + " for 2!");
+      cleanBoard(foe);
+    } else {
+      foe.hq -= 2;
+      say("Artillery strikes the enemy HQ for 2!");
+    }
+  }
+}
+
+function cleanBoard(p) {
+  p.board = p.board.filter(function (u) { return u.hp > 0; });
+}
+
+// ================= ONLINE MODE =================
+var MODE = "local";
+var NET = null;
+
+function status(txt) {
+  var el = document.getElementById("onlineStatus");
+  if (el) el.textContent = txt || "";
+}
+
+function showLobby() {
+  var el = document.getElementById("lobby");
+  if (!el || MODE !== "online" || !NET) return;
+  el.style.display = "flex";
+  lobbyRender();
+}
+
+function hideLobby() {
+  var el = document.getElementById("lobby");
+  if (el) el.style.display = "none";
+}
+
+function lobbyRender() {
+  if (!NET || MODE !== "online") return;
+  var isHost = NET.id === 0;
+  document.getElementById("lobbyRoom").textContent = NET.code || "";
+  document.getElementById("lobbyHost").textContent = NET.meName + (isHost ? "  (you)" : "");
+  document.getElementById("lobbyP2").textContent = isHost ? (NET.foeName || "—") : NET.foeName + "  (you)";
+  document.getElementById("lobbyWait").textContent = isHost
+    ? (NET.foeName ? "Opponent ready. Press START BATTLE." : "Waiting for an opponent to join...")
+    : "Waiting for the host to start...";
+  var startBtn = document.getElementById("lobbyStart");
+  startBtn.style.display = isHost ? "inline-block" : "none";
+  startBtn.disabled = !isHost || !NET.foeName;
+}
+
+function startGame() {
+  if (!NET || NET.started) return;
+  if (NET.id === 0 && MQ.connected) mqClear("kards6/rooms/" + NET.code);
+  NET.started = true;
+  hideLobby();
+  status("");
+  onlineInit();
+}
+
+function lobbyStart() {
+  if (!NET || NET.id !== 0 || !NET.foeName || NET.started) return;
+  mqPublish(mqTarget("lobby"), { t: "start", s: NET.sess, c: NET.code, p0: NET.meName, p1: NET.foeName }, true);
+  startGame();
+}
+
+var ROOMS = {};
+var BROWSE = false;
+
+function browseRooms() {
+  BROWSE = true;
+  ROOMS = {};
+  document.getElementById("roomlist").classList.add("show");
+  roomShowHint();
+  mqConnect();
+  mqSubscribe("kards6/rooms/+");
+  if (!MQ.roomT) MQ.roomT = setInterval(roomPrune, 5000);
+}
+
+function refreshRooms() {
+  if (!BROWSE) return;
+  ROOMS = {};
+  roomShowHint();
+  mqSubscribe("kards6/rooms/+");
+}
+
+function closeRooms() {
+  BROWSE = false;
+  document.getElementById("roomlist").classList.remove("show");
+  if (MQ.roomT) { clearInterval(MQ.roomT); MQ.roomT = null; }
+}
+
+function roomPrune() {
+  if (!BROWSE) return;
+  var now = Date.now();
+  Object.keys(ROOMS).forEach(function (c) { if (now - ROOMS[c].ts > 60000) delete ROOMS[c]; });
+  roomShowHint();
+}
+
+function mqRoomMsg(topic, msg) {
+  if (!BROWSE) return;
+  if (!msg || !msg.c || !msg.n) { var c = topic.slice(topic.lastIndexOf("/") + 1); if (ROOMS[c]) { delete ROOMS[c]; roomShowHint(); } return; }
+  ROOMS[msg.c] = { n: msg.n, c: msg.c, ts: (msg.ts || Date.now()) };
+  roomShowHint();
+}
+
+function roomShowHint() {
+  var rows = document.getElementById("roomRows");
+  var hint = document.getElementById("roomHint");
+  var codes = Object.keys(ROOMS).sort();
+  if (!codes.length) { rows.innerHTML = ""; hint.style.display = "block"; return; }
+  hint.style.display = "none";
+  rows.innerHTML = codes.map(function (c) {
+    return '<div class="rrow"><span>' + ROOMS[c].n + '</span><span class="rrowc">' + c + '</span><button class="btn" onclick="joinRoom(\'' + c + '\')">JOIN</button></div>';
+  }).join("");
+}
+
+function joinRoom(code) {
+  closeRooms();
+  document.getElementById("roomIn").value = code;
+  if (MODE !== "online") setMode("online");
+  if (!document.getElementById("onlinePanel")) return;
+  joinGame();
+}
+
+function syncPub(p) {
+  S.pub.hand[p] = S.players[p].hand.length;
+  S.pub.deck[p] = S.players[p].deck.length;
+}
+
+function boardArr(p) {
+  return p.board.map(function (u) { return { key: u.key, hp: u.hp, atk: u.atk }; });
+}
+
+function boardFromSnap(arr) {
+  return (arr || []).map(function (s) {
+    var u = makeInst(s.key);
+    u.hp = s.hp; u.atk = s.atk;
+    return u;
+  });
+}
+
+function buildPublic() {
+  return {
+    from: NET.id,
+    turn: S.turn,
+    over: !!S.over,
+    winner: S.winner || 0,
+    reset: 0,
+    hq: [S.players[0].hq, S.players[1].hq],
+    res: [S.players[0].res, S.players[1].res],
+    hand: S.pub.hand.slice(),
+    deck: S.pub.deck.slice(),
+    board: [boardArr(S.players[0]), boardArr(S.players[1])],
+    msg: LAST_MSG
+  };
+}
+
+function publish() {
+  if (MODE !== "online" || !NET || !MQ.connected) return;
+  NET.ver++;
+  var snap = buildPublic();
+  snap.ver = NET.ver;
+  mqPublish(mqTarget("in" + other(NET.id)), { t: "snap", s: NET.sess, v: snap.ver, snap: snap }, true);
+  LAST_MSG = "";
+}
+
+function applyPublic(snap) {
+  if (!snap || snap.from === NET.id) return;
+  if (S.over && !snap.reset) return;
+  S.turn = snap.turn;
+  for (var i = 0; i < 2; i++) {
+    S.players[i].hq = snap.hq[i];
+    S.players[i].res = snap.res[i];
+    S.players[i].board = boardFromSnap(snap.board[i]);
+  }
+  S.pub.hand = snap.hand.slice();
+  S.pub.deck = snap.deck.slice();
+  S.attackSel = null;
+  S.readyOrder = null;
+  if (snap.reset) { onlineInit(); return; }
+  S.over = !!snap.over;
+  S.winner = snap.winner || 0;
+  if (snap.msg) log(flipPOV(snap.msg));
+  render();
+  if (!S.over && snap.turn === NET.id) {
+    onlineBeginMyTurn();
+  } else if (S.over && !S.overShown) {
+    S.overShown = true;
+    showModal("GAME OVER", pName(S.winner) + " has destroyed the enemy HQ!",
+      (MODE === "online" ? "Rematch" : "New Game"),
+      function () { hideModal(); if (MODE === "online") resetOnline(); else newGame(); });
+  }
+}
+
+function onlineInit() {
+  hideLobby();
+  status("");
+  S = { cur: NET.id, turn: NET.id, over: false, winner: 0, attackSel: null, readyOrder: null,
+        started: true, overShown: false, pub: { hand: [0, 0], deck: [0, 0] } };
+  S.players = [freshPlayer(), freshPlayer()];
+  S.players[0].deck = buildDeck();
+  S.players[1].deck = buildDeck();
+  draw(S.players[0], 4);
+  draw(S.players[1], 4);
+  syncPub(0); syncPub(1);
+  if (NET.id === 0) onlineBeginMyTurn();
+  else { S.turn = 0; render(); }
+}
+
+function onlineBeginMyTurn() {
+  if (S.over) return;
+  var p = NET.id;
+  var pl = S.players[p];
+  pl.turnNum++;
+  pl.res = Math.min(pl.turnNum, MAX_RES);
+  pl.board.forEach(function (u) { u.canAttack = true; });
+  draw(pl, 1);
+  S.turn = p;
+  render();
+  publish();
+}
+
+function onlineEndTurn() {
+  if (S.over) return;
+  S.readyOrder = null;
+  S.attackSel = null;
+  S.turn = other(NET.id);
+  render();
+  publish();
+}
+
+function resetOnline() {
+  if (MODE !== "online" || !NET) return;
+  S.overShown = false;
+  NET.ver++;
+  var snap = buildPublic();
+  snap.reset = 1;
+  snap.over = false;
+  snap.winner = 0;
+  snap.turn = 0;
+  snap.hq = [20, 20];
+  snap.res = [0, 0];
+  snap.hand = [4, 4];
+  snap.deck = [27, 27];
+  snap.board = [[], []];
+  snap.ver = NET.ver;
+  if (MQ.connected) {
+    mqPublish(mqTarget("in" + other(NET.id)), { t: "snap", s: NET.sess, v: NET.ver, snap: snap }, true);
+  }
+  onlineInit();
+}
+
+function pName(pid) {
+  if (MODE === "online" && NET) {
+    return pid === NET.id ? NET.meName : NET.foeName;
+  }
+  return "Player " + pid;
+}
+
+function myTurn() {
+  if (MODE !== "online") return true;
+  return !!NET && S && S.started && !S.over && S.turn === NET.id;
+}
+
+function canAct() { return myTurn(); }
+
+function genCode() {
+  var letters = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  var s = "";
+  for (var i = 0; i < 5; i++) s += letters[Math.floor(Math.random() * letters.length)];
+  return s;
+}
+
+function genSess() { return Math.random().toString(36).slice(2, 10); }
+
+function hostGame() {
+  if (BROWSE) closeRooms();
+  var name = (document.getElementById("nameIn").value || "").trim() || "Player#1";
+  NET = { code: genCode(), id: 0, sess: genSess(), ver: 0, meName: name, foeName: "", started: false };
+  S = { cur: NET.id, turn: NET.id, over: false, winner: 0, attackSel: null, readyOrder: null, started: false, overShown: false, pub: { hand: [0, 0], deck: [0, 0] } };
+  S.players = [freshPlayer(), freshPlayer()];
+  status("Connecting to relay...");
+  mqConnect();
+}
+
+function joinGame() {
+  if (BROWSE) closeRooms();
+  var name = (document.getElementById("nameIn").value || "").trim() || "Player#2";
+  var code = (document.getElementById("roomIn").value || "").trim().toUpperCase();
+  if (!code) { status("Enter the room code."); return; }
+  NET = { code: code, id: 1, sess: genSess(), ver: 0, meName: name, foeName: "", started: false };
+  S = { cur: NET.id, turn: NET.id, over: false, winner: 0, attackSel: null, readyOrder: null, started: false, overShown: false, pub: { hand: [0, 0], deck: [0, 0] } };
+  S.players = [freshPlayer(), freshPlayer()];
+  status("Connecting to relay...");
+  mqConnect();
+}
+
+// ============ ONLINE RELAY VIA PUBLIC MQTT (no server needed) ============
+var MQ = {
+  ws: null, connected: false, seq: 0, idx: 0, pingT: null,
+  brokers: ["wss://broker.emqx.io:8084/mqtt", "wss://test.mosquitto.org:8081/mqtt"]
+};
+
+function mqEnc8(s) { return new TextEncoder().encode(s); }
+function mqDec(a) { return new TextDecoder().decode(a); }
+
+function mqStr(s) {
+  var e = mqEnc8(s);
+  var o = new Uint8Array(e.length + 2);
+  o[0] = (e.length >> 8) & 255;
+  o[1] = e.length & 255;
+  o.set(e, 2);
+  return o;
+}
+
+function mqVar(n) {
+  var b = [];
+  do {
+    var d = n % 128;
+    n = Math.floor(n / 128);
+    if (n > 0) d |= 128;
+    b.push(d);
+  } while (n > 0);
+  return b;
+}
+
+function mqPkt(type, flags, body) {
+  var vl = mqVar(body.length);
+  var out = new Uint8Array(1 + vl.length + body.length);
+  out[0] = ((type << 4) | (flags & 15)) & 255;
+  out.set(vl, 1);
+  out.set(body, 1 + vl.length);
+  return out.buffer;
+}
+
+function mqTarget(t) { return "kards6/" + NET.code + "/" + t; }
+
+function mqSend(type, flags, body) {
+  if (MQ.ws && MQ.ws.readyState === 1) MQ.ws.send(mqPkt(type, flags, body));
+}
+
+function mqConnect() {
+  if (MQ.ws) { try { MQ.ws.onclose = null; MQ.ws.close(); } catch (e) {} MQ.ws = null; }
+  var url = MQ.brokers[MQ.idx % MQ.brokers.length];
+  MQ.connected = false;
+  var ws = new WebSocket(url, "mqtt");
+  MQ.ws = ws;
+  ws.binaryType = "arraybuffer";
+  ws.onopen = function () {
+    var cid = "k6_" + Math.random().toString(36).slice(2, 12);
+    var body = mqCat([mqStr("MQTT"), [4], [2], [0, 30], mqStr(cid)]);
+    ws.send(mqPkt(1, 0, body));
+  };
+  ws.onmessage = function (ev) { mqHandle(ev.data); };
+  ws.onclose = function () {
+    MQ.connected = false;
+    if (NET) { MQ.idx++; setTimeout(mqConnect, 2000); }
+  };
+  ws.onerror = function () { try { ws.close(); } catch (e) {} };
+}
+
+function mqClose() {
+  if (MQ.pingT) { clearInterval(MQ.pingT); MQ.pingT = null; }
+  if (MQ.ws) { MQ.ws.onclose = null; try { MQ.ws.close(); } catch (e) {} MQ.ws = null; }
+  MQ.connected = false;
+}
+
+function stopPoll() { mqClose(); }
+
+function mqCat(parts) {
+  var arrs = parts.map(function (p) {
+    if (typeof p === "number") return new Uint8Array([p]);
+    if (p instanceof Uint8Array) return p;
+    return new Uint8Array(p);
+  });
+  var len = 0;
+  arrs.forEach(function (a) { len += a.length; });
+  var out = new Uint8Array(len);
+  var at = 0;
+  arrs.forEach(function (a) { out.set(a, at); at += a.length; });
+  return out;
+}
+
+function mqSubscribe(topic) {
+  var pid = ++MQ.seq;
+  var body = mqCat([[(pid >> 8) & 255, pid & 255], mqStr(topic), [0]]);
+  mqSend(8, 2, body);
+}
+
+function mqPublish(topic, obj, retain) {
+  var flags = 0x02 | (retain ? 0x01 : 0x00);
+  var pid = ++MQ.seq;
+  var body = mqCat([mqStr(topic), [(pid >> 8) & 255, pid & 255], mqEnc8(JSON.stringify(obj))]);
+  mqSend(3, flags, body);
+}
+
+function mqClear(topic) {
+  var pid = ++MQ.seq;
+  var body = mqCat([mqStr(topic), [(pid >> 8) & 255, pid & 255]]);
+  mqSend(3, 0x03, body);
+}
+
+function mqPing() { mqSend(12, 0, new Uint8Array(0)); }
+
+function mqHandle(ab) {
+  if (!ab) return;
+  var d = new Uint8Array(ab);
+  if (d.length < 2) return;
+  var type = d[0] >> 4;
+  var body = mqReadBody(d);
+  if (!body) return;
+  if (type === 2) { // CONNACK
+    if (body.length >= 2 && body[1] === 0) {
+      MQ.connected = true;
+      mqReady();
+      if (!MQ.pingT) MQ.pingT = setInterval(mqPing, 20000);
+    } else {
+      MQ.idx++; mqClose(); setTimeout(mqConnect, 2000);
+    }
+  } else if (type === 3) { // PUBLISH
+    var flags = d[0] & 15;
+    var bp = 0;
+    var tlen = ((body[bp] << 8) | body[bp + 1]); bp += 2;
+    var topic = mqDec(body.subarray(bp, bp + tlen)); bp += tlen;
+    var qos = (flags >> 1) & 3;
+    if (qos > 0) {
+      var pid = ((body[bp] << 8) | body[bp + 1]); bp += 2;
+      mqSend(4, 0, new Uint8Array([(pid >> 8) & 255, pid & 255]));
+    }
+    var obj = null;
+    try { obj = JSON.parse(mqDec(body.subarray(bp))); } catch (e) {}
+    mqOnMessage(topic, obj);
+  }
+}
+
+function mqReadBody(d) {
+  var p = 1, e, mult = 1, len = 0;
+  do {
+    if (p >= d.length) return null;
+    e = d[p++];
+    len += (e & 127) * mult;
+    mult *= 128;
+  } while ((e & 128) !== 0 && len < 1000000);
+  if (p + len > d.length) return null;
+  return d.subarray(p, p + len);
+}
+
+function mqReady() {
+  if (BROWSE) mqSubscribe("kards6/rooms/+");
+  if (!NET) return;
+  mqSubscribe(mqTarget("lobby"));
+  mqSubscribe(mqTarget("in" + NET.id));
+  if (NET.id === 0) {
+    mqPublish(mqTarget("lobby"), { t: "h", s: NET.sess, c: NET.code, n: NET.meName }, true);
+    mqPublish("kards6/rooms/" + NET.code, { n: NET.meName, c: NET.code, ts: Date.now() }, true);
+  } else {
+    mqPublish(mqTarget("lobby"), { t: "j", s: NET.sess, c: NET.code, n: NET.meName }, true);
+  }
+  showLobby();
+  if (NET.id === 0) status("Waiting for opponent... Room code: " + NET.code);
+  else status("Joining room " + NET.code + "...");
+}
+
+function mqOnMessage(topic, msg) {
+  if (topic.indexOf("kards6/rooms/") === 0) { mqRoomMsg(topic, msg); return; }
+  if (!NET || !msg) return;
+  if (topic === mqTarget("lobby")) {
+    if (msg.t === "h" && NET.id === 1) {           // host hello (joiner sees it)
+      if (msg.c === NET.code && msg.s !== NET.sess) {
+        NET.sess = msg.s;                            // adopt the host's session
+        mqPublish(mqTarget("lobby"), { t: "j", s: NET.sess, c: NET.code, n: NET.meName }, true);
+      }
+      if (msg.c === NET.code && !NET.started) {
+        NET.foeName = msg.n;
+        status("Room found. Waiting for the host to start...");
+        lobbyRender();
+      }
+    } else if (msg.t === "j" && NET.id === 0) {    // join hello (host sees it)
+      if (msg.c === NET.code && msg.s === NET.sess && !NET.started) {
+        NET.foeName = msg.n;
+        status("Opponent joined: " + msg.n);
+        lobbyRender();
+      }
+    } else if (msg.t === "start") {
+      if (msg.c === NET.code && msg.s === NET.sess) {
+        NET.foeName = (NET.id === 0) ? msg.p1 : msg.p0;
+        startGame();
+      }
+    }
+    return;
+  }
+  if (topic === mqTarget("in" + NET.id)) {
+    if (msg.t !== "snap" || msg.s !== NET.sess) return;
+    if (msg.v <= NET.ver) return;
+    if (!NET.started) { NET.started = true; onlineInit(); }
+    NET.ver = msg.v;
+    applyPublic(msg.snap);
+  }
+}
+
+function setMode(m) {
+  if (m === MODE) return;
+  if (NET && NET.id === 0 && MQ.connected) mqClear("kards6/rooms/" + NET.code);
+  if (NET) { stopPoll(); NET = null; }
+  if (BROWSE) closeRooms();
+  hideLobby();
+  MODE = m;
+  document.getElementById("modeLocal").classList.toggle("active", m === "local");
+  document.getElementById("modeOnline").classList.toggle("active", m === "online");
+  document.getElementById("onlinePanel").style.display = (m === "online") ? "flex" : "none";
+  status("");
+  if (m === "local") {
+    newGame();
+  } else {
+    render();
+  }
+}
+
+// ================= COMBAT =================
+function legalTargets(srcInst) {
+  var foe = S.players[other(S.cur)];
+  var lists = { units: [], hq: false };
+  if (srcInst.air) {
+    lists.units = foe.board.slice();
+    lists.hq = true;
+  } else {
+    var guards = foe.board.filter(function (u) { return u.guard; });
+    if (guards.length > 0) {
+      lists.units = guards;
+    } else {
+      lists.units = foe.board.slice();
+      lists.hq = true;
+    }
+  }
+  return lists;
+}
+
+function selectAttacker(uidx) {
+  if (!canAct()) return;
+  if (S.over) return;
+  if (S.readyOrder !== null) return;
+  var pl = S.players[S.cur];
+  var inst = pl.board[uidx];
+  if (!inst) return;
+  if (!inst.canAttack) { log(inst.name + " has already attacked."); return; }
+  if (S.attackSel === uidx) { S.attackSel = null; }
+  else S.attackSel = uidx;
+  render();
+  if (S.attackSel !== null) {
+    var targets = legalTargets(pl.board[S.attackSel]);
+    var desc = targets.units.length ? targets.units.map(function (u) { return u.name; }).join(", ") : "none";
+    if (targets.hq) desc += (desc ? " / " : "") + "HQ";
+    log("Choose a target for " + pl.board[S.attackSel].name + "  [" + desc + "]. Click the unit again to cancel.");
+  }
+}
+
+function doAttack(uidx, kind, tidx) {
+  if (!canAct()) return;
+  if (S.over) return;
+  if (S.attackSel == null) return;
+  var me = S.players[S.cur];
+  var foe = S.players[other(S.cur)];
+  var att = me.board[S.attackSel];
+  if (!att) return;
+
+  if (kind === "hq") {
+    var targets = legalTargets(att);
+    if (!targets.hq) return;
+    foe.hq -= att.atk;
+    say("Your " + att.name + " strikes the enemy HQ for " + att.atk + "!");
+    att.canAttack = false;
+  } else {
+    var targets2 = legalTargets(att);
+    var def = foe.board[tidx];
+    if (!def || targets2.units.indexOf(def) === -1) return;
+    def.hp -= att.atk;
+    att.hp -= def.atk;
+    say("Your " + att.name + " fights the enemy " + def.name + ": deals " + att.atk + ", takes " + def.atk + ".");
+    if (def.hp <= 0) say("Enemy " + def.name + " is destroyed!");
+    if (att.hp <= 0) say("Your " + att.name + " is destroyed!");
+    att.canAttack = false;
+    cleanBoard(foe);
+    cleanBoard(me);
+  }
+
+  S.attackSel = null;
+  syncPub(S.cur);
+  render();
+  if (MODE === "online") publish();
+  if (checkVictory()) return;
+}
+
+function checkVictory() {
+  var p0 = S.players[0], p1 = S.players[1];
+  var winner = null;
+  if (p0.hq <= 0) winner = 2;
+  if (p1.hq <= 0) winner = 1;
+  if (winner) {
+    S.over = true;
+    S.winner = winner;
+    S.overShown = true;
+    if (MODE === "online") publish();
+    showModal("GAME OVER", pName(winner) + " has destroyed the enemy HQ!",
+      (MODE === "online" ? "Rematch" : "New Game"),
+      function () { hideModal(); if (MODE === "online") resetOnline(); else newGame(); });
+    return true;
+  }
+  return false;
+}
+
+// ---------------- Modal ----------------
+function showModal(title, text, btn, fn) {
+  document.getElementById("mTitle").textContent = title;
+  document.getElementById("mText").textContent = text;
+  document.getElementById("mTip").textContent = "";
+  var b = document.getElementById("mBtn");
+  b.textContent = btn;
+  b.onclick = fn;
+  document.getElementById("modal").classList.add("show");
+}
+
+function hideModal() { document.getElementById("modal").classList.remove("show"); }
+
+// ---------------- Rendering ----------------
+function handHTML(pl, isActive, cnt) {
+  var html = "";
+  var n = isActive ? pl.hand.length : (cnt || 0);
+  var interactive = canAct();
+  for (var i = 0; i < n; i++) {
+    var inst = isActive ? pl.hand[i] : null;
+    if (isActive) {
+      var playable = interactive && inst.cost <= pl.res && (inst.type === "order" ? (inst.key === "explode" ? S.players[other(S.cur)].board.length > 0 : true) : pl.board.length < MAX_BOARD);
+      html += '<div class="cardwrap"><div class="card ' + (playable ? "playable" : "unplayable") + (inst.type === "order" ? " order" : "") + '" onclick="play(' + i + ')">' +
+        '<div class="cost">' + inst.cost + '</div>' +
+        '<div class="cname">' + inst.name + '</div>' +
+        '<div class="art">' + DEFS[inst.key].art + '</div>' +
+        (inst.type === "order"
+          ? '<div class="otext">' + DEFS[inst.key].text + '</div>'
+          : '<div class="atk">' + inst.atk + '</div><div class="hp">' + inst.hp + '</div>') +
+        '</div></div>';
+    } else {
+      html += '<div class="cardwrap"><div class="cardback"></div></div>';
+    }
+  }
+  return html;
+}
+
+function boardHTML(pl, role) {
+  var html = "";
+  var mine = (role === 'mine');
+  var foe = (role === 'foe');
+  for (var i = 0; i < pl.board.length; i++) {
+    var inst = pl.board[i];
+    var cls = "card";
+    var attm = '';
+
+    if (mine) {
+      if (canAct()) {
+        if (i === S.attackSel) { cls += " selected"; attm = ' onclick="selectAttacker(' + i + ')"'; }
+        else if (inst.canAttack) { attm = ' onclick="selectAttacker(' + i + ')"'; }
+      }
+      if (!inst.canAttack) cls += " exhausted";
+    } else if (foe) {
+      if (canAct() && S.readyOrder !== null) {
+        cls += " targetable";
+        attm = ' onclick="resolveOrderTarget(' + i + ')"';
+      } else if (canAct() && S.attackSel != null) {
+        var att = S.players[S.cur].board[S.attackSel];
+        if (att) {
+          var tg = legalTargets(att);
+          if (tg.units.indexOf(inst) !== -1) { cls += " targetable"; attm = ' onclick="doAttack(' + S.attackSel + ',&quot;u&quot;,' + i + ')"'; }
+        }
+      }
+    }
+
+    var badges = "";
+    if (inst.guard) badges += '<div class="badge guard">GUARD</div>';
+    if (inst.air) badges += '<div class="badge air">AIR</div>';
+
+    html += '<div class="cardwrap"><div class="' + cls + '"' + attm + '>' +
+      '<div class="cost">' + inst.cost + '</div>' +
+      '<div class="cname">' + inst.name + '</div>' +
+      '<div class="art">' + DEFS[inst.key].art + '</div>' +
+      badges +
+      '<div class="atk">' + inst.atk + '</div>' +
+      '<div class="hp">' + inst.hp + '</div>' +
+      '</div></div>';
+  }
+  return html;
+}
+
+function hqTargetable() {
+  if (!canAct()) return false;
+  if (S.attackSel == null) return false;
+  var att = S.players[S.cur].board[S.attackSel];
+  if (!att) return false;
+  return legalTargets(att).hq;
+}
+
+function render() {
+  if (!S) return;
+  var cur = (MODE === "online" && NET) ? NET.id : S.cur;
+  var foe = other(cur);
+  var my = S.players[cur], en = S.players[foe];
+  var canTargetHq = hqTargetable();
+  var hqTgtCls = canTargetHq ? ' targetable' : '';
+  var hqOnt = canTargetHq ? ' onclick="doAttack(' + S.attackSel + ',&quot;hq&quot;)"' : '';
+
+  if (MODE === "online" && NET) {
+    if (!S.started) setTurnBar("Waiting for opponent");
+    else setTurnBar(pName(S.turn) + (S.turn === NET.id ? "  (you)" : ""));
+  } else {
+    setTurnBar("Player " + (cur + 1));
+  }
+
+  // top = opponent
+  var topHTML = '<div class="prow">' +
+      '<div class="stackbox"><div class="stackcard"></div><span>DECK ' + S.pub.deck[foe] + '</span><span>RES ' + en.res + '</span></div>' +
+      '<div class="hqbox"><div class="hqcard' + hqTgtCls + '"' + hqOnt + '>' +
+        '<div class="star">★★★★★</div>' +
+        '<div class="hpnum">' + en.hq + '</div>' +
+        '<div class="hpbar-wrap"><div class="hpbar' + (en.hq <= 5 ? ' low' : '') + '" style="width:' + Math.min(100, Math.round(en.hq / 20 * 100)) + '%"></div></div>' +
+      '</div></div>' +
+      '<div class="stackbox"><div class="stackcard"></div><span></span><span></span></div>' +
+    '</div>' +
+    '<div class="hand">' + handHTML(en, false, S.pub.hand[foe]) + '</div>' +
+    '<div class="boardrow">' + boardHTML(en, 'foe') + '</div>';
+  document.getElementById("panelTop").innerHTML = topHTML;
+
+  var midHTML = '<div class="boardrow">' + boardHTML(my, 'mine') + '</div>';
+  document.getElementById("panelMid").innerHTML = midHTML;
+
+  var myHq = '<div class="prow">' +
+      '<div class="stackbox"><div class="stackcard"></div><span>DECK ' + S.pub.deck[cur] + '</span><span>RES ' + my.res + '</span></div>' +
+      '<div class="hqbox"><div class="hqcard">' +
+        '<div class="star">★★★★★</div>' +
+        '<div class="hpnum">' + my.hq + '</div>' +
+        '<div class="hpbar-wrap"><div class="hpbar' + (my.hq <= 5 ? ' low' : '') + '" style="width:' + Math.min(100, Math.round(my.hq / 20 * 100)) + '%"></div></div>' +
+      '</div></div>' +
+      '<div class="stackbox"><div class="stackcard"></div><span></span><span></span></div>' +
+    '</div>' +
+    '<div class="hand">' + handHTML(my, true, 0) + '</div>';
+  document.getElementById("panelBottom").innerHTML = myHq;
+
+  var eBtn = document.getElementById("endBtn");
+  var offlineWait = (MODE === "online") && (!canAct() || !S.started);
+  eBtn.disabled = S.over || offlineWait;
+  eBtn.textContent = (MODE === "online" && !canAct() && S.started) ? "WAIT..." : "END TURN";
+  document.getElementById("newBtn").disabled = (MODE === "online");
+  fit();
+}
+
+function fit() {
+  var stage = document.getElementById("stage");
+  if (!stage) return;
+  var w = stage.offsetWidth, h = stage.offsetHeight;
+  if (!w || !h) return;
+  var scale = Math.min(window.innerWidth / w, window.innerHeight / h, 1.35);
+  stage.style.transform = "scale(" + scale + ")";
+}
+window.addEventListener("resize", fit);
+
+document.getElementById("endBtn").onclick = function () { endTurn(); };
+document.getElementById("newBtn").onclick = function () { newGame(); };
+
+newGame();
+</script>
+</body>
+</html>

@@ -1,0 +1,3094 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EUROPE 1939 &mdash; Map Game</title>
+<style>
+  :root{
+    --bg:#0d1016; --panel:#151a24; --panel2:#1b2130; --line:#2b3346;
+    --ink:#e6ebf5; --dim:#8d99b0; --gold:#e2b13c; --red:#d64545; --green:#57b567;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    background:var(--bg); color:var(--ink);
+    font:13.5px/1.35 "Segoe UI",Roboto,system-ui,sans-serif;
+    font-weight:500;
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  h1,h2,h3{margin:0}
+  button{font:inherit;color:inherit;cursor:pointer}
+
+  /* ---------- top bar ---------- */
+  #top{
+    display:flex;align-items:center;gap:14px;padding:8px 12px;
+    background:linear-gradient(#1b2130,#141926);border-bottom:1px solid var(--line);
+    flex-wrap:wrap;
+  }
+  #brand{font-weight:800;letter-spacing:2px;font-size:15px;color:var(--gold)}
+  #brand small{display:block;font-weight:600;letter-spacing:1px;color:#9fabc0;font-size:10px}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:4px 10px;min-width:74px}
+  .stat b{display:block;font-size:16px;font-weight:700;line-height:1.15}
+  .stat span{font-size:10px;font-weight:700;letter-spacing:.8px;color:#9fabc0;text-transform:uppercase}
+  #moneyBox b{color:var(--gold)}
+  .spacer{flex:1}
+  .btn{
+    background:var(--panel2);border:1px solid var(--line);border-radius:6px;
+    padding:6px 10px;transition:.12s;
+  }
+  .btn:hover{border-color:#4b5878;background:#232b3d}
+  .btn.on{background:#31405f;border-color:#5f7bb5}
+  .btn.danger{border-color:#6b2b2b}
+  .btn.danger:hover{background:#3a1f1f}
+  #dateBox b{color:#9fc4ff}
+  .badge{
+    display:none;margin-left:6px;background:var(--red);color:#fff;font:700 10px/1.4 "Segoe UI",system-ui,sans-serif;
+    min-width:15px;height:15px;padding:0 4px;border-radius:8px;align-items:center;justify-content:center;vertical-align:2px;
+  }
+  .badge.on{display:inline-flex}
+
+  /* ---------- layout ---------- */
+  #main{flex:1;display:flex;min-height:0}
+  #mapwrap{flex:1;position:relative;overflow:auto;background:
+      radial-gradient(ellipse at 50% 40%,#16202e 0%,#0b0e14 75%)}
+  #map{display:block;width:100%;min-width:900px}
+  #tip{
+    position:absolute;pointer-events:none;display:none;z-index:5;
+    background:#0b0e14ee;border:1px solid var(--line);border-radius:6px;padding:6px 8px;
+    font-size:13px;font-weight:500;line-height:1.4;box-shadow:0 6px 20px #0008;max-width:230px;
+  }
+  #tip b{color:var(--gold)}
+  aside#panel{
+    width:352px;flex:none;background:var(--panel);border-left:1px solid var(--line);
+    overflow-y:auto;padding:9px;display:flex;flex-direction:column;gap:8px;
+  }
+  .card{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px}
+  .card h3{font-size:11px;font-weight:700;letter-spacing:1.2px;color:#a8b4c9;text-transform:uppercase;margin-bottom:6px;line-height:1.2}
+  .title{font-size:18px;font-weight:800;display:flex;align-items:center;gap:8px;line-height:1.2}
+  .sub{color:#a7b3c8;font-size:12px;font-weight:600;line-height:1.35}
+  .row{display:flex;justify-content:space-between;gap:8px;padding:2px 0;font-weight:600}
+  .row b{font-variant-numeric:tabular-nums;font-weight:700}
+
+  /* shop */
+  #shop{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .unit{
+    text-align:left;background:#222a3b;border:1px solid var(--line);border-radius:7px;
+    padding:7px 8px;line-height:1.25;
+  }
+  .unit:hover:not(:disabled){border-color:var(--gold);background:#2a3448}
+  .unit:disabled{opacity:.42;cursor:not-allowed}
+  .unit .n{font-weight:800;font-size:12.5px;display:flex;justify-content:space-between;line-height:1.25}
+  .unit .c{color:var(--gold);font-weight:800}
+  .unit .d{color:#a7b3c8;font-size:11px;font-weight:500;line-height:1.3;margin-top:3px}
+  .unit.last{grid-column:1 / -1}
+
+  /* ---- shop page: fill the card, no dead space under the words ---- */
+  #pgShop #shop{gap:8px}
+  #pgShop .unit{padding:10px 11px;line-height:1.2}
+  #pgShop .unit .n{font-size:13.5px;font-weight:800;line-height:1.2}
+  #pgShop .unit .c{font-size:13.5px}
+  #pgShop .unit .d{
+    font-size:12px;font-weight:600;line-height:1.25;color:#b4c0d5;margin-top:5px;
+    padding-top:5px;border-top:1px solid #ffffff10;
+  }
+  #shopHint{font-size:12.5px;padding:7px 9px;background:#0f141e;border:1px solid var(--line);border-radius:6px}
+
+  /* unit list */
+  .u{
+    display:flex;align-items:center;gap:7px;padding:4px 6px;border-radius:6px;
+    background:#1f2739;border:1px solid transparent;cursor:pointer;margin-bottom:4px;
+  }
+  .u:hover{border-color:#4b5878}
+  .u.pick{border-color:var(--green);background:#20301f}
+  .u .code{
+    font:700 11px/1 ui-monospace,Consolas,monospace;background:#39445e;color:#fff;
+    padding:4px 5px;border-radius:4px;min-width:38px;text-align:center;
+  }
+  .bar{flex:1;height:6px;background:#39415a;border-radius:3px;overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--green)}
+  .u .hp{font-size:11px;font-weight:600;color:#a7b3c8;width:60px;text-align:right}
+
+  /* ---- battle page: rows fill their height, no dead space ---- */
+  #pgBattle .u{padding:7px 9px;margin-bottom:6px;gap:9px;background:#212a3d}
+  #pgBattle .u .code{
+    font:800 12px/1 ui-monospace,Consolas,monospace;background:#44526f;color:#fff;
+    padding:6px 7px;min-width:46px;border-radius:5px;
+  }
+  #pgBattle .bar{height:9px;border-radius:5px;background:#3b4560}
+  #pgBattle .u .hp{font-size:12.5px;font-weight:700;color:#b4c0d5;width:70px}
+  #pgBattle .chip{font-size:12.5px;font-weight:800;padding:6px 14px}
+  #pgBattle #uSub{padding:7px 9px;background:#0f141e;border:1px solid var(--line);border-radius:6px}
+
+  .chips{display:flex;flex-wrap:wrap;gap:5px}
+  .chip{background:#1a2131;border:1px solid var(--line);border-radius:20px;padding:4px 11px;font-size:12px;font-weight:700}
+  .chip:hover{border-color:var(--red);background:#2a1f22}
+  .chip.friend{border-color:#2f5b3a}
+  .chip.friend:hover{border-color:var(--green);background:#1c2a1f}
+  .chip i{font-style:normal;color:#a7b3c8;font-size:11px;font-weight:600}
+
+  /* ---- the daily paper (right sidebar) ---- */
+  #newsPanel{max-height:230px;overflow-y:auto}
+  .sNewsH{font:800 15px/1.25 Georgia,"Times New Roman",serif;color:#e9d19a;margin:2px 0 4px}
+  .sNewsM{font-size:11px;font-weight:600;color:#8d7f57;margin-bottom:6px}
+  .sNewsB{font:600 12.5px/1.5 Georgia,"Times New Roman",serif;color:#d9c9a4}
+  .sNewsB b{color:#f0e2be}
+
+  /* ---- neighbouring garrisons ---- */
+  #bGar{margin-top:7px;border-top:1px solid var(--line);padding-top:6px;
+        max-height:108px;overflow-y:auto}
+  .bgHead{font-size:10px;font-weight:700;letter-spacing:1.2px;color:#a8b4c9;text-transform:uppercase;
+          margin-bottom:5px;position:sticky;top:0;background:var(--panel2);padding:2px 0;z-index:1}
+  .bg{
+    display:flex;align-items:center;gap:6px;width:100%;text-align:left;
+    background:#1e2534;border:1px solid transparent;border-radius:6px;
+    padding:4px 7px;margin-bottom:3px;font-size:11.5px;
+  }
+  .bg:hover{border-color:var(--gold);background:#252d3f}
+  .bg.on{border-color:var(--gold);background:#2a2a1a}
+  .bg .nm{font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bg .ct{font-weight:700;font-variant-numeric:tabular-nums;color:#b4c0d5;white-space:nowrap}
+  .bg .ct em{font-style:normal;color:#8b97ad;font-weight:600}
+  .bg.mine .nm{color:#9fb4d8}
+
+  /* ---- shop tabs ---- */
+  .tabs{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+  .tab{
+    background:#1e2534;border:1px solid var(--line);border-radius:7px;
+    padding:6px 13px;font-size:12.5px;font-weight:700;color:#b4c0d5;
+  }
+  .tab:hover{border-color:var(--gold);color:#e6ebf5}
+  .tab.on{background:#3b2f10;border:1px solid var(--gold);color:#f0d58a}
+  .tabCount{margin-left:auto;font-size:11.5px;font-weight:600;color:#8b97ad}
+
+  #log{font-size:12px;line-height:1.35;max-height:118px;overflow-y:auto}
+  #ranks{max-height:104px;overflow-y:auto}
+  #log div{padding:3px 0;border-bottom:1px solid #ffffff08;color:#ccd6e8;line-height:1.35}
+  #log .t{color:#9fabc0;font-size:11px;font-weight:600;margin-right:5px}
+  .rank{display:flex;align-items:center;gap:6px;padding:2.5px 0;font-size:12.5px;font-weight:600}
+  .rank i{width:18px;color:#9fabc0;font-style:normal;font-weight:700}
+  .rank b{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:700}
+
+  /* svg */
+  .land{stroke:#0b0e14;stroke-width:1.1;stroke-linejoin:round;cursor:pointer;transition:filter .12s}
+  .land:hover{filter:brightness(1.35)}
+  .land.sel{stroke:#ffd75e;stroke-width:2.4}
+  .land.tgt{stroke:#7fe08a;stroke-width:2.2;stroke-dasharray:5 3}
+  .land.war{stroke:#7a2a2a;stroke-width:1.6}
+  .sea{stroke:#243449;stroke-width:.7;stroke-dasharray:2 2}
+  .lbl{font:700 11.5px "Segoe UI",sans-serif;fill:#fff;paint-order:stroke;stroke:#000a;stroke-width:3px;
+       text-anchor:middle;pointer-events:none;user-select:none}
+  .ct{pointer-events:none;user-select:none}
+  .ct rect{stroke:#0b0e14;stroke-width:.8;rx:2}
+  .ct text{font:700 7px ui-monospace,Consolas,monospace;fill:#0b0e14;text-anchor:middle}
+
+  /* ---------- country sheet (small map) ---------- */
+  .mini{
+    display:block;width:100%;height:126px;margin:7px 0 5px;border:1px solid var(--line);
+    border-radius:6px;background:#0e1622;cursor:pointer;
+  }
+  .mini .mu{pointer-events:auto;cursor:pointer}
+  .mini .mu:hover circle{stroke:#fff;stroke-width:1.6}
+  .mini text{font:700 7px ui-monospace,Consolas,monospace;text-anchor:middle;fill:#0b0e14}
+  .mini .cap{font:600 8.5px "Segoe UI",Roboto,system-ui,sans-serif;text-anchor:start;fill:#9fabc0}
+
+  /* ---------- toast ---------- */
+  #toast{
+    position:fixed;left:50%;top:16px;transform:translateX(-50%);z-index:30;display:none;
+    background:#1b2130f2;border:1px solid var(--gold);color:var(--gold);border-radius:8px;
+    padding:9px 16px;font-size:14px;font-weight:600;box-shadow:0 10px 30px #000a;pointer-events:none;max-width:60vw;
+  }
+  #toast.on{display:block}
+
+  /* start overlay */
+  #start{
+    position:fixed;inset:0;z-index:20;background:radial-gradient(ellipse at 50% 20%,#1b2434,#080a0f 70%);
+    display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto;
+  }
+  #startBox{
+    width:min(1020px,100%);background:#11151ef2;border:1px solid var(--line);border-radius:14px;
+    padding:20px;box-shadow:0 30px 80px #000a;
+  }
+  #startBox h1{font-size:30px;letter-spacing:3px;color:var(--gold);text-align:center}
+  #startBox h1 small{display:block;font-size:11.5px;letter-spacing:2px;color:#9fabc0;font-weight:600;margin-top:5px}
+  #startBox p.rules{color:#ccd6e8;font-size:13.5px;font-weight:500;line-height:1.45;max-width:780px;margin:13px auto 0;text-align:center}
+  .bloc{font-size:11px;font-weight:700;letter-spacing:2px;color:#9fabc0;text-transform:uppercase;margin:15px 0 7px}
+  #pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:6px;max-height:38vh;overflow:auto;padding:4px}
+  .pick{
+    display:flex;align-items:center;gap:8px;background:#1b2231;border:1px solid var(--line);
+    border-radius:8px;padding:8px 9px;text-align:left;
+  }
+  .pick:hover{border-color:var(--gold);background:#232c3f;transform:translateY(-1px)}
+  .pick.on{border-color:var(--gold);background:#2a2a1a;box-shadow:0 0 0 1px var(--gold) inset}
+  .pick .f{font-size:20px}
+  .pick .n{font-weight:800;font-size:13px}
+  .pick .b{font-size:10.5px;font-weight:600;color:#9fabc0;letter-spacing:.6px}
+  .dot{width:9px;height:9px;border-radius:50%;flex:none}
+
+  #go{
+    display:block;margin:16px auto 0;padding:12px 40px;font-size:15px;font-weight:800;letter-spacing:2px;
+    background:linear-gradient(#3a2f10,#241c06);border:1px solid var(--gold);border-radius:8px;color:var(--gold);
+  }
+  #go:disabled{opacity:.4;cursor:not-allowed}
+  #go:hover:not(:disabled){background:linear-gradient(#4d3d13,#2f250a)}
+
+  /* ---- start a battle footer ---- */
+  #goWrap{text-align:center;margin-top:14px}
+  #goWho{font-size:13px;font-weight:600;color:#a7b3c8;line-height:1.4}
+  #goWho b{color:var(--gold);font-weight:800}
+
+  /* ---- big action buttons under Selected territory ---- */
+  .bigbtn{
+    display:block;width:100%;padding:13px 10px;margin:9px 0 0;font-size:15px;font-weight:800;
+    letter-spacing:.5px;border-radius:9px;transition:.12s;border:1px solid var(--line);
+    background:#1b2230;color:#cfd6e6;
+  }
+  .bigbtn:hover{transform:translateY(-1px)}
+  .bigbtn.shop{border-color:#6b5a25;color:var(--gold);background:linear-gradient(#2f2712,#1d1809)}
+  .bigbtn.shop:hover{background:linear-gradient(#3d3216,#241d0b);border-color:var(--gold)}
+  .bigbtn.battle{border-color:#6b2b2b;color:#f0a5a5;background:linear-gradient(#2f1618,#1d0e10)}
+  .bigbtn.battle:hover{background:linear-gradient(#3d1d1f,#241214);border-color:var(--red)}
+
+  /* ---- shop / battle pages ---- */
+  #page{
+    position:fixed;inset:0;z-index:26;display:none;flex-direction:column;
+    background:radial-gradient(ellipse at 50% 0%,#1b2434,#080a0f 70%);
+  }
+  .pageHead{
+    display:flex;align-items:center;gap:14px;padding:14px 22px;border-bottom:1px solid var(--line);
+    background:#0e121acc;flex:0 0 auto;
+  }
+  .pageHead h2{font-size:22px;font-weight:800;letter-spacing:1px;margin:0;flex:1}
+  .pageWrap{flex:1;overflow:auto;padding:18px 22px 40px}
+  .pageWrap>.card{max-width:640px;margin:0 auto 14px}
+  #pageT.shopT{color:var(--gold)}
+  #pageT.battleT{color:var(--red)}
+
+  /* mail (right sidebar) */
+  #mList{max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+  .mRow{display:flex;align-items:center;gap:6px;padding:7px 8px;background:#141926;border:1px solid var(--line);
+    border-radius:6px;cursor:pointer}
+  .mRow:hover{border-color:var(--gold)}
+  .mRow b{font-size:12.5px;color:#e6dbb8;white-space:nowrap}
+  .mRow .mSubjC{flex:1;font-size:11.5px;color:#a08c5f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mRow .mRowDay{font-size:11px;color:#8d99b0;font-weight:600}
+  .mDot{width:7px;height:7px;border-radius:50%;background:var(--red);flex:0 0 auto}
+  .mMail{background:#141926;border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+  .mMail.mine{border-color:#3a4a2a}
+  .mHead{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;cursor:pointer}
+  .mHead b{font-size:13px;color:#e6dbb8}
+  .mHead .mDay{margin-left:auto;font-size:11px;color:#8d99b0;font-weight:600}
+  .mHead .mClose{margin-left:6px;font-size:10px;color:#8d99b0;text-transform:uppercase;letter-spacing:.5px}
+  .mSubj{font-size:14px;font-weight:800;color:#e9d19a;margin:4px 0 6px}
+  .mBody{color:#cfd6e6;font-size:12.5px;line-height:1.45;white-space:pre-wrap}
+  .mAns{color:#7fe0c1;font-size:12px;font-weight:600;margin-top:6px}
+  .mReplies{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+  .rbtn{padding:5px 11px;border-radius:6px;background:#1a2131;border:1px solid var(--line);color:#dfe6f0;font-size:12px;cursor:pointer}
+  .rbtn:hover{border-color:var(--gold);background:#232c3f}
+  .mSelect{background:#1a2131;border:1px solid var(--line);color:#dfe6f0;padding:6px 8px;border-radius:6px}
+  .mSubjChips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:7px}
+  .mSubjChips .chip.on{border-color:var(--gold);background:#3b2f10;color:#f0d58a}
+  .mComposeBtns{display:flex;gap:6px}
+  #mmComposeBtn{margin-bottom:8px}
+  #mmCompose{background:#10141d;border:1px solid var(--line);border-radius:6px;padding:8px;margin-bottom:8px}
+  #mmCompose .mSelect{width:100%;margin-bottom:7px}
+  #mmList{max-height:52vh;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+
+  .mUnreadLine{font-size:11px;font-weight:700;color:var(--red);margin-bottom:5px}
+  .mSum{font-size:12px;color:#cfd6e6;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* modal overlays (news + mail) */
+  .modal{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;
+    background:#05070bef;backdrop-filter:blur(4px)}
+  .modal .mbox{width:min(780px,94vw);max-height:90vh;overflow:auto;background:#10151f;
+    border:1px solid #26334d;border-radius:14px;padding:18px 20px}
+  .modal .mhead{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+  .modal .mhead b{flex:1;font-size:16px;letter-spacing:1px;color:#e6dbb8}
+  .paper{background:linear-gradient(#241c10,#190f06 130%);border:1px solid #5a4a2a;border-radius:4px;
+    padding:18px 20px}
+  .paper .sNewsH{font:800 22px/1.25 Georgia,"Times New Roman",serif;color:#f0e2be}
+  .paper .sNewsM{font-size:11.5px;font-weight:600;color:#a08c5f;margin:6px 0 10px}
+  .paper .sNewsB{font:600 15px/1.6 Georgia,"Times New Roman",serif;color:#e6dcc0}
+  .paper .sNewsB b{color:#f0e2be}
+
+  #end{
+    position:fixed;inset:0;z-index:30;display:none;align-items:center;justify-content:center;
+    background:#05070bb8;backdrop-filter:blur(3px);
+  }
+  #end .box{background:#11151e;border:1px solid var(--gold);border-radius:12px;padding:26px 34px;text-align:center}
+  #end h2{font-size:26px;letter-spacing:2px;color:var(--gold);margin-bottom:8px}
+  #err{position:fixed;left:0;right:0;bottom:0;z-index:99;background:#5a1b1b;color:#ffdada;
+       font:12px ui-monospace,Consolas,monospace;padding:8px 12px;display:none;white-space:pre-wrap;max-height:36vh;overflow:auto}
+
+  #net{
+    position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;
+    background:#05070bef;backdrop-filter:blur(4px);
+  }
+  #net .nbox{width:min(940px,94vw);max-height:92vh;overflow:auto;background:#10151f;
+    border:1px solid #26334d;border-radius:14px;padding:22px 24px}
+  #net h2{font-size:19px;font-weight:800;letter-spacing:1px;margin:0 0 4px}
+  #net h2 small{font-size:11px;color:#8d99b0;font-weight:400;letter-spacing:.4px;margin-left:8px}
+  #net .sub{font-size:12px;color:#8d99b0}
+  #net h3{font-size:13px;margin:20px 0 4px;color:#cdd6e4;font-weight:600}
+  #net input{background:#0a0e16;border:1px solid #2b3a55;color:#e6ebf4;border-radius:8px;
+    padding:8px 10px;font:13px ui-monospace,Consolas,monospace;width:190px}
+  #net .row2{display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap}
+  #net .row2 .or{color:#8d99b0;font-size:12px}
+  .netStatus{font:12px ui-monospace,Consolas,monospace;color:#7fb3e8;margin-top:10px;min-height:16px;white-space:pre-wrap}
+  #rooms{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+  #rooms .rm{display:flex;align-items:center;gap:12px;background:#0d1220;border:1px solid #22304a;
+    border-radius:8px;padding:9px 12px;cursor:pointer;font:13px ui-monospace,Consolas,monospace}
+  #rooms .rm:hover{border-color:#3f5a8a}
+  #rooms .rm .code{color:var(--gold);font-weight:700;font-size:14px}
+  #rooms .rm .full{color:#c06a6a}
+  #nlSeats{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:6px;margin:12px 0}
+  #nlSeats .seat{display:flex;gap:8px;align-items:center;background:#0d1220;border:1px solid #22304a;
+    border-radius:8px;padding:7px 10px;font-size:12.5px;color:#cdd6e4;cursor:pointer}
+  #nlSeats .seat:hover{border-color:#3f5a8a}
+  #nlSeats .seat.taken{opacity:.55;cursor:default}
+  #nlSeats .seat.me{opacity:1;cursor:default;border-color:#8aaae0;background:#161f33;color:#e6ebf4}
+  #nlSeats .seat .f{font-size:16px}
+  #nlBtns{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:6px}
+  #net .btn{display:inline-block;padding:9px 18px;margin:0}
+  .b-online{
+    margin-top:22px !important;display:inline-block;padding:11px 26px;background:linear-gradient(#2b6d8c,#174a63);
+    border:1px solid #4d93b5;border-radius:10px;color:#dff2fa;font:700 14px/1 "Segoe UI",system-ui,sans-serif;
+    letter-spacing:.6px;cursor:pointer;
+  }
+  .b-online:hover{background:linear-gradient(#3a86ad,#1d5c79)}
+  ::-webkit-scrollbar{width:9px;height:9px}
+  ::-webkit-scrollbar-thumb{background:#2f3a52;border-radius:6px}
+  ::-webkit-scrollbar-track{background:#0f131c}
+</style>
+</head>
+<body>
+
+<div id="top">
+  <div id="brand">EUROPE 1939<small>MAP GAME &middot; WORLD WAR II</small></div>
+  <div class="stat" id="moneyBox"><b id="sMoney">0</b><span>treasury</span></div>
+  <div class="stat"><b id="sInc">0</b><span>mine gold/day</span></div>
+  <div class="stat"><b id="sLand">0</b><span>territory</span></div>
+  <div class="stat"><b id="sUnits">0</b><span>units</span></div>
+  <div class="stat"><b id="sPow">0</b><span>power</span></div>
+  <div class="stat" id="dateBox"><b id="sDate">1 Sep 1939</b><span>day</span></div>
+  <div class="spacer"></div>
+  <button class="btn on" id="bPause" title="Space">&#10073;&#10073; Pause</button>
+  <button class="btn" data-sp="1">1&times;</button>
+  <button class="btn" data-sp="2">2&times;</button>
+  <button class="btn" data-sp="3">3&times;</button>
+<button class="btn" id="bFocus">My front</button>
+  <button class="btn" id="bNews">&#128240; News<span class="badge" id="nbNews"></span></button>
+  <button class="btn" id="bMail">&#9993; Mail<span class="badge" id="nbMail"></span></button>
+  <button class="btn" id="bNet">&#127760; Multi</button>
+  <button class="btn danger" id="bNew">New war</button>
+</div>
+
+<div id="main">
+  <div id="mapwrap">
+    <svg id="map"></svg>
+    <div id="tip"></div>
+  </div>
+
+<aside id="panel">
+    <div class="card" id="cProv">
+      <h3>Selected territory</h3>
+      <div class="title"><span id="pFlag">&#127757;</span><span id="pName">&mdash;</span></div>
+      <svg id="mini" class="mini"></svg>
+      <div class="sub" id="pOwner">&nbsp;</div>
+      <div class="row" style="margin-top:6px"><span>Garrison</span><b id="pGarr">&mdash;</b></div>
+      <div class="row"><span>Defense power</span><b id="pDef">&mdash;</b></div>
+      <div class="row"><span>Mine fields</span><b id="pMines">0</b></div>
+      <div id="bGar"></div>
+    </div>
+
+    <button class="bigbtn shop" id="mShop">&#65291; Shop</button>
+    <button class="bigbtn battle" id="mBattle">&#9876; Battle</button>
+
+    <div class="card" id="newsCard">
+      <h3>&#128240; THE CONTINENTAL <small>daily paper</small></h3>
+      <div id="newsPanel"></div>
+    </div>
+
+    <div class="card" id="mailCard">
+      <h3>&#128231; Diplomatic pouch</h3>
+      <div id="mailSummary"></div>
+      <button class="btn" id="bOpenMail" style="width:100%">Open the pouch &#8599;</button>
+    </div>
+
+    <div class="card">
+      <h3>War map &mdash; power</h3>
+      <div id="ranks"></div>
+    </div>
+
+    <div class="card">
+      <h3>Dispatches</h3>
+      <div id="log"></div>
+    </div>
+  </aside>
+
+</div>
+
+<div id="start">
+  <div id="startBox">
+    <h1>EUROPE 1939<small>Choose your nation &middot; 50 gold in the treasury &middot; Conquer the continent</small></h1>
+    <p class="rules">
+      Nations that fought in the Second World War are on the map. You begin with <b>50 gold</b>, three riflemen
+      and two mine fields at home.<br>
+      There is <b>no daily income</b> &mdash; <b>mine fields are the only gold</b> in the game, 4 gold a day each.
+      Buy mine cars to lay more, and take countries to grow your yield.<br>
+      Click a country to open its sheet: a small map of the country with the units standing in it.
+      Recruit in your own territory, then order units into a neighbouring country. Every front is a real front &mdash;
+      the AI nations fight each other too, so a war can be won without fighting the whole continent.<br>
+      Units fight at their best on friendly soil, and hardest of all in their homeland. Tanks, artillery and bombers
+      cost upkeep every day, so a huge army can bankrupt you.<br>
+      You win by holding <b>every</b> territory. You lose if you hold none.
+    </p>
+    <div id="pick"></div>
+    <div id="goWrap">
+      <div class="sub" id="goWho">Pick a nation above to begin</div>
+      <button id="go" disabled>Start the war</button>
+      <button class="b-online" id="bOnline">&#127760; Play online multiplayer</button>
+    </div>
+  </div>
+</div>
+
+<div id="page">
+  <div class="pageHead">
+    <h2 id="pageT">&nbsp;</h2>
+    <button class="btn" id="pageBack">&#8592; Back to the map</button>
+  </div>
+  <div class="pageWrap">
+    <div id="pgShop" style="display:none">
+      <div class="card">
+        <h3 id="shopWho">&nbsp;</h3>
+        <div class="sub" id="shopHint" style="margin-bottom:8px">&nbsp;</div>
+        <div class="tabs">
+          <button class="tab" id="tabArmy">&#9876; Army</button>
+          <button class="tab" id="tabAir">&#9992; Air Force</button>
+          <span class="tabCount" id="shopCount"></span>
+        </div>
+        <div id="shop"></div>
+      </div>
+    </div>
+
+    <div id="pgBattle" style="display:none">
+      <div class="card">
+        <h3>1 &mdash; Choose your units</h3>
+        <div class="sub" id="uSub" style="margin-bottom:7px">Tick the units you want to attack with.</div>
+        <div id="uList"></div>
+        <button class="chip" id="bSelFront" style="margin-top:7px">Select every unit on my fronts</button>
+      </div>
+      <div class="card" id="cOrders" style="display:none">
+        <h3>2 &mdash; Choose the target</h3>
+        <div class="chips" id="oChips"></div>
+        <label class="sub" style="display:flex;gap:6px;align-items:center;margin-top:7px;cursor:pointer">
+          <input type="checkbox" id="ordMode" checked> map click on a flashing border = send units
+        </label>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="net">
+  <div class="nbox">
+    <div class="netMain" id="netMain">
+      <h2>&#127760; MULTIPLAYER <small>free public MQTT relay &middot; one player is the host, guests send orders</small></h2>
+      <div class="sub">Every nation on the map is a seat. Players who stop responding are released back to the AI.</div>
+      <span class="sub" style="display:block;margin-top:14px">Your name</span>
+      <input id="netName" maxlength="18" placeholder="Player">
+      <div class="row2">
+        <button class="btn on" id="bHost">&#128234; Host a room</button>
+        <span class="or">or join by code</span>
+        <input id="netCode" maxlength="4" placeholder="ABCD" style="width:66px;text-transform:uppercase">
+        <button class="btn" id="bJoin">Join</button>
+      </div>
+      <div class="netStatus" id="netSt">&nbsp;</div>
+      <h3>Open rooms <small>(full rooms stay hidden)</small></h3>
+      <div id="rooms"><div class="sub">No rooms yet &mdash; host one.</div></div>
+      <button class="btn" id="netBack">&#8592; Back</button>
+    </div>
+    <div class="netLobby" id="netLobby" style="display:none">
+      <h2>Room <span id="nlRoom" style="color:var(--gold)">----</span><small id="nlRole">host</small></h2>
+      <div class="netStatus" id="nlSt">&nbsp;</div>
+      <div class="sub" id="nlHint">&nbsp;</div>
+      <div id="nlSeats"></div>
+      <div id="nlBtns">
+        <button class="btn" id="nlCancel">&#8592; Leave room</button>
+        <button class="btn on" id="nlGo">&#9654; Start the war</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="nModal" class="modal">
+  <div class="mbox">
+    <div class="mhead"><b>&#128240; THE CONTINENTAL</b><button class="btn" id="nModalClose">&#10005; Close</button></div>
+    <div class="mbody paper" id="nModalBody"></div>
+  </div>
+</div>
+
+<div id="mModal" class="modal">
+  <div class="mbox">
+    <div class="mhead"><b>&#128231; Diplomatic pouch</b><button class="btn" id="mModalClose">&#10005; Close</button></div>
+    <div class="mbody">
+      <button class="btn" id="mmComposeBtn" style="width:100%">&#9998; Compose a note</button>
+      <div id="mmCompose" style="display:none">
+        <select id="mmTo" class="mSelect"><option value="">Choose a nation&hellip;</option></select>
+        <div class="mSubjChips" id="mmSubj"></div>
+        <div class="mComposeBtns">
+          <button class="btn on" id="mmSend" disabled>&#128231; Post</button>
+          <button class="btn" id="mmCancel">Cancel</button>
+        </div>
+      </div>
+      <div id="mmList" class="mList"></div>
+    </div>
+  </div>
+</div>
+
+<div id="end"><div class="box"><h2 id="endT"></h2><div id="endS" class="sub"></div>
+  <button class="btn" style="margin-top:14px" onclick="location.reload()">New game</button></div></div>
+
+<div id="toast"></div>
+
+<div id="err"></div>
+
+<script>
+"use strict";
+window.onerror = function(m,s,l,c,e){
+  var b=document.getElementById('err');
+  b.style.display='block';
+  b.textContent += 'ERROR: '+m+'  @line '+l+'\n';
+  if(e&&e.stack) b.textContent += e.stack+'\n';
+};
+
+/* =======================================================================
+   1. MAP GEOMETRY  (polygons in [longitude, latitude])
+   ======================================================================= */
+const GEO = {
+  portugal:[[[-9.3,41.9],[-8.7,42.1],[-7.6,41.8],[-6.9,40.8],[-7.4,39.6],[-7.0,38.3],
+      [-7.6,37.2],[-8.9,37.0],[-9.4,38.3],[-9.3,40.0],[-9.3,41.9]]],
+
+  spain:[[[-9.3,41.9],[-8.7,42.1],[-7.6,41.8],[-6.9,40.8],[-7.4,39.6],[-7.0,38.3],
+      [-7.6,37.2],[-8.9,37.0],[-8.0,36.7],[-5.8,36.0],[-2.1,36.8],[-0.5,37.5],
+      [0.2,38.3],[-0.2,39.6],[0.3,40.6],[0.9,41.8],[1.2,42.5],[0.6,42.9],
+      [-0.7,43.0],[-1.8,43.5],[-4.0,43.7],[-7.0,43.6],[-9.0,43.3],[-9.3,41.9]]],
+
+  france:[[[-1.8,43.5],[-1.6,43.2],[0.7,42.9],[1.6,42.8],[2.8,42.7],[3.4,42.9],
+      [4.7,43.6],[6.0,43.1],[7.2,43.4],[7.6,43.9],[6.8,44.2],[6.6,45.2],
+      [6.0,46.1],[5.9,46.7],[7.0,47.1],[7.5,47.6],[7.5,48.0],[7.4,48.6],
+      [7.0,48.9],[7.4,49.5],[6.3,49.4],[4.9,49.6],[4.2,49.9],[3.3,50.5],
+      [2.5,51.0],[2.4,51.1],[1.6,50.9],[1.1,49.9],[0.2,49.4],[-0.5,49.5],
+      [-1.5,49.7],[-2.0,48.6],[-4.2,48.6],[-4.7,48.7],[-4.7,47.8],[-2.9,47.3],
+      [-1.8,46.0],[-1.8,43.5]]],
+
+  uk:[[[-5.7,50.05],[-3.5,50.35],[-2.4,50.60],[-1.4,50.70],[0.2,50.80],[1.4,51.10],
+      [0.55,51.50],[0.90,52.00],[1.70,52.75],[0.40,53.00],[-0.20,53.65],[-0.50,54.10],
+      [-1.30,54.60],[-1.10,55.30],[-1.80,55.60],[-2.30,55.90],[-2.60,56.30],
+      [-2.30,56.50],[-1.80,57.00],[-2.10,57.30],[-2.60,57.70],[-3.10,58.30],
+      [-3.40,58.65],[-4.00,58.60],[-5.00,58.40],[-5.90,57.90],[-5.80,57.40],
+      [-5.00,57.00],[-5.50,56.50],[-5.80,56.00],[-5.40,55.50],[-4.80,55.80],
+      [-4.20,55.60],[-3.60,55.10],[-3.50,54.60],[-3.00,54.10],[-2.90,53.40],
+      [-3.60,53.35],[-4.10,52.90],[-4.70,52.55],[-4.20,52.35],[-5.30,51.85],
+      [-4.10,51.75],[-4.00,51.15],[-5.30,50.15],[-5.7,50.05]]],
+
+  ireland:[[[-10.0,51.6],[-9.9,53.2],[-10.1,54.2],[-8.3,55.2],[-7.2,55.2],[-6.0,54.6],
+      [-6.1,53.4],[-6.2,52.2],[-7.6,51.4],[-10.0,51.6]]],
+
+  netherlands:[[[3.4,51.4],[4.6,52.0],[5.5,53.4],[7.0,53.5],[7.2,52.9],[6.9,52.0],
+      [6.2,51.8],[5.0,51.4],[3.4,51.4]]],
+
+  belgium:[[[2.5,51.1],[3.4,51.4],[4.0,51.4],[5.5,51.1],[5.8,50.7],[4.9,49.5],
+      [4.2,49.9],[3.3,50.5],[2.5,51.1]]],
+
+  switzerland:[[[6.0,46.1],[6.1,46.7],[7.0,47.1],[7.5,47.5],[8.5,47.6],[9.0,47.5],
+      [10.4,46.9],[10.5,46.2],[9.5,45.8],[8.5,45.8],[7.5,45.9],[6.8,46.4],[6.0,46.1]]],
+
+  austria:[[[9.53,47.42],[10.20,47.55],[11.30,47.60],[12.20,47.75],[12.90,48.20],
+      [13.00,48.55],[13.85,48.80],[14.60,49.00],[15.10,49.05],[16.10,48.90],
+      [16.60,48.60],[17.15,48.30],[16.90,47.85],[16.40,47.70],[16.10,47.10],
+      [15.20,46.80],[14.60,46.50],[13.70,46.45],[12.90,46.65],[12.30,46.75],
+      [11.60,47.05],[10.90,46.85],[10.20,47.10],[9.53,47.42]]],
+
+  italy:[[[6.8,45.1],[6.9,45.9],[8.4,46.1],[9.8,46.5],[10.5,46.9],[12.0,47.0],
+      [13.6,46.6],[13.6,46.2],[13.9,45.6],[13.5,45.5],[12.8,45.0],[12.5,44.5],
+      [13.5,43.6],[14.0,42.0],[15.0,41.9],[16.0,41.9],[17.0,41.2],[18.5,40.1],
+      [17.0,39.0],[16.5,38.0],[16.0,37.9],[15.6,38.0],[15.9,38.9],[16.0,39.8],
+      [15.7,40.3],[14.0,40.6],[13.0,41.2],[11.0,42.4],[10.0,43.0],[9.8,44.0],
+      [8.5,44.4],[7.5,43.8],[6.9,44.2],[7.1,44.8],[6.8,45.1]]],
+
+  germany:[[[5.9,50.8],[6.1,51.1],[6.3,51.7],[6.8,52.0],[7.0,52.4],[7.2,52.9],
+      [7.2,53.5],[8.4,53.6],[8.6,53.9],[8.7,54.3],[8.9,54.4],[8.6,54.9],
+      [9.4,54.8],[9.4,54.9],[10.2,54.4],[10.9,54.4],[11.0,53.9],
+      [11.5,54.3],[12.0,54.5],[13.0,54.5],[14.2,53.9],[14.7,52.9],[14.6,52.3],
+      [15.0,51.3],[14.8,50.9],[14.6,50.5],[13.5,50.7],[12.1,50.3],[12.5,49.5],
+      [13.4,48.8],[13.0,48.0],[12.9,47.7],[10.5,47.5],[10.2,47.3],[9.5,47.6],
+      [7.6,47.6],[8.2,48.9],[7.5,49.2],[7.6,48.1],[6.4,49.5],[6.1,49.2],
+      [6.0,49.0],[5.9,50.8]]],
+
+  denmark:[[[8.1,56.7],[8.2,57.4],[8.6,57.6],[9.6,57.7],[10.6,57.6],[10.5,56.8],
+      [10.0,56.2],[9.9,55.3],[9.5,55.0],[9.0,54.8],[8.4,55.0],[8.1,55.4],
+      [8.1,56.7]]],
+
+  poland:[[[14.7,52.9],[16.5,54.5],[18.5,54.8],[19.5,54.4],[22.0,54.4],[23.5,54.0],
+      [23.0,52.0],[23.5,51.5],[24.0,50.8],[22.5,49.0],[22.6,48.5],[20.0,49.4],
+      [18.5,49.5],[17.5,50.3],[15.0,51.3],[14.7,52.9]]],
+
+  czechoslovakia:[[[12.1,50.3],[13.5,50.7],[14.6,50.5],[17.0,50.5],[18.5,49.5],
+      [17.5,48.8],[17.2,48.0],[16.5,48.5],[15.0,48.8],[13.4,48.8],[12.5,49.5],
+      [12.1,50.3]]],
+
+  hungary:[[[16.4,48.6],[17.6,48.6],[18.5,47.8],[20.5,47.7],[22.1,48.4],[21.4,46.3],
+      [19.0,45.9],[18.0,46.1],[16.8,46.3],[16.4,48.6]]],
+
+  romania:[[[22.8,44.0],[22.6,45.0],[22.0,45.6],[22.3,46.3],[22.8,47.2],[22.9,48.0],
+      [24.0,48.2],[25.5,47.9],[26.6,48.4],[27.6,48.1],[28.6,47.4],[29.4,47.2],
+      [29.0,46.3],[29.4,45.5],[28.4,44.6],[27.6,43.9],[26.2,44.2],[24.2,44.0],
+      [22.8,44.0]]],
+
+  yugoslavia:[[[13.5,46.6],[16.4,46.6],[18.6,45.9],[21.0,45.8],[22.7,44.5],[21.3,43.3],
+      [20.5,42.2],[19.4,41.9],[19.3,40.7],[18.5,40.2],[17.0,41.2],[15.9,41.9],
+      [14.0,42.0],[13.5,43.6],[13.6,45.0],[13.5,46.6]]],
+
+  bulgaria:[[[22.5,44.0],[26.0,44.2],[27.5,44.0],[28.5,43.4],[27.5,42.5],[26.0,42.0],
+      [23.0,42.0],[22.5,42.3],[22.8,43.0],[22.5,44.0]]],
+
+  greece:[[[20.0,42.0],[21.5,41.2],[23.0,41.3],[24.0,41.5],[24.5,40.8],[23.5,40.2],
+      [23.0,39.0],[22.6,38.0],[23.6,37.9],[23.0,37.0],[22.0,36.8],[21.3,37.5],
+      [21.0,38.5],[20.7,39.0],[20.0,39.6],[20.0,40.0],[20.5,40.5],[19.5,40.5],
+      [19.3,41.3],[20.0,42.0]]],
+
+  albania:[[[19.3,41.3],[20.2,41.0],[20.5,40.5],[20.6,39.7],[19.4,40.0],[19.3,41.3]]],
+
+  turkey:[[[26.0,42.0],[29.0,41.5],[33.0,42.0],[36.5,41.5],[41.0,41.5],[44.0,39.5],
+      [44.8,37.5],[42.0,37.0],[39.0,36.8],[36.5,36.2],[34.0,36.3],[31.0,36.3],
+      [28.0,36.6],[26.5,38.0],[26.5,40.5],[26.0,42.0]]],
+
+  ussr:[[[28.2,59.4],[30.3,59.9],[29.8,61.0],[31.0,62.5],[29.5,64.5],[30.0,66.5],
+      [29.0,68.5],[28.5,70.0],[32.0,70.5],[36.0,69.0],[41.0,66.5],[40.0,64.0],
+      [36.0,64.5],[34.0,63.0],[33.0,61.0],[32.0,60.0],[30.0,59.5],[28.2,59.4]],
+      [[23.7,52.5],[26.4,52.0],[28.0,51.4],[31.8,52.0],[31.0,53.2],[30.0,54.2],
+      [28.5,55.5],[27.0,56.2],[25.0,56.2],[23.5,55.0],[23.6,52.5]],
+      [[22.5,48.0],[24.5,48.0],[24.8,48.6],[22.7,48.6],[22.5,48.0]],
+      [[22.7,48.6],[24.8,48.6],[26.0,48.4],[28.0,48.4],[28.0,47.5],[29.4,47.2],
+      [29.0,46.3],[29.4,45.5],[28.4,44.6],[27.6,43.9],[26.0,44.2],[24.2,44.0],
+      [23.0,44.6],[22.0,45.6],[22.4,46.9],[22.5,48.0]]],
+
+  estonia:[[[23.5,59.5],[28.2,59.4],[27.6,58.4],[25.0,58.4],[23.5,58.4],[23.4,59.4],[23.5,59.5]]],
+
+  latvia:[[[21.0,57.6],[21.1,55.9],[23.0,56.2],[24.4,57.6],[27.4,57.6],[28.2,59.4],
+      [25.3,58.0],[23.5,58.4],[22.0,58.4],[21.3,58.0],[21.0,57.6]]],
+
+  lithuania:[[[21.0,56.2],[21.0,54.4],[22.1,54.4],[23.0,54.9],[24.0,53.9],[25.5,54.0],
+      [26.5,55.4],[26.6,56.2],[24.0,56.4],[21.0,56.2]]],
+
+  finland:[[[21.5,63.2],[22.0,63.5],[25.0,64.5],[25.5,66.0],[28.5,68.0],[29.5,69.5],
+      [28.0,70.0],[24.0,70.0],[21.0,69.5],[21.5,68.0],[24.0,65.8],[23.5,64.5],
+      [21.5,63.2]]],
+
+  sweden:[[[12.9,55.4],[12.1,56.2],[11.3,58.3],[10.6,59.1],[11.4,59.9],[12.5,60.5],
+      [12.2,61.6],[12.9,63.0],[14.2,64.0],[14.5,65.5],[16.0,67.0],[18.5,69.1],
+      [21.0,68.5],[24.0,65.8],[23.5,64.5],[21.5,63.5],[17.5,62.5],[17.0,61.2],
+      [18.5,60.0],[18.9,59.3],[16.7,58.7],[16.5,57.0],[14.5,55.4],[12.9,55.4]]],
+
+  norway:[[[10.5,59.4],[9.5,58.9],[8.0,58.2],[7.0,58.0],[6.0,58.4],[5.3,58.9],
+      [5.0,59.5],[5.2,60.3],[5.0,61.0],[5.5,61.8],[5.5,62.0],[7.0,63.0],[8.5,63.5],
+      [11.0,64.5],[12.5,66.0],[14.5,67.5],[16.5,68.6],[18.5,69.5],[20.0,70.0],
+      [24.0,70.5],[28.0,71.0],[30.5,70.0],[28.0,69.6],[25.0,68.5],[22.0,68.0],
+      [19.5,68.5],[18.8,69.0],[17.0,68.2],[15.5,67.6],[14.0,66.3],[12.0,65.0],
+      [12.3,63.0],[11.5,61.0],[11.2,60.0],[10.5,59.4]]],
+
+  iceland:[[[-24.5,65.4],[-22.7,66.5],[-19.0,66.4],[-15.0,66.3],[-13.6,65.0],
+      [-14.0,64.3],[-16.0,63.5],[-18.5,63.4],[-20.5,63.8],[-22.7,63.8],[-24.5,65.4]]]
+};
+
+/* =======================================================================
+   2. NATIONS  (main WWII participants of the European theatre)
+   ======================================================================= */
+function N(id,name,flag,color,bloc,nb){
+  return {id:id,name:name,flag:flag,color:color,bloc:bloc,nb:nb};
+}
+const NATIONS = [
+  /* ---- Axis ---- */
+  N('germany','Germany','&#127465;&#127472;','#5a6172','Axis',
+    ['denmark','netherlands','belgium','france','czechoslovakia','austria','switzerland','poland']),
+  N('italy','Italy','&#127470;&#127479;','#2f7a4d','Axis',
+    ['france','switzerland','austria','yugoslavia']),
+  N('hungary','Hungary','&#127469;&#127482;','#7a4f8f','Axis',
+    ['austria','czechoslovakia','romania','yugoslavia','ussr']),
+  N('romania','Romania','&#127479;&#127474;','#8a6d3b','Axis',
+    ['hungary','yugoslavia','bulgaria','ussr']),
+  N('bulgaria','Bulgaria','&#127465;&#127462;','#4f7a3a','Axis',
+    ['romania','yugoslavia','greece','turkey']),
+  N('yugoslavia','Yugoslavia','&#127478;&#127479;','#3f6f8a','Axis',
+    ['italy','austria','hungary','romania','bulgaria','greece','albania']),
+  /* ---- Allies ---- */
+  N('uk','United Kingdom','&#127468;&#127479;','#3b4f8f','Allies',
+    ['ireland','france','iceland']),
+  N('france','France','&#127467;&#127479;','#3f6f8a','Allies',
+    ['belgium','germany','spain','italy','switzerland','uk']),
+  N('poland','Poland','&#127477;&#127473;','#8a3b3b','Allies',
+    ['germany','czechoslovakia','ussr','lithuania']),
+  N('czechoslovakia','Czechoslovakia','&#127464;&#127487;','#6a7f3f','Allies',
+    ['germany','austria','hungary','poland','ussr']),
+  N('greece','Greece','&#127487;&#127482;','#3f8a8a','Allies',
+    ['bulgaria','yugoslavia','albania','turkey']),
+  N('norway','Norway','&#127475;&#127469;','#4a6f9f','Allies',
+    ['sweden','finland','denmark']),
+  N('denmark','Denmark','&#127470;&#127479;','#9f6f4a','Allies',
+    ['germany','norway','sweden']),
+  N('netherlands','Netherlands','&#127475;&#127473;','#9f8a3f','Allies',
+    ['germany','belgium']),
+  N('belgium','Belgium','&#127463;&#127466;','#7f4a6f','Allies',
+    ['netherlands','germany','france']),
+  /* ---- Soviet bloc / eastern ---- */
+  N('ussr','Soviet Union','&#127479;&#127462;','#8a2f2f','Other',
+    ['finland','poland','czechoslovakia','hungary','romania','turkey','estonia','latvia','lithuania']),
+  N('finland','Finland','&#127470;&#127477;','#6f9f4a','Other',['sweden','norway','ussr']),
+  N('estonia','Estonia','&#127474;&#127476;','#4a9f8a','Other',['ussr','latvia']),
+  N('latvia','Latvia','&#127475;&#127471;','#9f4a6f','Other',['estonia','lithuania','ussr']),
+  N('lithuania','Lithuania','&#127475;&#127484;','#9f7f4a','Other',['latvia','poland','ussr']),
+  /* ---- Neutral / non-belligerent ---- */
+  N('spain','Spain','&#127470;&#127465;','#8f7f3f','Neutral',['france','portugal']),
+  N('portugal','Portugal','&#127477;&#127479;','#3f8f4a','Neutral',['spain']),
+  N('sweden','Sweden','&#127478;&#127465;','#4a8f9f','Neutral',['norway','finland','denmark']),
+  N('switzerland','Switzerland','&#127464;&#127473;','#7f4a4a','Neutral',
+    ['germany','france','italy','austria']),
+  N('ireland','Ireland','&#127470;&#127473;','#3f7f5f','Neutral',['uk']),
+  N('turkey','Turkey','&#127479;&#127479;','#6f9f4a','Neutral',['greece','bulgaria','ussr']),
+  N('albania','Albania','&#127465;&#127473;','#8f5f4a','Neutral',['yugoslavia','greece'])
+];
+/* extra regions that belong to somebody (not playable) */
+const REGIONS = [
+  {id:'iceland',name:'Iceland',flag:'&#127478;',color:'#4a8f9f',bloc:'Allies',
+   nb:['uk'],owner:'uk',playable:false},
+  /* annexed by Germany in 1938, so it is German soil - not a nation of its own */
+  {id:'austria',name:'Austria',flag:'&#127465;&#127472;',color:'#5a6172',bloc:'Axis',
+   nb:['germany','czechoslovakia','hungary','yugoslavia','italy','switzerland'],
+   owner:'germany',playable:false}
+];
+const NBY = {};
+[].concat(NATIONS,REGIONS).forEach(function(n){ NBY[n.id]=n; });
+
+/* =======================================================================
+   3. UNITS
+   ======================================================================= */
+const UNITS = {
+  /* ================= ARMY ================= */
+  infantry :{key:'infantry' ,name:'Infantry',  code:'INF' ,cost:10 ,hp:60 ,atk:8 ,def:1.7,up:0,col:'#c9a15a',blurb:'Cheap troops. Strong when dug in on their own soil.'},
+  mine     :{key:'mine'     ,name:'Mine car',  code:'MINE',cost:20 ,hp:50 ,atk:3 ,def:1.4,up:0,col:'#9aa4b8',mines:true,blurb:'Lays mine fields. They wreck attackers and pay 4 gold a day each - mines are your only income.'},
+  motor    :{key:'motor'    ,name:'Motorized infantry',code:'MOT',cost:60 ,hp:85 ,atk:11,def:1.6,up:1,col:'#b08a5a',blurb:'Wheels instead of boots. Crosses a frontier in days, but no armour worth the name.'},
+  assault  :{key:'assault'  ,name:'Assault infantry',code:'ASL',cost:40,hp:80 ,atk:14,def:1.5,up:1,col:'#a86a4a',blurb:'Trained to storm trenches. Cheap, and utterly relentless.'},
+  antitank :{key:'antitank' ,name:'Anti-tank gun',code:'AT' ,cost:70 ,hp:55 ,atk:18,def:1.3,up:1,col:'#8f8a5a',blurb:'One well-aimed shot ruins a tank. Helpless once infantry reach it.'},
+  flak     :{key:'flak'     ,name:'Anti-aircraft gun',code:'AA',cost:60,hp:60 ,atk:13,def:1.6,up:1,col:'#6a8a9a',blurb:'Shreds low-flying bombers and then digs in hard.'},
+  engineer :{key:'engineer' ,name:'Engineers',code:'ENG' ,cost:45 ,hp:60 ,atk:4 ,def:1.8,up:0,col:'#9a9a7a',blurb:'Builds faster and repairs the line. Rarely wins a firefight alone.'},
+  tank     :{key:'tank'     ,name:'Tank',      code:'TNK' ,cost:100,hp:130,atk:26,def:1.4,up:2,col:'#7fae4a',blurb:'Shock assault. Expensive upkeep, best on a prepared attack.'},
+  artillery:{key:'artillery',name:'Artillery', code:'ART' ,cost:150,hp:95 ,atk:15,def:2.0,up:2,col:'#b98a4a',blurb:'Devastating defence, poor in the open. Anchor your line with it.'},
+  heavy    :{key:'heavy'    ,name:'Heavy tank',code:'HVY' ,cost:220,hp:200,atk:40,def:1.9,up:4,col:'#5f8a4a',blurb:'A fortress that moves. Ruinous upkeep, so use it to break a front once.'},
+  /* ================= AIR FORCE ================= */
+  fighter  :{key:'fighter'  ,name:'Fighter',        code:'FIG',cost:150,hp:70,atk:16,def:1.2,up:2,col:'#7aa8d5',air:true,blurb:'Flies: sweeps the skies ahead of the bombers, then returns home.'},
+  dive     :{key:'dive'     ,name:'Dive bomber',    code:'DIV',cost:170,hp:65,atk:24,def:1.2,up:2,col:'#d58a5a',air:true,blurb:'Flies: dives onto one target with terrible, lethal precision.'},
+  bomber   :{key:'bomber'   ,name:'Bomber',         code:'BMB',cost:200,hp:70,atk:30,def:1.1,up:3,col:'#d05a5a',air:true,blurb:'Flies: strike any enemy border province, then returns home.'},
+  rocket   :{key:'rocket'   ,name:'Rocket bomber',  code:'RKT',cost:230,hp:60,atk:38,def:1.0,up:4,col:'#c55a5a',air:true,blurb:'Flies: salvos of rockets. Terrifying, wildly inaccurate, ruinously costly.'},
+  hnky     :{key:'hnky'     ,name:'Advanced aircraft',code:'ADV',cost:300,hp:80,atk:46,def:1.3,up:5,col:'#a06ad5',air:true,blurb:'Flies: an engineering wonder only a handful of nations can field.'}
+};
+
+/* ---------- each nation's own weapons ----------
+   format  chassis:DisplayName|blurb
+   the chassis supplies the statistics, the entry supplies the historical name.
+   Nations absent from this table fall back to the basic five weapons.        */
+const ARSENAL = {
+  germany:{army:[
+    'infantry:Grenadier|Plain foot infantry. Unimpressive one on one, unbeatable in a trench.',
+    'mine:Mine layer|Wins the field before the shooting starts. Pays 4 gold a day.',
+    'motor:Panzergrenadier|Infantry riding in half-tracks. Crosses a frontier fast.',
+    'assault:Fallschirmjager|Para-troopers. They arrive behind the line, already fighting.',
+    'antitank:Panzerschreck|A shoulder-fired rocket that hunts armour. Useless against men.',
+    'flak:8.8 cm Flak|An enormous gun that tears bombers apart and then defends like a bunker.',
+    'engineer:Pionier|Builds cover, bridges and minefields faster than anyone.',
+    'tank:Panzer IV|The workhorse of the panzer divisions. Reliable, and available in numbers.',
+    'artillery:15 cm K5|The heaviest field gun in the war. Slow, and completely ruinous.',
+    'heavy:Panzer VIII Maus|A tank built like a moving fortress. Two existed. That is the point.'],
+   air:[
+    'fighter:Messerschmitt Bf 109|The single best fighter of the early war. Fast, then unbeatable.',
+    'dive:Junkers Ju 87 Stuka|Sirens, then a dive. Devastating against a static column.',
+    'bomber:Heinkel He 111|Workhorse bomber. Never spectacular, always in the air.',
+    'rocket:Dornier Do 17|Famed for its dive-bombing as much as its twin engines.',
+    'hnky:Messerschmitt Me 262|The first jet fighter. Outruns everything, if it survives to the target.']},
+
+  ussr:{army:[
+    'infantry:Krasnoarmeyets|Red Army rifleman. Endless, and the reason Germany bogged down.',
+    'mine:Mine-laying battalion|Sappers seed the approach with mines for weeks beforehand.',
+    'motor:Motorised rifle brigade|Deep-penetration troops. Fast enough to keep attacking.',
+    'assault:Naval infantry|Sailors with rifles. Stubborn to a fault.',
+    'antitank:45 mm anti-tank gun|Short barrel, fast to aim. The tank killer of 1941.',
+    'flak:76 mm anti-aircraft gun|Doubles as a field gun when the bombers have gone.',
+    'engineer:Combat engineers|They built the pontoon bridges that carried the advance.',
+    'tank:T-34|The great equaliser. Cheap, simple, and it kept arriving.',
+    'artillery:152 mm howitzer|A Russian fortress. Slow, but reaches over everything.',
+    'heavy:KV-2|A dreadnought tank that became a floating bunker by 1942.'],
+   air:[
+    'fighter:Yak-1|The wooden-framed ace. Nimble, and made in tens of thousands.',
+    'dive:Il-2|Ground-attack aircraft that could absorb enormous punishment.',
+    'bomber:Pe-2|The one Soviet bomber worth the name, and it kept improving.',
+    'rocket:Il-28|The first Soviet jet bomber. Fast enough to run from fighters.',
+    'hnky:Yak-9|The refined late-war Yak. Genuinely dangerous by 1945.']},
+
+  uk:{army:[
+    'infantry:Home Guard|Part-time soldiers with rifles. Brave, and utterly unprepared.',
+    'mine:Combat sapper|Sappers who laid every minefield on the Western Front.',
+    'motor:Motor brigade|Wheeled infantry. Slow to train, good once trained.',
+    'assault:Commandos|Unexploded demolition and silent knives on the coast.',
+    'antitank:Boys anti-tank gun|An early heavy rifle. Wrecked a Tiger from the front.',
+    'flak:QF 3.7-inch gun|The best heavy AA gun in the world.',
+    'engineer:Royal Engineers|They built the Mulberry harbours the invasion landed on.',
+    'tank:Crusader|The dependable middle-weight tank that carried the desert war.',
+    'artillery:25-pounder|The standard field gun. Everything else was measured against it.',
+    'heavy:Churchill AVRE|A Churchill fitted as a mobile gun. Slow, and effectively unkillable head-on.'],
+   air:[
+    'fighter:Supermarine Spitfire|Probably the finest allied fighter of the war.',
+    'dive:Hawker Typhoon|The Typhoon became the greatest fighter-bomber of the west.',
+    'bomber:Avro Lancaster|Squared-off, unglamorous, and able to carry a very large bomb far.',
+    'rocket:de Havilland Mosquito|The wooden wonder. Fighter, bomber and reconnaissance in one.',
+    'hnky:de Havilland Mosquito FB Mk VI|Mosquitoes over Berlin, flying by night because they were shot down by day.']},
+
+  france:{army:[
+    'infantry:Fusilier|French line infantry. Steady, brave, and often short of everything.',
+    'mine:Sapeur|French sappers dug the Maginot Line deeper and wider than anyone.',
+    'motor:Infanterie motorisee|Truck-borne infantry, undermined by the lack of trucks.',
+    'assault:Choc|Volunteer shock infantry. Spectacular in 1940, and broken by 1941.',
+    'antitank:Canon de 47 mm|The legendary 47mm. The bane of German armour.',
+    'flak:CAAC 75 mm|An excellent AA gun that doubled as an anti-tank weapon.',
+    'engineer:Sapeur-pompier|French engineers who improvised under air attack constantly.',
+    'tank:Char B1 bis|Thick armour, a 75mm gun, and far too few of them.',
+    'artillery:155 mm GPF|The long-barreled heavy gun, superb on prepared ground.',
+    'heavy:Char D1B|Conceived in 1937, and still the heaviest French steel in 1940.'],
+   air:[
+    'fighter:Dewoitine D.520|Fast, agile, and starved of the engines to use it.',
+    'dive:Bloch MB.210|Worked hard over the Maginot, then vanished from the skies.',
+    'bomber:Breguet 693|Legion bomber that flew the first French raids on Germany.',
+    'rocket:Lioré et Olivier LeO 45|The only true French bomber worth the name.',
+    'hnky:Dewoitine D.522|An upgraded D.520 with a far better engine. Still too few.']},
+
+  italy:{army:[
+    'infantry:Fanteria|Italian infantry. Brave, badly led, and famously unlucky.',
+    'mine:Genio|Italian engineers - and engineers were in very short supply.',
+    'motor:Celere|Cavalry scouts given a few trucks. Fast, thin, and often alone.',
+    'assault:Alpini|Mountain troops. Excellent on rock, far less so in open ground.',
+    'antitank:Cannone da 47/32|An anti-tank gun that also fired the Breda rifle as a mortar.',
+    'flak:Cannone 88/56|An excellent gun that spent most of the war firing shrapnel at infantry.',
+    'engineer:Genio pionieri|Minefields and fortifications, built by a handful of specialists.',
+    'tank:M13/40|Italian medium tank. Firepower first, mobility a distant second.',
+    'artillery:149/40 howitzer|The standard Italian field gun, in enormous numbers.',
+    'heavy:M15/42|An Italian heavy tank that came on the market a war too late.'],
+   air:[
+    'fighter:Macchi C.202|The best Italian fighter of the war, and a genuine match for the Allies.',
+    'dive:Savoia-Marchetti SM.81|A clumsy bomber that worked remarkably well as a dive bomber.',
+    'bomber:Savoia-Marchetti SM.79|The SMA.79: bomber, torpedo bomber and transport rolled into one.',
+    'rocket:Savoia-Marchetti SM.84|Fast, rugged, and used as a torpedo bomber over the Mediterranean.',
+    'hnky:Macchi C.205|The last great Italian aircraft, outclassed by the end of the war.']},
+
+  poland:{army:[
+    'infantry:Strzelec|Polish rifleman. Outnumbered and fighting anyway.',
+    'mine:Saper|Polish sappers dug in for a long war and lost it early.',
+    'motor:Oddzial zmotoryzowany|The motorised core of the army. Never got its mechanised cavalry.',
+    'assault:Strzelcy Karpaccy|Highlander cavalry. Excellent horsemen, obsolete by the standards of 1939.',
+    'antitank:Bofors 37 mm|Modest, but every gun in Poland pointed at a German tank.',
+    'flak:Bofors 40 mm|The most-produced anti-aircraft gun in the world, by a Swedish firm.',
+    'engineer:Saperstwo|Engineers defending the line that finally broke.',
+    'tank:7TP|Seven-ton light tank. Obsolete almost on arrival.',
+    'artillery:105 mm polova|The standard Polish field gun.',
+    'heavy:Vickers 7-ton|The heaviest Polish armoured design. Tragic, and brave.'],
+   air:[
+    'fighter:PZL P.11|A superior gull-wing fighter, held together with faith and wire.',
+    'dive:PZL.23|A desperate but genuinely useful fighter-bomber.',
+    'bomber:PZL.37 Los|A rugged bomber, one of the best Polish designs.',
+    'rocket:Fokker F.VIIb|Purchased from the Dutch. Reliable, if slow.',
+    'hnky:PZL.50 Jastrzab|The best fighter Poland ever built, arriving a few weeks too late.']},
+
+  czechoslovakia:{army:[
+    'infantry:Vojin|Czechoslovak infantry. Fought well in France, in the east, and at home.',
+    'mine:Zeleznicni miner|Mine-laying miners, trained by a state with real munitions industry.',
+    'motor:Motorizovany prapor|Motorised infantry, designed and built in Czechoslovakia.',
+    'assault:Horska brigada|Mountain brigades. Excellent on snow and rock.',
+    'antitank:3.7 cm kanon|An Skoda-designed anti-tank gun, and one of the better ones.',
+    'flak:8 cm L/20 protiletadlovy|A home-built anti-aircraft gun that performed well at home.',
+    'engineer:Zenijni jednoty|Czechoslovak engineer units kept the line supplied.',
+    'tank:LT-38|A well-engineered light tank, and the Czech industry\'s pride.',
+    'artillery:15 cm kanon vz. 30|A heavy howitzer with real range.',
+    'heavy:LT vz. 50|A heavy tank design that never left the drawing board.'],
+   air:[
+    'fighter:Avia BH-33|A handsome radial-engined fighter, one of the best in Europe.',
+    'dive:Aero A-11|The only dive bomber in the family, and a solid one.',
+    'bomber:Bloch MB.210|French-built but flown by many Czech pilots.',
+    'rocket:Letov S-328|Short-legged, unglamorous, and flew the whole war.',
+    'hnky:Avia B-534|A fine but unbuilt fighter. Existing prototypes only.']},
+
+  hungary:{army:[
+    'infantry:Loivaszusztafos gyalogos|Hungarian infantry. Hardened by a long war on the Eastern Front.',
+    'mine:Aknaveto|Rail-borne mine layers. Gained a hard-earned reputation for defence.',
+    'motor:Gepkocsi szazad|Truck columns. Reliable, if mechanically tired.',
+    'assault:Loivaszusztafos|Very few trucks, many horses, and a taste for the charge.',
+    'antitank:2 cm Solothurn|An Austrian 20mm. Good against soft-skinned vehicles.',
+    'flak:2 cm Autoszeru|Gun-carried AA. Weak, but it filled the gap.',
+    'engineer:Muszaki katonok|Hungarian engineers. Almost always in the wrong place.',
+    'tank:38 M Toldi|The Hungarian-designed light tank that fought at Orel.',
+    'artillery:15 cm SIG 33|The standard Hungarian heavy field gun.',
+    'heavy:Turan|Austrian Skoda derivative, among the better Axis heavies.'],
+   air:[
+    'fighter:Messerschmitt Bf 109|Hungary\'s air force was almost entirely German-built.',
+    'dive:Junkers Ju 87|Supplied from Germany, used over the Eastern Front.',
+    'bomber:Heinkel He 111|Both sides of the Eastern Front used the same German bomber.',
+    'rocket:Junkers Ju 86|The Ju 86 was the mainstay of the Hungarian campaign in 1942.',
+    'hnky:Fokker F.VIIb|Dutch-built fighters in Hungarian markings. Unloved, but serviceable.']},
+
+  romania:{army:[
+    'infantry:Infanterie|Romanian infantry. Stubbornly brave and catastrophically under-equipped.',
+    'mine:Geniu|Romanian sappers, stretched to breaking point by 1944.',
+    'motor:Motorizat|Trucks over an oiled road network. Romania had fuel, if nothing else.',
+    'assault:Calarasi|Mounted rifles, used as shock troops when the infantry wavered.',
+    'antitank:Tun antitana 45 mm|French 45mm. Romania bought France\'s defences as well as France\'s defeat.',
+    'flak:Tun AA|The standard Romanian AA piece, and thin on numbers.',
+    'engineer:Geniu|Romanian engineers fought out of a shrinking country.',
+    'tank:R-2|Romanian-designed and Romanian-built. Vastly overworked.',
+    'artillery:Tun 150 mm|The heavy Romanian field gun, a leftover from 1918.',
+    'heavy:R-4|The heavier R-4. Reasonably sound, and utterly outnumbered.'],
+   air:[
+    'fighter:Messerschmitt Bf 109|Romania held a long contract for Bf 109s.',
+    'dive:Henschel Hs 126|The dive bomber that carried Romania\'s eastern campaign.',
+    'bomber:Junkers Ju 52/3m|Wartime transport, pressed into bombing out of desperation.',
+    'rocket:Breda Ba.65|The last Italian-designed aircraft Romania flew.',
+    'hnky:IAR 80|The IAR 80 was real, Romanian, and flown by Romanian aces.']},
+
+  yugoslavia:{army:[
+    'infantry:Pesaci|Yugoslav infantry. One of the better Balkan armies in 1941.',
+    'mine:Inzinjersi|Mine-laying engineers, very good at it by 1941.',
+    'motor:Motorizovana jedinica|Truck-borne infantry, improvised from pre-war reserves.',
+    'assault:Planinski zdravljeni|Mountain troops. Yugoslavia was a mountain country.',
+    'antitank:Top 47 mm|Austrian 47mm, inherited with the old equipment.',
+    'flak:Top 20 mm Oerlikon|The Swiss Oerlikon, and Yugoslavia bought a great many.',
+    'engineer:Inzinjerija|Yugoslav engineers maintained an army under air attack for years.',
+    'tank:Skoda T-15|The few Czech tanks Yugoslavia received did not arrive until 1941.',
+    'artillery:Top 155 mm|The standard Yugoslav heavy field gun.',
+    'heavy:Skoda T-32 / T-34|Yugoslavia eventually crewed imported Soviet tanks against the Axis.'],
+   air:[
+    'fighter:Hawker Hurricane|The one genuinely excellent aircraft Yugoslavia could buy.',
+    'dive:Bristol Blenheim|British light bombers, used to great effect in 1941.',
+    'bomber:Boeing 311|Seven airframes. The largest air force Yugoslavia ever fielded.',
+    'rocket:Dornier Do 17|A modern bomber that Yugoslav crews flew well.',
+    'hnky:Messerschmitt Bf 109|Yugoslavia ordered Bf 109s, then fought Germany instead of receiving them.']},
+
+  finland:{army:[
+    'infantry:Jalkavaki|Finnish infantry. Perhaps the best soldiers in Europe, and they proved it.',
+    'mine:Miinakone|Mine-laying trains. The motti - a road buried by Finnish mines.',
+    'motor:Polkupyorajoukko|Ski troops and bicycle columns. Finland fought a war on two wheels.',
+    'assault:Sissijoukot|Rangers who fought winter war behind enemy lines.',
+    'antitank:37 mm Bofors|Manpacked and truck-towed. Steady against Soviet armour.',
+    'flak:20 mm ITK|A Finnish-designed light AA gun, produced in thousands.',
+    'engineer:Pioneerijoukot|Engineers who crossed the Karelian isthmus in winter.',
+    'tank:Vickers 6-ton|British light tanks. Obsolete, but they held a firing line.',
+    'artillery:152 mm KRH|A licence-built Russian gun, and very good.',
+    'heavy:Vickers Mark IV|British Mark IV tanks, sent as war aid.'],
+   air:[
+    'fighter:Fokker D.XXI|The Finnish fighter that earned the name "Blue Dexter".',
+    'dive:Bristol Blenheim|Finnish crews used Blenheims effectively in the Continuation War.',
+    'bomber:Fokker G.I|A Dutch bomber in Finnish service, and hard-hitting.',
+    'rocket:Junkers Ju 87|German dive bombers, in Finnish markings, used in the offensive of 1941.',
+    'hnky:Messerschmitt Bf 109|Finnish-flown Bf 109s. Among the best in the Luftwaffe.']},
+
+  bulgaria:{army:[
+    'infantry:Infanteria|Bulgarian infantry. Loyal, and asked to fight on three fronts at once.',
+    'mine:Sapey|Finnish-trained sappers. Bulgaria adapted what it was given.',
+    'motor:Motorizovana rota|Truck columns that broke down on Bulgarian roads.',
+    'assault:Granichni voyska|Border troops used as assault infantry in 1942-43.',
+    'antitank:45 mm prot-tankova|French equipment again - Bulgaria bought France\'s hardware.',
+    'flak:20 mm protivovzdušna|Sparse AA coverage, and the Germans noticed.',
+    'engineer:Sapey|Sapper units that turned Bulgarian mountains into defensive country.',
+    'tank:Panzer 38(t)|Supplied by Germany, and the backbone of Bulgarian armour.',
+    'artillery:122 mm howitzer|The standard Bulgarian field gun.',
+    'heavy:Panzer IV|German heavy armour, manned by Bulgarian crews, then lost in the west.'],
+   air:[
+    'fighter:Messerschmitt Bf 109|Bulgaria\'s fighters were German, from 1939 onward.',
+    'dive:Junkers Ju 87|The dive bombers that worked over the Macedonian front.',
+    'bomber:Heinkel He 111|German bombers in Bulgarian service on the southern front.',
+    'rocket:Dornier Do 17|Another German type in Bulgarian colours.',
+    'hnky:Messerschmitt Bf 109|German fighters, flown by Bulgarian pilots.']},
+
+  greece:{army:[
+    'infantry:Evzones|The traditional Greek soldier. Famously steadfast, and famously short of rifles.',
+    'mine:Sapeiroi|Greek sappers, outnumbered from the first week.',
+    'motor:Motorizata plouroara|Motorised platoons, most of them drawn from the 1940-41 class.',
+    'assault:Evzones Mountain Troops|Mountain troops. Greece gave them every mountain it had.',
+    'antitank:37 mm Bofors|The standard Greek anti-tank gun.',
+    'flak:20 mm Oerlikon|The AA gun Greece used against the German air force.',
+    'engineer:Sapeiroi|Greek engineers who held the Metaxas Line.',
+    'tank:Vickers 6-ton|A small number of light tanks, fighting and lost in 1941.',
+    'artillery:105 mm mountain gun|A portable gun, suited to Greek terrain.',
+    'heavy:Renault FT / Sherman|Light French tanks first, then Shermans in 1944.'],
+   air:[
+    'fighter:Messerschmitt Bf 109|Borrowed or bought German fighters, then shot at from the ground.',
+    'dive:Junkers Ju 87|The dive bombers that broke Greek morale in 1941.',
+    'bomber:Heinkel He 111|German bombers, against a Greek air force of a dozen aircraft.',
+    'rocket:Junkers Ju 52|German transport aircraft, pressed into bombing.',
+    'hnky:Fairey Battle|The one British aircraft Greece received in usable numbers.']},
+
+  turkey:{army:[
+    'infantry:Er|Turkish infantry, only mobilised in 1939 and famously unwilling to fight.',
+    'mine:Sapancilar|Miners, keeping the eastern front quiet.',
+    'motor:Motorize birlik|Truck columns, raised only after 1941.',
+    'assault:Dagci|Mountain assault troops, used with real success in 1945.',
+    'antitank:37 mm antitank gun|British and American supplied, pre-1942.',
+    'flak:20 mm AA gun|Turkey was the least bombed Allied front. It stayed that way for a reason.',
+    'engineer:Sapancilar|Turkish engineer units expanded late and effectively in 1944.',
+    'tank:Vickers 6-ton / M3 Stuart|Light tanks from Britain, then from America.',
+    'artillery:105 mm sahra topu|The standard Turkish field gun.',
+    'heavy:M4 Sherman|The Sherman finally arrived in 1945, one year too late.'],
+   air:[
+    'fighter:Curtiss P-40|Over 100 Tomahawks and Kittyhawks, from 1940.',
+    'dive:Douglas A-20|A British-supplied bomber in Turkish service.',
+    'bomber:Wellington|Supplied from Britain; flown by Turkish crews.',
+    'rocket:Junkers Ju 87|German dive bombers never overflew Turkey in anger.',
+    'hnky:Supermarine Spitfire|Spitfires were delivered in 1941 and did real work over the Straits.']}
+};
+function arsenal(nat,kind){
+  var a=ARSENAL[nat];
+  if(!a || !a[kind] || !a[kind].length) return null;
+  return a[kind].map(function(s){
+    var i=s.indexOf(':'), j=s.indexOf('|');
+    var key=s.slice(0,i), name=s.slice(i+1,j), blurb=s.slice(j+1);
+    var t=UNITS[key]||UNITS[kind==='army'?'infantry':'fighter'];
+    return {type:key,name:name,blurb:blurb,col:t.col,code:t.code,cost:t.cost,hp:t.hp,
+            atk:t.atk,def:t.def,up:t.up,mines:!!t.mines,air:!!t.air};
+  });
+}
+
+/* =======================================================================
+   4. PROJECTION + MAP BUILD
+   ======================================================================= */
+const LON0=-27, LON1=46, LAT0=35.5, LAT1=71.2, W=1000;
+const KY = 1/Math.cos(52.8*Math.PI/180);
+const H  = Math.round(W*(LAT1-LAT0)/(LON1-LON0)*KY);
+function px(lon){ return (lon-LON0)/(LON1-LON0)*W; }
+function py(lat){ return (LAT1-lat)/(LAT1-LAT0)*H; }
+function polyD(poly){
+  let d='';
+  for(let i=0;i<poly.length;i++){
+    d += (i?'L':'M') + px(poly[i][0]).toFixed(1) + ',' + py(poly[i][1]).toFixed(1) + ' ';
+  }
+  return d+'Z';
+}
+const ALL = [].concat(NATIONS,REGIONS);
+const NS = 'http://www.w3.org/2000/svg';
+function el(t,a){ var e=document.createElementNS(NS,t); for(var k in a) e.setAttribute(k,a[k]); return e; }
+
+const labEl={}, markEl={}, PP={};
+let landG, unitG;
+
+function buildMap(){
+  var svg=document.getElementById('map');
+  svg.setAttribute('viewBox','-6 -6 '+(W+12)+' '+(H+12));
+  while(svg.firstChild) svg.removeChild(svg.firstChild);
+  var sea=el('rect',{x:-6,y:-6,width:W+12,height:H+12,fill:'#0e1622'});
+  svg.appendChild(sea);
+  var g=el('g',{}); svg.appendChild(g);
+  var grid=el('g',{}); g.appendChild(grid);
+  for(let lon=Math.ceil(LON0/5)*5; lon<=LON1; lon+=5){
+    grid.appendChild(el('line',{x1:px(lon),y1:0,x2:px(lon),y2:H,class:'sea'}));
+  }
+  for(let lat=Math.ceil(LAT0/5)*5; lat<=LAT1; lat+=5){
+    grid.appendChild(el('line',{x1:0,y1:py(lat),x2:W,y2:py(lat),class:'sea'}));
+  }
+  landG=el('g',{}); g.appendChild(landG);
+  unitG=el('g',{}); g.appendChild(unitG);
+
+  ALL.slice().sort(function(a,b){ return (a.id==='ussr'?-1:0)-(b.id==='ussr'?-1:0); })
+  .forEach(function(n){
+    var polys=GEO[n.id]||[];
+    /* a fat same-colour stroke drawn under every land path fills the hairline
+       gaps between adjacent countries, so the map reads as one continent */
+    polys.forEach(function(p){
+      landG.appendChild(el('path',{d:polyD(p),fill:'none',stroke:n.color,'stroke-width':3.5,
+        'stroke-linejoin':'round','data-id':n.id,'data-bridge':'1','pointer-events':'none'}));
+    });
+  });
+
+  ALL.slice().sort(function(a,b){ return (a.id==='ussr'?-1:0)-(b.id==='ussr'?-1:0); })
+  .forEach(function(n){
+    var polys=GEO[n.id]||[];
+    var sx=0,sy=0,c=0;
+    PP[n.id]=[];
+    polys.forEach(function(p){
+      var flat=[];
+      landG.appendChild(el('path',{d:polyD(p),fill:n.color,class:'land','data-id':n.id}));
+      p.forEach(function(q){
+        var x=px(q[0]), y=py(q[1]);
+        flat.push(x,y); sx+=x; sy+=y; c++;
+      });
+      PP[n.id].push(flat);
+    });
+    if(!c){ sx=W/2; sy=H/2; }
+    markEl[n.id]={x:sx/c,y:sy/c};
+    var l=el('text',{x:(sx/c).toFixed(1),y:(sy/c-17).toFixed(1),class:'lbl'});
+    l.innerHTML=n.flag+' '+n.name;
+    labEl[n.id]=l; unitG.appendChild(l);
+  });
+}
+
+/* =======================================================================
+   5. GAME STATE
+   ======================================================================= */
+const TICK_MS=[0,1500,750,400];
+const START_MONEY=50;
+const MINE_GOLD=4;         /* gold a mine field pays out every day - the only income */
+const CAPITAL_DEF=1.45;   /* extra defence multiplier inside your own homeland */
+let S=null, timer=null, spd=1, chosen='germany';
+
+function warKey(a,b){ return a<b ? a+'>'+b : b+'>'+a; }
+/* --- live front map -------------------------------------------------
+   Two nations are at war when they actually share a land border RIGHT
+   NOW. Recomputed lazily and thrown away whenever ownership changes, so
+   conquering a country really does open up its neighbours as new fronts. */
+var WAR_MAP=null;
+function warMap(){
+  if(WAR_MAP) return WAR_MAP;
+  WAR_MAP={};
+  ALL.forEach(function(n){
+    if(n.id==='iceland') return;
+    (n.nb||[]).forEach(function(m){
+      if(m==='iceland' || !S.prov[m]) return;
+      var a=S.prov[n.id].owner, b=S.prov[m].owner;
+      if(a===b || a==='iceland' || b==='iceland') return;
+      WAR_MAP[warKey(a,b)]=true;
+    });
+  });
+  return WAR_MAP;
+}
+function invalidateWars(){ WAR_MAP=null; }
+function atWar(a,b){
+  if(a===b || a==='iceland' || b==='iceland') return false;
+  if(S.pact && S.pact.has(warKey(a,b))) return false;
+  return S.wars.has(warKey(a,b)) || warMap()[warKey(a,b)]===true;
+}
+function declareWar(a,b){
+  if(a==='iceland' || b==='iceland') return;
+  if(S.pact) S.pact.delete(warKey(a,b));
+  S.wars.add(warKey(a,b));
+  /* an attacked nation takes on its whole neighbourhood */
+  (NBY[a]?NBY[a].nb:[]).forEach(function(n){ if(n!==b && n!=='iceland') S.wars.add(warKey(a,n)); });
+  (NBY[b]?NBY[b].nb:[]).forEach(function(n){ if(n!==a && n!=='iceland') S.wars.add(warKey(b,n)); });
+}
+
+function newGame(player){
+  S={ player:player, day:0, uid:0, sel:player, pick:new Set(), log:[], over:null, wars:new Set(),
+      prov:{}, units:[], targets:[], aggro:{}, aiT:{}, orderMode:true, gold:{}, news:[], elimSet:new Set(),
+      brokeSet:new Set(), mail:[], pact:new Set(), mood:{}, mailSeq:0, nextDispatchDay:0, nextMailDay:2 };
+  ALL.forEach(function(n){
+    var home=(n.id!=='iceland' && !n.owner);
+    S.prov[n.id]={ id:n.id, owner:(n.owner||n.id), units:[], mines:home?2:0, mineBy:home?n.id:null, mineT:5 };
+    S.gold[n.id]=(n.id==='iceland')?0:START_MONEY;
+    S.aiT[n.id]=(n.id==='iceland')?99:(4+(Math.random()*4|0));
+    S.aggro[n.id]=0.9+Math.random()*0.45;
+    S.mood[n.id]=0;
+  });
+  /* every land neighbour starts at war - the whole map is one long front */
+  ALL.forEach(function(n){
+    if(n.id==='iceland') return;
+    (n.nb||[]).forEach(function(m){
+      if(m==='iceland' || !NBY[m]) return;
+      S.wars.add(warKey(n.id,m));
+    });
+  });
+  /* three riflemen per land nation so no front starts naked */
+  ALL.forEach(function(n){
+    if(n.id==='iceland') return;
+    spawn('infantry', n.id, S.prov[n.id].owner);
+    spawn('infantry', n.id, S.prov[n.id].owner);
+    spawn('infantry', n.id, S.prov[n.id].owner);
+  });
+  S.pick.clear();
+  invalidateWars();
+  selectProv(player);
+  log('War breaks out. 50 gold in the treasury, three riflemen and two mine fields at home.');
+  log('Click a territory to inspect it, recruit, and give orders.');
+  render();
+}
+
+/* ---------- helpers ---------- */
+function spawn(type,loc,owner){
+  var u={ id:++S.uid, type:type, loc:loc, owner:owner,
+          hp:UNITS[type].hp, moving:null, air:null };
+  S.units.push(u);
+  return u;
+}
+function unitsAt(id){ return S.units.filter(function(u){ return u.loc===id && u.hp>0; }); }
+function landOf(c){ var n=0; for(var k in S.prov) if(S.prov[k].owner===c) n++; return n; }
+function unitsOf(c){ return S.units.filter(function(u){ return u.owner===c && u.hp>0; }); }
+function upkeep(c){ return unitsOf(c).reduce(function(s,u){ return s+UNITS[u.type].up; },0); }
+function mineCount(c){ var t=0; for(var id in S.prov) if(S.prov[id].owner===c) t+=S.prov[id].mines; return t; }
+function income(c){ return mineCount(c)*MINE_GOLD - upkeep(c); }
+function power(u,loc){
+  var t=UNITS[u.type], m=(S.prov[loc].owner===u.owner)?t.def:1;
+  if(m>1 && loc===u.owner) m*=CAPITAL_DEF;   /* homeland fighting is fiercer */
+  return t.atk*m*(0.55+0.45*u.hp/t.hp);
+}
+function defPower(id){
+  return unitsAt(id).reduce(function(s,u){ return s+power(u,id); },0);
+}
+function minePower(id){
+  var p=S.prov[id];
+  return p.mines>0 ? 1.2*p.mines : 0;
+}
+function totalPower(id){ return defPower(id)+minePower(id); }
+function poss(n){ var s=NBY[n]?NBY[n].name:n; return /s$/i.test(s)?s+"'":s+"'s"; }
+function captureMsg(taker,provId,old,verb){
+  var tn=NBY[taker]?NBY[taker].name:taker;
+  var pn=NBY[provId]?NBY[provId].name:provId;
+  var on=(old&&NBY[old])?NBY[old].name:null;
+  if(provId===taker)          return tn+' retook its own homeland'+(on?' from '+on:'')+'.';
+  if(provId===old)            return tn+' '+verb+' '+poss(old)+' homeland.';
+  if(pn===on)                 return tn+' '+verb+' '+on+' from '+poss(provId)+' occupiers.';
+  return tn+' '+verb+' '+pn+(on?' from '+on:'')+'.';
+}
+function log(t){  S.log.push({d:S.day,t:t});
+  if(S.log.length>60) S.log.shift();
+}
+
+/* =======================================================================
+   6. TURN / SIMULATION
+   ======================================================================= */
+function tick(){
+  if(S.over) return;
+  if(NET && NET.mode===1) NET.dirty=true;
+  S.day++;
+  var fighting=[];
+
+  /* --- movement arrives --- */
+  S.units.forEach(function(u){
+    if(u.moving){
+      u.moving.t--;
+      if(u.moving.t<=0){
+        u.loc=u.moving.to; u.moving=null;
+        if(u.owner===S.player) log('Your '+UNITS[u.type].name.toLowerCase()+' reached '+NBY[u.loc].name+'.');
+      }
+    }
+  });
+
+  /* --- bombers strike --- */
+  S.units.forEach(function(u){
+    if(!u.air || u.hp<=0) return;
+    if(S.prov[u.air].owner===u.owner || S.prov[u.loc].owner!==u.owner){
+      u.air=null; return;
+    }
+    var tgt=unitsAt(u.air).filter(function(x){ return x.owner!==u.owner; });
+    if(tgt.length){
+      tgt.sort(function(a,b){ return a.hp-b.hp; });
+      tgt[0].hp -= UNITS[u.type].atk*0.75;
+      if(u.owner===S.player) log('Bombers hit the enemy in '+NBY[u.air].name+'.');
+    }
+  });
+
+  /* --- mines: they wreck enemies and pay the treasury --- */
+  for(var id in S.prov){
+    var p=S.prov[id];
+    if(p.mines>0){
+      var foes=unitsAt(id).filter(function(u){ return u.owner!==p.mineBy; });
+      if(foes.length){
+        var per=2.5*p.mines/foes.length;
+        foes.forEach(function(u){ u.hp-=per; });
+      }
+    }
+    /* mine cars keep laying */
+    unitsAt(id).forEach(function(u){
+      if(UNITS[u.type].mines && p.mines<3){
+        p.mineT--;
+        if(p.mineT<=0){
+          if(p.mineBy!==u.owner){ p.mineBy=u.owner; p.mines=0; }
+          p.mines++; p.mineT=5;
+          if(u.owner===S.player && p.mines===1)
+            log('Mine car laid the first mine field in '+NBY[p.id].name+' (+'+MINE_GOLD+' gold a day).');
+        }
+      }
+    });
+  }
+
+  /* --- battles --- */
+  for(var id2 in S.prov){
+    var pr=S.prov[id2];
+    var us=unitsAt(id2);
+    if(!us.length) continue;
+    var groups={};
+    us.forEach(function(u){ (groups[u.owner]=groups[u.owner]||[]).push(u); });
+    var keys=Object.keys(groups);
+    if(keys.length<2) continue;
+    fighting.push(id2);
+    keys.forEach(function(side){
+      var mine=groups[side];
+      var foes=[];
+      keys.forEach(function(k){ if(k!==side) foes=foes.concat(groups[k]); });
+      var pw=mine.reduce(function(a,u){ return a+power(u,id2); },0);
+      if(pw<=0) return;
+      var dmg=pw*0.62;
+      foes.sort(function(a,b){ return a.hp-b.hp; });
+      var n=Math.min(2,foes.length);
+      for(var i=0;i<n;i++){
+        foes[i].hp -= dmg/n*(i===0?1.25:0.75);
+      }
+    });
+  }
+
+  /* --- deaths --- */
+  var dead=S.units.filter(function(u){ return u.hp<=0; });
+  if(dead.length){
+    dead.forEach(function(u){
+      var i=S.units.indexOf(u); if(i>=0) S.units.splice(i,1);
+      if(u.owner===S.player) log('Your '+UNITS[u.type].name.toLowerCase()+' was destroyed in '+NBY[u.loc].name+'.');
+    });
+  }
+
+  /* --- capture --- */
+  var capEv=[];
+  for(var id3 in S.prov){
+    var pp=S.prov[id3], c={};
+    unitsAt(id3).forEach(function(u){ c[u.owner]=(c[u.owner]||0)+1; });
+    var ks=Object.keys(c);
+    if(ks.length===1 && ks[0]!==pp.owner){
+      var old=pp.owner, nu=ks[0];
+      pp.owner=nu;
+      pp.mines=0; pp.mineBy=null;
+      capEv.push({taker:nu, prov:id3, old:old, d:S.day});
+      mailWarEvent(nu, old);
+      invalidateWars();
+      if(nu===S.player || old===S.player) declareWar(S.player, (nu===S.player?old:nu));
+      if(nu===S.player || old===S.player) log(captureMsg(nu,pp.id,old,'captured'));
+      else if(Math.random()<0.18) log(captureMsg(nu,pp.id,old,'took'));
+    }
+  }
+  if(capEv.length){ newsCaptures(capEv); newsElim(); }
+
+  /* --- income: mine fields only --- */
+  ALL.forEach(function(n){
+    if(n.id==='iceland') return;
+    if(landOf(n.id)===0 && unitsOf(n.id).length===0) return;
+    var g=income(n.id);
+    S.gold[n.id]=Math.max(-40,(S.gold[n.id]||0)+g);
+    /* a nation that cannot pay its bills disbands its priciest unit */
+    if(S.gold[n.id]<=-40 && unitsOf(n.id).length>1){
+      var costy=unitsOf(n.id).sort(function(a,b){
+        return (UNITS[b.type].up*10+UNITS[b.type].cost)-(UNITS[a.type].up*10+UNITS[a.type].cost);
+      })[0];
+      var ix=S.units.indexOf(costy);
+      if(ix>=0) S.units.splice(ix,1);
+      if(costy.owner===S.player)
+        log('Treasury empty - your '+UNITS[costy.type].name.toLowerCase()+' was disbanded to pay the bills.');
+    }
+    if(S.gold[n.id]<=-40 && !S.brokeSet.has(n.id)){ S.brokeSet.add(n.id); newsCollapse(n.id); }
+  });
+
+  aiTurn();
+  aiMail();
+  checkEnd();
+  render();
+}
+
+function checkEnd(){
+  var mine=landOf(S.player);
+  if(mine===0 && unitsOf(S.player).length===0){
+    end(false,'Your nation has been overrun. The map belongs to whoever is left standing.');
+  }else if(mine>=NATIONS.length){
+    end(true,'Every territory on the continent flies your flag. Europe is yours.');
+  }
+}
+function end(win,msg){
+  S.over={win:win};
+  var d=document.getElementById('end');
+  d.style.display='flex';
+  document.getElementById('endT').textContent=win?'VICTORIA':'DEFEAT';
+  document.getElementById('endS').textContent=msg;
+}
+
+/* =======================================================================
+   7. AI
+   ======================================================================= */
+function aiTurn(){
+  ALL.forEach(function(n){
+    if(n.id==='iceland') return;
+    if(NET && NET.seats && NET.seats[n.id]) return;   /* claim list looks after itself - it is empty in solo */
+    if(n.id===S.player) return;
+    var gold=S.gold[n.id]||0;
+    if(landOf(n.id)===0) return;
+    S.aiT[n.id]--;
+    if(S.aiT[n.id]>0) return;
+    S.aiT[n.id]=4+(Math.random()*4|0);
+
+    var terr=landOf(n.id), foes=0;
+    for(var k in S.prov) if(S.prov[k].owner!==n.id) foes++;
+    var threat=terr<=2;
+
+    /* --- recruit: with whatever this nation's own arsenal offers --- */
+    if(gold>=10){
+      var choice=null;
+      var ar=shopList('army',n.id), air=shopList('air',n.id);
+      var cars=unitsOf(n.id).filter(function(u){ return UNITS[u.type].mines; }).length;
+      var mineU=ar.filter(function(u){return u.mines;})[0]||ar[0];
+      var artU =ar.filter(function(u){return u.def>=1.9;})[0]||ar[0];
+      var tankU=ar.filter(function(u){return u.atk>=20&&u.def<1.9;})[0]||ar[ar.length-2]||ar[0];
+      var bombU=air.filter(function(u){return u.atk>=28;})[0]||air[0];
+      if(gold>=mineU.cost && cars<2 && Math.random()<0.7) choice=mineU.type;   /* mines are the economy */
+      else if(gold>=bombU.cost && terr>=3 && Math.random()<0.18) choice=bombU.type;
+      else if(gold>=artU.cost && (threat||Math.random()<0.3)) choice=artU.type;
+      else if(gold>=tankU.cost && (threat || Math.random()<0.35)) choice=tankU.type;
+      else choice=ar[0].type;
+      if(UNITS[choice].cost<=gold && unitsOf(n.id).length<14){
+        var spot=pickRecruit(n.id);
+        if(spot){
+          spawn(choice,spot,n.id);
+          S.gold[n.id]-=UNITS[choice].cost;
+          if(SHOWCASE[choice]) newsUnveil(n.id,choice,spot);
+        }
+      }
+    }
+
+    /* --- attack / defend --- */
+    var aggro=S.aggro[n.id]||1.35;
+    var myUnits=unitsOf(n.id).length;
+    if(myUnits>=3 && (S.gold[n.id]||0)>0){
+    for(var id in S.prov){
+      if(S.prov[id].owner!==n.id) continue;
+      var stack=unitsAt(id);
+      if(stack.length<2) continue;
+      var here=totalPower(id);
+      var best=null,bestScore=0;
+      (NBY[id].nb||[]).forEach(function(m){
+        if(!S.prov[m] || !atWar(n.id,S.prov[m].owner)) return;
+        var theirs=totalPower(m);
+        if(here>theirs*aggro && here-theirs>bestScore){
+          best=m; bestScore=here-theirs;
+        }
+      });
+      if(!best) continue;
+      /* send what is needed, always keep a token garrison */
+      var sent=0, force=totalPower(best)*1.35+6;
+      for(var i=stack.length-1;i>=0;i--){
+        var u=stack[i];
+        if(stack.length-sent<=1 && sent>0) break;
+        var w=power(u,id);
+        if(sent>=force && sent>0) break;
+        if(UNITS[u.type].air && Math.random()<0.6) continue;
+        u.moving={to:best,t:1}; sent+=w;
+      }
+      break;   /* one offensive action per turn */
+    }
+    }
+  });
+}
+function pickRecruit(c){
+  var best=null,bestScore=-1e9;
+  for(var id in S.prov){
+    if(S.prov[id].owner!==c) continue;
+    if(unitsAt(id).length>=7) continue;
+    var d=0, b=0;
+    (NBY[id].nb||[]).forEach(function(m){
+      if(!S.prov[m] || S.prov[m].owner===c) return;
+      d=Math.max(d, totalPower(m));
+    });
+    if(d===0) b=landOf(c)*1.5;      /* safe interior: prefer the biggest landmass */
+    var sc=(d? -d*1.4 : b) - unitsAt(id).length*2;
+    if(sc>bestScore){ bestScore=sc; best=id; }
+  }
+  return best;
+}
+
+/* =======================================================================
+   8. INTERACTION
+   ======================================================================= */
+function selectProv(id){
+  S.sel=id;
+  /* clicking your own country selects its garrison; looking at an enemy country
+     (or one of your empty ones) must not wipe the selection you are working on */
+  if(S.prov[id] && S.prov[id].owner===S.player && unitsAt(id).length){
+    S.pick.clear();
+    unitsAt(id).forEach(function(u){ S.pick.add(u.id); });
+  }
+}
+function known(id){
+  if(S.prov[id].owner===S.player) return true;
+  var ns=NBY[id].nb||[];
+  for(var k in S.prov){
+    if(S.prov[k].owner===S.player && ns.indexOf(k)>=0) return true;
+  }
+  return false;
+}
+function moveTo(dst){
+  if(dst==='iceland' || !S.prov[dst]) return flash('No such front.');
+  if(!atWar(S.player,S.prov[dst].owner)) return flash('You are not at war with '+NBY[S.prov[dst].owner].name+'.');
+  var ids=[],n=0;
+  unitsOf(S.player).forEach(function(u){
+    if(!S.pick.has(u.id)) return;                                 /* only selected units */
+    if((NBY[u.loc].nb||[]).indexOf(dst)<0) return;                 /* must border the target */
+    ids.push(u.id);
+    if(UNITS[u.type].air && S.prov[dst].owner!==S.player) u.air=dst;
+    else u.moving={to:dst,t:1};
+    n++;
+  });
+  if(!n){
+    if(!S.pick.size) flash('No units selected - click units in the list or on the country sheet first.');
+    else flash('None of the selected units border '+NBY[dst].name+'.');
+    return;
+  }
+  if(NET && NET.mode===2) netPubRoom('cmd',JSON.stringify({p:NET.pid,k:'m',dst:dst,ids:ids}));
+  if(NET && NET.mode===1) NET.dirty=true;
+  log('Orders sent: '+n+' unit'+(n>1?'s':'')+' to '+NBY[dst].name+'. Select another front to redirect them.');
+  render();
+}
+function recruit(type){
+  var id=S.sel;
+  var u=UNITS[type];
+  if(!S.prov[id] || S.prov[id].owner!==S.player){ flash('Select one of your own territories to recruit.'); return; }
+  if(unitsAt(id).length>=10){ flash('Garrison is full (10 units).'); return; }
+  if((S.gold[S.player]||0)<u.cost){ flash('Not enough gold for a '+u.name.toLowerCase()+' ('+u.cost+').'); return; }
+  S.gold[S.player]-=u.cost;
+  spawn(type,id,S.player);
+  if(SHOWCASE[type]) newsUnveil(S.player,type,id);
+  S.pick.clear(); unitsAt(id).forEach(function(x){ S.pick.add(x.id); });
+  if(NET && NET.mode===2) netPubRoom('cmd',JSON.stringify({p:NET.pid,k:'r',t:type,loc:id}));
+  if(NET && NET.mode===1) NET.dirty=true;
+  log('Recruited '+u.name+' in '+NBY[id].name+'.');
+  render();
+}
+var flashT=null;
+function flash(msg){
+  var t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('on');
+  clearTimeout(flashT);
+  flashT=setTimeout(function(){ t.classList.remove('on'); },2600);
+}
+
+/* ---------- pages: Shop / Battle ---------- */
+var PAGE=null;
+function showPage(p){
+  PAGE=(p==='shop'||p==='battle')?p:null;
+  var pv=document.getElementById('page');
+  pv.style.display=PAGE?'flex':'none';
+  document.getElementById('pgShop').style.display=(PAGE==='shop')?'block':'none';
+  document.getElementById('pgBattle').style.display=(PAGE==='battle')?'block':'none';
+  var t=document.getElementById('pageT');
+  t.className=PAGE?PAGE+'T':'';
+  t.textContent=PAGE==='shop' ? '\u{1F6CD}  Shop' : (PAGE==='battle' ? '\u2694  Battle' : '');
+  render();
+}
+function closePage(){ showPage(null); }
+
+/* ---------- the shop ---------- */
+/* a nation with no listed arsenal keeps the basic five weapons */
+var FALLBACK={
+  army:['infantry:Infantry|Cheap troops. Strong when dug in on their own soil.',
+        'mine:Mine car|Lays mine fields. They wreck attackers and pay 4 gold a day each.',
+        'motor:Motorized infantry|Wheels instead of boots. Crosses a frontier in days.',
+        'assault:Assault infantry|Trained to storm trenches. Cheap, and utterly relentless.',
+        'artillery:Artillery|Devastating defence, poor in the open. Anchor your line with it.'],
+  air:['fighter:Fighter|Flies: sweeps the skies ahead of the bombers, then returns home.',
+       'bomber:Bomber|Flies: strike any enemy border province, then returns home.']
+};
+var SHOP_TAB='army';
+function shopList(kind,nat){
+  nat=nat||S.player;
+  var a=arsenal(nat,kind), src=(a&&a.length)?a.map(function(u){return u;}):null;
+  if(src) return src;
+  return FALLBACK[kind].map(function(s){
+    var i=s.indexOf(':'), j=s.indexOf('|');
+    var key=s.slice(0,i), t=UNITS[key];
+    return {type:key,name:s.slice(i+1,j),blurb:s.slice(j+1),col:t.col,code:t.code,cost:t.cost,
+            hp:t.hp,atk:t.atk,def:t.def,up:t.up,mines:!!t.mines,air:!!t.air};
+  });
+}
+function shopHTML(){
+  var t=shopList(SHOP_TAB);
+  return t.map(function(u){
+    return '<button class="unit" data-t="'+u.type+'"><span class="n">'+u.name+
+           '<span class="c">'+u.cost+'g</span></span><span class="d">'+u.blurb+'</span></button>';
+  }).join('');
+}
+function paintShop(el, provId){
+  if(!el) return;
+  var na=document.getElementById('shopWho');
+  if(na) na.innerHTML=NBY[S.player].flag+' '+NBY[S.player].name+' arsenal';
+  var tA=document.getElementById('tabArmy'), tB=document.getElementById('tabAir');
+  if(tA&&tB){
+    tA.className='tab'+(SHOP_TAB==='army'?' on':'');
+    tB.className='tab'+(SHOP_TAB==='air'?' on':'');
+    if(!tA.onclick){
+      tA.onclick=function(){ SHOP_TAB='army'; paintShop(document.getElementById('shop'),S.sel); };
+      tB.onclick=function(){ SHOP_TAB='air';  paintShop(document.getElementById('shop'),S.sel); };
+    }
+  }
+  var need=(SHOP_TAB+'|'+S.player);
+  if(el.dataset.built!==need){
+    el.innerHTML=shopHTML();
+    el.dataset.built=need;
+    Array.prototype.forEach.call(el.querySelectorAll('.unit'),function(e){
+      e.onclick=function(){ recruit(e.getAttribute('data-t')); };
+    });
+  }
+  var mine=(S.prov[provId] && S.prov[provId].owner===S.player);
+  var gold=S.gold[S.player]||0;
+  var here=unitsAt(provId).length;
+  Array.prototype.forEach.call(el.querySelectorAll('.unit'),function(e){
+    var t=UNITS[e.getAttribute('data-t')];
+    e.disabled=!mine || gold<t.cost || here>=10;
+  });
+  var cnt=document.getElementById('shopCount');
+  if(cnt){
+    var l=shopList(SHOP_TAB);
+    cnt.textContent=l.length+(l.length===1?' weapon':' weapons');
+  }
+  var hint=document.getElementById('shopHint');
+  hint.innerHTML=!mine
+    ? 'Click a country <b>you own</b> on the map to buy units there.'
+    : (here>=10
+        ? '<b>'+NBY[provId].name+'</b> is full (10/10). Send some units out first.'
+        : 'Buying in <b>'+NBY[provId].name+'</b> &middot; you have <b>'+gold+'g</b> &middot; '+here+'/10 in garrison');
+}
+
+/* =======================================================================
+   9. RENDER
+   ======================================================================= */
+function flag(n){ return n.flag; }
+/* provinces that hold the units you have selected */
+function pickedOrigins(){
+  var s={};
+  unitsOf(S.player).forEach(function(u){ if(S.pick.has(u.id)) s[u.loc]=1; });
+  return Object.keys(s);
+}
+function flatD(a){
+  let d='';
+  for(let i=0;i<a.length;i+=2) d+=(i?'L':'M')+a[i].toFixed(1)+','+a[i+1].toFixed(1)+' ';
+  return d+'Z';
+}
+
+/* the country sheet: a small map of the selected country with its units on it */
+function renderMini(id){
+  var svg=document.getElementById('mini');
+  var p=S.prov[id], n=NBY[id];
+  var own=PP[id]||[];
+  while(svg.firstChild) svg.removeChild(svg.firstChild);
+
+  var x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  own.forEach(function(a){
+    for(var i=0;i<a.length;i+=2){
+      if(a[i]<x0)x0=a[i]; if(a[i]>x1)x1=a[i];
+      if(a[i+1]<y0)y0=a[i+1]; if(a[i+1]>y1)y1=a[i+1];
+    }
+  });
+  if(x0>x1){ x0=0; y0=0; x1=W; y1=H; }
+  var w=x1-x0, h=y1-y0, pad=Math.max(w,h,26)*0.16+8;
+  var vx=x0-pad, vy=y0-pad, vw=w+pad*2, vh=h+pad*2;
+  svg.setAttribute('viewBox',vx.toFixed(1)+' '+vy.toFixed(1)+' '+vw.toFixed(1)+' '+vh.toFixed(1));
+  svg.setAttribute('preserveAspectRatio','xMidYMid meet');
+  svg.appendChild(el('rect',{x:vx,y:vy,width:vw,height:vh,fill:'#0e1622'}));
+
+  /* neighbours as faint context */
+  var ctx={};
+  (n.nb||[]).forEach(function(nb){ ctx[nb]=1; });
+  Object.keys(ctx).forEach(function(nb){
+    if(nb===id) return;
+    (PP[nb]||[]).forEach(function(a){
+      svg.appendChild(el('path',{d:flatD(a),fill:'#1c2431',stroke:'#2b3346','stroke-width':(vw*0.005).toFixed(2)}));
+    });
+  });
+
+  /* the country itself */
+  var col=p.owner? NBY[p.owner].color : '#2a2f3a';
+  own.forEach(function(a){
+    svg.appendChild(el('path',{d:flatD(a),fill:col,stroke:'#0b0e14','stroke-width':(vw*0.008).toFixed(2)}));
+  });
+  own.forEach(function(a){
+    svg.appendChild(el('path',{d:flatD(a),fill:'none',stroke:'#e6ebf5','stroke-width':(vw*0.004).toFixed(2),
+      'stroke-linejoin':'round'}));
+  });
+
+  /* units standing in the country */
+  var us=unitsAt(id), see=(p.owner===S.player)||known(id);
+  var m=markEl[id], sz=Math.max(vw*0.052,7), cols=Math.ceil(Math.sqrt(us.length||1));
+  us.forEach(function(u,i){
+    if(!see) return;
+    var t=UNITS[u.type];
+    var gx=m.x+((i%cols)-((cols-1)/2))*(sz*2.5);
+    var gy=m.y+(Math.floor(i/cols)-(Math.ceil(us.length/cols)-1)/2)*(sz*2.5);
+    var g=el('g',{class:'mu'});
+    g.appendChild(el('circle',{cx:gx.toFixed(1),cy:gy.toFixed(1),r:sz.toFixed(1),fill:t.col,
+      stroke:(u.owner===S.player?'#f2f6ff':'#f0a0a0'),'stroke-width':(u.owner===S.player?1.8:1.1)}));
+    var tx=el('text',{x:gx.toFixed(1),y:(gy+sz*0.38).toFixed(1)});
+    tx.textContent=t.code.slice(0,2); g.appendChild(tx);
+    if(u.hp<t.hp*0.99){
+      g.appendChild(el('rect',{x:(gx-sz).toFixed(1),y:(gy+sz*1.15).toFixed(1),
+        width:(2*sz*u.hp/t.hp).toFixed(1),height:(sz*0.22).toFixed(1),fill:'#ff5a5a'}));
+    }
+    if(S.pick.has(u.id)) g.appendChild(el('circle',{cx:gx.toFixed(1),cy:gy.toFixed(1),
+      r:(sz*1.45).toFixed(1),fill:'none',stroke:'#e2b13c','stroke-width':(sz*0.28).toFixed(1)}));
+    g.addEventListener('click',function(ev){
+      ev.stopPropagation();
+      if(p.owner!==S.player){ flash('That garrison is not yours to give orders to.'); return; }
+      if(S.pick.has(u.id)) S.pick.delete(u.id); else S.pick.add(u.id);
+      render();
+    });
+    svg.appendChild(g);
+  });
+
+  /* captions: mine yield, and what cannot be seen */
+  var cap=el('text',{class:'cap',x:(vx+vw*0.03).toFixed(1),y:(vy+vh*0.09).toFixed(1)});
+  cap.textContent=(see? '' : 'no intelligence \· ')+
+    (p.mines>0&&see? p.mines+' mine field'+(p.mines>1?'s':'')+' \· +'+(p.mines*MINE_GOLD)+' gold/day'
+                   : (p.owner===S.player? 'no mines \· no income' : ''));
+  svg.appendChild(cap);
+  if(us.length && !see){
+    var q2=el('text',{class:'cap',x:(vx+vw*0.5).toFixed(1),y:(vy+vh*0.56).toFixed(1)});
+    q2.setAttribute('text-anchor','middle');
+    q2.textContent='enemy garrison strength unknown';
+    svg.appendChild(q2);
+  }
+}
+/* units standing in every country bordering the one being looked at */
+function renderBorderGarrisons(id, me){
+  var box=document.getElementById('bGar');
+  if(!box) return;
+  var rows=(NBY[id].nb||[]).filter(function(nb){ return nb!=='iceland' && S.prov[nb]; });
+  if(!rows.length){ box.innerHTML=''; return; }
+
+  var h='<div class="bgHead">Units in neighbouring countries</div>';
+  rows.forEach(function(nb){
+    var o=S.prov[nb].owner;
+    var us=unitsAt(nb);
+    var mine=(o===me);
+    var seen=mine || known(nb);
+    var nTxt=seen ? us.length+'' : '?';
+    var pwTxt=seen ? Math.round(totalPower(nb))+'' : '?';
+    var tag=mine ? 'yours' : (seen ? us.length+' unit'+(us.length===1?'':'s') : 'no intelligence');
+    h+='<button class="bg'+(mine?' mine':'')+(nb===id?' on':'')+'" data-nb="'+nb+'">'+
+       '<span class="dot" style="background:'+NBY[o].color+'"></span>'+
+       '<span class="nm">'+NBY[nb].flag+' '+NBY[nb].name+'</span>'+
+       '<span class="ct">'+nTxt+' <em>unit'+(nTxt==='1'?'':'s')+'</em> &middot; <em>'+pwTxt+' pow</em></span>'+
+       '</button>';
+  });
+  box.innerHTML=h;
+  Array.prototype.forEach.call(box.querySelectorAll('.bg'),function(b){
+    b.onclick=function(){
+      selectProv(b.getAttribute('data-nb'));
+      render();
+    };
+  });
+}
+function computeTargets(){
+  /* every front the selected units can actually walk to, wherever they stand */
+  var from=pickedOrigins();
+  if(!from.length){
+    var p=S.prov[S.sel];
+    if(p && p.owner===S.player) from=[S.sel];
+  }
+  var out={};
+  from.forEach(function(f){
+    (NBY[f].nb||[]).forEach(function(m){
+      if(m==='iceland' || !S.prov[m]) return;
+      if(!atWar(S.player,S.prov[m].owner)) return;
+      out[m]=1;
+    });
+  });
+  S.targets=Object.keys(out);
+}
+function render(){
+  computeTargets();
+  /* --- map fills --- */
+  for(var id in S.prov){
+    var p=S.prov[id], n=NBY[id];
+    var color=p.owner? NBY[p.owner].color : '#2a2f3a';
+    var paths=landG.querySelectorAll('[data-id="'+id+'"]');
+    for(var i=0;i<paths.length;i++){
+      if(paths[i].getAttribute('data-bridge')){
+        paths[i].setAttribute('stroke', color);
+      } else {
+        paths[i].setAttribute('fill', color);
+        paths[i].setAttribute('class','land'+(id===S.sel?' sel':'')+(S.targets.indexOf(id)>=0?' tgt':'')+
+          (warAround(id)?' war':''));
+      }
+    }
+  }
+  /* --- mine fields only: units live on the country sheet, not on the map --- */
+  var kids=Array.prototype.slice.call(unitG.childNodes);
+  kids.forEach(function(nd){ if(nd.classList && nd.classList.contains('ct')) unitG.removeChild(nd); });
+  for(var id2 in S.prov){
+    var pr=S.prov[id2], m=markEl[id2];
+    if(pr.mines>0 && known(id2)){
+      var mg=el('g',{class:'ct',transform:'translate('+(m.x+15).toFixed(1)+','+(m.y-6).toFixed(1)+')'});
+      mg.appendChild(el('rect',{x:-9,y:-6,width:18,height:11,fill:'#8d99b0',stroke:'#0b0e14'}));
+      var mt=el('text',{x:0,y:2.2}); mt.textContent='M'+pr.mines; mg.appendChild(mt);
+      unitG.appendChild(mg);
+    }
+  }
+  renderPanel();
+  paintNews();
+  updateNewsBadge();
+  paintMailSummary();
+  paintMail();
+  updateMailBadge();
+}
+function warAround(id){
+  var o=S.prov[id].owner;
+  var ns=NBY[id].nb||[];
+  for(var i=0;i<ns.length;i++){
+    if(S.prov[ns[i]] && atWar(o,S.prov[ns[i]].owner)) return true;
+  }
+  return false;
+}
+
+function renderPanel(){
+  var me=S.player, gold=S.gold[me]||0;
+  var inc=income(me);
+  document.getElementById('sMoney').textContent=gold;
+  document.getElementById('sInc').innerHTML=(inc>=0?'+':'')+inc;
+  document.getElementById('sInc').style.color=inc>=0?'#7fe08a':'#ff8a8a';
+  document.getElementById('sLand').textContent=landOf(me);
+  document.getElementById('sUnits').textContent=unitsOf(me).length;
+  document.getElementById('sPow').textContent=Math.round(unitsOf(me).reduce(function(s,u){
+    return s+UNITS[u.type].atk; },0));
+  var d=new Date(1939,8,1+S.day);
+  var mon=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
+  document.getElementById('sDate').textContent=d.getDate()+' '+mon+' '+d.getFullYear();
+
+  /* selected province */
+  var id=S.sel, p=S.prov[id], n=NBY[id];
+  var see=(p.owner===me)||known(id);
+  document.getElementById('pFlag').innerHTML=flag(n);
+  document.getElementById('pName').textContent=n.name;
+  document.getElementById('pOwner').innerHTML='Ruled by <b style="color:'+NBY[p.owner].color+'">'+
+    NBY[p.owner].flag+' '+NBY[p.owner].name+'</b>'+(p.owner===me?' &mdash; yours':'');
+  document.getElementById('pGarr').textContent=see? unitsAt(id).length+' units' : 'unknown';
+  document.getElementById('pDef').innerHTML=see
+    ? '<span style="color:#7fe08a">'+Math.round(defPower(id))+'</span>'+
+      (p.mines?' <span style="color:#9aa4b8">(+'+minePower(id)+' mines)</span>':'')
+    : '<span style="color:#8d99b0">no intelligence</span>';
+  document.getElementById('pMines').innerHTML=see
+    ? (p.mines? p.mines+' <span style="color:#57b567">+'+p.mines*MINE_GOLD+'/day</span>' : '0')
+    : '?';
+  renderMini(id);
+  renderBorderGarrisons(id, me);
+
+  /* unit list: the garrison you are looking at, or the units you have selected */
+  var us=unitsAt(id), listing=null, where='';
+  if(p.owner===me && us.length){ listing=us; where=''; }
+  else if(S.pick.size){
+    listing=unitsOf(me).filter(function(u){ return S.pick.has(u.id); });
+    where=' &mdash; in '+Array.prototype.map.call(
+      listing.reduce(function(a,u){ if(a.indexOf(u.loc)<0) a.push(u.loc); return a; },[]),
+      function(l){ return NBY[l].name; }).join(', ');
+  }
+  document.getElementById('uSub').innerHTML=(listing&&listing.length)
+    ? 'Tick the units you want to attack with. They light up green.'+where
+    : 'Click one of your territories on the map, or use the button below.';
+  if(listing && listing.length){
+    var h='';
+    listing.forEach(function(u){
+      var t=UNITS[u.type];
+      h+='<div class="u'+(S.pick.has(u.id)?' pick':'')+'" data-u="'+u.id+'">'+
+         '<span class="code" style="background:'+t.col+'">'+t.code+'</span>'+
+         '<span class="bar"><i style="width:'+Math.max(0,Math.round(100*u.hp/t.hp))+'%;background:'+
+           (u.hp>t.hp*0.6?'#57b567':u.hp>t.hp*0.3?'#e2b13c':'#d64545')+'"></i></span>'+
+         '<span class="hp">'+Math.max(0,Math.ceil(u.hp))+'/'+t.hp+(u.moving?' &rarr;':'')+(u.air?' &#9992;':'')+'</span></div>';
+    });
+    document.getElementById('uSub').innerHTML=(listing&&listing.length)
+      ? 'Tick the units you want to attack with. They light up green.'+where
+      : 'No units to show &mdash; click one of your territories on the map, or use the button below.';
+    var l=document.getElementById('uList');
+    l.innerHTML=h;
+    Array.prototype.forEach.call(l.querySelectorAll('.u'),function(e){
+      e.onclick=function(){
+        var id2=+e.getAttribute('data-u');
+        if(S.pick.has(id2)) S.pick.delete(id2); else S.pick.add(id2);
+        render();
+      };
+    });
+  } else {
+    document.getElementById('uList').innerHTML='';
+  }
+
+  /* order chips (battle page only) */
+  var oc=document.getElementById('cOrders');
+  if(PAGE==='battle'){
+    oc.style.display=(S.targets.length || S.pick.size)?'block':'none';
+    if(S.targets.length){
+      var sh='<div class="sub" style="margin-bottom:6px">'+(S.pick.size
+          ? S.pick.size+' unit(s) selected &mdash; click a front:'
+          : 'No units selected &mdash; pick units first, then click a front:')+'</div>';
+      S.targets.forEach(function(m){
+        var vis=known(m);
+        sh+='<button class="chip" data-dst="'+m+'">'+NBY[m].flag+' '+NBY[m].name+
+            ' <i>'+Math.round(totalPower(m))+(vis?'':' ?')+'</i></button>';
+      });
+      var c=document.getElementById('oChips');
+      c.innerHTML=sh;
+      Array.prototype.forEach.call(c.querySelectorAll('.chip'),function(e){
+        e.onclick=function(){ moveTo(e.getAttribute('data-dst')); };
+      });
+    } else if(S.pick.size){
+      var stuck=pickedOrigins().map(function(l){ return NBY[l].name; }).join(', ');
+      document.getElementById('oChips').innerHTML='<div class="sub" style="color:#e2b13c">'+
+        S.pick.size+' unit(s) selected in '+stuck+
+        ' &mdash; no enemy border is reachable from there. Take that country first, or order the units home.</div>';
+    }
+  }
+
+/* shop (shop page only) */
+  if(PAGE==='shop') paintShop(document.getElementById('shop'), id);
+
+  /* ranks */
+  var arr=ALL.filter(function(x){ return x.id!=='iceland'; }).map(function(x){
+    return {n:x,p:unitsOf(x.id).reduce(function(s,u){ return s+UNITS[u.type].atk; },0),
+            l:landOf(x.id),g:S.gold[x.id]||0};
+  });
+  arr.sort(function(a,b){ return (b.p+b.l*12)-(a.p+a.l*12); });
+  var rh='';
+  arr.slice(0,9).forEach(function(x,i){
+    rh+='<div class="rank"><i>'+(i+1)+'</i>'+x.n.flag+' '+x.n.name+
+        '<b style="color:'+(x.n.id===me?'#e2b13c':'#8d99b0')+'">'+x.l+' &middot; '+Math.round(x.p)+'</b></div>';
+  });
+  document.getElementById('ranks').innerHTML=rh;
+
+  /* log */
+  var lg='';
+  for(var i=Math.max(0,S.log.length-40);i<S.log.length;i++){
+    lg+='<div><span class="t">D'+S.log[i].d+'</span>'+S.log[i].t+'</div>';
+  }
+  var el2=document.getElementById('log');
+  el2.innerHTML=lg;
+  el2.scrollTop=el2.scrollHeight;
+}
+
+/* =======================================================================
+   10. MAP EVENTS
+   ======================================================================= */
+function wireMap(){
+  var svg=document.getElementById('map'), tip=document.getElementById('tip');
+  var om=document.getElementById('ordMode');
+  om.addEventListener('change',function(){ S.orderMode=om.checked; });
+  om.checked=true;
+  svg.addEventListener('click',function(ev){
+    var t=ev.target.closest ? ev.target.closest('[data-id]') : null;
+    if(!t) return;
+    var id=t.getAttribute('data-id');
+    if(S.orderMode && S.pick.size>0 && S.targets.indexOf(id)>=0){ moveTo(id); return; }
+    selectProv(id); render();
+  });
+  svg.addEventListener('mousemove',function(ev){
+    var t=ev.target.closest ? ev.target.closest('[data-id]') : null;
+    if(!t){ tip.style.display='none'; return; }
+    var id=t.getAttribute('data-id'), p=S.prov[id], n=NBY[id];
+    var g=unitsAt(id);
+    var vis=known(id);
+    var s='<b>'+n.flag+' '+n.name+'</b><br>owner: '+NBY[p.owner].flag+' '+NBY[p.owner].name+
+      '<br>garrison: '+(vis? g.length+' units' : 'unknown')+
+      ' &middot; def '+(vis?Math.round(totalPower(id)):'?')+
+      (p.mines?'<br>mines: '+p.mines:'');
+    tip.innerHTML=s;
+    tip.style.display='block';
+    var r=document.getElementById('mapwrap').getBoundingClientRect();
+    var x=ev.clientX-r.left+14, y=ev.clientY-r.top+14;
+    if(x+240>r.width) x=r.width-244;
+    tip.style.left=x+'px'; tip.style.top=y+'px';
+  });
+  svg.addEventListener('mouseleave',function(){ tip.style.display='none'; });
+}
+
+/* =======================================================================
+   11. TOP BAR / BOOT
+   ======================================================================= */
+function setSpeed(s){
+  if(NET && NET.mode===2) s=0;                      /* guests only watch - the host runs the sim */
+  spd=s;
+  document.getElementById('bPause').classList.toggle('on',s===0);
+  document.getElementById('bPause').innerHTML=s===0?'&#9654; Resume':'&#10073;&#10073; Pause';
+  if(timer) clearInterval(timer);
+  timer=s? setInterval(tick,TICK_MS[s]) : null;
+}
+function wireTop(){
+  document.getElementById('mShop').onclick=function(){ showPage('shop'); };
+  document.getElementById('mBattle').onclick=function(){ showPage('battle'); };
+  document.getElementById('pageBack').onclick=closePage;
+  document.getElementById('bSelFront').onclick=function(){
+    S.pick.clear();
+    var n=0;
+    unitsOf(S.player).forEach(function(u){
+      var ns=NBY[u.loc].nb||[];
+      for(var i=0;i<ns.length;i++){
+        if(S.prov[ns[i]] && atWar(S.player,S.prov[ns[i]].owner)){ S.pick.add(u.id); n++; return; }
+      }
+    });
+    flash(n? n+' unit'+(n>1?'s':'')+' selected on your fronts.' : 'No unit of yours stands on a front.');
+    render();
+  };
+  document.getElementById('bPause').onclick=function(){ setSpeed(spd===0?1:0); };
+  Array.prototype.forEach.call(document.querySelectorAll('[data-sp]'),function(b){
+    b.onclick=function(){ setSpeed(+b.getAttribute('data-sp')); };
+  });
+  document.getElementById('bNew').onclick=function(){
+    if(confirm('Abandon this campaign and start over?')) location.reload();
+  };
+  document.getElementById('bFocus').onclick=function(){
+    var wrap=document.getElementById('mapwrap');
+    var svgR=document.getElementById('map').getBoundingClientRect();
+    var k=svgR.width/(W+12);
+    var id=S.sel, p=S.prov[id];
+    if(!p || p.owner!==S.player){
+      id=S.player;
+      for(var k2 in S.prov){
+        if(S.prov[k2].owner!==S.player) continue;
+        var hot=(NBY[k2].nb||[]).some(function(m){
+          return S.prov[m] && m!=='iceland' && atWar(S.player,S.prov[m].owner); });
+        id=k2; if(hot) break;
+      }
+    }
+    selectProv(id);
+    var m=markEl[id];
+    wrap.scrollTo({
+      left:Math.max(0,(m.x-6)*k-wrap.clientWidth*0.45),
+      top:Math.max(0,(m.y-6)*k-wrap.clientHeight*0.45),
+      behavior:'smooth'});
+    render();
+  };
+  document.addEventListener('keydown',function(e){
+    if(e.target.tagName==='BUTTON' && (e.code==='Space'||e.code==='Enter')) return;
+    if(e.code==='Space'){ e.preventDefault(); setSpeed(spd===0?1:0); return; }
+    if(e.key==='s'||e.key==='S'){ e.preventDefault(); showPage('shop'); return; }
+    if(e.key==='b'||e.key==='B'){ e.preventDefault(); showPage('battle'); return; }
+    if(e.key==='n'||e.key==='N'){ e.preventDefault(); document.getElementById('bNews').click(); return; }
+    if(e.key==='m'||e.key==='M'){ e.preventDefault(); if(document.getElementById('bMail')) document.getElementById('bMail').click(); return; }
+    if(e.key==='Escape'){ closePage(); return; }
+  });
+}
+
+/* ---------- country picker ---------- */
+function buildPicker(){
+  var wrap=document.getElementById('pick');
+  var blocs=['Axis','Allies','Other','Neutral'];
+  var h='';
+  blocs.forEach(function(b){
+    var list=NATIONS.filter(function(n){ return n.bloc===b; });
+    if(!list.length) return;
+    h+='<div class="bloc" style="grid-column:1/-1">'+b+'</div>';
+    list.forEach(function(n){
+      h+='<button class="pick" data-id="'+n.id+'"><span class="f">'+n.flag+'</span>'+
+         '<span><span class="n">'+n.name+'</span><br><span class="b">'+b.toUpperCase()+
+         ' &middot; '+n.nb.length+' front'+(n.nb.length>1?'s':'')+'</span></span></button>';
+    });
+  });
+  wrap.innerHTML=h;
+  Array.prototype.forEach.call(wrap.querySelectorAll('.pick'),function(b){
+    b.onclick=function(){
+      Array.prototype.forEach.call(wrap.querySelectorAll('.pick'),function(x){ x.classList.remove('on'); });
+      b.classList.add('on');
+      chosen=b.getAttribute('data-id');
+      document.getElementById('go').disabled=false;
+      var nn=NBY[chosen];
+      document.getElementById('goWho').innerHTML=
+        'You will play <b>'+nn.flag+' '+nn.name+'</b> &middot; '+nn.nb.length+
+        ' front'+(nn.nb.length>1?'s':'')+' &middot; 50 gold, 3 riflemen, 2 mine fields';
+    };
+  });
+}
+
+function startGame(){
+  document.getElementById('start').style.display='none';
+  newGame(chosen);
+  setSpeed(1);
+  setTimeout(function(){
+    var wrap=document.getElementById('mapwrap');
+    var k=document.getElementById('map').getBoundingClientRect().width/(W+12);
+    var m=markEl[S.player];
+    wrap.scrollTo({ left:Math.max(0,(m.x-6)*k-wrap.clientWidth*0.45),
+                    top:Math.max(0,(m.y-6)*k-wrap.clientHeight*0.45) });
+  },80);
+}
+document.getElementById('go').onclick=startGame;
+
+buildMap();
+wireMap();
+wireTop();
+buildPicker();
+newGame('germany');      /* behind the start screen, so the map is alive */
+showPage(null);
+setSpeed(0);
+
+/* bookmarkable auto start:  ...#play=germany */
+(function(){
+  var m=(location.hash||'').match(/play=([a-z]+)/);
+  if(m && NBY[m[1]] && m[1]!=='iceland'){
+    chosen=m[1];
+    var b=document.querySelector('.pick[data-id="'+m[1]+'"]');
+    if(b) b.classList.add('on');
+    var g=document.getElementById('go');
+    g.disabled=false;
+    startGame();
+  }
+})();
+
+/* =======================================================================
+   12. ONLINE MULTIPLAYER  (free MQTT relay, host-authoritative sim)
+   MQTT over WSS, subprotocol "mqtt". The host runs the game and broadcasts
+   the full state; guests simply render it and send {move, recruit} orders.
+   ======================================================================= */
+function enc(t){ return new TextEncoder().encode(t); }
+function rl(n){ var o=[]; do{ var d=n%128; n=Math.floor(n/128); if(n>0) d|=128; o.push(d); }while(n>0); return o; }
+function cat(){ var l=0,a=[],i; for(i=0;i<arguments.length;i++){l+=arguments[i].length;a.push(arguments[i]);}
+  var o=new Uint8Array(l),p=0; a.forEach(function(x){o.set(x,p);p+=x.length;}); return o; }
+function u16(n){ return [n>>8&255,n&255]; }
+function MQTT(url,id){
+  var self=this;
+  this.onmsg={}; this.onopen=null; this.onerror=null; this.done=false;
+  var ws=new WebSocket(url,'mqtt');
+  ws.binaryType='arraybuffer';
+  this.ws=ws;
+  var buf=new Uint8Array(0);
+  function cat2(a,b){ var o=new Uint8Array(a.length+b.length); o.set(a); o.set(b,a.length); return o; }
+  ws.onopen=function(){
+    var cid=enc(id);
+    var vh=new Uint8Array([0,4,77,81,84,84,4,0x02,0,60]);
+    try{ ws.send(cat(new Uint8Array([0x10]), new Uint8Array(rl(vh.length+cid.length+2)), cat(vh,new Uint8Array(u16(cid.length)),cid))); }
+    catch(e){}
+    if(self.onopen) self.onopen();
+  };
+  ws.onerror=function(e){ if(self.onerror) self.onerror(e); };
+  ws.onclose=function(){ self.done=true; };
+  ws.onmessage=function(ev){
+    var m=new Uint8Array(ev.data);
+    buf=cat2(buf,m);
+    while(buf.length>=2){
+      var i=1,mult=1,len=0;
+      for(;i<buf.length;i++){
+        var b=buf[i]; len+=(b&127)*mult; mult*=128;
+        if(!(b&128)) break;
+      }
+      if(i>=buf.length) return;
+      var end=i+1+len;
+      if(buf.length<end) return;
+      var type=buf[0]>>4, body=buf.slice(i+1,end);
+      buf=buf.slice(end);
+      if(type===2){ if(self._connack) self._connack(body[1]); }
+      else if(type===9){ var pid=(body[0]<<8)|body[1]; if(self._suback) self._suback(pid,body.slice(2)); }
+      else if(type===3){
+        var tl=(body[0]<<8)|body[1];
+        var topic=new TextDecoder().decode(body.slice(2,2+tl));
+        var payload=body.slice(2+tl);
+        (self.onmsg[topic]||[]).forEach(function(f){ f(topic,payload); });
+        if(self.onany) self.onany(topic,payload);
+      }
+      else if(type===13){ self._pong=Date.now(); }
+    }
+  };
+  this._pid=1;
+}
+MQTT.prototype.publish=function(topic,data,qos){
+  if(this.ws.readyState!==1) return;
+  if(typeof data==='string') data=enc(data);
+  var t=enc(topic);
+  var body=cat(new Uint8Array(u16(t.length)),t,new Uint8Array(data));
+  this.ws.send(cat(new Uint8Array([0x30|((qos||0)<<1)]), new Uint8Array(rl(body.length)), body));
+};
+MQTT.prototype.subscribe=function(topic,qos,cb){
+  var self=this, pid=this._pid++;
+  var t=enc(topic);
+  var body=cat(new Uint8Array(u16(pid)),new Uint8Array(u16(t.length)),t,new Uint8Array([qos||0]));
+  var old=self._suback;
+  self._suback=function(p,c){ if(p===pid){ if(cb) cb(null,c); } else if(old) old(p,c); };
+  this.onmsg[topic]=this.onmsg[topic]||[];
+  this.ws.send(cat(new Uint8Array([0x82]), new Uint8Array(rl(body.length)), body));
+};
+MQTT.prototype.close=function(){ try{ this.ws.send(new Uint8Array([0xE0,0x00])); this.ws.close(); }catch(e){} };
+
+var NET={ mode:0, mq:null, pid:'', name:'', room:'', hostP:'', hostName:'', roster:{}, seats:{},
+  myNation:null, hostNation:null, started:false, dirty:false, lastSeen:{}, rooms:{},
+  lastState:0, netConn:false, pendingJoin:false, hostOfflineWarned:false };
+var LOBBY='ow/lobby';
+function OW(room,s){ return 'ow/'+room+'/'+s; }
+function byId(id){ for(var i=0;i<S.units.length;i++) if(S.units[i].id===id) return S.units[i]; return null; }
+function netRaw(raw){ return new TextDecoder().decode(raw); }
+function netInit(){
+  NET.pid=NET.pid||(Math.random().toString(36).slice(2,10));
+  var q=document.getElementById('netName');
+  NET.name=(q&&q.value||('Player#'+(100+((Math.random()*900)|0)))).slice(0,18);
+}
+function netSt(msg){ var e=document.getElementById('netSt'); if(e) e.textContent=msg; }
+function netPub(topic,payload){ if(NET.mq && NET.mq.ws && NET.mq.ws.readyState===1) NET.mq.publish(topic,payload,0); }
+function netPubRoom(s,payload){ netPub(OW(NET.room,s),payload); }
+function roomCode(){ var a='ABCDEFGHJKLMNPQRSTUVWXYZ',o=''; for(var i=0;i<4;i++) o+=a[(Math.random()*a.length)|0]; return o; }
+function netHasSeat(p){ for(var k in NET.seats) if(NET.seats[k]===p) return true; return false; }
+function seatOf(p){ for(var k in NET.seats) if(NET.seats[k]===p) return k; return null; }
+
+function netConnect(){
+  netInit();
+  if(NET.mq && NET.mq.ws && (NET.mq.ws.readyState===0 || NET.mq.ws.readyState===1)){
+    netSt('relay connection already open'); return;
+  }
+  if(NET.mq) try{ NET.mq.close(); }catch(e){}
+  var m=(location.search||'').match(/relay=([^&]+)/);
+  var url=m? decodeURIComponent(m[1]) : 'wss://broker.emqx.io:8084/mqtt';
+  try{ NET.mq=new MQTT(url, NET.pid+'w'); }
+  catch(e){ netSt('WebSocket/MQTT is not available in this browser'); return; }
+  netSt('connecting to free relay...');
+  NET.mq.onany=function(topic,raw){ netRecv(topic,netRaw(raw)); };
+  NET.mq.onerror=function(){ netSt('relay unreachable - try again'); NET.netConn=false; };
+  NET.mq._connack=function(rc){
+    if(rc!==0){ netSt('relay refused (rc='+rc+')'); NET.netConn=false; return; }
+    NET.netConn=true;
+    netSt('relay connected - '+(NET.mode===1? 'room '+NET.room+' is live' : 'looking at rooms'));
+    netSubForMode();
+    if(NET.mode===2 && NET.pendingJoin){ NET.pendingJoin=false; netPubRoom('join', JSON.stringify({p:NET.pid, name:NET.name})); }
+  };
+}
+function netSubForMode(){
+  if(!NET.mq || NET.mq.ws.readyState!==1) return;
+  if(NET.mode===1){
+    NET.mq.subscribe(OW(NET.room,'join'),0);
+    NET.mq.subscribe(OW(NET.room,'claim'),0);
+    NET.mq.subscribe(OW(NET.room,'hb'),0);
+    NET.mq.subscribe(OW(NET.room,'cmd'),0);
+  } else {
+    NET.mq.subscribe(LOBBY,0);
+    NET.mq.subscribe(OW(NET.room,'lobby'),0);
+    NET.mq.subscribe(OW(NET.room,'state'),0);
+    NET.mq.subscribe(OW(NET.room,'go'),0);
+  }
+}
+function netEnsureSubs(){
+  if(NET.mq && NET.netConn){ netSubForMode(); }
+  else netConnect();
+}
+function netRecv(topic,txt){
+  try{
+    if(topic===LOBBY){
+      var o=JSON.parse(txt);
+      NET.rooms[o.r]={h:o.h,f:o.f,n:o.n,t:Date.now()};
+      return;
+    }
+    if(!NET.room) return;
+    var s=topic.slice(topic.lastIndexOf('/')+1);
+    var o=JSON.parse(txt);
+    if(s==='join'){ if(o&&o.p&&!NET.roster[o.p]){ NET.roster[o.p]=o.name||'Player'; netPushLobby(); } }
+    else if(s==='claim'){
+      if(NET.mode===1 && !NET.started && o && o.p && o.nation && NBY[o.nation] && !NET.seats[o.nation]){
+        NET.seats[o.nation]=o.p; NET.roster[o.p]=NET.roster[o.p]||'Player';
+        NET.dirty=true; netPushLobby();
+      }
+    }
+    else if(s==='hb'){ if(o && o.p) NET.lastSeen[o.p]=Date.now(); }
+    else if(s==='cmd'){ if(o && o.p){ var nat=seatOf(o.p); if(nat) netApplyCmd(nat,o); } }
+    else if(s==='lobby'){ if(NET.mode===2) recvLobby(o); }
+    else if(s==='state'){ if(NET.mode===2 && NET.started) applyNetState(o); }
+    else if(s==='go'){ if(NET.mode===2 && o && o.s){ NET.started=true; netGuestStart(); } }
+  }catch(e){}
+}
+function netPushLobby(){ netPubRoom('lobby', JSON.stringify(snap())); }
+function snap(){ return {h:NET.pid, hn:NET.name, seats:NET.seats, names:NET.roster, started:!!NET.started}; }
+function recvLobby(o){
+  if(!o) return;
+  NET.hostP=o.h; NET.hostName=o.hn||'Host';
+  NET.roster=o.names||{};
+  NET.seats=o.seats||{};
+  NET.started=!!o.started;
+  NET.myNation=null;
+  for(var k in NET.seats) if(NET.seats[k]===NET.pid) NET.myNation=k;
+  paintSeats();
+  nlHint();
+}
+function nlHint(){
+  var who=0,i;
+  for(i=0;i<NATIONS.length;i++) if(NET.seats[NATIONS[i].id]) who++;
+  document.getElementById('nlSt').textContent =
+    NET.mode===1 ? ('Room '+NET.room+' is live - waiting for players.\nSlot '+(NATIONS.length-who)+' seat'+(NATIONS.length-who===1?'':'s')+' open - unclaimed nations fight for the AI.') :
+    ('Joined '+NET.room+' (host: '+NET.hostName+'). Pick a nation - the war starts whenever the host says so.');
+}
+function paintSeats(){
+  var el=document.getElementById('nlSeats'); if(!el) return;
+  var h='',i,n,p,me,who;
+  for(i=0;i<NATIONS.length;i++){
+    n=NATIONS[i]; p=NET.seats[n.id]; me=(p&&p===NET.pid);
+    who=p? (me?'YOU':(NET.roster[p]||'?')) : null;
+    h+='<div class="seat'+(p?' taken':'')+(me?' me':'')+'" data-n="'+n.id+'">'+
+        '<span class="f">'+n.flag+'</span><span>'+n.name+
+        (p? ' <b style="color:#e2b13c">'+who+'</b>' : ' <span style="color:#5b6b85">AI</span>')+
+        '</span></div>';
+  }
+  el.innerHTML=h;
+  Array.prototype.forEach.call(el.querySelectorAll('.seat'),function(b){
+    b.onclick=function(){
+      var nid=b.getAttribute('data-n');
+      if(NET.started) return;
+      if(NET.seats[nid] && NET.seats[nid]!==NET.pid) return;
+      if(NET.mode===1){
+        for(var k in NET.seats) if(NET.seats[k]===NET.pid) delete NET.seats[k];
+        NET.seats[nid]=NET.pid; NET.myNation=nid; NET.hostNation=nid;
+        paintSeats(); nlHint(); netPushLobby();
+      } else {
+        netPubRoom('claim', JSON.stringify({p:NET.pid, nation:nid}));
+      }
+    };
+  });
+}
+function paintRooms(){
+  var el=document.getElementById('rooms'); if(!el) return;
+  var now=Date.now(), keys=Object.keys(NET.rooms), h='',rows=0,i;
+  for(i=0;i<keys.length;i++){
+    var r=NET.rooms[keys[i]];
+    if(!r || now-r.t>6000) continue;
+    if(r.f) continue;
+    h+='<div class="rm" data-r="'+keys[i]+'"><span class="code">'+keys[i]+'</span>'+
+       '<span>'+r.h+'</span><span>'+r.n+'/27</span><span class="sub">join &rsaquo;</span></div>';
+    rows++;
+  }
+  el.innerHTML= rows? h : '<div class="sub">No rooms yet - host one.</div>';
+  Array.prototype.forEach.call(el.querySelectorAll('.rm'),function(b){
+    b.onclick=function(){ joinRoom(b.getAttribute('data-r')); };
+  });
+}
+setInterval(function(){ paintRooms(); }, 2500);
+
+function netOpenMain(){
+  netInit();
+  document.getElementById('net').style.display='flex';
+  if(NET.mode!==0 && NET.room){
+    enterLobbyView();
+    if(NET.netConn) netSubForMode(); else netConnect();
+    return;
+  }
+  document.getElementById('netMain').style.display='block';
+  document.getElementById('netLobby').style.display='none';
+  netSt(NET.netConn? 'relay connected' : 'connect to the relay to see rooms');
+  if(NET.mode===0) netConnect();
+  paintRooms();
+}
+function hostRoom(){
+  netInit();
+  NET.room=roomCode();
+  NET.mode=1; NET.started=false; NET.seats={}; NET.roster={}; NET.lastSeen={};
+  NET.hostP=NET.pid;
+  document.getElementById('nlRole').textContent='you are the host';
+  enterLobbyView();
+  netEnsureSubs();
+}
+function joinRoom(code){
+  if(!code) return;
+  netInit();
+  NET.room=code.toUpperCase();
+  NET.mode=2; NET.started=false; NET.seats={}; NET.roster={}; NET.pendingJoin=true;
+  NET.hostP='';
+  document.getElementById('nlRole').textContent='guest - waiting for the host';
+  enterLobbyView();
+  netEnsureSubs();
+  if(NET.netConn){ NET.pendingJoin=false; netPubRoom('join', JSON.stringify({p:NET.pid, name:NET.name})); }
+}
+function enterLobbyView(){
+  document.getElementById('netMain').style.display='none';
+  document.getElementById('netLobby').style.display='block';
+  document.getElementById('net').style.display='flex';
+  document.getElementById('nlRoom').textContent=NET.room;
+  document.getElementById('nlGo').style.display=(NET.mode===1 && !NET.started)?'inline-block':'none';
+  paintSeats();
+}
+function netLeave(){
+  NET.mode=0; NET.started=false; NET.room=''; NET.hostP=''; NET.seats={}; NET.roster={};
+  document.getElementById('net').style.display='none';
+}
+function netGuestStart(){
+  document.getElementById('start').style.display='none';
+  document.getElementById('net').style.display='none';
+  if(!NET.myNation){ flash('You are seated?'); return; }
+  S.player=NET.myNation; S.sel=NET.myNation;
+  setSpeed(0);
+  document.getElementById('bPause').innerHTML='&#9654; (remote)';
+  flash('Syncing with host '+NET.hostName+'...');
+  render();
+  guestCheck();
+}
+
+function netHostStart(){
+  if(!NET.hostNation){ netSt('Pick your nation in the seat list first.'); return; }
+  NET.started=true;
+  netPushLobby();
+  netPubRoom('go', JSON.stringify({s:1}));
+  document.getElementById('start').style.display='none';
+  document.getElementById('net').style.display='none';
+  newGame(NET.hostNation);
+  setSpeed(1);
+  NET.dirty=true;
+}
+
+function netStateOut(){
+  var wars=[],i,k;
+  S.wars.forEach(function(w){ wars.push(w); });
+  var prov={};
+  for(k in S.prov){ var p=S.prov[k]; prov[k]={o:p.owner,m:p.mines,mb:p.mineBy,mt:p.mineT}; }
+  var units=S.units.map(function(u){
+    var o={id:u.id, type:u.type, loc:u.loc, owner:u.owner, hp:u.hp, mv:null, ar:u.air||null};
+    if(u.moving) o.mv=[u.moving.to, u.moving.t];
+    return o;
+  });
+  return {v:1, day:S.day, uid:S.uid, wars:wars, prov:prov, units:units,
+          gold:S.gold, log:S.log.slice(-20), over:!!S.over,
+          news:S.news.slice(-30), elim:Array.prototype.slice.call(S.elimSet||[]),
+          mail:(S.mail||[]).slice(-60), pact:Array.prototype.slice.call(S.pact||[]), mood:S.mood||{}, mailSeq:S.mailSeq||0, nextDispatchDay:S.nextDispatchDay||0, nextMailDay:S.nextMailDay||S.day+1};
+}
+function applyNetState(o){
+  if(!o || o.v!==1) return;
+  S.day=o.day; S.uid=o.uid;
+  S.over=null;
+  S.wars=new Set(o.wars||[]);
+  S.units=(o.units||[]).map(function(x){
+    var u={id:x.id, type:x.type, loc:x.loc, owner:x.owner, hp:x.hp, moving:null, air:null};
+    if(x.mv) u.moving={to:x.mv[0], t:x.mv[1]};
+    if(x.ar) u.air=x.ar;
+    return u;
+  });
+  S.prov={};
+  for(var k in (o.prov||{})){ var p=o.prov[k]; S.prov[k]={id:k, owner:p.o, units:[], mines:p.m, mineBy:p.mb, mineT:p.mt}; }
+  if(o.gold) S.gold=o.gold;
+  S.log=o.log||S.log;
+  S.news=o.news||[];
+  S.elimSet=new Set(o.elim||[]);
+  S.mail=o.mail||[];
+  S.pact=new Set(o.pact||[]);
+  S.mood=o.mood||{};
+  S.mailSeq=o.mailSeq||0;
+  S.nextDispatchDay=o.nextDispatchDay||0;
+  S.nextMailDay=o.nextMailDay||0;
+  NET.lastState=Date.now();
+  if(NET.hostOfflineWarned){ NET.hostOfflineWarned=false; }
+  render();
+  guestCheck();
+}
+function guestCheck(){
+  if(NET.mode!==2 || NET.myNation==null) return;
+  if(!NET.lastState) return;
+  if(S.over) return;
+  var me=NET.myNation;
+  if(landOf(me)===0 && unitsOf(me).length===0){
+    S.over={win:false};
+    end(false,'Your nation has been overrun. You now watch the war from the gallery.');
+  } else if(landOf(me)>=NATIONS.length){
+    S.over={win:true};
+    end(true,'Every territory on the continent flies your flag. Europe is yours.');
+  }
+}
+function netApplyCmd(nat,msg){
+  if(!S || S.over) return;
+  if(!NET.started) return;
+  if(msg.k==='m' && msg.dst){
+    var dst=msg.dst, ids=msg.ids||[], n=0;
+    if(dst==='iceland' || !S.prov[dst]) return;
+    if(!atWar(nat,S.prov[dst].owner)) return;
+    for(var i=0;i<ids.length;i++){
+      var u=byId(Number(ids[i]));
+      if(!u || u.owner!==nat || u.hp<=0) continue;
+      if((NBY[u.loc].nb||[]).indexOf(dst)<0) continue;
+      if(UNITS[u.type].air && S.prov[dst].owner!==nat) u.air=dst;
+      else u.moving={to:dst,t:1};
+      n++;
+    }
+    if(n) NET.dirty=true;
+  } else if(msg.k==='r' && msg.t && msg.loc){
+    var uu=UNITS[msg.t]; if(!uu) return;
+    if(!S.prov[msg.loc] || S.prov[msg.loc].owner!==nat) return;
+    if(unitsAt(msg.loc).length>=10) return;
+    if((S.gold[nat]||0)<uu.cost) return;
+    S.gold[nat]-=uu.cost;
+    spawn(msg.t,msg.loc,nat);
+    if(SHOWCASE[msg.t]) newsUnveil(nat,msg.t,msg.loc);
+    NET.dirty=true;
+  } else if(msg.k==='mail'){
+    if(msg.c===1 && msg.to && msg.sub){ sendMailFor(nat, msg.to, msg.sub); NET.dirty=true; }
+    else if(msg.id!=null && msg.ri!=null){ applyReplyFor(nat, msg.id, +msg.ri); NET.dirty=true; }
+  }
+}
+setInterval(function(){
+  if(NET.mode===1 && NET.netConn && NET.mq){
+    var n=0,room; for(var k in NET.seats) n++;
+    netPub(LOBBY, JSON.stringify({r:NET.room, h:NET.name, f:n>=NATIONS.length, n:n}));
+    if(NET.started && NET.dirty){ NET.dirty=false; netPubRoom('state', JSON.stringify(netStateOut())); }
+    var now=Date.now();
+    for(k in NET.seats){
+      var p=NET.seats[k];
+      if(p===NET.pid) continue;
+      if(NET.lastSeen[p] && now-NET.lastSeen[p]>12000){
+        delete NET.seats[k]; delete NET.lastSeen[p];
+        log(NBY[k].name+' was released back to the AI (player offline).');
+        netPushLobby();
+      }
+    }
+  }
+},1800);
+setInterval(function(){
+  if(NET.mode===2 && NET.mq && NET.netConn){
+    netPubRoom('hb', JSON.stringify({p:NET.pid}));
+    if(NET.started && Date.now()-NET.lastState>9000 && !NET.hostOfflineWarned){
+      NET.hostOfflineWarned=true;
+      flash('HOST OFFLINE - the world is frozen until the host returns.');
+    }
+  }
+},2500);
+
+document.getElementById('bNet').onclick=function(){ netOpenMain(); };
+if(document.getElementById('bOnline')) document.getElementById('bOnline').onclick=function(){ netOpenMain(); };
+document.getElementById('bHost').onclick=function(){ hostRoom(); };
+document.getElementById('bJoin').onclick=function(){ joinRoom(document.getElementById('netCode').value); };
+document.getElementById('netBack').onclick=function(){ netLeave(); };
+document.getElementById('nlCancel').onclick=function(){
+  if(NET.started){ location.reload(); return; }
+  netLeave();
+};
+document.getElementById('nlGo').onclick=function(){ if(NET.mode===1) netHostStart(); };
+document.getElementById('netCode').onkeydown=function(e){ if(e.key==='Enter'){ try{ document.getElementById('bJoin').click(); }catch(err){} } };
+document.getElementById('netName').onkeydown=function(e){ if(e.key==='Enter'){ try{ document.getElementById('bHost').click(); }catch(err){} } };
+
+/* =======================================================================
+   13. NEWSROOM
+   The daily paper: what is happening on the map, told like a 1939 edition.
+   The host is the only one who writes dispatches; guests read S.news via
+   the broadcast state, so the whole room shares the same front page.
+   ======================================================================= */
+var NEWS_SEEN_DAY=-1;
+var SHOWCASE={heavy:1, rocket:1, hnky:1};
+var N_MONTH=['January','February','March','April','May','June','July','August','September','October','November','December'];
+var NEWS_INTERVAL=10;
+function dayFull(d){
+  var dt=new Date(1939,8,1+d);
+  return N_MONTH[dt.getMonth()]+' the '+dt.getDate();
+}
+function dayMeta(d){
+  var dt=new Date(1939,8,1+d);
+  return N_MONTH[dt.getMonth()]+' the '+dt.getDate()+', '+dt.getFullYear();
+}
+function Nname(id){
+  if(id==='ussr') return 'the Soviet Union';
+  if(id==='uk') return 'the United Kingdom';
+  return NBY[id]?NBY[id].name:id;
+}
+function newsCanvas(){ return !(NET && NET.mode===2); }
+function pick(a){ return a[(Math.random()*a.length)|0]; }
+function news(h,b,cap){
+  if(!newsCanvas()) return;
+  if(S.day < (S.nextDispatchDay||0)) return;
+  S.nextDispatchDay=S.day+NEWS_INTERVAL;
+  S.news.length=0;
+  S.news.push({d:S.day, h:h, b:b, cap:!!cap});
+}
+function unitFancy(nid,type){
+  var a=arsenal(nid,'army')||[], b=arsenal(nid,'air')||[], e=null,i;
+  for(i=0;i<a.length;i++) if(a[i].type===type) e=a[i];
+  if(!e) for(i=0;i<b.length;i++) if(b[i].type===type) e=b[i];
+  return e? e.name : UNITS[type].name;
+}
+/* how newsworthy a machine is - the heaviest thing on the field leads the story */
+var RENOWN={'hnky':6,'heavy':6,'rocket':5,'bomber':5,'dive':4,'tank':4,'fighter':3,'artillery':3,'assault':3,
+            'antitank':2,'flak':2,'engineer':2,'motor':2,'infantry':1,'mine':0};
+function unitLead(prov,taker){
+  var best=null,bs=0;
+  unitsAt(prov).forEach(function(u){
+    if(u.owner!==taker) return;
+    var r=RENOWN[u.type]||1;
+    if(r>bs){ bs=r; best=u; }
+  });
+  return best;
+}
+/* each day, every capture on the map is bundled per conqueror into one story */
+function newsCaptures(evs){
+  if(!newsCanvas()) return;
+  var groups={},i;
+  for(i=0;i<evs.length;i++){ (groups[evs[i].taker]=groups[evs[i].taker]||[]).push(evs[i]); }
+  for(var tk in groups){
+    var g=groups[tk];
+    var tn=Nname(tk);
+    var names=g.map(function(e){ return Nname(e.prov); });
+    var list=names.length===1? names[0] : names.slice(0,-1).join(', ')+' and '+names[names.length-1];
+    var first=g[0];
+    var lead=unitLead(first.prov, tk);
+    var ln=lead? unitFancy(tk, lead.type) : null;
+    var isCap=names.length===1 && first.prov===first.old;   /* the enemy's own homeland has fallen */
+    var headline= isCap
+      ? pick([tn+' storms '+Nname(first.old)+' itself',
+              'The heart of '+Nname(first.old)+' has fallen to '+tn,
+              tn+' raises its colours over '+Nname(first.old)])
+      : pick([tn+' recently occupied '+list,
+              tn+' captures '+list,
+              tn+' sweeps into '+list,
+              tn+' seizes '+list]);
+    var verb=pick(['occupied','overran','swept across','seized']);
+    var body='On '+dayFull(first.d)+', the army of <b>'+tn+'</b> '+verb+' <b>'+list+'</b>. ';
+    if(ln){
+      var t=UNITS[lead.type];
+      if(t.air) body+='Squadrons of the <b>'+ln+'</b> burned the roads ahead of the columns. ';
+      else if(t.atk>=20) body+='The assault was led by the <b>'+ln+'</b>; nothing in the garrison was heavy enough to stop it. ';
+      else if(t.def>=1.7) body+='Under the covering fire of the <b>'+ln+'</b>, the infantry moved up at first light. ';
+      else if(t.mines) body+='Sappers with the <b>'+ln+'</b> had seeded the approaches the night before. ';
+      else body+='The streets fell block by block, <b>'+ln+'</b> at the head of the line. ';
+    } else {
+      body+='Infantry poured over the border at first light, and the defenders gave way by noon. ';
+    }
+    body+= isCap
+      ? pick(['The flag of '+Nname(first.old)+' came down over its capital for the last time.',
+              'The garrison surrendered as the grey columns reached the government quarter; for the people of '+Nname(first.old)+', the war has come home.',
+              'Refugees streamed out of '+names[0]+' through the night - a nation with no army left and nowhere safe to wait.'])
+      : pick(['Refugee columns choked the roads out of '+names[0]+' until after dark.',
+              'Local radios fell silent the moment the first shells landed.',
+              'The frontier posts changed hands before the church bells finished ringing.',
+              'Maps in the foreign offices were redrawn with a straight line and a sigh.']);
+    news(headline, body, isCap);
+  }
+}
+function newsUnveil(nid,type,loc){
+  if(!newsCanvas()) return;
+  var tn=Nname(nid);
+  var ln=unitFancy(nid,type);
+  var t=UNITS[type];
+  var detail=t.air
+    ? pick(['Design bureaux across the continent have been told to answer it before the snow clears.',
+            'The airfields that can fly it count their mechanics carefully; there will be no spares.'])
+    : pick(['Engineers who worked on it say it is the heaviest thing ever put on tracks.',
+            'The proving grounds have been closed - the shots disturbed the border towns for a week.',
+            'Crews at the front already call it the end of the argument.']);
+  news(tn+' unveils the '+ln,
+    'On '+dayFull(S.day)+', '+tn+' paraded a new weapon for the armies at the front: the '+
+    t.name.toLowerCase()+' <b>'+ln+'</b>, shipped to '+Nname(loc)+'. '+detail, true);
+}
+function newsCollapse(nid){
+  if(!newsCanvas()) return;
+  news(Nname(nid)+' army collapses',
+    'On '+dayFull(S.day)+', the treasury of '+Nname(nid)+' closed its doors. With no gold to pay the troops, '+
+    'whole formations were stood down and sold for scrap - a front that once held the line now holds only arrears.', true);
+}
+function newsElim(){
+  if(!newsCanvas()) return;
+  ALL.forEach(function(n){
+    if(n.id==='iceland') return;
+    if(S.elimSet.has(n.id)) return;
+    if(landOf(n.id)===0 && unitsOf(n.id).length===0){
+      S.elimSet.add(n.id);
+      news(Nname(n.id)+' is wiped from the map',
+        'On '+dayFull(S.day)+', the last '+Nname(n.id)+' flag was lowered. After '+S.day+' days of war, '+
+        'the nation is a casualty list and a rumour - no army, no territory, no government left to receive the surrender. '+
+        'The continent fights on over the ruins.', true);
+    }
+  });
+}
+function paintNews(){
+  var el=document.getElementById('newsPanel');
+  if(!el) return;
+  var nw=S.news||[];
+  if(!nw.length){ el.innerHTML='<div class="sub">No dispatches yet &mdash; the typographers are waiting for news from the front.</div>'; return; }
+  var it=nw[nw.length-1];
+  el.innerHTML='<div class="sNewsH">'+it.h+'</div>'+
+    '<div class="sNewsM">'+dayMeta(it.d)+' &middot; '+(it.cap?'special dispatch':'front-line report')+'</div>'+
+    '<div class="sNewsB">'+it.b+'</div>';
+}
+function updateNewsBadge(){
+  var nb=document.getElementById('nbNews');
+  if(!nb) return;
+  var latest=(S.news&&S.news.length)? S.news[0].d : -1;
+  var un=(latest>NEWS_SEEN_DAY)?1:0;
+  nb.style.display=un?'inline-flex':'none';
+  nb.textContent=un;
+}
+
+/* =======================================================================
+   14. DIPLOMATIC MAIL
+   Nations write to one another. Letters arrive from the AI, each offering
+   between two and four replies; you may also post notes of your own under
+   five subjects. The pouch pauses the war while it is open. Host-authoritative:
+   mail, mood and pacts live in S and travel with the broadcast state; guests
+   post their replies and notes back to the host as commands.
+   ======================================================================= */
+var MAIL_SUBJ=null, MAIL_FOCUS=null, MAIL_PREV=0;
+
+/* opening a letter or the compose form pauses the war until it is closed */
+function setMailFocus(v){
+  var was=(MAIL_FOCUS!==null);
+  MAIL_FOCUS=v;
+  var now=(MAIL_FOCUS!==null);
+  if(now && !was){ MAIL_PREV=spd; setSpeed(0); }
+  else if(!now && was){ if(MAIL_PREV>0) setSpeed(MAIL_PREV); }
+}
+function openMail(id){
+  var me=S.player;
+  (S.mail||[]).forEach(function(m){ if(m.id===id && m.to===me) m.read=true; });
+  setMailFocus(id);
+  render();
+}
+function toggleCompose(){
+  if(MAIL_FOCUS==='compose') setMailFocus('modal'); else setMailFocus('compose');
+  render();
+}
+function humanNations(){
+  if(NET && NET.mode===1){ var a=Object.keys(NET.seats||{}); if(a.length) return a; }
+  return [S.player];
+}
+function moodTone(nid){
+  var m=S.mood[nid]||0;
+  if(m>=3) return 'friendly';
+  if(m<=-3) return 'hostile';
+  return 'neutral';
+}
+
+var COMPOSE_SUBJECTS=[
+  {id:'alliance', label:'Offer an alliance', dMood:2, pact:true,
+   body:'I write to propose a pact of friendship between our two peoples. The map is full of knives, and two quiet borders are worth ten garrisons.'},
+  {id:'trade', label:'Propose a trade agreement', dMood:1,
+   body:'Gold, timber, steel - no nation has everything. I propose our merchants move freely and both treasuries breathe a little easier.'},
+  {id:'praise', label:'Send congratulations', dMood:2,
+   body:'Your soldiers are the talk of every chancellery in Europe. I write to salute a nation that has earned its place on the map.'},
+  {id:'warning', label:'Issue a warning', dMood:-1,
+   body:'Consider this a courtesy. Keep your armies away from my frontier, and there will be no unpleasantness between us.'},
+  {id:'ultimatum', label:'Issue an ultimatum', dMood:-3, war:true,
+   body:'Comply, or be crushed. My patience ends at the border, and you have until the next sunrise to decide.'}
+];
+
+var MAIL_KINDS={
+  alliance:{
+    sub:['A pact of friendship','An offer of alliance','Hands across the border'],
+    body:function(fn,tn){ return pick([
+      'The court of '+fn+' writes to '+tn+' with a simple offer: let our borders be quiet. Sign, and neither army need guard the other again.',
+      fn+' proposes a pact. "The map is full of knives," the letter reads. "Two friendly borders are worth ten garrisons."',
+      'A sealed letter from '+fn+' proposes an alliance against the storms to come.'
+    ]); },
+    replies:function(){ return [
+      {t:'Accept the alliance', m:3, p:1},
+      {t:'Accept, but coldly', m:1, p:1},
+      {t:'Decline politely', m:-1},
+      {t:'Refuse with contempt', m:-3}
+    ]; }
+  },
+  warning:{
+    sub:['A word of warning','A matter of borders','Eyes on the frontier'],
+    body:function(fn,tn){ return pick([
+      fn+' has noticed the build-up. "Move your soldiers from our frontier," the letter warns, "or we shall take it as a declaration."',
+      'A courier from '+fn+' arrives with a single sentence: "Our guns are loaded, '+tn+'. Do not make us point them."',
+      fn+' warns that foreign officers have been seen too close to its borders - and names no names.'
+    ]); },
+    replies:function(){ return [
+      {t:'Reassure them', m:1},
+      {t:'Thank them coldly', m:0},
+      {t:'Dismiss the warning', m:-2}
+    ]; }
+  },
+  threat:{
+    sub:['An ultimatum','A threat from the chancellery','Your doom approaches'],
+    body:function(fn,tn){ return pick([
+      'The letter from '+fn+' is short and ugly: "Surrender your pretensions, or we will bury them."',
+      fn+' declares that '+tn+' has made an enemy it cannot afford. "The next courier brings artillery."',
+      'A black-bordered note from '+fn+' lists the towns it will burn first.'
+    ]); },
+    replies:function(){ return [
+      {t:'Defy them', m:-2},
+      {t:'Answer with force', m:-4, w:1},
+      {t:'Offer to talk', m:1},
+      {t:'Ignore them', m:-1}
+    ]; }
+  },
+  peace:{
+    sub:['Terms of peace','An end to the fighting','A way out of the war'],
+    body:function(fn,tn){ return pick([
+      'Weary of the fighting, '+fn+' offers terms: "Let the guns rest. Our people have bled enough."',
+      fn+' sends a white flag by courier and one request - an armistice, before another winter at war.',
+      'The generals of '+fn+' are ready to talk. The letter asks '+tn+' to name its price for peace.'
+    ]); },
+    replies:function(){ return [
+      {t:'Accept the peace', m:3, p:1, peace:1},
+      {t:'Demand more', m:-1},
+      {t:'Refuse - press on', m:-2, w:1}
+    ]; }
+  },
+  praise:{
+    sub:['Congratulations','A toast from the capital','In admiration'],
+    body:function(fn,tn){ return pick([
+      'The salons of '+fn+' raise a glass to '+tn+'. "The whole continent watches your soldiers with admiration."',
+      fn+' writes to offer congratulations on the campaign - and, perhaps, to be remembered as a friend.',
+      'A letter of praise arrives from '+fn+', full of flattery and careful good wishes.'
+    ]); },
+    replies:function(){ return [
+      {t:'Return the compliment', m:2},
+      {t:'Accept graciously', m:1},
+      {t:'Stay silent', m:0}
+    ]; }
+  },
+  intel:{
+    sub:['A whisper from the border','Rumours from the east','What the courier heard'],
+    body:function(fn,tn){ return pick([
+      fn+' passes along a rumour: another court is arming, and its eyes are not on its own borders.',
+      'A wine-stained note from '+fn+' claims to know where the next war will begin - and it is not between you.',
+      'The intelligence service of '+fn+' shares what it has heard: troop trains, night movements, sealed orders.'
+    ]); },
+    replies:function(){ return [
+      {t:'Thank them', m:1},
+      {t:'Ignore it', m:0}
+    ]; }
+  },
+  trade:{
+    sub:['A proposal of trade','Gold for steel','Merchants at the frontier'],
+    body:function(fn,tn){ return pick([
+      fn+' proposes a trade agreement: "Gold, timber, steel - no nation has everything. Let our merchants move freely."',
+      'A merchant house writes on behalf of '+fn+', offering favourable rates on goods both armies will need.',
+      'The treasury of '+fn+' wishes to open its markets to '+tn+'.'
+    ]); },
+    replies:function(){ return [
+      {t:'Agree to trade', m:2},
+      {t:'Consider it', m:1},
+      {t:'Refuse', m:-1}
+    ]; }
+  }
+};
+
+function addMail(from,to,sub,body,replies){
+  var m={id:++S.mailSeq, from:from, to:to, sub:sub, body:body, replies:replies||[], day:S.day, read:false, answered:null};
+  S.mail.push(m);
+  if(S.mail.length>60) S.mail.shift();
+  return m;
+}
+function buildMail(from,to,kind){
+  var K=MAIL_KINDS[kind]; if(!K) return;
+  addMail(from,to,pick(K.sub),K.body(Nname(from),Nname(to)),K.replies());
+}
+function simpleReplies(friendly){
+  if(friendly) return [
+    {t:'Continue the friendship', m:2, p:1},
+    {t:'Accept their warmth', m:1}
+  ];
+  return [
+    {t:'Offer peace', m:1, p:1},
+    {t:'Leave it', m:-1},
+    {t:'Threaten back', m:-2}
+  ];
+}
+function respondMail(from,to){
+  var tone=moodTone(from), sub, body;
+  if(tone==='friendly'){
+    sub=pick(['A warm reply','In friendship','Glad tidings']);
+    body=Nname(from)+' is pleased. "Then it is settled between our peoples. May the frontier stay quiet."';
+  } else if(tone==='hostile'){
+    sub=pick(['A cold reply','Your enemy answers','No quarter']);
+    body=Nname(from)+' is not appeased. "Remember these words when the guns turn your way."';
+  } else {
+    sub=pick(['A measured reply','The chancellery replies','Your note, received']);
+    body=Nname(from)+' gives nothing away. "Your note has been received and weighed. Time will tell."';
+  }
+  addMail(from,to,sub,body,simpleReplies(tone==='friendly'));
+}
+
+function sendMailFor(actor,to,subId){
+  var cs=null,i;
+  for(i=0;i<COMPOSE_SUBJECTS.length;i++) if(COMPOSE_SUBJECTS[i].id===subId) cs=COMPOSE_SUBJECTS[i];
+  if(!cs || !NBY[to] || to===actor) return;
+  S.mood[to]=(S.mood[to]||0)+(cs.dMood||0);
+  if(cs.pact) S.pact.add(warKey(actor,to));
+  if(cs.war) declareWar(actor,to);
+  addMail(actor,to,cs.label,cs.body,[]);
+  respondMail(to,actor);
+}
+function applyReplyFor(actor,id,ri){
+  var m=null,i;
+  for(i=0;i<S.mail.length;i++) if(S.mail[i].id===id) m=S.mail[i];
+  if(!m || m.to!==actor || !m.replies || !m.replies[ri]) return;
+  var r=m.replies[ri];
+  m.answered=r.t; m.read=true;
+  var from=m.from;
+  S.mood[from]=(S.mood[from]||0)+(r.m||0);
+  if(r.p) S.pact.add(warKey(from,actor));
+  if(r.peace){ S.pact.add(warKey(from,actor)); S.wars.delete(warKey(from,actor)); }
+  if(r.w) declareWar(from,actor);
+  respondMail(from,actor);
+}
+function aiMail(){
+  if(!newsCanvas()) return;
+  if(S.day < (S.nextMailDay||0)) return;
+  S.nextMailDay=S.day + 6 + (Math.random()*7|0);
+  var humans=humanNations();
+  if(!humans.length) return;
+  var to=pick(humans);
+  var cand=NATIONS.filter(function(n){
+    return n.id!==to && n.id!=='iceland' && (landOf(n.id)>0 || unitsOf(n.id).length>0);
+  });
+  if(!cand.length) return;
+  var from=pick(cand).id;
+  var m=S.mood[from]||0, war=atWar(from,to), pool;
+  if(war && m<0) pool=['threat','peace','threat'];
+  else if(war) pool=['peace','threat','intel'];
+  else if(m>=2) pool=['alliance','praise','alliance'];
+  else if(m<=-2) pool=['warning','threat'];
+  else pool=['alliance','warning','intel','praise','trade'];
+  buildMail(from,to,pick(pool));
+}
+function mailWarEvent(nu,old){
+  if(!newsCanvas()) return;
+  var humans=humanNations();
+  if(humans.indexOf(nu)>=0 && NBY[old] && (landOf(old)>0 || unitsOf(old).length>0)){
+    if(Math.random()<0.5) buildMail(old,nu,pick(['threat','peace']));
+  } else if(humans.indexOf(old)>=0 && NBY[nu]){
+    if(Math.random()<0.5) buildMail(nu,old,pick(['threat','praise']));
+  }
+}
+
+/* ---------- mail UI (modal + sidebar summary) ---------- */
+function paintMail(){
+  var el=document.getElementById('mmList');
+  if(!el) return;
+  var me=S.player, ms=(S.mail||[]).filter(function(m){ return m.to===me || m.from===me; }).slice().reverse();
+  var h='';
+  if(!ms.length){
+    h='<div class="sub">The pigeon loft is quiet. You may have to wait a while for a reply.</div>';
+  } else {
+    ms.forEach(function(m){
+      var mine=(m.from===me);
+      var who=mine ? 'You \u2192 '+Nname(m.to) : (NBY[m.from]? NBY[m.from].flag+' '+Nname(m.from) : Nname(m.from));
+      if(MAIL_FOCUS!==m.id){
+        h+='<div class="mRow" data-mid="'+m.id+'">'+
+           '<b>'+who+'</b>'+
+           '<span class="mSubjC">'+m.sub+'</span>'+
+           '<span class="mRowDay">D'+m.day+'</span>'+
+           ((!mine && !m.read)? '<span class="mDot"></span>' : '')+
+           '</div>';
+      } else {
+        h+='<div class="mMail'+(mine?' mine':'')+'">'+
+           '<div class="mHead" data-mid="'+m.id+'"><b>'+who+'</b><span class="mDay">'+dayMeta(m.day)+'</span><span class="mClose">&#9650; close</span></div>'+
+           '<div class="mSubj">'+m.sub+'</div>'+
+           '<div class="mBody">'+m.body+'</div>';
+        if(m.answered){ h+='<div class="mAns">You replied: '+m.answered+'</div>'; }
+        else if(!mine && m.replies && m.replies.length){
+          h+='<div class="mReplies">';
+          m.replies.forEach(function(r,ri){ h+='<button class="rbtn" data-id="'+m.id+'" data-ri="'+ri+'">'+r.t+'</button>'; });
+          h+='</div>';
+        }
+        h+='</div>';
+      }
+    });
+  }
+  el.innerHTML=h;
+  Array.prototype.forEach.call(el.querySelectorAll('.mRow'),function(b){
+    b.onclick=function(){ openMail(+b.getAttribute('data-mid')); };
+  });
+  Array.prototype.forEach.call(el.querySelectorAll('.mHead'),function(b){
+    b.onclick=function(){ setMailFocus('modal'); render(); };
+  });
+  Array.prototype.forEach.call(el.querySelectorAll('.rbtn'),function(b){
+    b.onclick=function(){ doReply(+b.getAttribute('data-id'), +b.getAttribute('data-ri')); };
+  });
+  paintCompose();
+}
+function paintCompose(){
+  var box=document.getElementById('mmCompose');
+  var btn=document.getElementById('mmComposeBtn');
+  if(!box || !btn) return;
+  var open=(MAIL_FOCUS==='compose');
+  box.style.display=open?'block':'none';
+  btn.innerHTML=open? '&#10005; Cancel composing' : '&#9998; Compose a note';
+  if(!open){ MAIL_SUBJ=null; box.dataset.built=''; return; }
+  var sel=document.getElementById('mmTo');
+  if(sel && box.dataset.built!=='1'){
+    var me=S.player, cur=sel.value, h='<option value="">Choose a nation&hellip;</option>';
+    NATIONS.forEach(function(n){
+      if(n.id===me || n.id==='iceland') return;
+      if(landOf(n.id)===0 && unitsOf(n.id).length===0) return;
+      h+='<option value="'+n.id+'">'+n.flag+' '+n.name+'</option>';
+    });
+    sel.innerHTML=h; sel.value=cur;
+    box.dataset.built='1';
+  }
+  var chips=document.getElementById('mmSubj');
+  if(chips){
+    chips.innerHTML='';
+    COMPOSE_SUBJECTS.forEach(function(c){
+      var b=document.createElement('button');
+      b.className='chip'+(MAIL_SUBJ===c.id?' on':'');
+      b.textContent=c.label;
+      b.onclick=function(){ MAIL_SUBJ=c.id; paintCompose(); };
+      chips.appendChild(b);
+    });
+  }
+  var send=document.getElementById('mmSend');
+  if(send) send.disabled=!(sel.value && MAIL_SUBJ);
+}
+function paintMailSummary(){
+  var el=document.getElementById('mailSummary');
+  if(!el) return;
+  var me=S.player;
+  var mine=(S.mail||[]).filter(function(m){ return m.to===me; });
+  var un=mine.filter(function(m){ return !m.read; }).length;
+  var recent=(S.mail||[]).filter(function(m){ return m.to===me || m.from===me; }).slice(-3).reverse();
+  var h='';
+  if(un>0) h+='<div class="mUnreadLine">'+un+' unread letter'+(un>1?'s':'')+'</div>';
+  else h+='<div class="mUnreadLine">No unread letters</div>';
+  if(!recent.length){
+    h+='<div class="sub">The pigeon loft is quiet.</div>';
+  } else {
+    recent.forEach(function(m){
+      var mine2=(m.from===me);
+      h+='<div class="mSum">'+(mine2?'&#8599; ':'&#8600; ')+(mine2?Nname(m.to):Nname(m.from))+': '+m.sub+'</div>';
+    });
+  }
+  el.innerHTML=h;
+}
+function openMailModal(){
+  document.getElementById('mModal').style.display='flex';
+  setMailFocus('modal');
+  render();
+}
+function closeMailModal(){
+  setMailFocus(null);
+  document.getElementById('mModal').style.display='none';
+  render();
+}
+function openNewsModal(){
+  var el=document.getElementById('nModalBody');
+  var nw=S.news||[];
+  if(!nw.length){ el.innerHTML='<div class="sub">No dispatches yet &mdash; the typographers are waiting for news from the front.</div>'; }
+  else {
+    var it=nw[nw.length-1];
+    el.innerHTML='<div class="sNewsH">'+it.h+'</div>'+
+      '<div class="sNewsM">'+dayMeta(it.d)+' &middot; '+(it.cap?'special dispatch':'front-line report')+'</div>'+
+      '<div class="sNewsB">'+it.b+'</div>';
+  }
+  NEWS_SEEN_DAY=(S.news&&S.news.length)? S.news[0].d : S.day;
+  updateNewsBadge();
+  document.getElementById('nModal').style.display='flex';
+}
+function closeNewsModal(){ document.getElementById('nModal').style.display='none'; }
+function doReply(id,ri){
+  if(NET && NET.mode===2){ netPubRoom('cmd',JSON.stringify({p:NET.pid,k:'mail',id:id,ri:ri})); setMailFocus('modal'); return; }
+  applyReplyFor(S.player,id,ri);
+  if(NET && NET.mode===1) NET.dirty=true;
+  setMailFocus('modal');
+  render();
+}
+function doSend(){
+  var to=document.getElementById('mmTo').value;
+  if(!to || !MAIL_SUBJ) return;
+  if(NET && NET.mode===2){ netPubRoom('cmd',JSON.stringify({p:NET.pid,k:'mail',c:1,to:to,sub:MAIL_SUBJ})); }
+  else sendMailFor(S.player,to,MAIL_SUBJ);
+  if(NET && NET.mode===1) NET.dirty=true;
+  MAIL_SUBJ=null;
+  setMailFocus('modal');
+  render();
+}
+function updateMailBadge(){
+  var nb=document.getElementById('nbMail');
+  if(!nb) return;
+  var me=S.player, un=0;
+  (S.mail||[]).forEach(function(m){ if(m.to===me && !m.read) un++; });
+  nb.style.display=un?'inline-flex':'none';
+  nb.textContent=un;
+}
+document.getElementById('bNews').onclick=openNewsModal;
+document.getElementById('bMail').onclick=openMailModal;
+(function(){
+  document.getElementById('bOpenMail').onclick=openMailModal;
+  document.getElementById('nModalClose').onclick=closeNewsModal;
+  document.getElementById('mModalClose').onclick=closeMailModal;
+  document.getElementById('mmComposeBtn').onclick=toggleCompose;
+  document.getElementById('mmCancel').onclick=function(){ setMailFocus('modal'); render(); };
+  document.getElementById('mmTo').onchange=function(){ paintCompose(); };
+  document.getElementById('mmSend').onclick=doSend;
+})();
+</script>
+</body>
+</html>

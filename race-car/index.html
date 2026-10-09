@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Sun Circuit — 3D Race Car</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;font-family:"Segoe UI",system-ui,sans-serif}
+  html,body{width:100%;height:100%;overflow:hidden;background:#0b1020;color:#fff}
+  canvas{display:block}
+  .hidden{display:none!important}
+  #hud{position:fixed;top:0;left:0;right:0;padding:14px 20px;display:flex;gap:26px;align-items:flex-start;
+       text-shadow:0 2px 6px rgba(0,0,0,.85);pointer-events:none;user-select:none;z-index:5}
+  #speedBox b{display:block;font-size:38px;line-height:1}
+  #speedBox span{font-size:12px;letter-spacing:.22em;opacity:.85}
+  .stat b{display:block;font-size:22px;line-height:1.15}
+  .stat span{font-size:11px;letter-spacing:.18em;opacity:.8}
+  #standings{position:fixed;top:96px;right:20px;width:210px;font-size:13px;z-index:5;pointer-events:none;
+             text-shadow:0 2px 6px rgba(0,0,0,.85)}
+  #standings div{display:flex;align-items:center;gap:8px;padding:3px 8px;border-radius:6px;background:rgba(0,0,0,.32);margin-bottom:4px}
+  #standings i{width:10px;height:10px;border-radius:3px;display:inline-block;flex:0 0 auto}
+  #standings .me{background:rgba(255,255,255,.22);font-weight:700}
+  #banner{position:fixed;top:11%;left:0;right:0;text-align:center;font-size:86px;font-weight:800;z-index:6;
+          text-shadow:0 6px 26px rgba(0,0,0,.8);pointer-events:none}
+  .overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+           background:radial-gradient(ellipse at center,rgba(6,10,24,.55),rgba(3,6,14,.92));z-index:10;text-align:center;padding:20px}
+  h1{font-size:52px;letter-spacing:.06em;text-shadow:0 4px 24px rgba(0,0,0,.8)}
+  h2{font-size:26px;opacity:.9;font-weight:500}
+  button{pointer-events:auto;padding:14px 42px;font-size:19px;font-weight:700;letter-spacing:.14em;cursor:pointer;
+         border:0;border-radius:999px;color:#10131c;background:linear-gradient(#ffd75e,#ff9d2e);
+         box-shadow:0 8px 24px rgba(255,157,46,.35)}
+  button:hover{filter:brightness(1.08)}
+  table{border-collapse:collapse;font-size:15px;min-width:340px}
+  td,th{padding:6px 14px;text-align:left}
+  tr.me{background:rgba(255,255,255,.16)}
+  .keys{font-size:13px;opacity:.75;line-height:1.9;max-width:640px}
+  #err{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:40px;text-align:center;
+       background:#0b1020;font-size:18px;z-index:20}
+</style>
+</head>
+<body>
+<div id="hud" class="hidden">
+  <div id="speedBox"><b id="speed">0</b><span>KM/H</span></div>
+  <div class="stat"><b id="lap">1/2</b><span>LAP</span></div>
+  <div class="stat"><b id="pos">1/6</b><span>POSITION</span></div>
+  <div class="stat"><b id="time">0.00</b><span>RACE TIME</span></div>
+  <div class="stat"><b id="best">--.--</b><span>BEST LAP</span></div>
+</div>
+<div id="standings" class="hidden"></div>
+<div id="banner" class="hidden"></div>
+
+<div id="menu" class="overlay">
+  <h1>SUN CIRCUIT</h1>
+  <h2>Round 3 &nbsp;·&nbsp; 2 laps &nbsp;·&nbsp; 5 AI opponents</h2>
+  <button id="startBtn">START RACE</button>
+  <div class="keys">
+    <b>W</b>/<b>↑</b> throttle &nbsp;·&nbsp; <b>S</b>/<b>↓</b> brake &nbsp;·&nbsp;
+    <b>A</b><b>D</b>/<b>←</b><b>→</b> steer &nbsp;·&nbsp; <b>SPACE</b> handbrake<br>
+    <b>C</b> camera &nbsp;·&nbsp; <b>R</b> restart &nbsp;·&nbsp; <b>M</b> sound &nbsp;·&nbsp; <b>ESC</b> pause
+  </div>
+</div>
+
+<div id="pause" class="overlay hidden">
+  <h1>PAUSED</h1>
+  <button id="resumeBtn">RESUME</button>
+</div>
+
+<div id="results" class="overlay hidden">
+  <h1 id="resultTitle">FINISH</h1>
+  <table id="resultTable"></table>
+  <button id="againBtn">RACE AGAIN</button>
+</div>
+
+<div id="err"></div>
+
+<script src="./lib/three.min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var errBox = document.getElementById('err');
+  function fatal(msg) {
+    errBox.style.display = 'flex';
+    errBox.innerHTML = '<div><b>Cannot start</b><br><br>' + msg + '</div>';
+    throw new Error(msg);
+  }
+  if (typeof THREE === 'undefined') {
+    fatal('Three.js failed to load.<br>Expected file <code>./lib/three.min.js</code> next to this page.');
+  }
+
+  /* ------------------------------------------------------------------ *
+   *  Circuit definition                                                 *
+   *                                                                   *
+   *  The centreline is a closed Catmull-Rom spline through the control *
+   *  points below, resampled into a table that is UNIFORM IN ARC       *
+   *  LENGTH.  Everything downstream (lap counting, lane keeping,        *
+   *  scenery, start line) works off arc length `s` in [0, LEN) instead *
+   *  of an angle, so a winding circuit behaves exactly like the old    *
+   *  circle did but without any radial-distance assumptions.           *
+   * ------------------------------------------------------------------ */
+  var TAU = Math.PI * 2;
+  var HALF_W = 11;      // road half width (m)
+  var RAIL_LAT = HALF_W + 3.4;   // guardrail, at the outer edge of the kerb apron (m)
+  var TOTAL_LAPS = 2;
+  var CAR_R = 2.3;      // collision radius (m)
+
+  // Control points for the closed circuit, in metres. The loop starts at the
+  // start/finish line and runs counter-clockwise: a long main straight, then a
+  // slow left hairpin, esses through the infield, a long right-hander and a
+  // fast run back onto the straight. The straight at s=0 is what the grid uses,
+  // so the line deliberately sits on the fastest part of the lap.
+  var CTRL = [
+    [60, -208], [166, -231], [227, -210], [255, -70],
+    [225, 20], [150, 80], [70, 70], [15, 125],
+    [-75, 170], [-175, 155], [-250, 60], [-235, -40],
+    [-150, -95], [-122, -147], [-31, -181]
+  ];
+
+  var N = 1400, SUB = 48, NSEG = CTRL.length;
+  var CX = new Float64Array(N + 1), CZ = new Float64Array(N + 1);
+  var TX = new Float64Array(N + 1), TZ = new Float64Array(N + 1);
+  var KAPPA = new Float64Array(N + 1), HEAD = new Float64Array(N + 1);
+  var LEN = 0;
+
+  (function buildTrack() {
+    // 1. dense Catmull-Rom samples around the closed loop
+    var count = NSEG * SUB;
+    var px = new Float64Array(count + 1), pz = new Float64Array(count + 1);
+    var cum = new Float64Array(count + 1);
+    for (var i = 0; i < count; i++) {
+      var seg = (i / SUB) | 0, u = (i % SUB) / SUB;
+      var p0 = CTRL[(seg - 1 + NSEG) % NSEG], p1 = CTRL[seg];
+      var p2 = CTRL[(seg + 1) % NSEG], p3 = CTRL[(seg + 2) % NSEG];
+      var u2 = u * u, u3 = u2 * u;
+      px[i] = 0.5 * (2 * p1[0] + (-p0[0] + p2[0]) * u +
+        (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * u2 +
+        (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * u3);
+      pz[i] = 0.5 * (2 * p1[1] + (-p0[1] + p2[1]) * u +
+        (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * u2 +
+        (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * u3);
+    }
+    px[count] = px[0]; pz[count] = pz[0];
+    for (var j = 1; j <= count; j++)
+      cum[j] = cum[j - 1] + Math.hypot(px[j] - px[j - 1], pz[j] - pz[j - 1]);
+
+    // 2. resample uniformly by arc length
+    var total = cum[count];
+    LEN = total;
+    var j2 = 0;
+    for (var k = 0; k <= N; k++) {
+      var target = total * k / N;
+      while (j2 < count && cum[j2 + 1] < target) j2++;
+      var segLen = cum[j2 + 1] - cum[j2];
+      var f = segLen > 1e-9 ? (target - cum[j2]) / segLen : 0;
+      CX[k] = px[j2] + (px[j2 + 1] - px[j2]) * f;
+      CZ[k] = pz[j2] + (pz[j2 + 1] - pz[j2]) * f;
+    }
+    CX[N] = CX[0]; CZ[N] = CZ[0];
+
+    // 3. unit tangents by central difference (the table is arc-length uniform)
+    for (var m = 0; m <= N; m++) {
+      var a = (m - 1 + N) % N, b = (m + 1) % N;
+      var vx = CX[b] - CX[a], vz = CZ[b] - CZ[a];
+      var l = Math.hypot(vx, vz) || 1;
+      TX[m] = vx / l; TZ[m] = vz / l;
+      HEAD[m] = Math.atan2(TX[m], TZ[m]);
+    }
+    TX[N] = TX[0]; TZ[N] = TZ[0]; HEAD[N] = HEAD[0];
+
+    // 4. smoothed |curvature| so the AI can pick a corner speed
+    var ds = total / N, raw = new Float64Array(N + 1);
+    for (var n = 0; n <= N; n++) {
+      var a2 = (n - 6 + N) % N, b2 = (n + 6) % N;
+      var dH = HEAD[b2] - HEAD[a2];
+      while (dH > Math.PI) dH -= TAU;
+      while (dH < -Math.PI) dH += TAU;
+      raw[n] = Math.abs(dH) / (12 * ds);
+    }
+    var sm = new Float64Array(N + 1);
+    for (var n2 = 0; n2 <= N; n2++) {
+      var acc = 0;
+      for (var w = -6; w <= 6; w++) acc += raw[(n2 + w + N * 2) % N];
+      sm[n2] = acc / 13;
+    }
+    KAPPA.set(sm);
+    KAPPA[N] = sm[0];
+  })();
+
+  function wrapS(s) { s %= LEN; return s < 0 ? s + LEN : s; }
+  function fracAt(s) { var u = (s / LEN * N) % N; return u < 0 ? u + N : u; }
+  function lerpN(arr, u) {
+    var i0 = Math.floor(u), f = u - i0, i1 = (i0 + 1) % N;
+    return arr[i0] + (arr[i1] - arr[i0]) * f;
+  }
+  function centreAt(s) { var u = fracAt(s); return { x: lerpN(CX, u), z: lerpN(CZ, u) }; }
+  function tangentAt(s) {
+    var u = fracAt(s), x = lerpN(TX, u), z = lerpN(TZ, u);
+    var l = Math.hypot(x, z) || 1;
+    return { x: x / l, z: z / l };
+  }
+  // unit normal pointing to the RIGHT of travel (forward x up)
+  function normalAt(s) { var T = tangentAt(s); return { x: -T.z, z: T.x }; }
+  function yawAt(s) { var T = tangentAt(s); return Math.atan2(T.x, T.z); }
+  function kappaAt(s) { return lerpN(KAPPA, fracAt(s)); }
+  function offsetPos(s, lat) {
+    var C = centreAt(s), V = normalAt(s);
+    return { x: C.x + V.x * lat, z: C.z + V.z * lat };
+  }
+
+  // Nearest point on the centreline. `hint` is the previous sample index, which
+  // turns this into a cheap local search; pass -1 for a full scan.
+  // Returns arc length `s`, signed lateral offset (positive = right) and index.
+  function projectTrack(x, z, hint) {
+    var lo, span;
+    if (hint >= 0) { lo = hint - 70; span = 141; }
+    else { lo = 0; span = N; }
+    var best = 0, bestD = Infinity;
+    for (var k = 0; k < span; k++) {
+      var idx = ((lo + k) % N + N) % N;
+      var dx = x - CX[idx], dz = z - CZ[idx];
+      var d = dx * dx + dz * dz;
+      if (d < bestD) { bestD = d; best = idx; }
+    }
+    // Seed the lateral offset from the winning sample itself. Without this a car
+    // sitting beside a sample has both segments clamped to their endpoints, which
+    // are further away than the sample, so blat would stay 0 and the real offset
+    // would be lost.
+    var segLen = LEN / N, bs = best * segLen;
+    var b1 = (best + 1) % N;
+    var gx = CX[b1] - CX[best], gz = CZ[b1] - CZ[best];
+    var gl = Math.sqrt(gx * gx + gz * gz) || 1e-9;
+    var blat = (x - CX[best]) * (-gz / gl) + (z - CZ[best]) * (gx / gl);
+    // refine against the two segments touching the winning sample
+    for (var seg = -1; seg <= 0; seg++) {
+      var a = ((best + seg) % N + N) % N, b = (a + 1) % N;
+      var ex = CX[b] - CX[a], ez = CZ[b] - CZ[a];
+      var el = Math.sqrt(ex * ex + ez * ez) || 1e-9;
+      var u = ((x - CX[a]) * ex + (z - CZ[a]) * ez) / (el * el);
+      u = u < 0 ? 0 : u > 1 ? 1 : u;
+      var qx = CX[a] + ex * u, qz = CZ[a] + ez * u;
+      var d2 = (x - qx) * (x - qx) + (z - qz) * (z - qz);
+      if (d2 < bestD) {
+        bestD = d2;
+        bs = a * segLen + u * el;
+        blat = (x - qx) * (-ez / el) + (z - qz) * (ex / el);
+      }
+    }
+    return { i: best, s: wrapS(bs), lat: blat };
+  }
+
+  // is this point far enough from any part of the circuit to build scenery?
+  function clearOfTrack(x, z, clearance) {
+    return Math.abs(projectTrack(x, z, -1).lat) > clearance;
+  }
+
+  // Cars are modelled facing +Z, so a heading yaw means forward = (sin, cos).
+  function yawToForward(yaw) { return { x: Math.sin(yaw), z: Math.cos(yaw) }; }
+  // right of a forward vector
+  function rightOf(f) { return { x: -f.z, z: f.x }; }
+  function wrapPi(a) { return ((a + Math.PI * 3) % TAU) - Math.PI; }
+
+  /* ---------------------------------- renderer ---------------------- */
+  var canvas = document.createElement('canvas');
+  document.body.insertBefore(canvas, document.body.firstChild);
+
+  var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+  var scene = new THREE.Scene();
+  var SKY = 0x86c8f0;
+  scene.background = new THREE.Color(SKY);
+  scene.fog = new THREE.Fog(SKY, 320, 1250);
+
+  var camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.5, 4000);
+
+  /* ---------------------------------- sunlight ---------------------- */
+  var sunDir = new THREE.Vector3(0.42, 0.78, 0.46).normalize();
+  var sun = new THREE.DirectionalLight(0xfff3d0, 2.0);
+  sun.position.copy(sunDir).multiplyScalar(600);
+  scene.add(sun);
+  scene.add(new THREE.AmbientLight(0xbfd8ff, 0.55));
+
+  var sunBall = new THREE.Mesh(
+    new THREE.SphereGeometry(46, 24, 16),
+    new THREE.MeshBasicMaterial({ color: 0xfffbe8, fog: false })
+  );
+  sunBall.position.copy(sunDir).multiplyScalar(2400);
+  sunBall.renderOrder = -1;
+  scene.add(sunBall);
+
+  var glow = new THREE.Mesh(
+    new THREE.SphereGeometry(96, 24, 16),
+    new THREE.MeshBasicMaterial({ color: 0xfff2b0, transparent: true, opacity: 0.35, fog: false })
+  );
+  glow.position.copy(sunBall.position);
+  glow.renderOrder = -2;
+  scene.add(glow);
+
+  function cloud(x, y, z, s) {
+    var m = new THREE.Mesh(
+      new THREE.SphereGeometry(s, 12, 8),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 })
+    );
+    m.position.set(x, y, z);
+    m.scale.set(2.1, 0.62, 1.5);
+    scene.add(m);
+    return m;
+  }
+  for (var ci = 0; ci < 14; ci++) {
+    var ca = (ci / 14) * TAU;
+    var cr = 900 + (ci % 3) * 260;
+    cloud(Math.sin(ca) * cr, 260 + (ci % 4) * 55, -Math.cos(ca) * cr, 60 + (ci % 3) * 22);
+  }
+
+  /* ---------------------------------- geometry helpers -------------- */
+  // ribbon between two lateral offsets, over an arc-length range
+  function ribbon(latA, latB, y, color, s0, s1, steps) {
+    var pos = [], nor = [], col = [], idx = [];
+    for (var i = 0; i <= steps; i++) {
+      var s = s0 + (s1 - s0) * (i / steps);
+      var Pa = offsetPos(s, latA), Pb = offsetPos(s, latB);
+      pos.push(Pa.x, y, Pa.z, Pb.x, y, Pb.z);
+      nor.push(0, 1, 0, 0, 1, 0);
+      col.push(color[0], color[1], color[2], color[0], color[1], color[2]);
+      if (i < steps) { var a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+    }
+    var g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    g.setIndex(idx);
+    return new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true }));
+  }
+
+  // vertical barrier along an edge, alternating red / white panels
+  function wall(lat, h, y0, inward) {
+    var SEG = 300, pos = [], nor = [], col = [], idx = [];
+    for (var i = 0; i < SEG; i++) {
+      var s0 = i / SEG * LEN, s1 = (i + 1) / SEG * LEN;
+      var P0 = offsetPos(s0, lat), P1 = offsetPos(s1, lat);
+      var V = normalAt(s0);
+      var nx = V.x * inward, nz = V.z * inward;
+      var c = (i % 2) ? [0.93, 0.93, 0.93] : [0.82, 0.16, 0.18];
+      var b = pos.length / 3;
+      pos.push(P0.x, y0, P0.z);
+      pos.push(P1.x, y0, P1.z);
+      pos.push(P1.x, y0 + h, P1.z);
+      pos.push(P0.x, y0 + h, P0.z);
+      for (var v = 0; v < 4; v++) { nor.push(nx, 0, nz); col.push(c[0], c[1], c[2]); }
+      idx.push(b, b + 1, b + 2, b, b + 2, b + 3);
+    }
+    var g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    g.setIndex(idx);
+    return new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
+  }
+
+  // flat chequered band, straddling s = 0
+  function chequer(sa, sb, cols, rows) {
+    var pos = [], nor = [], col = [], idx = [];
+    for (var r = 0; r < rows; r++) {
+      for (var c = 0; c < cols; c++) {
+        var s0 = sa + (sb - sa) * r / rows, s1 = sa + (sb - sa) * (r + 1) / rows;
+        var l0 = -HALF_W + 2 * HALF_W * c / cols, l1 = -HALF_W + 2 * HALF_W * (c + 1) / cols;
+        var A = offsetPos(s0, l0), B = offsetPos(s1, l0), C = offsetPos(s1, l1), D = offsetPos(s0, l1);
+        var b = pos.length / 3;
+        pos.push(A.x, 0.035, A.z, B.x, 0.035, B.z, C.x, 0.035, C.z, D.x, 0.035, D.z);
+        var v = ((r + c) % 2) ? 0.96 : 0.05;
+        for (var k = 0; k < 4; k++) { nor.push(0, 1, 0); col.push(v, v, v); }
+        idx.push(b, b + 1, b + 2, b, b + 2, b + 3);
+      }
+    }
+    var g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    g.setIndex(idx);
+    return new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true }));
+  }
+
+  // canvas-backed sign board, used for the START / FINISH gantry
+  function signTexture(text, bg, fg) {
+    var cv = document.createElement('canvas');
+    cv.width = 1024; cv.height = 256;
+    var ctx = cv.getContext('2d');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, cv.width, cv.height);
+    // chequered trim so the sign reads as motorsport even at a distance
+    var sq = 32;
+    for (var i = 0; i < cv.width / sq; i++) {
+      ctx.fillStyle = i % 2 ? '#f2f2f2' : '#16181d';
+      ctx.fillRect(i * sq, 0, sq, sq);
+      ctx.fillRect(i * sq, cv.height - sq, sq, sq);
+    }
+    ctx.fillStyle = fg;
+    ctx.font = 'bold 96px "Segoe UI",system-ui,sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, cv.width / 2, cv.height / 2 + 4);
+    var tex = new THREE.CanvasTexture(cv);
+    tex.anisotropy = 4;
+    return tex;
+  }
+
+  /* ---------------------------------- the circuit ------------------- */
+  var world = new THREE.Group();
+  scene.add(world);
+
+  var grass = new THREE.Mesh(
+    new THREE.CircleGeometry(1500, 72),
+    new THREE.MeshLambertMaterial({ color: 0x4f8f3a })
+  );
+  grass.rotation.x = -Math.PI / 2;
+  grass.position.y = -0.06;
+  world.add(grass);
+
+  world.add(ribbon(-HALF_W, HALF_W, 0.0, [0.20, 0.20, 0.215], 0, LEN, 900));           // asphalt
+  world.add(ribbon(-HALF_W - 3.2, -HALF_W, 0.01, [0.72, 0.70, 0.66], 0, LEN, 900));    // kerb aprons
+  world.add(ribbon(HALF_W, HALF_W + 3.2, 0.01, [0.72, 0.70, 0.66], 0, LEN, 900));
+  world.add(ribbon(-HALF_W + 0.35, -HALF_W + 0.75, 0.02, [0.95, 0.95, 0.95], 0, LEN, 900));
+  world.add(ribbon(HALF_W - 0.75, HALF_W - 0.35, 0.02, [0.95, 0.95, 0.95], 0, LEN, 900));
+  var DASH = 10, ON = 5;
+  for (var d = 0; d * (ON + DASH) < LEN; d++) {                     // dashed centre line
+    var ds = d * (ON + DASH);
+    world.add(ribbon(-0.22, 0.22, 0.02, [0.92, 0.90, 0.55], ds, Math.min(ds + ON, LEN), 3));
+  }
+
+  // The guardrail is solid: `RAIL_LAT` is the barrier's lateral offset, and the
+  // car is held just inside it by `stepCar`, so these meshes are what you hit.
+  world.add(wall(-RAIL_LAT, 1.15, 0, 1));
+  world.add(wall(RAIL_LAT, 1.15, 0, -1));
+  world.add(wall(-RAIL_LAT, 0.16, 1.15, 1));   // top rail
+  world.add(wall(RAIL_LAT, 0.16, 1.15, -1));
+  world.add(wall(-RAIL_LAT, 0.5, 1.31, 1));    // catch fence
+  world.add(wall(RAIL_LAT, 0.5, 1.31, -1));
+
+  /* ---------------------------------- solids ------------------------ *
+   *  Trackside obstacles. These are solid, so the car bounces off the scenery
+   *  instead of driving through it. Each one is an oriented rectangle: `hw`/`hd`
+   *  are the half extents along its local X/Z axes, and `yaw` is its rotation
+   *  about Y, which maps local +Z onto (sin, cos). This lives above the gantry
+   *  because the gantry registers a solid too.                                 */
+  var solids = [];
+  function addSolid(x, z, hw, hd, yaw) { solids.push({ x: x, z: z, hw: hw, hd: hd, yaw: yaw || 0 }); }
+
+  // true when every sample of a footprint stays clear of the racing surface
+  function footprintClear(x, z, yaw, hw, hd, clearance) {
+    var cy = Math.cos(yaw), sy = Math.sin(yaw);
+    var pts = [[0, 0], [hw, 0], [-hw, 0], [0, hd], [0, -hd]];
+    for (var i = 0; i < pts.length; i++) {
+      var wx = x + pts[i][0] * cy + pts[i][1] * sy;
+      var wz = z - pts[i][0] * sy + pts[i][1] * cy;
+      if (!clearOfTrack(wx, wz, clearance)) return false;
+    }
+    return true;
+  }
+
+  /* ---- start / finish: chequered band, timing line, gantry, flags ---- */
+  world.add(chequer(-2.6, 6.6, 14, 2));
+  world.add(ribbon(-HALF_W, HALF_W, 0.05, [1, 1, 1], -0.45, 0.45, 3));   // solid timing line
+
+  (function gantry() {
+    var g0 = yawAt(0);
+    var steel = new THREE.MeshLambertMaterial({ color: 0x9aa2ad });
+    [-1, 1].forEach(function (side) {
+      // legs stand just outside the guardrail, as they do on a real circuit
+      var p = offsetPos(0, side * (RAIL_LAT + 1.4));
+      var leg = new THREE.Mesh(new THREE.BoxGeometry(1.2, 10, 1.2), steel);
+      leg.position.set(p.x, 5, p.z);
+      leg.rotation.y = g0;
+      world.add(leg);
+      addSolid(p.x, p.z, 0.9, 0.9, 0);
+    });
+    var mid = offsetPos(0, 0);
+    var beam = new THREE.Mesh(new THREE.BoxGeometry((RAIL_LAT + 2.6) * 2, 1.6, 1.3), steel);
+    beam.position.set(mid.x, 10.4, mid.z);
+    beam.rotation.y = g0;
+    world.add(beam);
+
+    // board looks back down the track at the oncoming cars
+    var face = offsetPos(-0.9, 0);
+    var board = new THREE.Mesh(
+      new THREE.PlaneGeometry(17, 4.3),
+      new THREE.MeshBasicMaterial({ map: signTexture('START / FINISH', '#141a24', '#ffd75e'), side: THREE.DoubleSide })
+    );
+    board.position.set(face.x, 7.6, face.z);
+    board.rotation.y = g0 + Math.PI;
+    world.add(board);
+
+    // chequered flags flanking the line, readable from a long way off. They are
+    // mounted on the far side of the guardrail so they never stand in the racing
+    // line, which also means they never need to be solid.
+    var flagTex = signTexture('', '#f2f2f2', '#16181d');
+    [-1, 1].forEach(function (side) {
+      var fp = offsetPos(2, side * (RAIL_LAT + 1.4));
+      var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 7, 8), steel);
+      pole.position.set(fp.x, 3.5, fp.z);
+      world.add(pole);
+      var flag = new THREE.Mesh(
+        new THREE.PlaneGeometry(2.6, 1.6),
+        new THREE.MeshBasicMaterial({ map: flagTex, side: THREE.DoubleSide })
+      );
+      flag.position.set(fp.x, 6.4, fp.z);
+      flag.rotation.y = g0 + Math.PI;
+      world.add(flag);
+    });
+  })();
+
+// (start / finish markings are built with the spline-aware helpers above)
+
+  // (gantry is built with the spline-aware helpers above)
+
+  // scenery: trees and grandstands outside the railings
+  var trunkMat = new THREE.MeshLambertMaterial({ color: 0x6b4a2a });
+  var leafMats = [0x2f6b34, 0x3d8040, 0x275c30].map(function (c) { return new THREE.MeshLambertMaterial({ color: c }); });
+  for (var ti = 0; ti < 240; ti++) {
+    var ts = (ti / 240) * LEN;
+    var tside = (ti % 2) ? 1 : -1;
+    var tp = offsetPos(ts, tside * (HALF_W + 13 + (ti % 7) * 6));
+    if (!clearOfTrack(tp.x, tp.z, HALF_W + 9)) continue;
+    var sc = 3.2 + (ti % 4) * 0.7;
+    var trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.32 * sc, 0.42 * sc, 2.6 * sc, 6), trunkMat);
+    trunk.position.set(tp.x, 1.3 * sc, tp.z);
+    world.add(trunk);
+    var leaf = new THREE.Mesh(new THREE.ConeGeometry(1.9 * sc, 5.4 * sc, 8), leafMats[ti % 3]);
+    leaf.position.set(tp.x, 5.2 * sc, tp.z);
+    world.add(leaf);
+    addSolid(tp.x, tp.z, 0.8 * sc, 0.8 * sc, 0);        // trunk, kept clear of the road
+  }
+  // Grandstands run ALONG the track (60 m of seating, 24 m deep) so they sit
+  // beside the circuit instead of jutting across it, and each one is solid.
+  [0.05, 0.19, 0.34, 0.47, 0.63, 0.78, 0.91].forEach(function (f, si) {
+    var gs = f * LEN;
+    var sy = yawAt(gs);
+    var SW = 12, SD = 30;                            // half width / half depth
+    [-1, 1].forEach(function (side) {
+      var sp = offsetPos(gs, side * (HALF_W + 19));
+      if (!footprintClear(sp.x, sp.z, sy, SW, SD, 17)) return;
+      var stand = new THREE.Mesh(new THREE.BoxGeometry(SW * 2, 13, SD * 2),
+        new THREE.MeshLambertMaterial({ color: si % 2 ? 0x8d9299 : 0x7d838b }));
+      stand.position.set(sp.x, 6.5, sp.z);
+      stand.rotation.y = sy;
+      world.add(stand);
+      var roof = new THREE.Mesh(new THREE.BoxGeometry(SW * 2 + 2, 0.8, SD * 2 + 2),
+        new THREE.MeshLambertMaterial({ color: 0x4a5158 }));
+      roof.position.set(sp.x, 13.4, sp.z);
+      roof.rotation.y = sy;
+      world.add(roof);
+      addSolid(sp.x, sp.z, SW, SD, sy);
+    });
+  });
+
+  /* ---------------------------------- cars -------------------------- */
+  function buildCar(color, accent) {
+    var g = new THREE.Group();
+    var paint = new THREE.MeshLambertMaterial({ color: color });
+    var dark = new THREE.MeshLambertMaterial({ color: 0x16181d });
+    var glass = new THREE.MeshLambertMaterial({ color: 0x2b3a4a });
+    var trim = new THREE.MeshLambertMaterial({ color: accent });
+
+    var chassis = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.42, 4.3), paint);
+    chassis.position.y = 0.62; g.add(chassis);
+    var nose = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.3, 1.0), paint);
+    nose.position.set(0, 0.5, 2.35); g.add(nose);
+    var cabin = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.44, 1.7), glass);
+    cabin.position.set(0, 1.05, -0.15); g.add(cabin);
+    var fin = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.5, 0.22), trim);
+    fin.position.set(0, 1.25, -1.95); g.add(fin);
+    var splitter = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.12, 0.5), dark);
+    splitter.position.set(0, 0.36, 2.6); g.add(splitter);
+    var wg = new THREE.CylinderGeometry(0.42, 0.42, 0.32, 14);
+    var wm = new THREE.MeshLambertMaterial({ color: 0x121316 });
+    [[-1.02, 1.55], [1.02, 1.55], [-1.02, -1.5], [1.02, -1.5]].forEach(function (p) {
+      var w = new THREE.Mesh(wg, wm);
+      w.rotation.z = Math.PI / 2;
+      w.position.set(p[0], 0.42, p[1]);
+      g.add(w);
+    });
+    var shadow = new THREE.Mesh(new THREE.CircleGeometry(1.6, 16),
+      new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28 }));
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.y = 0.05;
+    g.add(shadow);
+    return g;
+  }
+
+  var OPPONENTS = [
+    { name: 'VIPER', color: 0x1e88e5, accent: 0xffd54f, skill: 1.030, line: -3.0 },
+    { name: 'NOVA', color: 0x8e24aa, accent: 0xffffff, skill: 1.014, line: 3.4 },
+    { name: 'BOLT', color: 0xf9a825, accent: 0x212121, skill: 1.000, line: -6.2 },
+    { name: 'RAVEN', color: 0x37474f, accent: 0xe53935, skill: 0.986, line: 6.6 },
+    { name: 'EMBER', color: 0xd84315, accent: 0xffe082, skill: 0.972, line: 0.4 }
+  ];
+
+  var cars = [];
+  function makeCar(name, color, accent, isPlayer, skill, line) {
+    var c = {
+      name: name, isPlayer: !!isPlayer, skill: skill, line: line, color: color,
+      mesh: buildCar(color, accent),
+      x: 0, z: 0, yaw: 0, speed: 0, steer: 0,
+      lap: 0, s: 0, prevS: 0, lat: 0, i: -1, halfPassed: false,
+      lapStart: 0, best: Infinity, finished: false, finishTime: 0,
+      wheelSpin: 0, wobble: 0
+    };
+    scene.add(c.mesh);
+    cars.push(c);
+    return c;
+  }
+  makeCar('YOU', 0xe53935, 0xffffff, true, 1.0, 0);
+
+  /* ---------------------------------- sound ------------------------- */
+  var audio = { ctx: null, osc: null, sub: null, gain: null, on: true };
+  function initAudio() {
+    if (audio.ctx) return;
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      var ctx = new AC();
+      var gain = ctx.createGain(); gain.gain.value = 0.0; gain.connect(ctx.destination);
+      var filter = ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 900; filter.connect(gain);
+      var osc = ctx.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 60; osc.connect(filter); osc.start();
+      var sub = ctx.createOscillator(); sub.type = 'square'; sub.frequency.value = 30;
+      var subGain = ctx.createGain(); subGain.gain.value = 0.35; sub.connect(subGain); subGain.connect(gain); sub.start();
+      audio.ctx = ctx; audio.osc = osc; audio.sub = sub; audio.gain = gain;
+    } catch (e) { audio.ctx = null; }
+  }
+  function updateAudio(speed, throttle) {
+    if (!audio.ctx) return;
+    var target = audio.on ? 0.035 + throttle * 0.05 : 0.0;
+    audio.gain.gain.value += (target - audio.gain.gain.value) * 0.1;
+    audio.osc.frequency.value = 55 + speed * 4.2 + throttle * 25;
+    audio.sub.frequency.value = 28 + speed * 2.1;
+  }
+
+  /* ---------------------------------- input ------------------------- */
+  var keys = {};
+  var BLOCK = { ArrowUp: 1, ArrowDown: 1, ArrowLeft: 1, ArrowRight: 1, Space: 1 };
+  window.addEventListener('keydown', function (e) {
+    if (BLOCK[e.code]) e.preventDefault();
+    keys[e.code] = true;
+    if (e.code === 'KeyC') camMode = (camMode + 1) % 4;
+    if (e.code === 'KeyR') resetRace();
+    if (e.code === 'KeyM') { audio.on = !audio.on; flash(audio.on ? 'SOUND ON' : 'SOUND OFF'); }
+    if (e.code === 'Escape' && started && !raceOver) togglePause();
+  });
+  window.addEventListener('keyup', function (e) { keys[e.code] = false; });
+  window.addEventListener('blur', function () { keys = {}; });
+  window.addEventListener('resize', function () {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  /* ---------------------------------- race flow --------------------- */
+  var menu = document.getElementById('menu');
+  var pauseScreen = document.getElementById('pause');
+  var resultsScreen = document.getElementById('results');
+  var banner = document.getElementById('banner');
+  var hud = document.getElementById('hud');
+  var standingsEl = document.getElementById('standings');
+
+  var started = false, paused = false, raceOver = false;
+  var countdown = 0, clock = 0, camMode = 0, flashTimer = 0, goTimer = -1;
+
+  document.getElementById('startBtn').addEventListener('click', function () {
+    initAudio();
+    if (audio.ctx && audio.ctx.state === 'suspended') audio.ctx.resume();
+    menu.classList.add('hidden');
+    hud.classList.remove('hidden');
+    standingsEl.classList.remove('hidden');
+    started = true;
+    countdown = 3.9;
+    goTimer = -1;
+  });
+  document.getElementById('resumeBtn').addEventListener('click', togglePause);
+  document.getElementById('againBtn').addEventListener('click', function () {
+    resultsScreen.classList.add('hidden');
+    resetRace();
+  });
+
+  function togglePause() {
+    paused = !paused;
+    pauseScreen.classList.toggle('hidden', !paused);
+  }
+
+  function flash(text) {
+    banner.textContent = text;
+    banner.classList.remove('hidden');
+    flashTimer = 1.1;
+  }
+
+  function placeOnGrid() {
+    // Staggered two-column grid well behind the line, so the cars are clearly
+    // separated on screen during the countdown instead of stacked up.
+    var order = cars.slice().sort(function (a, b) { return (b.skill || 0) - (a.skill || 0); });
+    var ROW_GAP = 8.5, COL = 4.6;
+    for (var i = 0; i < order.length; i++) {
+      var c = order[i];
+      var row = Math.floor(i / 2), side = (i % 2) ? 1 : -1;
+      var s = wrapS(LEN - 8 - row * ROW_GAP);
+      var lat = side * COL;
+      var P = offsetPos(s, lat);
+      c.x = P.x; c.z = P.z;
+      c.yaw = yawAt(s);
+      c.speed = 0; c.steer = 0; c.lap = 0;
+      c.best = Infinity; c.finished = false; c.finishTime = 0;
+      c.lapStart = 0;
+      c.wobble = 0;
+      c.halfPassed = false;
+      c.i = -1;
+      var pr = projectTrack(c.x, c.z, -1);
+      c.s = pr.s; c.prevS = pr.s; c.lat = pr.lat; c.i = pr.i;
+      c.mesh.visible = true;
+      syncMesh(c);
+    }
+  }
+
+  function resetRace() {
+    raceOver = false;
+    countdown = 3.9;
+    goTimer = -1;
+    clock = 0;
+    OPPONENTS.forEach(function (o) {
+      if (!cars.some(function (c) { return c.name === o.name; })) {
+        makeCar(o.name, o.color, o.accent, false, o.skill, o.line);
+      }
+    });
+    // Every car goes back on the grid and its mesh is re-synced, so nothing from
+    // the previous round is left standing on the circuit.
+    placeOnGrid();
+    resultsScreen.classList.add('hidden');
+    pauseScreen.classList.add('hidden');
+    paused = false;
+    banner.classList.remove('hidden');
+    banner.textContent = '4';
+  }
+
+  /* ---------------------------------- AI ---------------------------- */
+  var LAT_ACCEL = 12;     // how much cornering grip the AI assumes (m/s^2)
+
+  function aiDrive(c, dt) {
+    var lat = c.lat;
+    var latErr = (c.line + c.wobble) - lat;
+
+    // proportional lane keeping; too much gain makes the car oscillate into
+    // the barrier, so keep this gentle
+    var phi = Math.max(-0.55, Math.min(0.55, -latErr * 0.038));
+    var desired = yawAt(c.s) + phi;
+    var err = wrapPi(desired - c.yaw);
+    var steerCmd = Math.max(-1, Math.min(1, err * 2.2));   // grow yaw to close the error
+
+    // slow down for whatever corner is coming up, not just the current one
+    var look = 8 + c.speed * 1.5;
+    var kappa = kappaAt(c.s) + kappaAt(c.s + look) + kappaAt(c.s + look * 2);
+    var vCorner = Math.sqrt(LAT_ACCEL / Math.max(kappa / 3, 1e-5));
+    var target = Math.min(46 * c.skill, vCorner);
+    if (Math.abs(latErr) > 2.5) target *= 0.9;
+    if (Math.abs(err) > 0.25) target *= 0.93;
+
+    // traffic: only avoid cars genuinely in front of us and in our own corridor
+    var fw = yawToForward(c.yaw), rt = rightOf(fw);
+    var gap = 1e9;
+    for (var i = 0; i < cars.length; i++) {
+      var o = cars[i];
+      if (o === c) continue;
+      var dx = o.x - c.x, dz = o.z - c.z;
+      var ahead_m = dx * fw.x + dz * fw.z;
+      var side_m = dx * rt.x + dz * rt.z;
+      if (ahead_m > 0.5 && ahead_m < 22 && Math.abs(side_m) < 2.8) {
+        if (ahead_m < gap) gap = ahead_m;
+      }
+    }
+
+    var throttle = 1, brake = 0;
+    if (c.speed < target) throttle = 1;
+    else { brake = Math.min(1, (c.speed - target) / 6); throttle = 0; }
+
+    // safe gap grows with speed; below walking pace just follow, never deadlock
+    var safeGap = 5 + c.speed * 0.55;
+    if (gap < safeGap && c.speed > 2.5) {
+      brake = Math.max(brake, Math.min(1, (safeGap - gap) / 4));
+      throttle = 0;
+    }
+    if (Math.abs(latErr) > 6) { throttle *= 0.7; brake = Math.max(brake, 0.2); }
+
+    /* There is no invisible rail any more, so a car that ends up wedged against
+     * a tree or a grandstand has to be able to back out of it. Sit still for a
+     * while and the car reverses away while steering back towards the circuit. */
+    if (!c.finished) {
+      if (Math.abs(c.speed) < 1.6 && Math.abs(lat) > HALF_W - 1) c.stuck = (c.stuck || 0) + dt;
+      else c.stuck = 0;
+      if (c.stuck > 1.2) {
+        if (c.stuck < 2.6) {
+          throttle = 0; brake = 1;                       // reverse out
+          steerCmd = -steerCmd;
+        } else {
+          c.stuck = 0;                                    // then drive on again
+        }
+      }
+    }
+
+    return { throttle: throttle, brake: brake, steer: steerCmd };
+  }
+
+  /* ---------------------------------- physics ----------------------- */
+  /* ---------------------------------- scenery contact ---------------- *
+   *  Trackside solids are oriented boxes. With the guardrail closed all the way
+   *  round, normal play never reaches these, so they act as a backstop for the
+   *  cases the rail cannot cover: a car shoved off line by another car, or one
+   *  that ends up inside an object after a shunt.                              */
+  function collideSolids(c) {
+    for (var i = 0; i < solids.length; i++) {
+      var o = solids[i];
+      var reach = o.hw + o.hd + CAR_R + 1;
+      var ddx = c.x - o.x, ddz = c.z - o.z;
+      if (ddx * ddx + ddz * ddz > reach * reach) continue;
+
+      // world -> obstacle local frame (local +Z runs along the obstacle's yaw)
+      var cy = Math.cos(o.yaw), sy = Math.sin(o.yaw);
+      var lx = ddx * cy - ddz * sy;
+      var lz = ddx * sy + ddz * cy;
+
+      // closest point on the box, then the offset from it
+      var qx = lx < -o.hw ? -o.hw : (lx > o.hw ? o.hw : lx);
+      var qz = lz < -o.hd ? -o.hd : (lz > o.hd ? o.hd : lz);
+      var ex = lx - qx, ez = lz - qz;
+      var d2 = ex * ex + ez * ez;
+      if (d2 >= CAR_R * CAR_R) continue;
+
+      var nx, nz, pen, deep = d2 <= 1e-9;
+      if (!deep) {
+        var d = Math.sqrt(d2);
+        nx = ex / d; nz = ez / d; pen = CAR_R - d;
+      } else {
+        // dead centre is inside the box: leave through the nearest face
+        var ox = o.hw - Math.abs(lx), oz = o.hd - Math.abs(lz);
+        if (ox < oz) { nx = lx < 0 ? -1 : 1; nz = 0; pen = CAR_R + ox; }
+        else { nx = 0; nz = lz < 0 ? -1 : 1; pen = CAR_R + oz; }
+      }
+
+      // local normal -> world
+      var wnx = nx * cy + nz * sy;
+      var wnz = -nx * sy + nz * cy;
+      c.x += wnx * pen;
+      c.z += wnz * pen;
+
+      var f = yawToForward(c.yaw);
+      var into = f.x * wnx + f.z * wnz;
+      if (deep) {
+        // swallowed whole: there is no surface to be heading into, so whatever
+        // way the car is pointing this counts as a crash
+        c.speed *= 0.35;
+        c.steer *= 0.5;
+        if (Math.abs(c.speed) < 1.5) c.speed = 0;
+      } else if (c.speed * into < 0) {
+        // scraping along costs a little, hitting it square on costs nearly all
+        var bite = Math.min(1, Math.abs(into));
+        c.speed *= (1 - 0.92 * bite) * 0.98;
+        c.steer *= (1 - 0.5 * bite);
+        if (Math.abs(c.speed) < 1.5) c.speed = 0;
+      }
+      c.i = -1;                             // moved: re-acquire the track index
+    }
+  }
+
+  function stepCar(c, input, dt) {
+    var ACCEL = 15.5, BRAKE = 26, DRAG = 0.0026, ROLL = 1.35;
+    var throttle = input.throttle, brake = input.brake;
+    if (!c.finished) {
+      c.speed += throttle * ACCEL * dt;
+      c.speed -= brake * BRAKE * dt;
+      c.speed -= (DRAG * c.speed * Math.abs(c.speed) + ROLL * Math.sign(c.speed || 1)) * dt;
+      if (input.handbrake) c.speed *= (1 - 2.6 * dt);
+      c.speed = Math.max(-14, Math.min(74, c.speed));
+    } else {
+      c.speed *= (1 - 1.6 * dt);
+      if (c.speed < 0.4) c.speed = 0;
+    }
+
+    var steerAuthority = 2.3 / (1 + c.speed * 0.045);
+    c.steer += (input.steer - c.steer) * Math.min(1, dt * 9);
+    var yawRate = c.steer * steerAuthority * Math.min(1, Math.abs(c.speed) / 7) * Math.sign(c.speed || 1);
+    c.yaw += yawRate * dt;
+
+    c.x += Math.sin(c.yaw) * c.speed * dt;
+    c.z += Math.cos(c.yaw) * c.speed * dt;
+
+var pr = projectTrack(c.x, c.z, c.i);
+    c.s = pr.s; c.lat = pr.lat; c.i = pr.i;
+
+    // rumble strip along the road edge only. It must NOT cover the whole run-off:
+    // a car parked on the barrier there would face more drag than its engine can
+    // pull against, and could never drive away (the "stuck in the railings" bug).
+    var alat = Math.abs(c.lat);
+    if (alat > HALF_W - 2.2 && alat < HALF_W) c.speed -= 9 * dt;
+    var off = alat - HALF_W;
+    if (off > 0) {                          // run-off apron out to the barrier: drag, less steering
+      c.speed -= (5 + Math.min(off, 20) * 0.9) * dt;
+      c.steer *= (1 - Math.min(0.6, off * 0.06) * dt);
+    }
+
+    collideSolids(c);
+    pr = projectTrack(c.x, c.z, c.i);
+    c.s = pr.s; c.lat = pr.lat; c.i = pr.i;
+
+    /* The guardrail is solid. The car is held just inside the barrier face so the
+     * bodywork visually kisses it, and loses speed in proportion to how hard it
+     * is leaning on it: a graze scrubs off a little, a square hit stops you.
+     * (CAR_R is the car-to-car radius and is wider than the body, so the rail
+     * uses the body's own half width instead.)                                 */
+    var lim = RAIL_LAT - 1.15;
+    if (c.lat > lim || c.lat < -lim) {
+      var side = c.lat > 0 ? 1 : -1;
+      var NV = normalAt(c.s);
+      var push = Math.abs(c.lat) - lim;
+      c.x -= NV.x * push * side; c.z -= NV.z * push * side;
+      c.lat = side * lim;
+      var fw = yawToForward(c.yaw);
+      var into = (fw.x * NV.x + fw.z * NV.z) * side;    // +1 = straight at the rail
+      if (into > 0) {
+        if (c.speed > 0) {
+          c.speed -= (2 + 30 * into * into) * dt;       // quadratic: graze vs square hit
+          if (c.speed < 0) c.speed = 0;
+        }
+        /* A rail guides, it does not trap. Swing the nose down the barrier so a
+         * square hit turns into a slide. Without this the car can be pinned dead
+         * square-on at zero speed, where steering has no authority at all
+         * (yaw rate scales with speed) and the only way out is reverse gear.   */
+        var TV = tangentAt(c.s);
+        var dir = (fw.x * TV.x + fw.z * TV.z) < 0 ? -1 : 1;
+        var blend = Math.min(1, (1.4 + 7 * into) * dt);
+        fw.x += (TV.x * dir - fw.x) * blend;
+        fw.z += (TV.z * dir - fw.z) * blend;
+        c.yaw = Math.atan2(fw.x, fw.z);
+        c.steer *= (1 - 0.5 * into * dt);
+      }
+    }
+
+    c.wheelSpin += c.speed * dt * 3;
+
+    // Lap bookkeeping on arc length. Crossing the line is a wrap from high s to
+    // low s, so delta is large and NEGATIVE. `halfPassed` guards against
+    // banking a lap by wobbling across the line at the start.
+    if (c.s > LEN * 0.25 && c.s < LEN * 0.75) c.halfPassed = true;
+    var delta = c.s - c.prevS;
+    if (delta < -LEN * 0.5) {
+      if (c.halfPassed) {
+        var lapTime = clock - c.lapStart;
+        if (c.lap >= 1 && lapTime < c.best && lapTime > 8) c.best = lapTime;
+        c.lapStart = clock;
+        c.lap++;
+        if (c.lap >= TOTAL_LAPS && !c.finished) {
+          c.finished = true; c.finishTime = clock;
+        }
+      }
+      c.halfPassed = false;
+    } else if (delta > LEN * 0.5) {
+      c.halfPassed = false;
+      c.lap--; c.lapStart = clock;
+    }
+    c.prevS = c.s;
+    syncMesh(c);
+  }
+
+  // Meshes are only written by stepCar during the race, so the grid also has to
+  // push its own positions. Without this the cars stay where the last race left
+  // them (or stacked at the origin before the first one) until the lights go out.
+  function syncMesh(c) {
+    c.mesh.position.set(c.x, 0, c.z);
+    c.mesh.rotation.y = c.yaw;
+  }
+
+  /* ---------------------------------- car-to-car contact ------------- *
+   *  Cars are circles of CAR_R. Overlapping pairs are pushed apart and
+   *  exchange an impulse along the contact normal, so a rear-end shunt
+   *  costs the car behind most of its speed.                                */
+  function collideCars() {
+    var MIN = CAR_R * 2;
+    for (var i = 0; i < cars.length; i++) {
+      var a = cars[i];
+      for (var j = i + 1; j < cars.length; j++) {
+        var b = cars[j];
+        var dx = b.x - a.x, dz = b.z - a.z;
+        var d = Math.hypot(dx, dz);
+        if (d >= MIN) continue;
+        var fa = yawToForward(a.yaw), fb = yawToForward(b.yaw);
+
+        // cars at exactly the same spot have no direction to push each other
+        // along, so fall back to a normal across the first car's heading
+        var nx, nz;
+        if (d > 1e-6) { nx = dx / d; nz = dz / d; }
+        else { nx = -fa.z; nz = fa.x; d = 0; }
+
+        // separate the pair
+        var overlap = (MIN - d) * 0.5;
+        a.x -= nx * overlap; a.z -= nz * overlap;
+        b.x += nx * overlap; b.z += nz * overlap;
+
+        // relative velocity along the contact normal
+        var rvx = fb.x * b.speed - fa.x * a.speed;
+        var rvz = fb.z * b.speed - fa.z * a.speed;
+        var vn = rvx * nx + rvz * nz;
+        if (vn < 0) {                     // only while they are still closing
+          // equal masses, mild restitution
+          var imp = -(1 + 0.35) * vn * 0.5;
+          var bvx = fb.x * b.speed + imp * nx, bvz = fb.z * b.speed + imp * nz;
+          var avx = fa.x * a.speed - imp * nx, avz = fa.z * a.speed - imp * nz;
+          a.speed = avx * fa.x + avz * fa.z;
+          b.speed = bvx * fb.x + bvz * fb.z;
+          a.speed *= 0.97; b.speed *= 0.97;
+        }
+
+        // crushing the cars costs energy even when the blow is mostly sideways,
+        // which is what stops a shallow overlap sliding through each other
+        var crush = 0.55 * (1 - d / MIN);
+        a.speed *= (1 - crush); b.speed *= (1 - crush);
+
+        // a glancing blow spins the struck car
+        var vt = rvx * (-nz) + rvz * nx;
+        var kick = Math.max(-0.09, Math.min(0.09, vt * 0.02));
+        a.yaw -= kick; b.yaw += kick;
+        a.i = b.i = -1;                      // positions moved: re-acquire index
+      }
+    }
+  }
+
+  /* ---------------------------------- player input ------------------ */
+  var player = cars[0];
+  function readPlayer() {
+    var th = (keys.KeyW || keys.ArrowUp) ? 1 : 0;
+    var br = (keys.KeyS || keys.ArrowDown) ? 1 : 0;
+    var st = 0;
+    if (keys.KeyA || keys.ArrowLeft) st += 1;   // positive steer grows yaw = left
+    if (keys.KeyD || keys.ArrowRight) st -= 1;
+    var hb = !!keys.Space;
+    var gp = navigator.getGamepads ? navigator.getGamepads()[0] : null;
+    if (gp) {
+      var ax = gp.axes[0] || 0;
+      if (Math.abs(ax) > 0.12) st = -ax;
+      if (gp.buttons[7] && gp.buttons[7].value > 0.1) th = 1;
+      if (gp.buttons[6] && gp.buttons[6].value > 0.1) br = 1;
+      if (gp.buttons[0] && gp.buttons[0].pressed) hb = true;
+    }
+    return { throttle: th, brake: br, steer: st, handbrake: hb };
+  }
+
+  /* ---------------------------------- standings --------------------- */
+  function progress(c) { return c.lap * LEN + c.s; }
+  function updateStandings() {
+    var order = cars.slice().sort(function (a, b) {
+      if (a.finished && b.finished) return a.finishTime - b.finishTime;
+      if (a.finished) return -1;
+      if (b.finished) return 1;
+      return progress(b) - progress(a);
+    });
+    var html = '';
+    order.forEach(function (c, i) {
+      var col = '#' + new THREE.Color(c.color).getHexString();
+      html += '<div class="' + (c.isPlayer ? 'me' : '') + '"><b>' + (i + 1) + '</b><i style="background:' + col + '"></i>' + c.name + '</div>';
+    });
+    standingsEl.innerHTML = html;
+    return order.indexOf(player) + 1;
+  }
+
+  /* ---------------------------------- camera ------------------------ */
+  var camPos = new THREE.Vector3(0, 8, 20);
+  var camLook = new THREE.Vector3();
+
+  // slow establishing shot of the grid, used while the countdown runs
+  function gridShot() {
+    var mid = offsetPos(wrapS(LEN - 14), 0);
+    var fwd = tangentAt(wrapS(LEN + 4));
+    var side = normalAt(wrapS(LEN + 4));
+    return {
+      x: mid.x + fwd.x * 34 + side.x * 15, y: 13, z: mid.z + fwd.z * 34 + side.z * 15,
+      lx: mid.x, ly: 1.2, lz: mid.z
+    };
+  }
+
+  function updateCamera(dt) {
+    var f = yawToForward(player.yaw);
+    var back, high, look;
+    if (camMode === 0) { back = 12.5; high = 5.4; look = 7; }
+    else if (camMode === 1) { back = 1.2; high = 2.5; look = 14; }
+    else if (camMode === 2) { back = 22; high = 9.5; look = 5; }
+    else { back = 16; high = 15; look = 0; }
+
+    var tx = player.x - f.x * back;
+    var tz = player.z - f.z * back;
+    var lx = player.x + f.x * look, ly = 1.4, lz = player.z + f.z * look;
+
+    // blend from the grid shot into the chase cam as the lights go out
+    if (countdown > 0) {
+      var u = 1 - Math.max(0, Math.min(1, countdown / 3.9));
+      u = u * u * (3 - 2 * u);
+      var g = gridShot();
+      tx += (g.x - tx) * u; tz += (g.z - tz) * u; high += (g.y - high) * u;
+      lx += (g.lx - lx) * u; ly += (g.ly - ly) * u; lz += (g.lz - lz) * u;
+    }
+
+    var k = camMode === 3 ? 1 - Math.pow(0.001, dt) : 1 - Math.pow(0.0005, dt);
+    camPos.x += (tx - camPos.x) * k;
+    camPos.y += (high - camPos.y) * k;
+    camPos.z += (tz - camPos.z) * k;
+    camLook.x += (lx - camLook.x) * k;
+    camLook.y += (ly - camLook.y) * k;
+    camLook.z += (lz - camLook.z) * k;
+    camera.position.copy(camPos);
+    camera.lookAt(camLook);
+  }
+
+  /* ---------------------------------- main loop --------------------- */
+  var last = performance.now();
+  function frame(now) {
+    requestAnimationFrame(frame);
+    var dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+
+    if (started && !paused) {
+      if (countdown > 0) {
+      countdown -= dt;
+        var n = Math.ceil(countdown);
+        banner.textContent = n > 0 ? String(n) : 'GO!';
+        banner.classList.remove('hidden');
+        if (countdown <= 0) goTimer = 3;      // hold GO! for 3s into the race
+      } else {
+        if (goTimer > 0) {
+          goTimer -= dt;
+          if (goTimer <= 0) banner.classList.add('hidden');
+        }
+        clock += dt;
+        var pin = readPlayer();
+        if (!player.finished) stepCar(player, pin, dt); else stepCar(player, { throttle: 0, brake: 1, steer: 0, handbrake: false }, dt);
+        updateAudio(player.speed, pin.throttle);
+        for (var i = 1; i < cars.length; i++) {
+          var c = cars[i];
+          if (c.finished) { stepCar(c, { throttle: 0, brake: 1, steer: 0 }, dt); continue; }
+          c.wobble = Math.sin(clock * 0.55 + i * 1.7) * 0.7;
+          stepCar(c, aiDrive(c, dt), dt);
+        }
+        collideCars();
+        if (!raceOver && player.finished) {
+          raceOver = true;
+          showResults();
+        }
+      }
+      if (flashTimer > 0) {
+        flashTimer -= dt;
+        if (flashTimer <= 0) banner.classList.add('hidden');
+      }
+      var p = updateStandings();
+      document.getElementById('speed').textContent = Math.round(Math.abs(player.speed) * 3.6);
+      document.getElementById('lap').textContent = Math.min(player.lap + 1, TOTAL_LAPS) + '/' + TOTAL_LAPS;
+      document.getElementById('pos').textContent = p + '/' + cars.length;
+      document.getElementById('time').textContent = clock.toFixed(2);
+      document.getElementById('best').textContent = isFinite(player.best) ? player.best.toFixed(2) : '--.--';
+    }
+
+    if (started) updateCamera(dt);
+    else {
+      // slow orbit of the circuit behind the menu
+      var a = now * 0.00006;
+      camera.position.set(Math.sin(a) * 430, 210, -Math.cos(a) * 430);
+      camera.lookAt(0, 0, 0);
+    }
+    renderer.render(scene, camera);
+  }
+
+  function showResults() {
+    var order = cars.slice().sort(function (a, b) {
+      if (a.finished && b.finished) return a.finishTime - b.finishTime;
+      if (a.finished) return -1;
+      if (b.finished) return 1;
+      return progress(b) - progress(a);
+    });
+    var place = order.indexOf(player) + 1;
+    document.getElementById('resultTitle').textContent =
+      place === 1 ? 'WINNER!' : place <= 3 ? 'PODIUM — P' + place : 'FINISHED — P' + place;
+    var rows = '';
+    order.forEach(function (c, i) {
+      rows += '<tr class="' + (c.isPlayer ? 'me' : '') + '"><td>' + (i + 1) + '</td><td>' + c.name +
+        '</td><td>' + (c.finished ? c.finishTime.toFixed(2) + 's' : 'DNF') +
+        '</td><td>' + (isFinite(c.best) ? c.best.toFixed(2) + 's' : '--') + '</td></tr>';
+    });
+    document.getElementById('resultTable').innerHTML =
+      '<tr><th>#</th><th>DRIVER</th><th>TOTAL</th><th>BEST LAP</th></tr>' + rows;
+    resultsScreen.classList.remove('hidden');
+  }
+
+  OPPONENTS.forEach(function (o) {
+    makeCar(o.name, o.color, o.accent, false, o.skill, o.line);
+  });
+  placeOnGrid();
+
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

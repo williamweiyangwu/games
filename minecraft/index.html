@@ -1,0 +1,1527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BLOCKCRAFT &mdash; Voxel Sandbox</title>
+<style>
+  :root{
+    --ink:#f2f6ff; --dim:#9fb0cc; --line:rgba(255,255,255,.16);
+    --panel:rgba(10,14,22,.82); --accent:#7ee081;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;overflow:hidden;background:#0a0e16}
+  body{
+    color:var(--ink);
+    font:13px/1.5 "Segoe UI",Roboto,system-ui,sans-serif;
+    -webkit-user-select:none;user-select:none;
+  }
+  #view{
+    position:fixed;inset:0;width:100%;height:100%;display:block;
+    image-rendering:pixelated;background:#0a0e16;
+  }
+  #tint{position:fixed;inset:0;background:rgba(24,86,124,.34);display:none;pointer-events:none}
+
+  /* ---------- heads-up display ---------- */
+  #hud{position:fixed;inset:0;pointer-events:none}
+  #cross{
+    position:absolute;left:50%;top:50%;width:20px;height:20px;margin:-10px 0 0 -10px;
+    opacity:.9;mix-blend-mode:difference;
+  }
+  #cross::before,#cross::after{content:"";position:absolute;background:#fff}
+  #cross::before{left:9px;top:0;width:2px;height:20px}
+  #cross::after{left:0;top:9px;width:20px;height:2px}
+
+  #bar{
+    position:absolute;left:50%;bottom:16px;transform:translateX(-50%);
+    display:flex;gap:4px;padding:4px;border-radius:8px;
+    background:var(--panel);border:1px solid var(--line);
+  }
+  .slot{
+    position:relative;width:46px;height:46px;border-radius:6px;
+    background:rgba(255,255,255,.05);border:2px solid transparent;
+    display:grid;place-items:center;
+  }
+  .slot canvas{width:34px;height:34px;image-rendering:pixelated}
+  .slot i{
+    position:absolute;left:3px;top:1px;font:10px/1 monospace;font-style:normal;
+    color:var(--dim);text-shadow:0 1px 0 #000
+  }
+  .slot.sel{border-color:#fff;background:rgba(255,255,255,.16);box-shadow:0 0 0 1px rgba(0,0,0,.5)}
+
+  #name{
+    position:absolute;left:50%;bottom:74px;transform:translateX(-50%);
+    font:12px/1 monospace;letter-spacing:.5px;color:#fff;
+    text-shadow:0 2px 0 rgba(0,0,0,.7);opacity:0;transition:opacity .35s
+  }
+  #hint{
+    position:absolute;left:50%;bottom:96px;transform:translateX(-50%);
+    font:10px/1 monospace;letter-spacing:1px;color:rgba(255,255,255,.34);
+    text-shadow:0 1px 0 rgba(0,0,0,.6);text-align:center
+  }
+
+  #dbg{
+    position:absolute;left:8px;top:8px;display:none;
+    font:11px/1.5 monospace;white-space:pre;
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 9px;
+    color:#cfe3ff
+  }
+  #dbg.on{display:block}
+  #toast{
+    position:absolute;left:50%;top:14px;transform:translateX(-50%);
+    font:11px/1 monospace;letter-spacing:1px;color:var(--accent);
+    background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:5px 12px;
+    opacity:0;transition:opacity .4s
+  }
+  #toast.on{opacity:1}
+
+  /* ---------- pause / start menu ---------- */
+  #menu{
+    position:fixed;inset:0;display:grid;place-items:center;
+    background:radial-gradient(ellipse at 50% 40%,rgba(8,12,20,.5),rgba(4,6,10,.9))
+  }
+  #menu.hide{display:none}
+  .panel{
+    width:min(560px,92vw);padding:22px 24px;border-radius:14px;
+    background:linear-gradient(180deg,rgba(24,32,46,.95),rgba(13,18,27,.95));
+    border:1px solid var(--line);box-shadow:0 24px 70px rgba(0,0,0,.6);
+  }
+  .panel h1{
+    margin:0;font-size:30px;letter-spacing:6px;font-weight:800;
+    background:linear-gradient(180deg,#eaf5ff,#7ec8ff);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .panel h2{
+    margin:2px 0 16px;font-size:11px;letter-spacing:3px;font-weight:400;
+    color:var(--dim);text-transform:uppercase
+  }
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:5px 18px;font-size:12px;color:#cfd9ea}
+  .grid b{color:#fff;font-family:monospace;font-weight:600}
+  .rule{height:1px;background:var(--line);margin:16px 0}
+  button{
+    font:inherit;font-weight:700;letter-spacing:2px;text-transform:uppercase;
+    width:100%;padding:12px;border:0;border-radius:8px;cursor:pointer;color:#06210c;
+    background:linear-gradient(180deg,#a8f0b0,#57c46c);
+    box-shadow:0 6px 18px rgba(87,196,108,.25);
+  }
+  button:hover{filter:brightness(1.07)}
+  .foot{margin-top:12px;font-size:10px;letter-spacing:1px;color:var(--dim);text-align:center}
+  #load{position:fixed;inset:0;display:grid;place-items:center;background:#0a0e16;z-index:5}
+  #load .bar{width:220px;height:6px;border-radius:4px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:12px}
+  #load .bar i{display:block;height:100%;width:0;background:#57c46c;transition:width .1s}
+  #load p{margin:0;font:11px/1 monospace;letter-spacing:3px;color:var(--dim);text-transform:uppercase}
+</style>
+</head>
+<body>
+
+<canvas id="view"></canvas>
+<div id="tint"></div>
+
+<div id="hud">
+  <div id="cross"></div>
+  <div id="name"></div>
+  <div id="hint">LMB break &middot; RMB place &middot; 1-9 / wheel select &middot; F fly &middot; F3 stats &middot; F2 res &middot; T time &middot; R new world</div>
+  <div id="bar"></div>
+  <div id="dbg"></div>
+  <div id="toast"></div>
+</div>
+
+<div id="menu" class="hide">
+  <div class="panel">
+    <h1>BLOCKCRAFT</h1>
+    <h2>voxel sandbox &middot; software-rendered in canvas 2d</h2>
+    <div class="grid">
+      <div><b>W A S D</b> move</div>
+      <div><b>Space</b> jump / swim up</div>
+      <div><b>Shift</b> sprint</div>
+      <div><b>Mouse</b> look around</div>
+      <div><b>LMB</b> break block</div>
+      <div><b>RMB</b> place block</div>
+      <div><b>MMB</b> pick block</div>
+      <div><b>Enter</b> third person view</div>
+      <div><b>1-9 / Wheel</b> select</div>
+      <div><b>F</b> toggle flight</div>
+      <div><b>F3</b> performance stats</div>
+      <div><b>F2</b> render scale</div>
+      <div><b>T</b> freeze day cycle</div>
+      <div><b>R</b> new world</div>
+      <div><b>M</b> mute</div>
+      <div><b>Esc</b> pause</div>
+    </div>
+    <div class="rule"></div>
+    <button id="play">Click to play</button>
+    <div class="foot">no libraries, no assets &mdash; every texture is painted at runtime</div>
+  </div>
+</div>
+
+<div id="load"><div style="text-align:center">
+  <p>generating world</p>
+  <div class="bar"><i id="loadbar"></i></div>
+</div></div>
+
+<script>
+"use strict";
+/* =====================================================================
+   BLOCKCRAFT - a small 3D voxel game drawn with Canvas 2D.
+
+   No libraries, no asset files.  Block textures are painted into a
+   Uint32Array, terrain comes from value noise, and every frame is
+   rasterised by hand into an ImageData buffer: z-buffered, textured
+   with perspective-correct UVs, ambient-occluded per vertex and
+   distance fogged, then blitted to the canvas.
+   ===================================================================== */
+
+/* ----------------------------------------------------------- helpers */
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp  = (a, b, t) => a + (b - a) * t;
+const smooth = t => t * t * (3 - 2 * t);
+
+function hash2(x, y) {
+  let h = Math.imul(x | 0, 374761393) ^ Math.imul(y | 0, 668265263);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+function hash3(x, y, z) {
+  let h = Math.imul(x | 0, 374761393) ^ Math.imul(y | 0, 668265263) ^ Math.imul(z | 0, 1442695041);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+function vnoise(x, y) {
+  const xi = Math.floor(x), yi = Math.floor(y);
+  const u = smooth(x - xi), v = smooth(y - yi);
+  const a = hash2(xi, yi), b = hash2(xi + 1, yi), c = hash2(xi, yi + 1), d = hash2(xi + 1, yi + 1);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+function fbm(x, y, oct) {
+  let s = 0, amp = 0.5, f = 1, norm = 0;
+  for (let i = 0; i < oct; i++) { s += amp * vnoise(x * f, y * f); norm += amp; amp *= 0.5; f *= 2; }
+  return s / norm;
+}
+
+/* ---------------------------------------------------------- textures */
+const TS = 16, TN = 16;
+const TEX = new Uint32Array(TS * TS * TN);
+const tileCanvas = new Array(TN);
+
+function put(t, x, y, r, g, b, a) {
+  TEX[(t * TS + (y & 15)) * TS + (x & 15)] =
+    ((a & 255) << 24) | ((b & 255) << 16) | ((g & 255) << 8) | (r & 255);
+}
+function putc(t, x, y, c, a) { put(t, x, y, c[0], c[1], c[2], a === undefined ? 255 : a); }
+function fillTile(t, c) { for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) putc(t, x, y, c); }
+function speckle(t, base, spread, n) {
+  for (let i = 0; i < n; i++) {
+    const x = (hash2(t * 31 + i, 7) * 16) | 0, y = (hash2(i, t * 17 + 3) * 16) | 0;
+    const d = (hash2(i * 5, t + 11) - 0.5) * 2 * spread;
+    putc(t, x, y, [clamp(base[0] + d, 0, 255), clamp(base[1] + d, 0, 255), clamp(base[2] + d, 0, 255)]);
+  }
+}
+
+function buildTextures() {
+  const R = (a, b) => hash2(a * 977 + b, b * 131 + 5);
+
+  /* 0 grass top */
+  fillTile(0, [104, 158, 62]);
+  for (let i = 0; i < 240; i++) {
+    const x = (R(0, i) * 16) | 0, y = (R(1, i) * 16) | 0, v = R(2, i);
+    const g = v < 0.4 ? [-16, -6, -18] : v < 0.8 ? [10, 18, 4] : [26, 32, 10];
+    putc(0, x, y, [104 + g[0], 158 + g[1], 62 + g[2]]);
+  }
+  /* 1 grass side */
+  fillTile(1, [134, 96, 64]); speckle(1, [134, 96, 64], 22, 200);
+  for (let x = 0; x < 16; x++) {
+    const h = 3 + ((R(3, x) * 3) | 0);
+    for (let y = 0; y < h; y++) {
+      const v = R(4, x * 7 + y);
+      putc(1, x, y, [96 + v * 36, 152 + v * 30, 54 + v * 22]);
+    }
+    if (R(5, x) < 0.5) putc(1, x, h, [122, 98, 60]);
+  }
+  /* 2 dirt */
+  fillTile(2, [134, 96, 64]); speckle(2, [134, 96, 64], 20, 240);
+  /* 3 stone */
+  fillTile(3, [128, 128, 132]); speckle(3, [128, 128, 132], 16, 280);
+  for (let i = 0; i < 16; i++) {
+    const cx = (R(6, i) * 16) | 0, cy = (R(7, i) * 16) | 0, r = 1 + R(8, i) * 2.2;
+    for (let y = -3; y <= 3; y++) for (let x = -3; x <= 3; x++) {
+      if (x * x + y * y <= r * r) {
+        const d = -12 - R(9, i * 31 + x * 5 + y) * 14;
+        putc(3, cx + x, cy + y, [128 + d, 128 + d, 132 + d]);
+      }
+    }
+  }
+  /* 4 sand */
+  fillTile(4, [222, 210, 154]); speckle(4, [222, 210, 154], 12, 250);
+  /* 5 log top (rings) */
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+    const d = Math.max(Math.abs(x - 7.5), Math.abs(y - 7.5));
+    const v = ((d / 1.7) | 0) % 2 ? -24 : 6;
+    putc(5, x, y, [162 + v + (R(10, x * 3 + y) - 0.5) * 18, 124 + v + (R(11, x + y * 3) - 0.5) * 14, 72 + v * 0.6]);
+  }
+  /* 6 log side (bark) */
+  fillTile(6, [104, 78, 44]);
+  for (let x = 0; x < 16; x++) {
+    const v = (R(12, x) - 0.5) * 46;
+    for (let y = 0; y < 16; y++) {
+      const w = (R(13, x * 5 + y) - 0.5) * 16;
+      putc(6, x, y, [104 + v + w, 78 + v * 0.8 + w, 44 + v * 0.5 + w]);
+    }
+  }
+  for (let i = 0; i < 9; i++) {
+    const x = (R(14, i) * 16) | 0;
+    for (let y = 0; y < 16; y++) putc(6, x, y, [76, 57, 32]);
+  }
+  /* 7 leaves */
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+    const n = hash2(x * 3 + 1, y * 7 + 2);
+    const d = n < 0.30 ? -28 : n < 0.62 ? 0 : n < 0.85 ? 22 : 40;
+    putc(7, x, y, [58 + d * 0.7, 122 + d, 44 + d * 0.5]);
+  }
+  /* 8 planks */
+  for (let y = 0; y < 16; y++) {
+    const row = (y / 4) | 0;
+    for (let x = 0; x < 16; x++) {
+      const d = (hash2(x * 5 + row * 31, y * 3) - 0.5) * 26;
+      putc(8, x, y, [176 + d, 140 + d * 0.9, 88 + d * 0.7]);
+    }
+    if (y % 4 === 3) for (let x = 0; x < 16; x++) putc(8, x, y, [112, 86, 52]);
+    const seam = (row % 2 ? 3 : 10);
+    putc(8, seam, y, [126, 96, 58]); putc(8, (seam + 1) % 16, y, [152, 120, 76]);
+  }
+  /* 9 cobblestone */
+  fillTile(9, [112, 112, 116]); speckle(9, [112, 112, 116], 10, 200);
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) if (x % 5 === 0 || y % 5 === 0) putc(9, x, y, [76, 76, 80]);
+  for (let i = 0; i < 24; i++) {
+    const cx = (R(15, i) * 15) | 0, cy = (R(16, i) * 15) | 0, d = 24 + R(17, i) * 26;
+    for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++)
+      if (hash2(cx + x * 3, cy + y) > 0.25) putc(9, cx + x, cy + y, [112 + d, 112 + d, 116 + d]);
+  }
+  /* 10 bricks */
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+    if (y % 4 === 3 || (x + (((y / 4) | 0) * 4) % 8) === 7) putc(10, x, y, [188, 180, 170]);
+    else putc(10, x, y, [156, 78, 62]);
+  }
+  speckle(10, [156, 78, 62], 10, 130);
+  /* 11 glass */
+  for (let i = 0; i < 16; i++) {
+    put(11, i, 0, 210, 228, 238, 215); put(11, i, 15, 210, 228, 238, 215);
+    put(11, 0, i, 210, 228, 238, 215); put(11, 15, i, 210, 228, 238, 215);
+  }
+  for (let i = 0; i < 7; i++) put(11, 3 + i, 4 + i, 240, 248, 255, 130);
+  /* 12 water */
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+    const w = Math.sin((x + y * 0.6) * 0.7) * 0.5 + 0.5, d = (w - 0.5) * 26;
+    put(12, x, y, 40 + d, 96 + d * 1.4, 172 + d * 1.6, 190);
+  }
+  /* 13 bedrock */
+  fillTile(13, [58, 58, 62]); speckle(13, [58, 58, 62], 26, 340);
+  /* 14 gravel */
+  fillTile(14, [132, 128, 126]); speckle(14, [132, 128, 126], 34, 300);
+  for (let i = 0; i < 28; i++) {
+    const cx = (R(18, i) * 15) | 0, cy = (R(19, i) * 15) | 0, d = -24 - R(20, i) * 26;
+    for (let y = 0; y < 2; y++) for (let x = 0; x < 2; x++) putc(14, cx + x, cy + y, [132 + d, 128 + d, 126 + d]);
+  }
+}
+function tileImg(t) {
+  if (tileCanvas[t]) return tileCanvas[t];
+  const c = document.createElement('canvas'); c.width = c.height = TS;
+  const g = c.getContext('2d'), im = g.createImageData(TS, TS), d = new Uint32Array(im.data.buffer);
+  for (let i = 0; i < TS * TS; i++) d[i] = TEX[t * 256 + i];
+  g.putImageData(im, 0, 0);
+  return tileCanvas[t] = c;
+}
+function paintWater(st) {
+  const t = T.WATER, a = st * 1.3, b = st * 0.8;
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+    const w = Math.sin((x + y * 0.6) * 0.7 + a) + Math.sin((x * 0.55 - y * 0.3) * 0.9 + b);
+    put(t, x, y, 46 + w * 10, 100 + w * 15, 176 + w * 16, 190);
+  }
+  for (let i = 0; i < 4; i++) {
+    const x = (hash2(i * 31 + 5, 9) * 16) | 0, y = (hash2(3, i * 17 + 2) * 16) | 0;
+    const gl = Math.sin(st * 2.6 + i * 1.7);
+    put(t, x, y, 20 + (gl * 0.5 + 0.5) * 80, 60 + (gl * 0.5 + 0.5) * 100, 120 + (gl * 0.5 + 0.5) * 110, 200);
+  }
+}
+
+/* ------------------------------------------------------------ blocks */
+const T = { GRASS_TOP: 0, GRASS_SIDE: 1, DIRT: 2, STONE: 3, SAND: 4, LOG_TOP: 5, LOG_SIDE: 6,
+            LEAVES: 7, PLANKS: 8, COBBLE: 9, BRICK: 10, GLASS: 11, WATER: 12, BEDROCK: 13, GRAVEL: 14 };
+const AIR = 0, GRASS = 1, DIRT = 2, STONE = 3, SAND = 4, LOG = 5, LEAVES = 6,
+      PLANKS = 7, COBBLE = 8, BRICK = 9, GLASS = 10, WATER = 11, BEDROCK = 12, GRAVEL = 13;
+
+/* t: [top, side, bottom]   solid: collision   opaque: hides neighbour faces
+   cull: drop faces between identical blocks   a: 1 = opaque pass, <1 = blended */
+const BLK = [
+  { n: 'Air',          t: null,                                solid: 0, opaque: 0, cull: 1, a: 1 },
+  { n: 'Grass Block',  t: [T.GRASS_TOP, T.GRASS_SIDE, T.DIRT], solid: 1, opaque: 1, cull: 0, a: 1 },
+  { n: 'Dirt',         t: [T.DIRT, T.DIRT, T.DIRT],           solid: 1, opaque: 1, cull: 0, a: 1 },
+  { n: 'Stone',        t: [T.STONE, T.STONE, T.STONE],         solid: 1, opaque: 1, cull: 0, a: 1 },
+  { n: 'Sand',         t: [T.SAND, T.SAND, T.SAND],            solid: 1, opaque: 1, cull: 0, a: 1 },
+  { n: 'Oak Log',      t: [T.LOG_TOP, T.LOG_SIDE, T.LOG_TOP],  solid: 1, opaque: 1, cull: 0, a: 1 },
+  { n: 'Leaves',       t: [T.LEAVES, T.LEAVES, T.LEAVES],      solid: 1, opaque: 0, cull: 1, a: 1 },
+  { n: 'Planks',       t: [T.PLANKS, T.PLANKS, T.PLANKS],      solid: 1, opaque: 1, cull: 0, a: 1 },
+  { n: 'Cobblestone',  t: [T.COBBLE, T.COBBLE, T.COBBLE],      solid: 1, opaque: 1, cull: 0, a: 1 },
+  { n: 'Bricks',       t: [T.BRICK, T.BRICK, T.BRICK],         solid: 1, opaque: 1, cull: 0, a: 1 },
+  { n: 'Glass',        t: [T.GLASS, T.GLASS, T.GLASS],         solid: 1, opaque: 0, cull: 1, a: 0.3 },
+  { n: 'Water',        t: [T.WATER, T.WATER, T.WATER],         solid: 0, opaque: 0, cull: 1, a: 0.7 },
+  { n: 'Bedrock',      t: [T.BEDROCK, T.BEDROCK, T.BEDROCK],   solid: 1, opaque: 1, cull: 0, a: 1 },
+  { n: 'Gravel',       t: [T.GRAVEL, T.GRAVEL, T.GRAVEL],      solid: 1, opaque: 1, cull: 0, a: 1 }
+];
+const HOTBAR = [GRASS, DIRT, STONE, COBBLE, PLANKS, LOG, LEAVES, GLASS, BRICK];
+
+/* face geometry - normals point out, corners cycle around the quad */
+const FACE = [
+  { n: [0, 1, 0], sh: 1.00, v: [[-.5, .5, -.5], [-.5, .5, .5], [.5, .5, .5], [.5, .5, -.5]] },
+  { n: [0, -1, 0], sh: 0.46, v: [[-.5, -.5, -.5], [-.5, -.5, .5], [.5, -.5, .5], [.5, -.5, -.5]] },
+  { n: [1, 0, 0], sh: 0.74, v: [[.5, -.5, -.5], [.5, .5, -.5], [.5, .5, .5], [.5, -.5, .5]] },
+  { n: [-1, 0, 0], sh: 0.74, v: [[-.5, -.5, .5], [-.5, .5, .5], [-.5, .5, -.5], [-.5, -.5, -.5]] },
+  { n: [0, 0, 1], sh: 0.88, v: [[.5, -.5, .5], [.5, .5, .5], [-.5, .5, .5], [-.5, -.5, .5]] },
+  { n: [0, 0, -1], sh: 0.88, v: [[-.5, -.5, -.5], [-.5, .5, -.5], [.5, .5, -.5], [.5, -.5, -.5]] }
+];
+for (const f of FACE) {
+  f.e1 = [f.v[1][0] - f.v[0][0], f.v[1][1] - f.v[0][1], f.v[1][2] - f.v[0][2]];
+  f.e2 = [f.v[3][0] - f.v[0][0], f.v[3][1] - f.v[0][1], f.v[3][2] - f.v[0][2]];
+}
+/* face record: 4 corners * (x,y,z,u,v,shade) + normal(3) + tile + uOffset + pad */
+const STRIDE = 30, C_TILE = 27, C_UO = 28;
+
+/* ------------------------------------------------------------- world */
+const W = 96, H = 40, SEA = 13, CH = 16, CW = W / CH, CD = W / CH;
+const world = new Uint8Array(W * H * W);
+const topY = new Int16Array(W * W);
+let seedOff = 0;
+
+const chunks = [];
+for (let z = 0; z < CD; z++) for (let x = 0; x < CW; x++)
+  chunks.push({ ox: x * CH, oz: z * CH, d: null, n: 0, td: null, tn: 0 });
+
+function get(x, y, z) {
+  if (x < 0 || z < 0 || x >= W || z >= W) return STONE;      /* world walls */
+  if (y < 0) return STONE;
+  if (y >= H) return AIR;
+  return world[(y * W + z) * W + x];
+}
+const opaqueAt = (x, y, z) => BLK[get(x, y, z)].opaque === 1;
+const solidAt  = (x, y, z) => BLK[get(x, y, z)].solid === 1;
+/* ambient occlusion probe: outside the world nothing occludes */
+const occAt = (x, y, z) => (x < 0 || z < 0 || x >= W || z >= W || y < 0) ? 0 : (opaqueAt(x, y, z) ? 1 : 0);
+function set(x, y, z, b) {
+  if (x < 0 || z < 0 || x >= W || z >= W || y < 0 || y >= H) return;
+  world[(y * W + z) * W + x] = b;
+  const t = z * W + x;
+  if (b) { if (y > topY[t]) topY[t] = y; return; }
+  let ty = topY[t];
+  while (ty > 0 && !world[(ty * W + z) * W + x]) ty--;
+  topY[t] = ty;
+}
+function topAt(x, z) {
+  let y = H - 1;
+  while (y > 0 && !world[(y * W + z) * W + x]) y--;
+  return y;
+}
+
+/* ---------------------------------------------------- liquid water */
+const flowL = new Uint8Array(W * H * W);             /* 0 = source / still, 1..7 = spread distance */
+let wq = [];
+function wIdx(x, y, z) { return (y * W + z) * W + x; }
+function waterBeside(x, y, z) {
+  for (const d of [[1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1], [0, 1, 0]])
+    if (get(x + d[0], y + d[1], z + d[2]) === WATER) return true;
+  return false;
+}
+function seedWater(x, y, z) { if (get(x, y, z) === AIR && waterBeside(x, y, z)) wq.push([x, y, z]); }
+const wMesh = {};
+function stepWater() {
+  let budget = 420;
+  while (budget-- > 0 && wq.length) {
+    const c = wq.shift(), x = c[0], y = c[1], z = c[2];
+    if (get(x, y, z) !== AIR) continue;
+    if (y + 1 < H && get(x, y + 1, z) === WATER) { set(x, y, z, WATER); flowL[wIdx(x, y, z)] = 0; }
+    else {
+      let lv = 8;
+      for (const s of [[x - 1, y, z], [x + 1, y, z], [x, y, z - 1], [x, y, z + 1]]) {
+        if (get(s[0], s[1], s[2]) === WATER) {
+          const n = flowL[wIdx(s[0], s[1], s[2])] + 1;
+          if (n < lv) lv = n;
+        }
+      }
+      if (lv > 7) continue;
+      set(x, y, z, WATER); flowL[wIdx(x, y, z)] = lv;
+    }
+    const key = ((x / CH) | 0) * CD + ((z / CH) | 0);
+    if (!wMesh[key]) wMesh[key] = 1;
+    if (y - 1 >= 0 && get(x, y - 1, z) === AIR) { wq.push([x, y - 1, z]); continue; }
+    const below = y - 1 >= 0 ? get(x, y - 1, z) : STONE;
+    if (below !== AIR) {
+      const lv = flowL[wIdx(x, y, z)];
+      if (lv < 7) {
+        for (const s of [[x - 1, y, z], [x + 1, y, z], [x, y, z - 1], [x, y, z + 1]])
+          if (get(s[0], s[1], s[2]) === AIR) wq.push([s[0], s[1], s[2]]);
+      }
+    }
+  }
+  if (Object.keys(wMesh).length) {
+    for (const k in wMesh) {
+      const cx = ((k | 0) / CD) | 0, cz = (k | 0) % CD;
+      for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
+        const ax = cx + dx, az = cz + dz;
+        if (ax < 0 || az < 0 || ax >= CW || az >= CD) continue;
+        meshChunk(chunks[az * CW + ax]);
+      }
+      delete wMesh[k];
+    }
+  }
+}
+
+/* ------------------------------------------------------ world build */
+function generate(seed) {
+  seedOff = (seed * 0.6180339887) % 997;
+  world.fill(0); topY.fill(0);
+  for (let z = 0; z < W; z++) {
+    for (let x = 0; x < W; x++) {
+      const cont = fbm(x * 0.020 + seedOff, z * 0.020, 4);
+      const mtn  = fbm(x * 0.0062 + 91 + seedOff, z * 0.0062 + 37, 3);
+      const h = clamp(Math.floor(SEA + 1 + (cont - 0.5) * 18 + Math.pow(mtn, 3) * 20 + 1), 1, H - 9);
+      const beach = h <= SEA + 1, deep = h <= SEA - 4;
+      for (let y = 0; y <= Math.max(h, SEA); y++) {
+        let b = AIR;
+        if (y === 0) b = BEDROCK;
+        else if (y === 1 && hash3(x, y, z) < 0.6) b = BEDROCK;
+        else if (y < h) b = (h - y >= 4) ? STONE : (beach ? SAND : DIRT);
+        else if (y === h) b = beach ? ((deep || hash3(x, 3, z) < 0.16) ? GRAVEL : SAND) : GRASS;
+        else if (y <= SEA) b = WATER;
+        if (b) set(x, y, z, b);
+      }
+    }
+  }
+  for (let cz = 3; cz < W - 3; cz += 4) {
+    for (let cx = 3; cx < W - 3; cx += 4) {
+      if (hash2(cx * 13 + 7, cz * 29 + 11) < 0.60) continue;
+      const px = cx + ((hash2(cx + 5, cz) * 3) | 0), pz = cz + ((hash2(cx, cz + 9) * 3) | 0);
+      const gy = topAt(px, pz);
+      if (get(px, gy, pz) !== GRASS || gy <= SEA) continue;
+      const th = 4 + ((hash2(px + 3, pz) * 3) | 0), ty = gy + th;
+      for (let y = 1; y <= th; y++) set(px, gy + y, pz, LOG);
+      for (let dy = -2; dy <= 1; dy++) {
+        const r = dy === 1 ? 1 : 2;
+        for (let dz = -r; dz <= r; dz++) for (let dx = -r; dx <= r; dx++) {
+          if (Math.abs(dx) === r && Math.abs(dz) === r &&
+              (dy === -2 || hash3(px + dx, ty + dy, pz + dz) < 0.8)) continue;
+          const bx = px + dx, bz = pz + dz, by = ty + dy;
+          if (by <= gy || get(bx, by, bz) !== AIR) continue;
+          set(bx, by, bz, LEAVES);
+        }
+      }
+      set(px, ty, pz, LEAVES);
+    }
+  }
+  for (const c of chunks) { c.d = null; c.n = 0; c.td = null; c.tn = 0; }
+}
+
+/* ----------------------------------------------------------- meshing */
+function meshChunk(ch) {
+  const out = [], wat = [];
+  const x0 = ch.ox, x1 = x0 + CH, z0 = ch.oz, z1 = z0 + CH;
+  for (let z = z0; z < z1; z++) {
+    for (let x = x0; x < x1; x++) {
+      const hi = Math.min(H - 1, topY[z * W + x] + 1);
+      for (let y = 0; y <= hi; y++) {
+        const b = world[(y * W + z) * W + x];
+        if (!b) continue;
+        const def = BLK[b];
+        const uo = ((hash3(x, y, z) * 16) | 0) & 15;
+        const dst = def.a < 1 ? wat : out;
+        for (let f = 0; f < 6; f++) {
+          const F = FACE[f], n = F.n;
+          const nx = x + n[0], ny = y + n[1], nz = z + n[2];
+          const nb = get(nx, ny, nz);
+          if (BLK[nb].opaque) continue;
+          if (nb === b && def.cull) continue;
+          const tile = f === 0 ? def.t[0] : f === 1 ? def.t[2] : def.t[1];
+          const e1 = F.e1, e2 = F.e2;
+          const drop = (b === WATER && f === 0) ? 0.12 : 0;
+          for (let i = 0; i < 4; i++) {
+            const c = F.v[i];
+            const s1 = (i === 1 || i === 2) ? 1 : -1, s2 = (i === 2 || i === 3) ? 1 : -1;
+            const o1 = occAt(nx + e1[0] * s1, ny + e1[1] * s1, nz + e1[2] * s1);
+            const o2 = occAt(nx + e2[0] * s2, ny + e2[1] * s2, nz + e2[2] * s2);
+            const oc = (o1 && o2) ? 1 : occAt(nx + e1[0] * s1 + e2[0] * s2,
+                                              ny + e1[1] * s1 + e2[1] * s2,
+                                              nz + e1[2] * s1 + e2[2] * s2);
+            const ao = (o1 && o2) ? 0 : 3 - (o1 + o2 + oc);
+            dst.push(x + 0.5 + c[0], y + 0.5 + c[1] - drop, z + 0.5 + c[2],
+                     s1 > 0 ? 1 : 0, s2 > 0 ? 1 : 0, F.sh * (0.5 + 0.1667 * ao));
+          }
+          dst.push(n[0], n[1], n[2], tile, uo, 0);
+        }
+      }
+    }
+  }
+  ch.d = new Float32Array(out); ch.n = out.length / STRIDE;
+  ch.td = new Float32Array(wat); ch.tn = wat.length / STRIDE;
+}
+/* ------------------------------------------------------------ camera */
+const cam = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0 };
+const fw = [0, 0, 1], rt = [1, 0, 0], uv = [0, 1, 0];
+function camBasis() {
+  const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw), cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
+  fw[0] = sy * cp; fw[1] = sp; fw[2] = cy * cp;
+  rt[0] = cy; rt[1] = 0; rt[2] = -sy;
+  uv[0] = fw[1] * rt[2] - fw[2] * rt[1];
+  uv[1] = fw[2] * rt[0] - fw[0] * rt[2];
+  uv[2] = fw[0] * rt[1] - fw[1] * rt[0];
+}
+
+/* --------------------------------------------------------- renderer */
+const view = document.getElementById('view');
+const ctx = view.getContext('2d', { alpha: false });
+const tintEl = document.getElementById('tint');
+let RW = 2, RH = 2, rimg = null, PX = null, ZB = null, ZT = null;
+let FOC = 1, SCX = 1, SCY = 1, NEAR = 0.08;
+let LIGHT = 1, fogR = 200, fogG = 220, fogB = 240, fogK = 1, fogN = 45, fogF = 150;
+let under = false, msRender = 0, enclosed = false;
+const sky = { top: [104, 168, 240], hor: [206, 226, 255], sun: [255, 250, 220] };
+let sunDir = [0, 1, 0], dayT = 0.30, dayFrozen = false, worldT = 0;
+
+function resize(scale) {
+  const w = Math.max(2, Math.round(innerWidth * scale)), h = Math.max(2, Math.round(innerHeight * scale));
+  if (w === RW && h === RH && rimg) return;
+  RW = w; RH = h;
+  view.width = w; view.height = h;
+  rimg = ctx.createImageData(w, h);
+  PX = new Uint32Array(rimg.data.buffer);
+  ZB = new Float32Array(w * h);
+  ZT = new Float32Array(w * h);
+}
+
+/* scratch buffers used by the projection pipeline */
+const VZ = new Float64Array(4), VX = new Float64Array(4), VY = new Float64Array(4);
+const CPX = new Float64Array(8), CPY = new Float64Array(8), CPZ = new Float64Array(8);
+const CAU = new Float64Array(8), CAV = new Float64Array(8), CAS = new Float64Array(8);
+const SX = new Float64Array(8), SY = new Float64Array(8);
+const SI = new Float64Array(8), SU = new Float64Array(8), SV = new Float64Array(8), SS = new Float64Array(8);
+const QP = new Float64Array(12), QZ = new Float64Array(4);
+let tileCur = 0, uoCur = 0;
+
+/* --- textured triangle: z-buffered, perspective correct uv, fogged --- */
+function texTri(a, b, c, tile, uo) {
+  const ax = SX[a], ay = SY[a], bx = SX[b], by = SY[b], cx = SX[c], cy = SY[c];
+  const area = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+  if (area > -1e-9 && area < 1e-9) return;
+  const inv = 1 / area;
+  const a0 = (by - cy) * inv, b0 = (cx - bx) * inv, c0 = (bx * cy - cx * by) * inv;
+  const a1 = (cy - ay) * inv, b1 = (ax - cx) * inv, c1 = (ay * cx - ax * cy) * inv;
+  const a2 = (ay - by) * inv, b2 = (bx - ax) * inv, c2 = (ax * by - bx * ay) * inv;
+  let x0 = Math.floor(Math.min(ax, bx, cx)), x1 = Math.ceil(Math.max(ax, bx, cx));
+  let y0 = Math.floor(Math.min(ay, by, cy)), y1 = Math.ceil(Math.max(ay, by, cy));
+  if (x0 < 0) x0 = 0; if (y0 < 0) y0 = 0;
+  if (x1 > RW - 1) x1 = RW - 1; if (y1 > RH - 1) y1 = RH - 1;
+  if (x1 < x0 || y1 < y0) return;
+
+  const i0 = SI[a], i1 = SI[b], i2 = SI[c];
+  const u0 = SU[a], u1 = SU[b], u2 = SU[c];
+  const v0 = SV[a], v1 = SV[b], v2 = SV[c];
+  const s0 = SS[a], s1 = SS[b], s2 = SS[c];
+  const dI = a0 * i0 + a1 * i1 + a2 * i2;
+  const dU = a0 * u0 + a1 * u1 + a2 * u2;
+  const dV = a0 * v0 + a1 * v1 + a2 * v2;
+  const dS = a0 * s0 + a1 * s1 + a2 * s2;
+  const tb = tile << 8, li = LIGHT * 256;
+  const fr = fogR, fg = fogG, fb = fogB, fn = fogN, fk = fogK;
+  const px = PX, zb = ZB;
+
+  let rA = a0 * x0 + b0 * y0 + c0, rB = a1 * x0 + b1 * y0 + c1, rC = a2 * x0 + b2 * y0 + c2;
+  for (let y = y0; y <= y1; y++) {
+    let wA = rA, wB = rB, wC = rC;
+    let pI = wA * i0 + wB * i1 + wC * i2;
+    let pU = wA * u0 + wB * u1 + wC * u2;
+    let pV = wA * v0 + wB * v1 + wC * v2;
+    let pS = wA * s0 + wB * s1 + wC * s2;
+    let idx = y * RW + x0;
+    for (let x = x0; x <= x1; x++, idx++, wA += a0, wB += a1, wC += a2, pI += dI, pU += dU, pV += dV, pS += dS) {
+      if (wA < 0 || wB < 0 || wC < 0) continue;
+      if (pI <= zb[idx]) continue;
+      const iv = 1 / pI;
+      let f = (iv - fn) * fk; f = f > 0 ? (f > 1 ? 1 : f * f) : 0;
+      const tx0 = ((pU * iv * 16 + uo) | 0) & 15;
+      let ty0 = pV * iv * 16; ty0 = ty0 < 0 ? 0 : (ty0 > 15.99 ? 15 : ty0 | 0);
+      let tx = tx0, ty = ty0;
+      if (tile === T.WATER) {                          /* streaming water: scroll the uv */
+        tx = (tx0 + ((worldT * 4) & 15)) & 15;
+        ty = (ty0 + ((worldT * 2) & 15)) & 15;
+      }
+      const cc = TEX[tb + (ty << 4) + tx];
+      const sh = pS * li, fs = f * 256, ifs = 256 - fs;
+      const r = ((cc & 255) * sh >> 8) * ifs + fr * fs;
+      const g = ((((cc >> 8) & 255) * sh >> 8) * ifs + fg * fs);
+      const bl = ((((cc >> 16) & 255) * sh >> 8) * ifs + fb * fs);
+      px[idx] = 0xff000000 | ((bl >> 8) << 16) | ((g >> 8) << 8) | (r >> 8);
+      zb[idx] = pI;
+    }
+    rA += b0; rB += b1; rC += b2;
+  }
+}
+
+/* --- flat shaded triangle with alpha blending (clouds, particles) --- */
+let matR = 255, matG = 255, matB = 255, matA = 255, matZ = 1;
+function solidTri(a, b, c) {
+  const ax = SX[a], ay = SY[a], bx = SX[b], by = SY[b], cx = SX[c], cy = SY[c];
+  const area = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+  if (area > -1e-9 && area < 1e-9) return;
+  const inv = 1 / area;
+  const a0 = (by - cy) * inv, b0 = (cx - bx) * inv, c0 = (bx * cy - cx * by) * inv;
+  const a1 = (cy - ay) * inv, b1 = (ax - cx) * inv, c1 = (ay * cx - ax * cy) * inv;
+  const a2 = (ay - by) * inv, b2 = (bx - ax) * inv, c2 = (ax * by - bx * ay) * inv;
+  let x0 = Math.floor(Math.min(ax, bx, cx)), x1 = Math.ceil(Math.max(ax, bx, cx));
+  let y0 = Math.floor(Math.min(ay, by, cy)), y1 = Math.ceil(Math.max(ay, by, cy));
+  if (x0 < 0) x0 = 0; if (y0 < 0) y0 = 0;
+  if (x1 > RW - 1) x1 = RW - 1; if (y1 > RH - 1) y1 = RH - 1;
+  if (x1 < x0 || y1 < y0) return;
+  const i0 = SI[a], i1 = SI[b], i2 = SI[c];
+  const dI = a0 * i0 + a1 * i1 + a2 * i2;
+  const px = PX, zb = matZ ? ZT : ZB;
+  const ma = matA, ima = 256 - ma;
+  const br = matR * LIGHT, bg = matG * LIGHT, bb = matB * LIGHT;
+
+  let rA = a0 * x0 + b0 * y0 + c0, rB = a1 * x0 + b1 * y0 + c1, rC = a2 * x0 + b2 * y0 + c2;
+  for (let y = y0; y <= y1; y++) {
+    let wA = rA, wB = rB, wC = rC, pI = wA * i0 + wB * i1 + wC * i2;
+    let idx = y * RW + x0;
+    for (let x = x0; x <= x1; x++, idx++, wA += a0, wB += a1, wC += a2, pI += dI) {
+      if (wA < 0 || wB < 0 || wC < 0) continue;
+      if (matZ && pI <= zb[idx]) continue;
+      const o = px[idx];
+      const r = (br * ma + (o & 255) * ima + 128) >> 8;
+      const g = (bg * ma + ((o >> 8) & 255) * ima + 128) >> 8;
+      const bl = (bb * ma + ((o >> 16) & 255) * ima + 128) >> 8;
+      px[idx] = 0xff000000 | (bl << 16) | (g << 8) | r;
+      if (matZ) zb[idx] = pI;
+    }
+    rA += b0; rB += b1; rC += b2;
+  }
+}
+
+/* project a view space convex polygon, cull, fan triangulate (mode 0 = textured) */
+function emitVerts(m, mode) {
+  let mnx = 1e9, mxx = -1e9, mny = 1e9, mxy = -1e9;
+  for (let i = 0; i < m; i++) {
+    const iw = 1 / CPZ[i];
+    const x = SCX + CPX[i] * FOC * iw, y = SCY - CPY[i] * FOC * iw;
+    SX[i] = x; SY[i] = y; SI[i] = iw;
+    SU[i] = CAU[i] * iw; SV[i] = CAV[i] * iw; SS[i] = CAS[i];
+    if (x < mnx) mnx = x; if (x > mxx) mxx = x;
+    if (y < mny) mny = y; if (y > mxy) mxy = y;
+  }
+  if (mxx < 0 || mnx > RW - 1 || mxy < 0 || mny > RH - 1) return;
+  if (mode === 0) { for (let i = 1; i < m - 1; i++) texTri(0, i, i + 1, tileCur, uoCur); }
+  else { for (let i = 1; i < m - 1; i++) solidTri(0, i, i + 1); }
+}
+
+/* clip the 4 polygon in QP/QZ against the near plane into CP* */
+function clipQ() {
+  let m = 0;
+  for (let k = 0; k < 4; k++) {
+    const b = (k + 1) & 3, a3 = k * 3, b3 = b * 3;
+    const za = QZ[k], zb = QZ[b], ina = za >= NEAR, inb = zb >= NEAR;
+    if (ina) {
+      CPX[m] = QP[a3]; CPY[m] = QP[a3 + 1]; CPZ[m] = za; CAU[m] = 0; CAV[m] = 0; CAS[m] = 1; m++;
+    }
+    if (ina !== inb) {
+      const t = (NEAR - za) / (zb - za);
+      CPX[m] = QP[a3] + (QP[b3] - QP[a3]) * t;
+      CPY[m] = QP[a3 + 1] + (QP[b3 + 1] - QP[a3 + 1]) * t;
+      CPZ[m] = NEAR; CAU[m] = 0; CAV[m] = 0; CAS[m] = 1; m++;
+    }
+  }
+  return m;
+}
+
+/* one mesh face: backface cull, near clip, rasterise */
+function drawFace(d, o) {
+  const cxm = (d[o] + d[o + 6] + d[o + 12] + d[o + 18]) * 0.25 - cam.x;
+  const cym = (d[o + 1] + d[o + 7] + d[o + 13] + d[o + 19]) * 0.25 - cam.y;
+  const czm = (d[o + 2] + d[o + 8] + d[o + 14] + d[o + 20]) * 0.25 - cam.z;
+  if (cxm * d[o + 24] + cym * d[o + 25] + czm * d[o + 26] >= 0) return;
+
+  let behind = false;
+  for (let i = 0; i < 4; i++) {
+    const k = o + i * 6;
+    const rx = d[k] - cam.x, ry = d[k + 1] - cam.y, rz = d[k + 2] - cam.z;
+    VX[i] = rx * rt[0] + ry * rt[1] + rz * rt[2];
+    VY[i] = rx * uv[0] + ry * uv[1] + rz * uv[2];
+    const vz = rx * fw[0] + ry * fw[1] + rz * fw[2];
+    VZ[i] = vz;
+    if (vz < NEAR) behind = true;
+  }
+  let m;
+  if (behind) {
+    m = 0;
+    for (let k = 0; k < 4; k++) {
+      const a = k, b = (k + 1) & 3, ka = o + a * 6, kb = o + b * 6;
+      const za = VZ[a], zb = VZ[b], ina = za >= NEAR, inb = zb >= NEAR;
+      if (ina) {
+        CPX[m] = VX[a]; CPY[m] = VY[a]; CPZ[m] = za;
+        CAU[m] = d[ka + 3]; CAV[m] = d[ka + 4]; CAS[m] = d[ka + 5]; m++;
+      }
+      if (ina !== inb) {
+        const t = (NEAR - za) / (zb - za);
+        CPX[m] = VX[a] + (VX[b] - VX[a]) * t;
+        CPY[m] = VY[a] + (VY[b] - VY[a]) * t;
+        CPZ[m] = NEAR;
+        CAU[m] = d[ka + 3] + (d[kb + 3] - d[ka + 3]) * t;
+        CAV[m] = d[ka + 4] + (d[kb + 4] - d[ka + 4]) * t;
+        CAS[m] = d[ka + 5] + (d[kb + 5] - d[ka + 5]) * t;
+        m++;
+      }
+    }
+    if (m < 3) return;
+  } else {
+    m = 4;
+    for (let i = 0; i < 4; i++) {
+      const k = o + i * 6;
+      CPX[i] = VX[i]; CPY[i] = VY[i]; CPZ[i] = VZ[i];
+      CAU[i] = d[k + 3]; CAV[i] = d[k + 4]; CAS[i] = d[k + 5];
+    }
+  }
+  tileCur = d[o + C_TILE]; uoCur = d[o + C_UO];
+  emitVerts(m, 0);
+}
+
+function drawChunk(d, n) {
+  for (let i = 0; i < n; i++) drawFace(d, i * STRIDE);
+}
+function chunkVisible(c, tanW, tanH) {
+  const dx = c.ox + CH / 2 - cam.x, dy = H / 2 - cam.y, dz = c.oz + CH / 2 - cam.z;
+  const hx = CH / 2, hy = H / 2, hz = CH / 2;
+  const zc = dx * fw[0] + dy * fw[1] + dz * fw[2];
+  const zr = hx * Math.abs(fw[0]) + hy * Math.abs(fw[1]) + hz * Math.abs(fw[2]);
+  if (zc + zr < NEAR) return false;
+  const rc = dx * rt[0] + dy * rt[1] + dz * rt[2];
+  const rr = hx * Math.abs(rt[0]) + hy * Math.abs(rt[1]) + hz * Math.abs(rt[2]);
+  if (rc - rr > (zc + zr) * tanW || -rc - rr > (zc + zr) * tanW) return false;
+  const uc = dx * uv[0] + dy * uv[1] + dz * uv[2];
+  const ur = hx * Math.abs(uv[0]) + hy * Math.abs(uv[1]) + hz * Math.abs(uv[2]);
+  if (uc - ur > (zc + zr) * tanH || -uc - ur > (zc + zr) * tanH) return false;
+  return true;
+}
+
+/* ---------------------------------------------------------------- sky */
+function drawSky() {
+  const s = Math.sin((dayT - 0.25) * Math.PI * 2);
+  const dayF = clamp(s * 2.2 + 0.30, 0, 1);
+  const horiz = Math.max(0, 1 - Math.abs(s) * 3.2);
+  const t = [lerp(9, 104, dayF), lerp(14, 168, dayF), lerp(30, 240, dayF)];
+  const h = [lerp(18, 208, dayF), lerp(26, 228, dayF), lerp(46, 255, dayF)];
+  for (let i = 0; i < 3; i++) {
+    t[i] = lerp(t[i], i === 2 ? 128 : 76, horiz * 0.45);
+    h[i] = lerp(h[i], i === 0 ? 250 : i === 1 ? 146 : 74, horiz * 0.75);
+  }
+  sky.top = t; sky.hor = h;
+  LIGHT = Math.max(0.62, lerp(0.46, 1, dayF) * (1 - horiz * 0.1));
+  const ang = (dayT - 0.25) * Math.PI * 2;
+  const sd = [Math.cos(ang) * 0.85, Math.sin(ang), Math.sin(ang * 0.5 + 1) * 0.35];
+  const sl = Math.hypot(sd[0], sd[1], sd[2]);
+  sunDir[0] = sd[0] / sl; sunDir[1] = sd[1] / sl; sunDir[2] = sd[2] / sl;
+  sky.sun = [255, lerp(206, 255, dayF), lerp(150, 226, dayF)];
+
+  const hor = SCY;
+  for (let y = 0; y < RH; y++) {
+    const f = clamp((hor - y) / (RH * 0.62), -1, 1);
+    let r, g, b;
+    if (f >= 0) { r = lerp(h[0], t[0], f); g = lerp(h[1], t[1], f); b = lerp(h[2], t[2], f); }
+    else { r = h[0]; g = h[1]; b = h[2]; }
+    PX.fill(0xff000000 | (b << 16) | (g << 8) | r, y * RW, y * RW + RW);
+  }
+  if (sunDir[1] > -0.3) {
+    const dz = sunDir[0] * fw[0] + sunDir[1] * fw[1] + sunDir[2] * fw[2];
+    if (dz > 0.05) {
+      const vx = sunDir[0] * rt[0] + sunDir[1] * rt[1] + sunDir[2] * rt[2];
+      const vy = sunDir[0] * uv[0] + sunDir[1] * uv[1] + sunDir[2] * uv[2];
+      const sx = SCX + vx * FOC / dz, sy = SCY - vy * FOC / dz, r = Math.max(4, RW * 0.02);
+      const y0 = Math.max(0, sy - r | 0), y1 = Math.min(RH - 1, sy + r | 0);
+      const x0 = Math.max(0, sx - r | 0), x1 = Math.min(RW - 1, sx + r | 0);
+      for (let y = y0; y <= y1; y++) {
+        const dy = y - sy; let idx = y * RW;
+        for (let x = x0; x <= x1; x++, idx++) {
+          const dx = x - sx;
+          if (dx * dx + dy * dy > r * r) continue;
+          const c = PX[idx], k = 0.85, s = sky.sun;
+          PX[idx] = 0xff000000 |
+            (((((c >> 16) & 255) * (1 - k) + s[2] * k) | 0) << 16) |
+            (((((c >> 8) & 255) * (1 - k) + s[1] * k) | 0) << 8) |
+            (((c & 255) * (1 - k) + s[0] * k) | 0);
+        }
+      }
+    }
+  }
+}
+
+/* --------------------------------------------------------- particles */
+const parts = [];
+const CUBE = [[-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
+              [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]];
+const CQUAD = [[4, 5, 6, 7], [1, 0, 3, 2], [5, 1, 2, 6], [0, 4, 7, 3], [3, 2, 6, 7], [0, 1, 5, 4]];
+
+function spawnBreak(x, y, z, tile) {
+  let r = 0, g = 0, b = 0, n = 0;
+  for (let i = 0; i < 256; i++) {
+    const c = TEX[tile * 256 + i];
+    if (!(c >>> 24)) continue;
+    r += c & 255; g += (c >> 8) & 255; b += (c >> 16) & 255; n++;
+  }
+  if (!n) return;
+  r = (r / n) | 0; g = (g / n) | 0; b = (b / n) | 0;
+  for (let i = 0; i < 14; i++) parts.push({
+    x: x + 0.2 + Math.random() * 0.6, y: y + 0.2 + Math.random() * 0.6, z: z + 0.2 + Math.random() * 0.6,
+    vx: (Math.random() - 0.5) * 3.6, vy: 1 + Math.random() * 4, vz: (Math.random() - 0.5) * 3.6,
+    s: 0.07 + Math.random() * 0.09, life: 0.5 + Math.random() * 0.5, r, g, b
+  });
+}
+function drawParts() {
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const p = parts[i];
+    p.life -= dt;
+    if (p.life <= 0) { parts.splice(i, 1); continue; }
+    p.vy -= 22 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
+    const gx = Math.floor(p.x), gy = Math.floor(p.y), gz = Math.floor(p.z);
+    if (solidAt(gx, gy, gz)) {
+      if (p.vy < 0) { p.y = gy + 1.02; p.vy *= -0.28; }
+      p.vx *= 0.72; p.vz *= 0.72;
+    }
+  }
+  if (!parts.length) return;
+  matZ = 1; matA = 255;
+  for (const p of parts) {
+    matR = p.r; matG = p.g; matB = p.b;
+    for (const q of CQUAD) {
+      for (let k = 0; k < 4; k++) {
+        const c = CUBE[q[k]], j = k * 3;
+        const rx = p.x + c[0] * p.s - cam.x;
+        const ry = p.y + c[1] * p.s - cam.y;
+        const rz = p.z + c[2] * p.s - cam.z;
+        QP[j]     = rx * rt[0] + ry * rt[1] + rz * rt[2];
+        QP[j + 1] = rx * uv[0] + ry * uv[1] + rz * uv[2];
+        QP[j + 2] = rx * fw[0] + ry * fw[1] + rz * fw[2];
+        QZ[k] = QP[j + 2];
+      }
+      const m = clipQ();
+      if (m >= 3) emitVerts(m, 1);
+    }
+  }
+}
+
+/* ------------------------------------------------------------- clouds */
+const clouds = [];
+function buildClouds() {
+  clouds.length = 0;
+  for (let i = 0; i < 140; i++) {
+    if (fbm(i * 3.1 + 5, i * 1.7 + 9, 3) < 0.46) continue;
+    clouds.push({
+      x: hash2(i, 1) * 300 - 150, y: 44 + hash2(i, 2) * 11, z: hash2(i, 3) * 300 - 150,
+      w: 9 + hash2(i, 4) * 22, d: 8 + hash2(i, 5) * 14
+    });
+  }
+}
+function drawClouds() {
+  matZ = 1; matA = 232;
+  const ox = ((worldT * 1.2) % 400 + 400) % 400 - 200;
+  for (const c of clouds) {
+    const cxw = c.x + ox;
+    if (Math.abs(cxw - cam.x) > 200 || Math.abs(c.z - cam.z) > 200) continue;
+    const dy = c.y - cam.y, dz = c.z - cam.z, dx = cxw - cam.x;
+    const d = Math.hypot(dx, dy, dz);
+    const f = clamp((d - 60) / 220, 0, 0.8);
+    matR = lerp(252, sky.hor[0], f); matG = lerp(252, sky.hor[1], f); matB = lerp(255, sky.hor[2], f);
+    const hw = c.w / 2, hd = c.d / 2;
+    const ex = cxw - cam.x, ez = c.z - cam.z;
+    QP[0] = (-hw) * rt[0] + dy * rt[1] + (-hd) * rt[2];
+    QP[1] = (-hw) * uv[0] + dy * uv[1] + (-hd) * uv[2];
+    QP[2] = (-hw) * fw[0] + dy * fw[1] + (-hd) * fw[2];
+    QP[3] = (hw) * rt[0] + dy * rt[1] + (-hd) * rt[2];
+    QP[4] = (hw) * uv[0] + dy * uv[1] + (-hd) * uv[2];
+    QP[5] = (hw) * fw[0] + dy * fw[1] + (-hd) * fw[2];
+    QP[6] = (hw) * rt[0] + dy * rt[1] + (hd) * rt[2];
+    QP[7] = (hw) * uv[0] + dy * uv[1] + (hd) * uv[2];
+    QP[8] = (hw) * fw[0] + dy * fw[1] + (hd) * fw[2];
+    QP[9] = (-hw) * rt[0] + dy * rt[1] + (hd) * rt[2];
+    QP[10] = (-hw) * uv[0] + dy * uv[1] + (hd) * uv[2];
+    QP[11] = (-hw) * fw[0] + dy * fw[1] + (hd) * fw[2];
+    for (let k = 0; k < 4; k++) QZ[k] = QP[k * 3 + 2];
+    const m = clipQ();
+    if (m >= 3) emitVerts(m, 1);
+  }
+}
+/* ---------------------------------------------- first-person red arm */
+function drawArm() {
+  const sw = Math.sin(pl.bob) * 0.3 + (mining ? Math.sin(mineT * 45) * 0.45 : 0);
+  const a = 2.36 + sw;
+  const dx = Math.cos(a), dy = Math.sin(a);
+  const px = -dy, py = dx;
+  const ex = 0.58, ey = -0.46, hw = 0.115, len = 0.5;
+  const co = [[ex - px * hw, ey - py * hw], [ex + px * hw, ey + py * hw],
+              [ex + dx * len + px * hw, ey + dy * len + py * hw],
+              [ex + dx * len - px * hw, ey + dy * len - py * hw]];
+  for (let k = 0; k < 4; k++) { CPX[k] = co[k][0]; CPY[k] = co[k][1]; CPZ[k] = 0.6; CAU[k] = 0; CAV[k] = 0; CAS[k] = 1; }
+  matZ = 0; matA = 256; matR = 230; matG = 48; matB = 44;
+  emitVerts(4, 1);
+}
+
+/* ----------------------------------- flat-shaded world boxes (player, animals) */
+function boxFaces(cx, cy, cz, sx, sy, sz, r, g, b) {
+  const ddx = cx - cam.x, ddy = cy - cam.y, ddz = cz - cam.z;
+  if (ddx * ddx + ddy * ddy + ddz * ddz < 0.12) return;
+  const hx = sx * 0.5, hy = sy * 0.5, hz = sz * 0.5;
+  matZ = 1; matA = 255;
+  for (let f = 0; f < 6; f++) {
+    const q = CQUAD[f];
+    for (let k = 0; k < 4; k++) {
+      const c = CUBE[q[k]], j = k * 3;
+      const rx = cx + c[0] * hx - cam.x, ry = cy + c[1] * hy - cam.y, rz = cz + c[2] * hz - cam.z;
+      QP[j] = rx * rt[0] + ry * rt[1] + rz * rt[2];
+      QP[j + 1] = rx * uv[0] + ry * uv[1] + rz * uv[2];
+      QP[j + 2] = rx * fw[0] + ry * fw[1] + rz * fw[2];
+      QZ[k] = QP[j + 2];
+    }
+    const sh = FSHADE[f];
+    matR = (r * sh) | 0; matG = (g * sh) | 0; matB = (b * sh) | 0;
+    const m = clipQ();
+    if (m >= 3) emitVerts(m, 1);
+  }
+}
+
+/* -------------------------------------------- third-person red person */
+function drawPlayer() {
+  const r = 225, g = 48, b = 44, dk = 0.85;
+  const sw = Math.sin(pl.bob) * 0.8;
+  const fx = Math.sin(cam.yaw), fz = Math.cos(cam.yaw);
+  const sway = Math.abs(Math.sin(pl.bob)) * 0.05;
+  boxFaces(pl.x, pl.y + 1.55, pl.z, 0.5, 0.52, 0.5, r, g, b);
+  boxFaces(pl.x, pl.y + 1.06 + sway, pl.z, 0.6, 0.72, 0.34, r, g, b);
+  boxFaces(pl.x + 0.43 + fx * sw * 0.18, pl.y + 1.05 + sway, pl.z + fz * sw * 0.18, 0.2, 0.7, 0.2, r, g, b);
+  boxFaces(pl.x - 0.43 - fx * sw * 0.18, pl.y + 1.05 + sway, pl.z - fz * sw * 0.18, 0.2, 0.7, 0.2, r, g, b);
+  boxFaces(pl.x - 0.14 - fx * sw * 0.22, pl.y + 0.36, pl.z - fz * sw * 0.22, 0.22, 0.72, 0.22, r * dk | 0, g * dk | 0, b * dk | 0);
+  boxFaces(pl.x + 0.14 + fx * sw * 0.22, pl.y + 0.36, pl.z + fz * sw * 0.22, 0.22, 0.72, 0.22, r * dk | 0, g * dk | 0, b * dk | 0);
+}
+
+/* --------------------------------------------------------- animals */
+function drawMob(m) {
+  const M = MOBS[m.kind], fx = Math.sin(m.dir), fz = Math.cos(m.dir);
+  const bob = Math.abs(Math.sin(m.bob)) * 0.04;
+  const bw = M.b[0], bh = M.b[1], bl = M.b[2];
+  boxFaces(m.x, m.y + M.lh + bh * 0.5 + bob, m.z, bw, bh, bl, M.c[0], M.c[1], M.c[2]);
+  boxFaces(m.x + fx * bl * 0.42, m.y + M.lh + bh + M.hs * 0.5 + bob, m.z + fz * bl * 0.42, M.hs, M.hs, M.hs, M.h[0], M.h[1], M.h[2]);
+  if (M.n !== 'chicken') {
+    boxFaces(m.x - bw * 0.25, m.y + M.lh * 0.5, m.z - bl * 0.3, M.lw, M.lh, M.lw, M.l[0], M.l[1], M.l[2]);
+    boxFaces(m.x + bw * 0.25, m.y + M.lh * 0.5, m.z - bl * 0.3, M.lw, M.lh, M.lw, M.l[0], M.l[1], M.l[2]);
+    boxFaces(m.x - bw * 0.25, m.y + M.lh * 0.5, m.z + bl * 0.3, M.lw, M.lh, M.lw, M.l[0], M.l[1], M.l[2]);
+    boxFaces(m.x + bw * 0.25, m.y + M.lh * 0.5, m.z + bl * 0.3, M.lw, M.lh, M.lw, M.l[0], M.l[1], M.l[2]);
+  } else {
+    boxFaces(m.x - bw * 0.14, m.y + M.lh * 0.5, m.z + bl * 0.1, M.lw, M.lh, M.lw, M.l[0], M.l[1], M.l[2]);
+    boxFaces(m.x + bw * 0.14, m.y + M.lh * 0.5, m.z + bl * 0.1, M.lw, M.lh, M.lw, M.l[0], M.l[1], M.l[2]);
+  }
+}
+function drawEntities() {
+  for (const m of animals) {
+    const dx = m.x - cam.x, dz = m.z - cam.z;
+    if (dx * dx + dz * dz > 4500) continue;
+    drawMob(m);
+  }
+}
+function spawnAnimals() {
+  animals.length = 0;
+  let n = 0;
+  for (let i = 0; i < 60 && n < 14; i++) {
+    const x = 4 + Math.random() * (W - 8), z = 4 + Math.random() * (W - 8);
+    const t = topAt(x | 0, z | 0);
+    if (t <= SEA + 1 || get(x | 0, t, z | 0) !== GRASS || get(x | 0, t - 1, z | 0) !== DIRT) continue;
+    let over = false;
+    for (let y = t + 1; y < H; y++) {
+      const bo = get(x | 0, y, z | 0);
+      if (bo === LEAVES || bo === LOG) { over = true; break; }
+    }
+    if (over) continue;
+    if (waterNear(x, z, 3)) continue;
+    animals.push({ kind: (Math.random() * 4) | 0, x, z, y: t + 1, dir: Math.random() * 6.283, moving: 0, walkT: Math.random() * 2, bob: Math.random() * 6 });
+    n++;
+  }
+}
+function stepAnimals(dt) {
+  for (const a of animals) {
+    const M = MOBS[a.kind];
+    a.walkT -= dt;
+    if (a.walkT <= 0) {
+      if (Math.random() < 0.55) { a.moving = 1; a.dir += (Math.random() - 0.5) * 2; a.walkT = 1.2 + Math.random() * 2.6; }
+      else { a.moving = 0; a.walkT = 0.8 + Math.random() * 2.4; }
+    }
+    if (a.moving) {
+      const ox = a.x, oz = a.z;
+      a.x += Math.sin(a.dir) * M.sp * dt;
+      a.z += Math.cos(a.dir) * M.sp * dt;
+      a.x = clamp(a.x, 2, W - 2); a.z = clamp(a.z, 2, W - 2);
+      a.bob += dt * 9;
+      const nx = Math.sin(a.dir) * 1.2, nz = Math.cos(a.dir) * 1.2;
+      if (solidAt((a.x + nx) | 0, (a.y + 0.5) | 0, (a.z + nz) | 0)) {
+        a.x = ox; a.z = oz;
+        a.moving = 0; a.dir += Math.PI * (0.4 + Math.random() * 0.8); a.walkT = 0.6 + Math.random();
+      }
+      const at = topAt(a.x | 0, a.z | 0);
+      if (at > a.y + 1.2) {              /* a tree / wall: do not step up onto it */
+        a.x = ox; a.z = oz;
+        a.moving = 0; a.dir += Math.PI * (0.5 + Math.random() * 0.5); a.walkT = 0.6 + Math.random();
+      } else a.y = at + 1;
+    }
+    const at2 = topAt(a.x | 0, a.z | 0);
+    const topb = get(a.x | 0, at2, a.z | 0);
+    if (topb === WATER) { a.dir += Math.PI; a.moving = 0; a.walkT = 0.5 + Math.random() * 1.5; }
+    else if (topb === LEAVES || topb === LOG) { a.dir += Math.PI * (0.6 + Math.random() * 0.4); a.moving = 0; a.walkT = 0.5 + Math.random() * 1.5; }
+    else if (waterNear(a.x, a.z, 2) && Math.random() < 0.7) {
+      let bestD = a.dir, bestW = 1e9;
+      for (let k = 0; k < 8; k++) {
+        const dd = k * Math.PI / 4, tx = a.x + Math.sin(dd) * 3, tz = a.z + Math.cos(dd) * 3;
+        const w = (tx < 2 || tz < 2 || tx > W - 2 || tz > W - 2 || waterNear(tx, tz, 2)) ? 1 : 0;
+        if (w === 0) { bestD = dd; bestW = 0; break; }
+        if (w < bestW || (w === bestW && Math.random() < 0.25)) { bestW = w; bestD = dd; }
+      }
+      a.dir = bestD; a.moving = 1;
+    }
+    if (topb !== WATER && topb !== LEAVES && topb !== LOG) a.y = at2 + 1;
+  }
+}
+
+/* ------------------------------------------------------ player state */
+const PW = 0.62, PH = 1.78, EYE = 1.62;
+const pl = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, onGround: 0, fly: 0, bob: 0 };
+let sel = 0, running = false, hasPointer = false, started = false, hit = null;
+let keys = Object.create(null), breath = 0, dt = 0, thirdPerson = false, dive = 0, wSpace = false;
+
+const FSHADE = [1, 0.55, 0.78, 0.78, 0.7, 0.7];
+const MOBS = [
+  { n: 'cow', b: [0.86, 0.76, 1.5], c: [142, 89, 52], h: [97, 64, 40], l: [91, 62, 45], hs: 0.62, hh: 1.05, lh: 0.7, lw: 0.19, sp: 0.9 },
+  { n: 'chicken', b: [0.5, 0.55, 0.6], c: [236, 232, 226], h: [200, 42, 38], l: [230, 150, 52], hs: 0.3, hh: 0.55, lh: 0.32, lw: 0.07, sp: 1.5 },
+  { n: 'pig', b: [0.72, 0.66, 1.15], c: [234, 168, 160], h: [226, 150, 145], l: [226, 150, 145], hs: 0.56, hh: 0.72, lh: 0.55, lw: 0.16, sp: 0.9 },
+  { n: 'sheep', b: [0.86, 0.78, 1.3], c: [240, 236, 230], h: [148, 128, 116], l: [226, 218, 210], hs: 0.5, hh: 0.55, lh: 0.6, lw: 0.16, sp: 0.8 }
+];
+let animals = [];
+
+function waterNear(x, z, r) {
+  const x0 = Math.max(0, (x - r) | 0), x1 = Math.min(W - 1, (x + r) | 0);
+  const z0 = Math.max(0, (z - r) | 0), z1 = Math.min(W - 1, (z + r) | 0);
+  for (let zz = z0; zz <= z1; zz++) for (let xx = x0; xx <= x1; xx++)
+    if (get(xx, SEA, zz) === WATER || get(xx, SEA + 1, zz) === WATER) return true;
+  return false;
+}
+
+function spawnPlayer() {
+  let sx = W >> 1, sz = W >> 1, best = -1;
+  for (let r = 2; r < W / 2; r++) {
+    for (let k = 0; k < 16; k++) {
+      const a = k / 16 * Math.PI * 2 + r * 0.7;
+      const x = clamp(Math.round((W >> 1) + Math.cos(a) * r * 1.6), 2, W - 3);
+      const z = clamp(Math.round((W >> 1) + Math.sin(a) * r * 1.6), 2, W - 3);
+      const t = topAt(x, z);
+      if (t > SEA + 1 && t > best) { best = t; sx = x; sz = z; }
+    }
+    if (best > SEA + 4) break;
+  }
+  pl.x = sx + 0.5; pl.z = sz + 0.5; pl.y = topAt(sx, sz) + 1.05;
+  pl.vx = pl.vy = pl.vz = 0; pl.fly = 0;
+  cam.yaw = (hash2(sx, sz) - 0.5) * 6.2; cam.pitch = -0.1;
+}
+
+function moveAxis(ax, amount) {
+  if (amount === 0) return;
+  if (ax === 0) pl.x += amount; else if (ax === 1) pl.y += amount; else pl.z += amount;
+  const hw = PW / 2, h = PH;
+  const x0 = Math.floor(pl.x - hw), x1 = Math.floor(pl.x + hw);
+  const y0 = Math.floor(pl.y), y1 = Math.floor(pl.y + h - 1e-4);
+  const z0 = Math.floor(pl.z - hw), z1 = Math.floor(pl.z + hw);
+  for (let y = y0; y <= y1; y++)
+    for (let z = z0; z <= z1; z++)
+      for (let x = x0; x <= x1; x++) {
+        if (!solidAt(x, y, z)) continue;
+        if (ax === 0) { pl.x = amount > 0 ? x - hw - 1e-3 : x + 1 + hw + 1e-3; pl.vx = 0; }
+        else if (ax === 2) { pl.z = amount > 0 ? z - hw - 1e-3 : z + 1 + hw + 1e-3; pl.vz = 0; }
+        else if (amount > 0) { pl.y = y - h - 1e-3; pl.vy = 0; }
+        else { pl.y = y + 1 + 1e-3; pl.vy = 0; pl.onGround = 1; }
+        return;
+      }
+}
+
+function physics() {
+  const head = get(Math.floor(pl.x), Math.floor(pl.y + EYE), Math.floor(pl.z)) === WATER;
+  const feet = get(Math.floor(pl.x), Math.floor(pl.y + 0.2), Math.floor(pl.z)) === WATER;
+  under = head;
+  const pressS = keys['Space'] && !wSpace; wSpace = !!keys['Space'];
+  const fwd = (keys['KeyW'] ? 1 : 0) - (keys['KeyS'] ? 1 : 0);
+  const str = (keys['KeyD'] ? 1 : 0) - (keys['KeyA'] ? 1 : 0);
+  const sprint = !!keys['ShiftLeft'];
+  const spd = (sprint ? 7.4 : 4.7) * (feet ? 0.6 : 1) * (pl.fly ? (sprint ? 2.3 : 1.4) : 1);
+  const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
+  let mx = sy * fwd + cy * str, mz = cy * fwd - sy * str;
+  const ml = Math.hypot(mx, mz) || 1; mx /= ml; mz /= ml;
+  const k = Math.min(1, (pl.onGround || pl.fly || feet ? 15 : 3.4) * dt);
+  pl.vx += (mx * spd - pl.vx) * k;
+  pl.vz += (mz * spd - pl.vz) * k;
+  if (!fwd && !str && (pl.onGround || feet)) { pl.vx *= Math.max(0, 1 - 14 * dt); pl.vz *= Math.max(0, 1 - 14 * dt); }
+
+  if (pl.fly) {
+    pl.vy = ((keys['Space'] ? 1 : 0) - (keys['ControlLeft'] || keys['KeyC'] ? 1 : 0)) * spd;
+  } else if (feet || dive > 0) {
+    if (feet) dive = 0.3; else dive -= dt;       /* buoyancy lingers briefly after leaving water */
+    if (keys['Space']) {
+      if (pressS) pl.vy = 6.6;                   /* one-shot hop out of the water on press */
+      else if (pl.vy < 5.5) pl.vy += 22 * dt;
+    } else { pl.vy -= 9 * dt; pl.vy = Math.max(pl.vy, -4); }
+  } else {
+    if (keys['Space'] && pl.onGround) pl.vy = 8.8;
+    pl.vy -= 30 * dt;
+    if (pl.vy < -58) pl.vy = -58;
+  }
+
+  pl.onGround = 0;
+  moveAxis(0, pl.vx * dt);
+  moveAxis(2, pl.vz * dt);
+  moveAxis(1, pl.vy * dt);
+
+  pl.x = clamp(pl.x, PW, W - PW); pl.z = clamp(pl.z, PW, W - PW);
+  if (pl.y < -10) { pl.y = H - 2; pl.vy = 0; }
+  pl.bob += Math.hypot(pl.vx, pl.vz) * dt * 1.9;
+  breath = head ? breath + dt : Math.max(0, breath - dt * 4);
+  if (breath > 14) pl.vy = Math.max(pl.vy, 1.4);
+}
+
+/* ------------------------------------------------------------ raycast */
+function raycast(maxD) {
+  let x = Math.floor(cam.x), y = Math.floor(cam.y), z = Math.floor(cam.z);
+  const sx = fw[0] > 0 ? 1 : -1, sy = fw[1] > 0 ? 1 : -1, sz = fw[2] > 0 ? 1 : -1;
+  const dx = Math.abs(fw[0]) < 1e-9 ? 1e9 : 1 / Math.abs(fw[0]);
+  const dy = Math.abs(fw[1]) < 1e-9 ? 1e9 : 1 / Math.abs(fw[1]);
+  const dz = Math.abs(fw[2]) < 1e-9 ? 1e9 : 1 / Math.abs(fw[2]);
+  let tx = (fw[0] > 0 ? x + 1 - cam.x : cam.x - x) * dx;
+  let ty = (fw[1] > 0 ? y + 1 - cam.y : cam.y - y) * dy;
+  let tz = (fw[2] > 0 ? z + 1 - cam.z : cam.z - z) * dz;
+  let nx = 0, ny = 0, nz = 0, t = 0;
+  for (let i = 0; i < 128; i++) {
+    const id = get(x, y, z);
+    if (id && id !== WATER) return { x, y, z, nx, ny, nz, id };
+    if (tx < ty && tx < tz) { x += sx; t = tx; tx += dx; nx = -sx; ny = 0; nz = 0; }
+    else if (ty < tz) { y += sy; t = ty; ty += dy; nx = 0; ny = -sy; nz = 0; }
+    else { z += sz; t = tz; tz += dz; nx = 0; ny = 0; nz = -sz; }
+    if (t > maxD || y < 0 || y >= H || x < 0 || z < 0 || x >= W || z >= W) return null;
+  }
+  return null;
+}
+
+function remeshAround(x, z) {
+  const cx = (x / CH) | 0, cz = (z / CH) | 0;
+  for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
+    const ax = cx + dx, az = cz + dz;
+    if (ax < 0 || az < 0 || ax >= CW || az >= CD) continue;
+    meshChunk(chunks[az * CW + ax]);
+  }
+}
+function edit(p, remove) {
+  if (!p) return;
+  if (remove) {
+    if (p.id === BEDROCK) { toast('bedrock cannot be broken'); return; }
+    spawnBreak(p.x, p.y, p.z, BLK[p.id].t[1]);
+    set(p.x, p.y, p.z, AIR);
+    seedWater(p.x, p.y, p.z);
+    remeshAround(p.x, p.z);
+    sfx(150 + Math.random() * 60, 0.06, 'square');
+  } else {
+    const nx = p.x + p.nx, ny = p.y + p.ny, nz = p.z + p.nz;
+    if (ny < 0 || ny >= H) return;
+    const cur = get(nx, ny, nz);
+    if (cur && cur !== WATER) return;
+    const hw = PW / 2 + 0.02, b = HOTBAR[sel];
+    if (BLK[b].solid &&
+        nx + 1 > pl.x - hw && nx < pl.x + hw &&
+        nz + 1 > pl.z - hw && nz < pl.z + hw &&
+        ny + 1 > pl.y && ny < pl.y + PH) { toast('no room there'); return; }
+    set(nx, ny, nz, b);
+    remeshAround(nx, nz);
+    sfx(430, 0.05, 'triangle');
+  }
+  hit = raycast(6.5);
+}
+
+/* ------------------------------------------------------------- sound */
+let AC = null, muted = false;
+function sfx(freq, dur, type) {
+  if (muted) return;
+  try {
+    if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === 'suspended') AC.resume();
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.05, AC.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + dur);
+    o.connect(g).connect(AC.destination);
+    o.start(); o.stop(AC.currentTime + dur);
+  } catch (e) { /* no audio device */ }
+}
+
+/* ----------------------------------------------------------------- UI */
+const bar = document.getElementById('bar');
+const nameEl = document.getElementById('name');
+const dbgEl = document.getElementById('dbg');
+const toastEl = document.getElementById('toast');
+const menu = document.getElementById('menu');
+const loadEl = document.getElementById('load');
+let toastT = 0, nameFade = 0;
+
+function toast(s) { toastEl.textContent = s; toastEl.classList.add('on'); toastT = 2.2; }
+function buildBar() {
+  bar.innerHTML = '';
+  HOTBAR.forEach((b, i) => {
+    const def = BLK[b];
+    const d = document.createElement('div');
+    d.className = 'slot';
+    const c = document.createElement('canvas');
+    c.width = c.height = 32;
+    const g = c.getContext('2d');
+    g.imageSmoothingEnabled = false;
+    g.drawImage(tileImg(def.t[0]), 0, 0, 16, 16, 0, 0, 32, 15);
+    g.drawImage(tileImg(def.t[1]), 0, 0, 16, 16, 0, 16, 32, 16);
+    d.appendChild(c);
+    const n = document.createElement('i'); n.textContent = i + 1;
+    d.appendChild(n);
+    d.title = def.n;
+    bar.appendChild(d);
+  });
+}
+function select(i) {
+  sel = (i + HOTBAR.length) % HOTBAR.length;
+  for (let k = 0; k < bar.children.length; k++) bar.children[k].classList.toggle('sel', k === sel);
+  nameEl.textContent = BLK[HOTBAR[sel]].n;
+  nameEl.style.opacity = 1; nameFade = 1.6;
+}
+
+/* --------------------------------------------------------------- input */
+const SCALES = [0.5, 0.65, 0.8, 1];
+let scaleMode = 2, rscale = SCALES[2];
+function toggleScale() {
+  scaleMode = (scaleMode + 1) % SCALES.length;
+  rscale = SCALES[scaleMode];
+  resize(rscale);
+  toast('render scale ' + Math.round(rscale * 100) + '%');
+}
+
+addEventListener('keydown', e => {
+  const k = e.code;
+  if (k === 'Tab' || k === 'Space' || k.startsWith('Arrow') || k === 'F3') e.preventDefault();
+  if (keys[k]) return;
+  keys[k] = 1;
+  if (!running) {
+    if (k === 'Enter') document.getElementById('play').click();
+    return;
+  }
+  if (k.startsWith('Digit')) { const n = +k.slice(5); if (n >= 1 && n <= 9) select(n - 1); }
+  else if (k === 'Enter') { thirdPerson = !thirdPerson; toast(thirdPerson ? 'third person' : 'first person'); }
+  else if (k === 'KeyF') { pl.fly = pl.fly ? 0 : 1; pl.vy = 0; toast(pl.fly ? 'flight enabled' : 'flight disabled'); }
+  else if (k === 'F3') dbgEl.classList.toggle('on');
+  else if (k === 'F2') toggleScale();
+  else if (k === 'KeyT') { dayFrozen = !dayFrozen; toast(dayFrozen ? 'time frozen' : 'time running'); }
+  else if (k === 'KeyM') { muted = !muted; toast(muted ? 'sound muted' : 'sound on'); }
+  else if (k === 'KeyR') newWorld((Math.random() * 1e6) | 0);
+});
+addEventListener('keyup', e => { keys[e.code] = 0; });
+addEventListener('blur', () => { keys = Object.create(null); });
+
+let mining = 0, mineT = 0;
+addEventListener('mousedown', e => {
+  if (!running) return;
+  if (e.button === 0) mining = 1;
+  else if (e.button === 2) edit(hit, false);
+  else if (e.button === 1) {
+    const i = hit ? HOTBAR.indexOf(hit.id) : -1;
+    if (i >= 0) select(i); else if (hit) toast('cannot hold ' + BLK[hit.id].n);
+  }
+});
+addEventListener('mouseup', e => { if (e.button === 0) mining = 0; });
+addEventListener('contextmenu', e => e.preventDefault());
+addEventListener('wheel', e => {
+  if (!running) return;
+  select(sel + (e.deltaY > 0 ? 1 : -1));
+  e.preventDefault();
+}, { passive: false });
+
+document.addEventListener('pointerlockchange', () => {
+  hasPointer = document.pointerLockElement === view;
+  running = hasPointer;
+  menu.classList.toggle('hide', hasPointer);
+  if (!hasPointer) { keys = Object.create(null); mining = 0; }
+});
+addEventListener('mousemove', e => {
+  if (!hasPointer) return;
+  cam.yaw += e.movementX * 0.0026;
+  cam.pitch = clamp(cam.pitch - e.movementY * 0.0026, -1.5533, 1.5533);
+  cam.yaw = (cam.yaw + Math.PI) % (Math.PI * 2) - Math.PI;
+  if (cam.yaw < -Math.PI) cam.yaw += Math.PI * 2;
+});
+document.getElementById('play').addEventListener('click', () => {
+  started = true;
+  view.requestPointerLock();
+  if (!AC && !muted) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+});
+addEventListener('resize', () => resize(rscale));
+
+/* ------------------------------------------------------------- render */
+function render() {
+  const t0 = performance.now();
+  worldT += dt;
+  paintWater(worldT);
+  camBasis();
+  const tanH = Math.tan(0.6109);                          /* 70 degree vertical fov */
+  FOC = (RH / 2) / tanH;
+  const tanW = tanH * (RW / RH);
+  SCX = RW / 2; SCY = RH / 2;
+  const acx = clamp(Math.floor(pl.x), 0, W - 1), acz = clamp(Math.floor(pl.z), 0, W - 1);
+  const eyeY = pl.y + EYE;
+  enclosed = false;
+  for (let y = Math.floor(eyeY); y < H; y++) {
+    const eb = get(acx, y, acz);
+    if (eb && eb !== WATER) { enclosed = true; break; }
+  }
+  if (!enclosed) {
+    const up = eyeY + 1;
+    if (topAt(clamp(acx - 1, 0, W - 1), acz) > up && topAt(clamp(acx + 1, 0, W - 1), acz) > up &&
+        topAt(acx, clamp(acz - 1, 0, W - 1)) > up && topAt(acx, clamp(acz + 1, 0, W - 1)) > up)
+      enclosed = true;
+  }
+  drawSky();
+
+  const fNear = enclosed ? 3 : under ? 2 : 45, fFar = enclosed ? 30 : under ? 19 : 150;
+  if (enclosed) { fogR = 84; fogG = 80; fogB = 74; }
+  else if (under) { fogR = 22; fogG = 78; fogB = 108; }
+  else { fogR = sky.hor[0] * 0.94; fogG = sky.hor[1] * 0.94; fogB = sky.hor[2] * 0.94; }
+  fogN = fNear; fogF = fFar;
+  fogK = 1 / (fFar - fNear);
+
+  const bobY = running ? Math.sin(pl.bob * 2) * 0.045 * (pl.onGround ? 1 : 0.35) : 0;
+  const bobX = running ? Math.cos(pl.bob) * 0.035 * (pl.onGround ? 1 : 0.35) : 0;
+  if (thirdPerson) {
+    let d = 3.4;
+    const cty = pl.y + 1.55;
+    for (; d > 1; d -= 0.3) {
+      const bx = (pl.x - Math.sin(cam.yaw) * d) | 0, bz = (pl.z - Math.cos(cam.yaw) * d) | 0;
+      if (!solidAt(clamp(bx, 0, W - 1), cty | 0, clamp(bz, 0, W - 1))) break;
+    }
+    if (d < 1) d = 1;
+    cam.x = pl.x - Math.sin(cam.yaw) * d + rt[0] * bobX;
+    cam.y = pl.y + 1.55 + bobY;
+    cam.z = pl.z - Math.cos(cam.yaw) * d + rt[2] * bobX;
+  } else {
+    cam.x = pl.x + rt[0] * bobX; cam.y = pl.y + EYE + bobY; cam.z = pl.z + rt[2] * bobX;
+  }
+  tintEl.style.display = under ? 'block' : 'none';
+
+  ZB.fill(0);
+  for (const c of chunks) {
+    if (c.n && chunkVisible(c, tanW, tanH)) drawChunk(c.d, c.n);
+  }
+  ZT.set(ZB);
+  matZ = 1;
+  for (const c of chunks) {
+    if (c.tn && chunkVisible(c, tanW, tanH)) drawChunk(c.td, c.tn);
+  }
+  if (!under && !enclosed) drawClouds();
+  drawParts();
+  drawEntities();
+  if (thirdPerson) drawPlayer();
+  else drawArm();
+
+  ctx.putImageData(rimg, 0, 0);
+  msRender = performance.now() - t0;
+}
+
+/* ----------------------------------------------------------- main loop */
+let last = performance.now(), fps = 60, frameAvg = 16, statT = 0, worldSeed = 1337, genQueue = null;
+
+function newWorld(seed) {
+  worldSeed = seed;
+  flowL.fill(0); wq.length = 0;
+  generate(seed);
+  buildClouds();
+  spawnAnimals();
+  parts.length = 0;
+  genQueue = chunks.slice();
+  loadEl.style.display = 'grid';
+}
+function stepGen() {
+  const t0 = performance.now();
+  while (genQueue.length && performance.now() - t0 < 22) meshChunk(genQueue.shift());
+  document.getElementById('loadbar').style.width =
+    ((1 - genQueue.length / chunks.length) * 100).toFixed(0) + '%';
+  if (!genQueue.length) {
+    genQueue = null;
+    loadEl.style.display = 'none';
+    spawnPlayer();
+    if (!started) menu.classList.remove('hide');
+  }
+}
+function frame(now) {
+  requestAnimationFrame(frame);
+  let ms = now - last; last = now;
+  if (ms > 120) ms = 120;
+  dt = ms / 1000;
+  frameAvg = frameAvg * 0.88 + ms * 0.12;
+  fps = 1000 / Math.max(0.5, frameAvg);
+
+  if (genQueue) { stepGen(); return; }
+
+  if (running) {
+    physics();
+    if (mining) {
+      mineT += dt;
+      if (mineT > 0.17) { mineT = 0; edit(hit || raycast(6.5), true); }
+    }
+    hit = raycast(6.5);
+  } else {
+    cam.yaw += dt * 0.05;
+  }
+  stepAnimals(dt);
+  stepWater();
+  if (!dayFrozen) dayT = (dayT + dt / 620) % 1;
+
+  if (frameAvg > 27 && rscale > 0.4) { rscale = Math.max(0.4, rscale - 0.05); resize(rscale); frameAvg = 16; }
+  else if (frameAvg < 13 && rscale < SCALES[scaleMode]) {
+    rscale = Math.min(SCALES[scaleMode], rscale + 0.02); resize(rscale); frameAvg = 16;
+  }
+
+  render();
+
+  statT += dt;
+  if (statT > 0.25) {
+    statT = 0;
+    if (dbgEl.classList.contains('on')) {
+      let faces = 0;
+      for (const c of chunks) faces += c.n + c.tn;
+      dbgEl.textContent =
+        'fps      ' + fps.toFixed(0) + '   (' + frameAvg.toFixed(1) + ' ms)\n' +
+        'buffer   ' + RW + ' x ' + RH + '  (' + Math.round(rscale * 100) + '%)\n' +
+        'draw     ' + msRender.toFixed(1) + ' ms\n' +
+        'xyz      ' + pl.x.toFixed(1) + ' / ' + pl.y.toFixed(1) + ' / ' + pl.z.toFixed(1) + '\n' +
+        'here     ' + BLK[get(Math.floor(pl.x), Math.floor(pl.y - 0.2), Math.floor(pl.z))].n +
+                   (under ? '   head in water' : '') +
+                   (enclosed ? '   underground' : '') + '\n' +
+        'faces    ' + faces + '\n' +
+        'animals  ' + animals.length + '\n' +
+        'seed     ' + worldSeed + '   time ' + (dayT * 24).toFixed(1) + 'h';
+    }
+  }
+  if (toastT > 0) { toastT -= dt; if (toastT <= 0) toastEl.classList.remove('on'); }
+  if (nameFade > 0) { nameFade -= dt; if (nameFade <= 0) nameEl.style.opacity = 0; }
+}
+
+/* ---------------------------------------------------------------- boot */
+buildTextures();
+buildBar();
+select(0);
+resize(rscale);
+newWorld(worldSeed);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Arcade — William's Games</title>
+<style>
+  :root{
+    --bg:#0a0d14; --panel:#121724; --panel2:#1a2032; --line:#27314a;
+    --ink:#eef2fb; --dim:#8b96ad;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #1a2540 0%, transparent 60%),
+      radial-gradient(800px 500px at 100% 110%, #241a34 0%, transparent 55%),
+      var(--bg);
+    color:var(--ink);
+    font:15px/1.4 "Segoe UI",Roboto,system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1060px;margin:0 auto;padding:64px 24px 80px}
+
+  header{text-align:center;margin-bottom:48px}
+  .logo{
+    display:inline-flex;align-items:center;gap:10px;font-weight:800;
+    font-size:30px;letter-spacing:2px;
+  }
+  .logo i{
+    width:34px;height:34px;border-radius:9px;flex:none;
+    background:linear-gradient(135deg,#ffd75e,#ff9d2e);
+    display:inline-block;box-shadow:0 6px 18px rgba(255,157,46,.4);
+  }
+  header p{color:var(--dim);margin:12px 0 0;letter-spacing:.4px}
+
+  .grid{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+    gap:22px;
+  }
+  a.card{
+    position:relative;display:block;text-decoration:none;color:inherit;
+    background:linear-gradient(180deg,var(--panel),var(--panel2));
+    border:1px solid var(--line);border-radius:16px;padding:26px 24px;
+    overflow:hidden;transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease;
+  }
+  a.card:hover{
+    transform:translateY(-5px);border-color:#3d4c74;
+    box-shadow:0 18px 40px rgba(0,0,0,.5);
+  }
+  .card .tag{
+    position:absolute;top:16px;right:16px;font:700 10px/1.4 "Segoe UI",system-ui,sans-serif;
+    letter-spacing:1.5px;padding:4px 8px;border-radius:6px;
+    background:rgba(255,255,255,.08);color:var(--dim);
+  }
+  .card .dev{
+    background:linear-gradient(135deg,#ffd75e,#ff9d2e);color:#14161d;
+    box-shadow:0 4px 12px rgba(255,157,46,.35);
+  }
+  .thumb{
+    height:150px;border-radius:10px;margin-bottom:18px;position:relative;overflow:hidden;
+    display:flex;align-items:center;justify-content:center;
+    border:1px solid var(--line);
+  }
+  .thumb span{font-size:40px;font-weight:800;letter-spacing:2px;opacity:.92;text-shadow:0 4px 18px rgba(0,0,0,.5)}
+  .thumb .glyph{font-size:46px;line-height:1}
+  .c1{background:linear-gradient(135deg,#2a2e3a,#161a24)} .c1 span{color:#f3d47a}
+  .c2{background:linear-gradient(135deg,#1f3a2e,#111a20)} .c2 span{color:#8fe6a0}
+  .c3{background:linear-gradient(135deg,#3a2b1f,#1a1410)} .c3 span{color:#ffc887}
+  .c4{background:linear-gradient(135deg,#152a3d,#0d141d)} .c4 span{color:#7ec8f0}
+  .c5{background:linear-gradient(135deg,#3a1f22,#180f12)} .c5 span{color:#ff9d9d}
+
+  .card h2{margin:0;font-size:20px;letter-spacing:1px}
+  .card p{margin:8px 0 0;color:var(--dim);font-size:13.5px;min-height:38px}
+  .card .meta{
+    margin-top:16px;padding-top:14px;border-top:1px solid var(--line);
+    display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim);letter-spacing:.5px;
+  }
+  .card .arrow{margin-left:auto;font-weight:800;color:#6d7ba0;transition:transform .16s}
+  a.card:hover .arrow{transform:translateX(4px)}
+
+  footer{text-align:center;color:#5b667c;font-size:12.5px;margin-top:56px;letter-spacing:.4px}
+  footer a{color:#8b96ad}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo"><i></i>ARCADE</div>
+    <p>Five games, one place — all running in your browser.</p>
+  </header>
+
+  <div class="grid">
+    <a class="card" href="kards/">
+      <div class="thumb c1"><span class="glyph">&#9824;</span></div>
+      <span class="tag">CARD GAME</span>
+      <h2>KARDS</h2>
+      <p>WWII collectible card game. Play hot-seat locally or battle a friend online.</p>
+      <div class="meta">2 players <span class="arrow">&#8594;</span></div>
+    </a>
+
+    <a class="card" href="map-game/">
+      <div class="thumb c2"><span class="glyph">&#9873;</span></div>
+      <span class="tag">STRATEGY</span>
+      <h2>EUROPE 1939</h2>
+      <p>Conquer the map. A grand-strategy map game set across a WWII Europe.</p>
+      <div class="meta">Map game <span class="arrow">&#8594;</span></div>
+    </a>
+
+    <a class="card" href="minecraft/">
+      <div class="thumb c3"><span class="glyph">&#9634;</span></div>
+      <span class="tag">SANDBOX</span>
+      <h2>BLOCKCRAFT</h2>
+      <p>A voxel sandbox — mine blocks, place blocks, build whatever you can imagine.</p>
+      <div class="meta">Single player <span class="arrow">&#8594;</span></div>
+    </a>
+
+    <a class="card" href="tank/">
+      <div class="thumb c4"><span class="glyph">&#9932;</span></div>
+      <span class="tag">ARENA</span>
+      <h2>TANK WAR</h2>
+      <p>Top-down 2D arena shooter. Blast through waves of enemies and claim victory.</p>
+      <div class="meta">Arcade <span class="arrow">&#8594;</span></div>
+    </a>
+
+    <a class="card" href="race-car/">
+      <div class="thumb c5"><span class="glyph">&#9881;</span></div>
+      <span class="tag dev">DEVELOPING</span>
+      <h2>SUN CIRCUIT</h2>
+      <p>3D race car — lap the circuit against five AI opponents in the sun.</p>
+      <div class="meta">Work in progress <span class="arrow">&#8594;</span></div>
+    </a>
+  </div>
+
+  <footer>
+    Built by <a href="https://github.com/williamweiyangwu">William</a> &middot; hosted on GitHub Pages
+  </footer>
+</div>
+</body>
+</html>
