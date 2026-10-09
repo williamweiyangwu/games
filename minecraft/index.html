@@ -221,21 +221,22 @@ function buildTextures() {
   const R = (a, b) => hash2(a * 977 + b, b * 131 + 5);
 
   /* 0 grass top */
-  fillTile(0, [104, 158, 62]);
+  fillTile(0, [122, 186, 72]);
   for (let i = 0; i < 240; i++) {
     const x = (R(0, i) * 16) | 0, y = (R(1, i) * 16) | 0, v = R(2, i);
-    const g = v < 0.4 ? [-16, -6, -18] : v < 0.8 ? [10, 18, 4] : [26, 32, 10];
-    putc(0, x, y, [104 + g[0], 158 + g[1], 62 + g[2]]);
+    const g = v < 0.4 ? [-16, -10, -16] : v < 0.8 ? [12, 20, 6] : [30, 38, 14];
+    putc(0, x, y, [122 + g[0], 186 + g[1], 72 + g[2]]);
   }
-  /* 1 grass side */
+  putc(0, 0, 0, [96, 152, 50]); putc(0, 8, 0, [136, 200, 80]); putc(0, 4, 12, [86, 140, 44]);
+  /* 1 grass side (dirt with thin grass lip) */
   fillTile(1, [134, 96, 64]); speckle(1, [134, 96, 64], 22, 200);
   for (let x = 0; x < 16; x++) {
-    const h = 3 + ((R(3, x) * 3) | 0);
+    const h = 2 + ((R(3, x) * 2) | 0);
     for (let y = 0; y < h; y++) {
       const v = R(4, x * 7 + y);
-      putc(1, x, y, [96 + v * 36, 152 + v * 30, 54 + v * 22]);
+      putc(1, x, y, [106 + v * 38, 168 + v * 30, 62 + v * 24]);
     }
-    if (R(5, x) < 0.5) putc(1, x, h, [122, 98, 60]);
+    if (R(5, x) < 0.5) putc(1, x, h + 1, [120, 96, 58]);
   }
   /* 2 dirt */
   fillTile(2, [134, 96, 64]); speckle(2, [134, 96, 64], 20, 240);
@@ -550,7 +551,7 @@ function meshChunk(ch) {
                                               nz + e1[2] * s1 + e2[2] * s2);
             const ao = (o1 && o2) ? 0 : 3 - (o1 + o2 + oc);
             dst.push(x + 0.5 + c[0], y + 0.5 + c[1] - drop, z + 0.5 + c[2],
-                     s1 > 0 ? 1 : 0, s2 > 0 ? 1 : 0, F.sh * (0.5 + 0.1667 * ao));
+                     s1 > 0 ? 1 : 0, s2 > 0 ? 1 : 0, F.sh * (0.6 + 0.1333 * ao));
           }
           dst.push(n[0], n[1], n[2], tile, uo, 0);
         }
@@ -817,7 +818,7 @@ function drawSky() {
     h[i] = lerp(h[i], i === 0 ? 250 : i === 1 ? 146 : 74, horiz * 0.75);
   }
   sky.top = t; sky.hor = h;
-  LIGHT = Math.max(0.62, lerp(0.46, 1, dayF) * (1 - horiz * 0.1));
+  LIGHT = Math.max(0.74, lerp(0.58, 1, dayF) * (1 - horiz * 0.06));
   const ang = (dayT - 0.25) * Math.PI * 2;
   const sd = [Math.cos(ang) * 0.85, Math.sin(ang), Math.sin(ang * 0.5 + 1) * 0.35];
   const sl = Math.hypot(sd[0], sd[1], sd[2]);
@@ -953,7 +954,8 @@ function drawClouds() {
 }
 /* ---------------------------------------------- first-person red arm */
 function drawArm() {
-  const sw = Math.sin(pl.bob) * 0.3 + (mining ? Math.sin(mineT * 45) * 0.45 : 0);
+  const punch = swing > 0 ? Math.sin((1 - swing / 0.34) * Math.PI) * 0.5 : 0;
+  const sw = Math.sin(pl.bob) * 0.3 + (mining ? Math.sin(mineT * 45) * 0.45 : 0) + punch;
   const a = 2.36 + sw;
   const dx = Math.cos(a), dy = Math.sin(a);
   const px = -dy, py = dx;
@@ -1329,11 +1331,11 @@ addEventListener('keydown', e => {
 addEventListener('keyup', e => { keys[e.code] = 0; });
 addEventListener('blur', () => { keys = Object.create(null); });
 
-let mining = 0, mineT = 0;
+let mining = 0, mineT = 0, swing = 0;
 addEventListener('mousedown', e => {
   if (!running) return;
   if (e.button === 0) mining = 1;
-  else if (e.button === 2) edit(hit, false);
+  else if (e.button === 2) { edit(hit, false); swing = 0.34; }
   else if (e.button === 1) {
     const i = hit ? HOTBAR.indexOf(hit.id) : -1;
     if (i >= 0) select(i); else if (hit) toast('cannot hold ' + BLK[hit.id].n);
@@ -1483,6 +1485,7 @@ function frame(now) {
   }
   stepAnimals(dt);
   stepWater();
+  if (swing > 0) swing -= dt;
   if (!dayFrozen) dayT = (dayT + dt / 620) % 1;
 
   if (frameAvg > 27 && rscale > 0.4) { rscale = Math.max(0.4, rscale - 0.05); resize(rscale); frameAvg = 16; }
