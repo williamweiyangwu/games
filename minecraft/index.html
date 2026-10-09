@@ -74,6 +74,11 @@
     opacity:0;transition:opacity .4s
   }
   #toast.on{opacity:1}
+  #ver{
+    position:absolute;right:10px;top:10px;
+    font:10px/1 monospace;letter-spacing:1px;color:rgba(255,255,255,.45);
+    text-shadow:0 1px 0 rgba(0,0,0,.7);pointer-events:none
+  }
 
   /* ---------- pause / start menu ---------- */
   #menu{
@@ -124,12 +129,13 @@
   <div id="bar"></div>
   <div id="dbg"></div>
   <div id="toast"></div>
+  <div id="ver">v1.3 build 1</div>
 </div>
 
 <div id="menu" class="hide">
   <div class="panel">
     <h1>BLOCKCRAFT</h1>
-    <h2>voxel sandbox &middot; software-rendered in canvas 2d</h2>
+    <h2>voxel sandbox &middot; v1.3 &middot; software-rendered in canvas 2d</h2>
     <div class="grid">
       <div><b>W A S D</b> move</div>
       <div><b>Space</b> jump / swim up</div>
