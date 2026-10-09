@@ -129,7 +129,7 @@
   <div id="bar"></div>
   <div id="dbg"></div>
   <div id="toast"></div>
-  <div id="ver">v1.3 build 1</div>
+  <div id="ver">v1.3 build 2</div>
 </div>
 
 <div id="menu" class="hide">
@@ -234,16 +234,8 @@ function buildTextures() {
     putc(0, x, y, [122 + g[0], 186 + g[1], 72 + g[2]]);
   }
   putc(0, 0, 0, [96, 152, 50]); putc(0, 8, 0, [136, 200, 80]); putc(0, 4, 12, [86, 140, 44]);
-  /* 1 grass side (dirt with thin grass lip) */
-  fillTile(1, [134, 96, 64]); speckle(1, [134, 96, 64], 22, 200);
-  for (let x = 0; x < 16; x++) {
-    const h = 2 + ((R(3, x) * 2) | 0);
-    for (let y = 0; y < h; y++) {
-      const v = R(4, x * 7 + y);
-      putc(1, x, y, [106 + v * 38, 168 + v * 30, 62 + v * 24]);
-    }
-    if (R(5, x) < 0.5) putc(1, x, h + 1, [120, 96, 58]);
-  }
+  /* 1 grass side (unused: grass sides are plain dirt) */
+  fillTile(1, [134, 96, 64]); speckle(1, [134, 96, 64], 20, 240);
   /* 2 dirt */
   fillTile(2, [134, 96, 64]); speckle(2, [134, 96, 64], 20, 240);
   /* 3 stone */
@@ -360,7 +352,7 @@ const AIR = 0, GRASS = 1, DIRT = 2, STONE = 3, SAND = 4, LOG = 5, LEAVES = 6,
    cull: drop faces between identical blocks   a: 1 = opaque pass, <1 = blended */
 const BLK = [
   { n: 'Air',          t: null,                                solid: 0, opaque: 0, cull: 1, a: 1 },
-  { n: 'Grass Block',  t: [T.GRASS_TOP, T.GRASS_SIDE, T.DIRT], solid: 1, opaque: 1, cull: 0, a: 1 },
+  { n: 'Grass Block',  t: [T.GRASS_TOP, T.DIRT, T.DIRT],             solid: 1, opaque: 1, cull: 0, a: 1 },
   { n: 'Dirt',         t: [T.DIRT, T.DIRT, T.DIRT],           solid: 1, opaque: 1, cull: 0, a: 1 },
   { n: 'Stone',        t: [T.STONE, T.STONE, T.STONE],         solid: 1, opaque: 1, cull: 0, a: 1 },
   { n: 'Sand',         t: [T.SAND, T.SAND, T.SAND],            solid: 1, opaque: 1, cull: 0, a: 1 },
