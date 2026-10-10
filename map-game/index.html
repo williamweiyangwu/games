@@ -1969,6 +1969,7 @@ function wireMap(){
    11. TOP BAR / BOOT
    ======================================================================= */
 function setSpeed(s){
+  if(UI_PAUSED && s>0) s=0;                       /* an open modal holds the war closed */
   if(NET && NET.mode===2) s=0;                      /* guests only watch - the host runs the sim */
   spd=s;
   document.getElementById('bPause').classList.toggle('on',s===0);
@@ -1992,7 +1993,10 @@ function wireTop(){
     flash(n? n+' unit'+(n>1?'s':'')+' selected on your fronts.' : 'No unit of yours stands on a front.');
     render();
   };
-  document.getElementById('bPause').onclick=function(){ setSpeed(spd===0?1:0); };
+  document.getElementById('bPause').onclick=function(){
+    if(spd===0 && UI_PAUSED){ flash(uiPauseHint()); return; }
+    setSpeed(spd===0?1:0);
+  };
   Array.prototype.forEach.call(document.querySelectorAll('[data-sp]'),function(b){
     b.onclick=function(){ setSpeed(+b.getAttribute('data-sp')); };
   });
@@ -2023,7 +2027,11 @@ function wireTop(){
   };
   document.addEventListener('keydown',function(e){
     if(e.target.tagName==='BUTTON' && (e.code==='Space'||e.code==='Enter')) return;
-    if(e.code==='Space'){ e.preventDefault(); setSpeed(spd===0?1:0); return; }
+    if(e.code==='Space'){
+  e.preventDefault();
+  if(spd===0 && UI_PAUSED){ flash(uiPauseHint()); return; }
+  setSpeed(spd===0?1:0); return;
+}
     if(e.key==='s'||e.key==='S'){ e.preventDefault(); showPage('shop'); return; }
     if(e.key==='b'||e.key==='B'){ e.preventDefault(); showPage('battle'); return; }
     if(e.key==='n'||e.key==='N'){ e.preventDefault(); document.getElementById('bNews').click(); return; }
@@ -2670,15 +2678,20 @@ function updateNewsBadge(){
    mail, mood and pacts live in S and travel with the broadcast state; guests
    post their replies and notes back to the host as commands.
    ======================================================================= */
-var MAIL_SUBJ=null, MAIL_FOCUS=null, MAIL_PREV=0;
+var MAIL_SUBJ=null, MAIL_FOCUS=null, MAIL_PREV=0, NEWS_FOCUS=false, UI_PAUSED=false;
 
-/* opening a letter or the compose form pauses the war until it is closed */
-function setMailFocus(v){
-  var was=(MAIL_FOCUS!==null);
-  MAIL_FOCUS=v;
-  var now=(MAIL_FOCUS!==null);
-  if(now && !was){ MAIL_PREV=spd; setSpeed(0); }
-  else if(!now && was){ if(MAIL_PREV>0) setSpeed(MAIL_PREV); }
+/* opening the newspaper or a letter pauses the war until both are closed */
+function syncUIPause(){
+  var now=(MAIL_FOCUS!==null)||NEWS_FOCUS;
+  if(now && !UI_PAUSED){ UI_PAUSED=true; MAIL_PREV=spd; setSpeed(0); }
+  else if(!now && UI_PAUSED){ UI_PAUSED=false; if(MAIL_PREV>0) setSpeed(MAIL_PREV); }
+}
+function setMailFocus(v){ MAIL_FOCUS=v; syncUIPause(); }
+function setNewsFocus(v){ NEWS_FOCUS=!!v; syncUIPause(); }
+function uiPauseHint(){
+  return (MAIL_FOCUS!==null)
+    ? 'Close the diplomatic pouch to resume the war.'
+    : 'Close THE CONTINENTAL to resume the war.';
 }
 function openMail(id){
   var me=S.player;
@@ -3020,8 +3033,12 @@ function openNewsModal(){
   NEWS_SEEN_DAY=(S.news&&S.news.length)? S.news[0].d : S.day;
   updateNewsBadge();
   document.getElementById('nModal').style.display='flex';
+  setNewsFocus(true);
 }
-function closeNewsModal(){ document.getElementById('nModal').style.display='none'; }
+function closeNewsModal(){
+  document.getElementById('nModal').style.display='none';
+  setNewsFocus(false);
+}
 function doReply(id,ri){
   if(NET && NET.mode===2){ netPubRoom('cmd',JSON.stringify({p:NET.pid,k:'mail',id:id,ri:ri})); setMailFocus('modal'); return; }
   applyReplyFor(S.player,id,ri);
