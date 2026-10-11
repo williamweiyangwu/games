@@ -1651,6 +1651,22 @@ function renderMini(id){
   if(x0>x1){ x0=0; y0=0; x1=W; y1=H; }
   var w=x1-x0, h=y1-y0, pad=Math.max(w,h,26)*0.16+8;
   var vx=x0-pad, vy=y0-pad, vw=w+pad*2, vh=h+pad*2;
+
+  /* the unit grid must fit inside the sheet - shrink the badges first, then
+     widen the frame, so a stacked-up battle never pushes units off the edge */
+  var us=unitsAt(id), nU=us.length||1;
+  var cols=Math.ceil(Math.sqrt(nU)), rows=Math.ceil(nU/cols);
+  var m=markEl[id]||{x:x0+w/2,y:y0+h/2};
+  var sz=Math.max(vw*0.052,7);
+  var gw=function(s){ return (cols-1)*(s*2.5)+3.4*s; };
+  var gh=function(s){ return (rows-1)*(s*2.5)+3.4*s; };
+  while(sz>5 && (gw(sz)>vw || gh(sz)>vh)) sz-=0.5;
+  var gl=m.x-gw(sz)/2, gr=m.x+gw(sz)/2, gt=m.y-gh(sz)/2, gb=m.y+gh(sz)/2;
+  if(gl<vx){ vw+=vx-gl; vx=gl; }
+  if(gr>vx+vw) vw=gr-vx;
+  if(gt<vy){ vh+=vy-gt; vy=gt; }
+  if(gb>vy+vh) vh=gb-vy;
+
   svg.setAttribute('viewBox',vx.toFixed(1)+' '+vy.toFixed(1)+' '+vw.toFixed(1)+' '+vh.toFixed(1));
   svg.setAttribute('preserveAspectRatio','xMidYMid meet');
   svg.appendChild(el('rect',{x:vx,y:vy,width:vw,height:vh,fill:'#0e1622'}));
@@ -1675,14 +1691,13 @@ function renderMini(id){
       'stroke-linejoin':'round'}));
   });
 
-  /* units standing in the country */
-  var us=unitsAt(id), see=(p.owner===S.player)||known(id);
-  var m=markEl[id], sz=Math.max(vw*0.052,7), cols=Math.ceil(Math.sqrt(us.length||1));
+  /* units standing in the country - grid, badge size and frame fixed above */
+  var see=(p.owner===S.player)||known(id);
   us.forEach(function(u,i){
     if(!see) return;
     var t=UNITS[u.type];
     var gx=m.x+((i%cols)-((cols-1)/2))*(sz*2.5);
-    var gy=m.y+(Math.floor(i/cols)-(Math.ceil(us.length/cols)-1)/2)*(sz*2.5);
+    var gy=m.y+(Math.floor(i/cols)-((rows-1)/2))*(sz*2.5);
     var g=el('g',{class:'mu'});
     g.appendChild(el('circle',{cx:gx.toFixed(1),cy:gy.toFixed(1),r:sz.toFixed(1),fill:t.col,
       stroke:(u.owner===S.player?'#f2f6ff':'#f0a0a0'),'stroke-width':(u.owner===S.player?1.8:1.1)}));
