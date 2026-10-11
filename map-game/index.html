@@ -2678,20 +2678,22 @@ function updateNewsBadge(){
    mail, mood and pacts live in S and travel with the broadcast state; guests
    post their replies and notes back to the host as commands.
    ======================================================================= */
-var MAIL_SUBJ=null, MAIL_FOCUS=null, MAIL_PREV=0, NEWS_FOCUS=false, UI_PAUSED=false;
+var MAIL_SUBJ=null, MAIL_FOCUS=null, MAIL_PREV=0, NEWS_FOCUS=false, NEWS_HOVER=false, NEWS_HOVER_T=null, UI_PAUSED=false;
 
 /* opening the newspaper or a letter pauses the war until both are closed */
 function syncUIPause(){
-  var now=(MAIL_FOCUS!==null)||NEWS_FOCUS;
+  var now=(MAIL_FOCUS!==null)||NEWS_FOCUS||NEWS_HOVER;
   if(now && !UI_PAUSED){ UI_PAUSED=true; MAIL_PREV=spd; setSpeed(0); }
   else if(!now && UI_PAUSED){ UI_PAUSED=false; if(MAIL_PREV>0) setSpeed(MAIL_PREV); }
 }
 function setMailFocus(v){ MAIL_FOCUS=v; syncUIPause(); }
 function setNewsFocus(v){ NEWS_FOCUS=!!v; syncUIPause(); }
+function setNewsHover(v){ NEWS_HOVER=!!v; syncUIPause(); }
 function uiPauseHint(){
-  return (MAIL_FOCUS!==null)
-    ? 'Close the diplomatic pouch to resume the war.'
-    : 'Close THE CONTINENTAL to resume the war.';
+  if(MAIL_FOCUS!==null) return 'Close the diplomatic pouch to resume the war.';
+  if(NEWS_FOCUS) return 'Close THE CONTINENTAL to resume the war.';
+  if(NEWS_HOVER) return 'Move off the paper to resume the war.';
+  return 'Close THE CONTINENTAL to resume the war.';
 }
 function openMail(id){
   var me=S.player;
@@ -3067,6 +3069,19 @@ function updateMailBadge(){
 document.getElementById('bNews').onclick=openNewsModal;
 document.getElementById('bMail').onclick=openMailModal;
 (function(){
+  /* reading the paper in the sidebar holds the war too - with a short dwell so
+     merely gliding the pointer across the card does not stall the front */
+  var panel=document.getElementById('newsPanel');
+  if(panel){
+    panel.addEventListener('mouseenter',function(){
+      if(NEWS_HOVER_T) clearTimeout(NEWS_HOVER_T);
+      NEWS_HOVER_T=setTimeout(function(){ NEWS_HOVER_T=null; setNewsHover(true); },350);
+    });
+    panel.addEventListener('mouseleave',function(){
+      if(NEWS_HOVER_T){ clearTimeout(NEWS_HOVER_T); NEWS_HOVER_T=null; }
+      if(NEWS_HOVER) setNewsHover(false);
+    });
+  }
   document.getElementById('bOpenMail').onclick=openMailModal;
   document.getElementById('nModalClose').onclick=closeNewsModal;
   document.getElementById('mModalClose').onclick=closeMailModal;
