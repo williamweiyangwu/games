@@ -114,6 +114,8 @@
   button.primary{background:linear-gradient(180deg,#ffe08a,#f0a31e);color:#2a1c00;box-shadow:0 6px 18px rgba(240,163,30,.3)}
   button[disabled]{opacity:.38;cursor:not-allowed;filter:grayscale(1)}
   .actions{display:flex;gap:10px}
+  #savebtn{margin-top:10px;width:100%;opacity:.9}
+  #savebtn.stale{outline:2px solid #ffe08a}
   #saveinfo{margin-top:10px;min-height:14px;font-size:10px;letter-spacing:1px;color:var(--dim);text-align:center}
   .foot{margin-top:12px;font-size:10px;letter-spacing:1px;color:var(--dim);text-align:center}
   #load{position:fixed;inset:0;display:grid;place-items:center;background:#0a0e16;z-index:5}
@@ -134,7 +136,7 @@
   <div id="bar"></div>
   <div id="dbg"></div>
   <div id="toast"></div>
-  <div id="ver">v1.4 build 1</div>
+  <div id="ver">v1.4 build 2</div>
 </div>
 
 <div id="menu" class="hide">
@@ -156,6 +158,7 @@
       <div><b>F2</b> render scale</div>
       <div><b>T</b> freeze day cycle</div>
       <div><b>R</b> new world</div>
+      <div><b>F5</b> save now</div>
       <div><b>M</b> mute</div>
       <div><b>Esc</b> pause</div>
     </div>
@@ -164,6 +167,7 @@
       <button id="continue" class="ctn" disabled>Continue World</button>
       <button id="create" class="primary">Create World</button>
     </div>
+    <button id="savebtn">Save World</button>
     <div id="saveinfo"></div>
     <div class="foot">no libraries, no assets &mdash; every texture is painted at runtime</div>
   </div>
@@ -1320,7 +1324,7 @@ function toggleScale() {
 
 addEventListener('keydown', e => {
   const k = e.code;
-  if (k === 'Tab' || k === 'Space' || k.startsWith('Arrow') || k === 'F3') e.preventDefault();
+  if (k === 'Tab' || k === 'Space' || k.startsWith('Arrow') || k === 'F3' || k === 'F5') e.preventDefault();
   if (keys[k]) return;
   keys[k] = 1;
 if (!running) {
@@ -1339,6 +1343,7 @@ if (!running) {
   else if (k === 'KeyT') { dayFrozen = !dayFrozen; toast(dayFrozen ? 'time frozen' : 'time running'); }
   else if (k === 'KeyM') { muted = !muted; toast(muted ? 'sound muted' : 'sound on'); }
   else if (k === 'KeyR') { newWorld((Math.random() * 1e6) | 0); if (savingEnabled) { saveDirty = 1; saveTimer = 0; } }
+  else if (k === 'F5') { saveWorld(); toast('world saved · ' + worldSeed + ' @ ' + new Date().toLocaleTimeString()); }
 });
 addEventListener('keyup', e => { keys[e.code] = 0; });
 addEventListener('blur', () => { keys = Object.create(null); });
@@ -1368,6 +1373,7 @@ document.addEventListener('pointerlockchange', () => {
   if (!hasPointer) {
     keys = Object.create(null); mining = 0;
     if (savingEnabled && saveDirty) { try { saveWorld(); } catch (e) {} }
+    updateMenu();
   }
 });
 document.addEventListener('visibilitychange', () => {
@@ -1387,6 +1393,13 @@ document.getElementById('continue').addEventListener('click', () => {
   const o = readSave(); if (!o) return;
   loadWorld(o);
   beginPlay();
+});
+document.getElementById('savebtn').addEventListener('click', () => {
+  saveWorld();
+  toast('world saved · ' + worldSeed + ' @ ' + new Date().toLocaleTimeString());
+  const info = document.getElementById('saveinfo');
+  info.textContent = 'saved world ' + worldSeed + ' · ' + new Date().toLocaleTimeString();
+  updateMenu();
 });
 document.getElementById('create').addEventListener('click', () => {
   newWorld((Math.random() * 1e6) | 0);
@@ -1520,13 +1533,16 @@ function updateMenu() {
   const o = readSave();
   const ctn = document.getElementById('continue');
   const info = document.getElementById('saveinfo');
+  const sb = document.getElementById('savebtn');
   if (o) {
     ctn.disabled = false;
-    info.textContent = 'Continue world ' + o.seed + ' · saved ' + new Date(o.at).toLocaleString();
+    info.textContent = 'world ' + o.seed + ' · saved ' + new Date(o.at).toLocaleTimeString();
   } else {
     ctn.disabled = true;
-    info.textContent = 'no saved world yet';
+    info.textContent = 'no saved world yet — Save World stores your progress';
   }
+  sb.classList.toggle('stale', saveDirty && savingEnabled);
+  sb.textContent = (saveDirty && savingEnabled ? 'Save World •' : 'Save World');
 }
 function beginPlay() {
   started = true;
