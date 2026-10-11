@@ -80,6 +80,59 @@
     text-shadow:0 1px 0 rgba(0,0,0,.7);pointer-events:none
   }
 
+  /* ---------- survival hud ---------- */
+  #stats{
+    position:absolute;left:50%;bottom:70px;transform:translateX(-50%);
+    width:342px;flex-direction:column;gap:3px;pointer-events:none;display:none
+  }
+  #stats.show{display:flex}
+  #stats .bar2{display:flex;gap:1px;height:14px}
+  #hearts{justify-content:flex-start}
+  #food{justify-content:flex-end}
+  .ic{
+    width:15px;height:14px;flex:none;background:#e83b2f;
+    clip-path:polygon(50% 30%,62% 10%,86% 10%,100% 30%,100% 56%,50% 98%,0 56%,0 30%,14% 10%,38% 10%);
+    filter:drop-shadow(0 1px 0 rgba(0,0,0,.55))
+  }
+  .ic.hunger{
+    background:#c98a3d;
+    clip-path:polygon(52% 4%,66% 20%,84% 14%,88% 36%,100% 54%,70% 58%,76% 82%,50% 68%,32% 90%,28% 60%,4% 58%,20% 38%,2% 20%,30% 24%)
+  }
+  .ic.empty{background:rgba(20,24,32,.72)}
+  .slot .cnt{position:absolute;right:3px;bottom:0;font:10px/1 monospace;color:#fff;text-shadow:0 1px 0 #000}
+
+  /* ---------- inventory ---------- */
+  #inv{position:fixed;inset:0;display:grid;place-items:center;background:rgba(4,6,10,.55);z-index:4}
+  #inv.hide{display:none}
+  .invpanel{
+    width:min(440px,94vw);padding:16px;border-radius:12px;
+    background:linear-gradient(180deg,rgba(24,32,46,.97),rgba(13,18,27,.97));
+    border:1px solid var(--line);box-shadow:0 24px 70px rgba(0,0,0,.6)
+  }
+  .invpanel h3{margin:0 0 12px;font-size:12px;letter-spacing:4px;text-transform:uppercase;color:var(--dim);font-weight:600}
+  #invgrid{display:grid;grid-template-columns:repeat(9,1fr);gap:5px}
+  .islot{position:relative;aspect-ratio:1;border-radius:6px;background:rgba(255,255,255,.05);border:1px solid var(--line);display:grid;place-items:center;cursor:pointer}
+  .islot:hover{background:rgba(255,255,255,.12)}
+  .islot.selhot{border-color:rgba(255,224,138,.75)}
+  .islot canvas{width:82%;height:82%;image-rendering:pixelated}
+  .islot .cnt{position:absolute;right:2px;bottom:0;font:10px/1 monospace;color:#fff;text-shadow:0 1px 0 #000}
+  .islot .ilab{position:absolute;left:3px;top:1px;font:8px/1 monospace;color:var(--dim)}
+  .invfoot{margin-top:10px;font-size:10px;letter-spacing:1px;color:var(--dim);text-align:center}
+  #cursorItem{position:fixed;left:0;top:0;width:34px;height:34px;pointer-events:none;display:none;z-index:6;transform:translate(-50%,-50%)}
+  #cursorItem canvas{width:100%;height:100%;image-rendering:pixelated}
+
+  /* ---------- death ---------- */
+  #death{position:fixed;inset:0;display:grid;place-items:center;background:rgba(70,6,6,.55);z-index:5}
+  #death.hide{display:none}
+  .dpanel{
+    text-align:center;padding:26px 36px;border-radius:14px;
+    background:linear-gradient(180deg,rgba(42,12,12,.96),rgba(18,6,6,.97));
+    border:1px solid rgba(255,120,120,.3);box-shadow:0 24px 70px rgba(0,0,0,.7)
+  }
+  .dpanel h1{margin:0 0 6px;font-size:28px;letter-spacing:5px;color:#ff6b6b;font-weight:800}
+  .dpanel p{margin:0 0 16px;font-size:11px;letter-spacing:1px;color:var(--dim)}
+  .dpanel button{width:180px;margin:0 auto}
+
   /* ---------- pause / start menu ---------- */
   #menu{
     position:fixed;inset:0;display:grid;place-items:center;
@@ -143,34 +196,55 @@
 <div id="hud">
   <div id="cross"></div>
   <div id="name"></div>
-  <div id="hint">LMB break &middot; RMB place &middot; 1-9 / wheel select &middot; F fly &middot; F3 stats &middot; F2 res &middot; T time &middot; R new world</div>
+  <div id="hint">LMB attack / break &middot; RMB place / eat &middot; 1-9 / wheel select &middot; E inventory &middot; G mode &middot; F fly &middot; F3 stats</div>
+  <div id="stats">
+    <div id="hearts" class="bar2"></div>
+    <div id="food" class="bar2"></div>
+  </div>
   <div id="bar"></div>
   <div id="dbg"></div>
   <div id="toast"></div>
-  <div id="ver">v1.4 build 3</div>
+  <div id="ver">v1.5 build 1</div>
+</div>
+
+<div id="inv" class="hide">
+  <div class="invpanel">
+    <h3>Inventory</h3>
+    <div id="invgrid"></div>
+    <div class="invfoot">click a stack to pick up &middot; click again to place / swap &middot; <b>E</b> / <b>Esc</b> to close</div>
+    <div id="cursorItem"></div>
+  </div>
+</div>
+
+<div id="death" class="hide">
+  <div class="dpanel">
+    <h1>You Died!</h1>
+    <p id="dsub">Your items stay with you.</p>
+    <button id="respawn">Respawn</button>
+  </div>
 </div>
 
 <div id="menu" class="hide">
   <div class="panel">
     <h1>BLOCKCRAFT</h1>
-    <h2>voxel sandbox &middot; v1.4 &middot; software-rendered in canvas 2d</h2>
+    <h2>survival + creative &middot; v1.5 &middot; software-rendered in canvas 2d</h2>
     <div class="grid">
       <div><b>W A S D</b> move</div>
       <div><b>Space</b> jump / swim up</div>
       <div><b>Shift</b> sprint</div>
       <div><b>Mouse</b> look around</div>
-      <div><b>LMB</b> break block</div>
-      <div><b>RMB</b> place block</div>
+      <div><b>LMB</b> mine / attack</div>
+      <div><b>RMB</b> place / eat</div>
       <div><b>MMB</b> pick block</div>
-      <div><b>Enter</b> third person view</div>
+      <div><b>E</b> inventory</div>
+      <div><b>G</b> survival / creative</div>
       <div><b>1-9 / Wheel</b> select</div>
+      <div><b>Enter</b> third person view</div>
       <div><b>F</b> toggle flight</div>
-      <div><b>F3</b> performance stats</div>
-      <div><b>F2</b> render scale</div>
       <div><b>T</b> freeze day cycle</div>
       <div><b>R</b> new world</div>
       <div><b>F5</b> save now</div>
-      <div><b>M</b> mute</div>
+      <div><b>F3</b> stats &middot; <b>F2</b> scale &middot; <b>M</b> mute</div>
       <div><b>Esc</b> pause</div>
     </div>
     <div class="rule"></div>
@@ -392,6 +466,56 @@ const BLK = [
   { n: 'Gravel',       t: [T.GRAVEL, T.GRAVEL, T.GRAVEL],      solid: 1, opaque: 1, cull: 0, a: 1 }
 ];
 const HOTBAR = [GRASS, DIRT, STONE, COBBLE, PLANKS, LOG, LEAVES, GLASS, BRICK];
+
+/* ------------------------------------------------- items & survival */
+const IT = { BEEF: 100, PORK: 101, MUTTON: 102, CHICKEN: 103, LEATHER: 104, WOOL: 105,
+             FEATHER: 106, BONE: 107, STRING: 108, GUNPOWDER: 109, ROTTEN: 110, ARROW: 111 };
+const ITEM = {};
+function rect(g, x, y, w, h, c) { g.fillStyle = c; g.fillRect(x, y, w, h); }
+function defineItems() {
+  const R = (id, n, col, food, fn) => { ITEM[id] = { n, col, food: food || 0, draw: fn }; };
+  R(IT.BEEF, 'Raw Beef', 0xa0342c, 8, g => { rect(g,4,9,24,15,'#b23b31'); rect(g,4,9,24,4,'#d05a4c'); rect(g,8,13,4,3,'#e8a89e'); rect(g,17,17,5,3,'#e8a89e'); rect(g,4,21,24,3,'#7d241d'); });
+  R(IT.PORK, 'Raw Porkchop', 0xe89a9a, 8, g => { rect(g,4,10,24,14,'#eda6a2'); rect(g,4,10,24,4,'#f6c3bf'); rect(g,10,15,4,3,'#f8d8d5'); rect(g,4,21,24,3,'#c96f6a'); });
+  R(IT.MUTTON, 'Raw Mutton', 0xb3503f, 6, g => { rect(g,5,10,22,14,'#c05a45'); rect(g,5,10,22,4,'#d9755f'); rect(g,13,15,6,3,'#e8a892'); rect(g,5,21,22,3,'#8a3b2c'); });
+  R(IT.CHICKEN, 'Raw Chicken', 0xefd9a8, 6, g => { rect(g,6,9,20,15,'#f0dcae'); rect(g,6,9,20,4,'#f8ecc9'); rect(g,12,15,6,3,'#e0c48a'); rect(g,6,21,20,3,'#c9ab70'); });
+  R(IT.LEATHER, 'Leather', 0x8a5a32, 0, g => { rect(g,6,8,20,17,'#96602f'); rect(g,6,8,20,3,'#b47c45'); rect(g,6,22,20,3,'#6d451f'); rect(g,9,12,5,4,'#c69258'); });
+  R(IT.WOOL, 'Wool', 0xe6e6e0, 0, g => { rect(g,4,7,24,18,'#eceae2'); rect(g,4,7,24,4,'#fbfaf4'); rect(g,4,21,24,4,'#c9c7bd'); rect(g,8,12,6,6,'#fbfaf4'); });
+  R(IT.FEATHER, 'Feather', 0xe0e4ea, 0, g => { for (let i = 0; i < 11; i++) rect(g,5+i,20-i,3,3,'#eef1f6'); rect(g,15,4,3,24,'#c8ccd4'); });
+  R(IT.BONE, 'Bone', 0xdedbc8, 0, g => { rect(g,13,6,6,20,'#e6e3d0'); rect(g,10,4,12,6,'#f0eedd'); rect(g,10,22,12,6,'#f0eedd'); rect(g,10,4,6,6,'#cfccb8'); rect(g,10,22,6,6,'#cfccb8'); });
+  R(IT.STRING, 'String', 0xd6d6d6, 0, g => { g.strokeStyle='#dcdcdc'; g.lineWidth=2; g.beginPath(); g.moveTo(7,6); g.bezierCurveTo(26,10,6,20,25,26); g.stroke(); });
+  R(IT.GUNPOWDER, 'Gunpowder', 0x6f6f76, 0, g => { rect(g,7,20,18,6,'#5d5d63'); rect(g,9,15,14,6,'#6f6f76'); rect(g,12,11,8,5,'#828290'); rect(g,15,16,3,3,'#9a9aa6'); });
+  R(IT.ROTTEN, 'Rotten Flesh', 0x8a6a3a, 4, g => { rect(g,6,10,20,14,'#7d8a4a'); rect(g,6,10,20,4,'#96a45c'); rect(g,6,21,20,3,'#5c6636'); rect(g,10,14,4,3,'#b3bd78'); });
+  R(IT.ARROW, 'Arrow', 0xb8b8b8, 0, g => { rect(g,15,5,2,22,'#c9c9c9'); rect(g,11,5,10,4,'#d9d9d9'); rect(g,12,24,8,3,'#e6e6e6'); rect(g,9,26,4,3,'#8a8a8a'); rect(g,19,26,4,3,'#8a8a8a'); });
+}
+const DROPBLK = {}; DROPBLK[GRASS] = DIRT; DROPBLK[STONE] = COBBLE; DROPBLK[LEAVES] = 0; DROPBLK[GLASS] = 0; DROPBLK[BEDROCK] = 0;
+function blockDrop(id) { return (id in DROPBLK) ? DROPBLK[id] : id; }
+const HARD = {}; HARD[GRASS] = 0.55; HARD[DIRT] = 0.5; HARD[SAND] = 0.5; HARD[GRAVEL] = 0.6;
+HARD[STONE] = 1.7; HARD[COBBLE] = 1.7; HARD[BRICK] = 1.8; HARD[LOG] = 1.1; HARD[PLANKS] = 0.9;
+HARD[LEAVES] = 0.25; HARD[GLASS] = 0.35; HARD[BEDROCK] = 1e9;
+function hardnessOf(id) { return HARD[id] !== undefined ? HARD[id] : 0.6; }
+const LOOT = {};
+LOOT.cow = [[IT.BEEF,1,3],[IT.LEATHER,0,2]];
+LOOT.pig = [[IT.PORK,1,3]];
+LOOT.sheep = [[IT.MUTTON,1,2],[IT.WOOL,1,1]];
+LOOT.chicken = [[IT.CHICKEN,1,1],[IT.FEATHER,0,2]];
+LOOT.zombie = [[IT.ROTTEN,0,2]];
+LOOT.skeleton = [[IT.BONE,0,2],[IT.ARROW,0,2]];
+LOOT.creeper = [[IT.GUNPOWDER,0,2]];
+LOOT.spider = [[IT.STRING,0,2]];
+function itemName(id) { return id < 100 ? (BLK[id] ? BLK[id].n : '?') : (ITEM[id] ? ITEM[id].n : '?'); }
+function itemFood(id) { return (id >= 100 && ITEM[id]) ? ITEM[id].food : 0; }
+const itemCanvasCache = {};
+function itemCanvas(id) {
+  if (itemCanvasCache[id]) return itemCanvasCache[id];
+  const c = document.createElement('canvas'); c.width = c.height = 32;
+  const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
+  if (id < 100 && BLK[id] && BLK[id].t) {
+    const def = BLK[id];
+    g.drawImage(tileImg(def.t[0]), 0, 0, 16, 16, 0, 0, 32, 15);
+    g.drawImage(tileImg(def.t[1]), 0, 0, 16, 16, 0, 16, 32, 16);
+  } else if (ITEM[id] && ITEM[id].draw) ITEM[id].draw(g);
+  return itemCanvasCache[id] = c;
+}
 
 /* face geometry - normals point out, corners cycle around the quad */
 const FACE = [
@@ -1035,7 +1159,7 @@ function drawMob(m) {
   const bw = M.b[0], bh = M.b[1], bl = M.b[2];
   boxFaces(m.x, m.y + M.lh + bh * 0.5 + bob, m.z, bw, bh, bl, M.c[0], M.c[1], M.c[2]);
   boxFaces(m.x + fx * bl * 0.42, m.y + M.lh + bh + M.hs * 0.5 + bob, m.z + fz * bl * 0.42, M.hs, M.hs, M.hs, M.h[0], M.h[1], M.h[2]);
-  if (M.n !== 'chicken') {
+  if (M.legs !== 2) {
     boxFaces(m.x - bw * 0.25, m.y + M.lh * 0.5, m.z - bl * 0.3, M.lw, M.lh, M.lw, M.l[0], M.l[1], M.l[2]);
     boxFaces(m.x + bw * 0.25, m.y + M.lh * 0.5, m.z - bl * 0.3, M.lw, M.lh, M.lw, M.l[0], M.l[1], M.l[2]);
     boxFaces(m.x - bw * 0.25, m.y + M.lh * 0.5, m.z + bl * 0.3, M.lw, M.lh, M.lw, M.l[0], M.l[1], M.l[2]);
@@ -1050,6 +1174,16 @@ function drawEntities() {
     const dx = m.x - cam.x, dz = m.z - cam.z;
     if (dx * dx + dz * dz > 4500) continue;
     drawMob(m);
+  }
+  for (const m of hostiles) {
+    const dx = m.x - cam.x, dz = m.z - cam.z;
+    if (dx * dx + dz * dz > 4500) continue;
+    drawMob(m);
+  }
+  for (const a of arrows) {
+    const dx = a.x - cam.x, dz = a.z - cam.z;
+    if (dx * dx + dz * dz > 4500) continue;
+    boxFaces(a.x, a.y, a.z, 0.12, 0.12, 0.5, 205, 205, 205);
   }
 }
 function spawnAnimals() {
@@ -1066,13 +1200,29 @@ function spawnAnimals() {
     }
     if (over) continue;
     if (waterNear(x, z, 3)) continue;
-    animals.push({ kind: (Math.random() * 4) | 0, x, z, y: t + 1, dir: Math.random() * 6.283, moving: 0, walkT: Math.random() * 2, bob: Math.random() * 6 });
+    const kind = (Math.random() * 4) | 0;
+    animals.push({ kind, x, z, y: t + 1, dir: Math.random() * 6.283, moving: 0, walkT: Math.random() * 2, bob: Math.random() * 6, hp: MOBS[kind].hp, kx: 0, kz: 0, flee: 0 });
     n++;
   }
 }
 function stepAnimals(dt) {
   for (const a of animals) {
     const M = MOBS[a.kind];
+    if (a.kx) {
+      a.x += a.kx * dt; a.z += a.kz * dt;
+      a.kx *= Math.max(0, 1 - 6 * dt); a.kz *= Math.max(0, 1 - 6 * dt);
+      if (Math.abs(a.kx) < 0.02) a.kx = a.kz = 0;
+    }
+    if (a.flee > 0) {
+      a.flee -= dt;
+      const ax = a.x - pl.x, az = a.z - pl.z, al = Math.hypot(ax, az) || 1;
+      a.x = clamp(a.x + ax / al * M.sp * 1.8 * dt, 2, W - 2);
+      a.z = clamp(a.z + az / al * M.sp * 1.8 * dt, 2, W - 2);
+      a.bob += dt * 12; a.moving = 1;
+      const at = topAt(a.x | 0, a.z | 0);
+      if (at <= a.y + 1.2) a.y = at + 1;
+      continue;
+    }
     a.walkT -= dt;
     if (a.walkT <= 0) {
       if (Math.random() < 0.55) { a.moving = 1; a.dir += (Math.random() - 0.5) * 2; a.walkT = 1.2 + Math.random() * 2.6; }
@@ -1119,12 +1269,24 @@ const pl = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, onGround: 0, fly: 0, bob: 0 
 let sel = 0, running = false, hasPointer = false, started = false, hit = null;
 let keys = Object.create(null), breath = 0, dt = 0, thirdPerson = false, dive = 0, wSpace = false;
 
+/* ------------------------------------------------------ survival state */
+const MAXHP = 20, MAXFOOD = 20;
+let mode = 'survival', hp = MAXHP, food = MAXFOOD;
+let hurtT = 0, regenT = 0, starveT = 0, drownT = 0, fallY = 0, dead = 0, attackT = 0;
+let INV = new Array(36).fill(null);
+let invOpen = 0, cursor = null, cursorX = 0, cursorY = 0;
+let hostiles = [], arrows = [], spawnPt = { x: 0, y: 0, z: 0 };
+
 const FSHADE = [1, 0.55, 0.78, 0.78, 0.7, 0.7];
 const MOBS = [
-  { n: 'cow', b: [0.86, 0.76, 1.5], c: [142, 89, 52], h: [97, 64, 40], l: [91, 62, 45], hs: 0.62, hh: 1.05, lh: 0.7, lw: 0.19, sp: 0.9 },
-  { n: 'chicken', b: [0.5, 0.55, 0.6], c: [236, 232, 226], h: [200, 42, 38], l: [230, 150, 52], hs: 0.3, hh: 0.55, lh: 0.32, lw: 0.07, sp: 1.5 },
-  { n: 'pig', b: [0.72, 0.66, 1.15], c: [234, 168, 160], h: [226, 150, 145], l: [226, 150, 145], hs: 0.56, hh: 0.72, lh: 0.55, lw: 0.16, sp: 0.9 },
-  { n: 'sheep', b: [0.86, 0.78, 1.3], c: [240, 236, 230], h: [148, 128, 116], l: [226, 218, 210], hs: 0.5, hh: 0.55, lh: 0.6, lw: 0.16, sp: 0.8 }
+  { n: 'cow', b: [0.86, 0.76, 1.5], c: [142, 89, 52], h: [97, 64, 40], l: [91, 62, 45], hs: 0.62, hh: 1.05, lh: 0.7, lw: 0.19, sp: 0.9, hp: 10, legs: 4 },
+  { n: 'chicken', b: [0.5, 0.55, 0.6], c: [236, 232, 226], h: [200, 42, 38], l: [230, 150, 52], hs: 0.3, hh: 0.55, lh: 0.32, lw: 0.07, sp: 1.5, hp: 4, legs: 2 },
+  { n: 'pig', b: [0.72, 0.66, 1.15], c: [234, 168, 160], h: [226, 150, 145], l: [226, 150, 145], hs: 0.56, hh: 0.72, lh: 0.55, lw: 0.16, sp: 0.9, hp: 10, legs: 4 },
+  { n: 'sheep', b: [0.86, 0.78, 1.3], c: [240, 236, 230], h: [148, 128, 116], l: [226, 218, 210], hs: 0.5, hh: 0.55, lh: 0.6, lw: 0.16, sp: 0.8, hp: 8, legs: 4 },
+  { n: 'zombie', b: [0.6, 1.0, 0.6], c: [86, 122, 74], h: [96, 128, 82], l: [92, 120, 80], hs: 0.5, hh: 1.4, lh: 0.78, lw: 0.18, sp: 0.62, hp: 20, legs: 4, dmg: 3, hostile: 1 },
+  { n: 'skeleton', b: [0.52, 0.95, 0.5], c: [206, 206, 198], h: [228, 228, 220], l: [200, 200, 192], hs: 0.46, hh: 1.2, lh: 0.72, lw: 0.16, sp: 0.82, hp: 20, legs: 4, dmg: 2, hostile: 1, ranged: 1 },
+  { n: 'creeper', b: [0.6, 0.95, 0.6], c: [78, 168, 74], h: [92, 182, 88], l: [70, 150, 66], hs: 0.5, hh: 1.1, lh: 0.32, lw: 0.16, sp: 0.66, hp: 20, legs: 4, dmg: 12, hostile: 1, fuse: 1 },
+  { n: 'spider', b: [0.9, 0.5, 0.9], c: [48, 40, 44], h: [62, 50, 54], l: [40, 34, 38], hs: 0.4, hh: 0.7, lh: 0.38, lw: 0.14, sp: 1.05, hp: 16, legs: 4, dmg: 2, hostile: 1 }
 ];
 let animals = [];
 
@@ -1134,6 +1296,211 @@ function waterNear(x, z, r) {
   for (let zz = z0; zz <= z1; zz++) for (let xx = x0; xx <= x1; xx++)
     if (get(xx, SEA, zz) === WATER || get(xx, SEA + 1, zz) === WATER) return true;
   return false;
+}
+
+/* --------------------------------------------------- inventory + items */
+function heldId() { return mode === 'creative' ? HOTBAR[sel] : (INV[sel] ? INV[sel].id : 0); }
+function addItem(id, n) {
+  if (!id || n <= 0) return;
+  for (let i = 0; i < INV.length && n > 0; i++) {
+    const s = INV[i];
+    if (s && s.id === id && s.n < 64) { const t = Math.min(64 - s.n, n); s.n += t; n -= t; }
+  }
+  for (let i = 0; i < INV.length && n > 0; i++)
+    if (!INV[i]) { const t = Math.min(64, n); INV[i] = { id, n: t }; n -= t; }
+  if (invOpen) renderInv(); else refreshHotbar();
+}
+function consumeSel() {
+  if (mode !== 'survival') return;
+  const s = INV[sel];
+  if (!s) return;
+  s.n--; if (s.n <= 0) INV[sel] = null;
+  if (invOpen) renderInv(); else refreshHotbar();
+}
+function useSel() {
+  if (mode === 'survival') {
+    const id = heldId(), f = itemFood(id);
+    if (f > 0) {
+      if (food >= MAXFOOD) { toast('not hungry'); return; }
+      food = Math.min(MAXFOOD, food + f);
+      consumeSel(); sfx(320, 0.12, 'sine'); saveDirty = 1;
+      return;
+    }
+    if (id && id < 100) edit(hit, false);
+    return;
+  }
+  edit(hit, false);
+}
+
+/* ------------------------------------------------------ combat */
+function pickEntity(maxD) {
+  const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
+  const dx = Math.sin(cam.yaw) * cp, dy = sp, dz = Math.cos(cam.yaw) * cp;
+  let best = null, bt = maxD;
+  for (const list of [animals, hostiles]) for (const e of list) {
+    const ex = e.x - cam.x, ey = (e.y + 0.45) - cam.y, ez = e.z - cam.z;
+    const t = ex * dx + ey * dy + ez * dz;
+    if (t < 0.2 || t > bt) continue;
+    const px = ex - dx * t, py = ey - dy * t, pz = ez - dz * t;
+    if (px * px + py * py + pz * pz > 0.42) continue;
+    best = e; bt = t;
+  }
+  return best;
+}
+function attack(e) {
+  if (!e || e.hp === undefined) return;
+  e.hp -= 5;
+  e.flee = 3;
+  const ax = e.x - pl.x, az = e.z - pl.z, al = Math.hypot(ax, az) || 1;
+  e.kx = ax / al * 3.4; e.kz = az / al * 3.4;
+  sfx(200, 0.08, 'square');
+  if (e.hp <= 0) killMob(e);
+}
+function killMob(e) {
+  const i = animals.indexOf(e); if (i >= 0) animals.splice(i, 1);
+  const j = hostiles.indexOf(e); if (j >= 0) hostiles.splice(j, 1);
+  const M = MOBS[e.kind], loot = LOOT[M.n] || [];
+  for (const L of loot) {
+    const n = L[1] + Math.floor(Math.random() * (L[2] - L[1] + 1));
+    if (n > 0) { addItem(L[0], n); toast('+ ' + n + ' ' + itemName(L[0])); }
+  }
+  for (let k = 0; k < 12; k++) parts.push({
+    x: e.x + (Math.random() - 0.5) * 0.6, y: e.y + 0.4 + Math.random() * 0.6, z: e.z + (Math.random() - 0.5) * 0.6,
+    vx: (Math.random() - 0.5) * 3, vy: 1 + Math.random() * 3, vz: (Math.random() - 0.5) * 3,
+    s: 0.07, life: 0.5 + Math.random() * 0.4, r: M.c[0], g: M.c[1], b: M.c[2]
+  });
+  sfx(120, 0.2, 'sawtooth');
+  saveDirty = 1;
+}
+
+/* ------------------------------------------------------ hostiles */
+function night() { const s = Math.sin((dayT - 0.25) * Math.PI * 2); return (s * 2.2 + 0.30) < 0.33; }
+function spawnHostiles(dt) {
+  if (mode !== 'survival' || dead) return;
+  if (!night()) { if (hostiles.length) for (let i = hostiles.length - 1; i >= 0; i--) if (Math.random() < dt * 0.3) hostiles.splice(i, 1); return; }
+  if (hostiles.length >= 6) return;
+  if (Math.random() > dt * 0.8) return;
+  for (let tries = 0; tries < 12; tries++) {
+    const a = Math.random() * 6.283, d = 14 + Math.random() * 14;
+    const x = clamp(pl.x + Math.cos(a) * d, 3, W - 3), z = clamp(pl.z + Math.sin(a) * d, 3, W - 3);
+    const t = topAt(x | 0, z | 0), tb = get(x | 0, t, z | 0);
+    if (t <= SEA || (tb !== GRASS && tb !== DIRT && tb !== SAND)) continue;
+    if (waterNear(x, z, 2)) continue;
+    const kinds = [4, 5, 6, 7], kind = kinds[(Math.random() * kinds.length) | 0];
+    hostiles.push({ kind, x, z, y: t + 1, dir: Math.random() * 6.283, moving: 1, walkT: 1, bob: Math.random() * 6,
+                    hp: MOBS[kind].hp, atk: 1 + Math.random(), fuse: 0, shoot: 1 + Math.random() * 2, kx: 0, kz: 0 });
+    break;
+  }
+}
+function stepHostiles(dt) {
+  for (let i = hostiles.length - 1; i >= 0; i--) {
+    const h = hostiles[i], M = MOBS[h.kind];
+    h.bob += dt * 7;
+    const dx = pl.x - h.x, dz = pl.z - h.z, d = Math.hypot(dx, dz);
+    if (h.kx) { h.x += h.kx * dt; h.z += h.kz * dt; h.kx *= Math.max(0, 1 - 6 * dt); h.kz *= Math.max(0, 1 - 6 * dt); if (Math.abs(h.kx) < 0.02) h.kx = h.kz = 0; }
+    if (h.kind === 6 && mode === 'survival' && !dead) {
+      if (d < 2.6) { h.fuse += dt; if (h.fuse > 1.6) { explode(h.x, h.y + 0.4, h.z, 2.6); hostiles.splice(i, 1); continue; } }
+      else h.fuse = Math.max(0, h.fuse - dt);
+    }
+    if (d < 1.6 && mode === 'survival' && !dead && h.kind !== 6) {
+      h.atk -= dt;
+      if (h.atk <= 0) { hurt(M.dmg, dx / (d || 1) * 3, dz / (d || 1) * 3); h.atk = 1.2; }
+    }
+    if (h.kind === 5 && d < 16 && d > 2 && mode === 'survival' && !dead) {
+      h.shoot -= dt;
+      if (h.shoot <= 0) { shootArrow(h); h.shoot = 2.4; }
+    }
+    const prevx = h.x, prevz = h.z;
+    if (d > 1.1 && d < 26) {
+      const l = d || 1;
+      h.x += dx / l * M.sp * dt; h.z += dz / l * M.sp * dt;
+      h.dir = Math.atan2(dx / l, dz / l);
+    }
+    h.x = clamp(h.x, 2, W - 2); h.z = clamp(h.z, 2, W - 2);
+    if (solidAt(h.x | 0, h.y | 0, h.z | 0) || solidAt(h.x | 0, (h.y + 1) | 0, h.z | 0)) { h.x = prevx; h.z = prevz; }
+    const at = topAt(h.x | 0, h.z | 0);
+    if (at <= h.y + 1.3) h.y = at + 1;
+  }
+}
+function shootArrow(h) {
+  const tx = pl.x - h.x, ty = (pl.y + 1.0) - (h.y + 1.2), tz = pl.z - h.z;
+  const l = Math.hypot(tx, ty, tz) || 1;
+  arrows.push({ x: h.x, y: h.y + 1.2, z: h.z, vx: tx / l * 18, vy: ty / l * 18 + 1.5, vz: tz / l * 18, life: 3 });
+  sfx(520, 0.06, 'triangle');
+}
+function stepArrows(dt) {
+  for (let i = arrows.length - 1; i >= 0; i--) {
+    const a = arrows[i];
+    a.life -= dt; a.vy -= 12 * dt;
+    a.x += a.vx * dt; a.y += a.vy * dt; a.z += a.vz * dt;
+    let kill = a.life <= 0 || a.y < 0 || a.y > H;
+    if (!kill && solidAt(a.x | 0, a.y | 0, a.z | 0)) kill = true;
+    if (!kill && mode === 'survival' && !dead) {
+      const px = a.x - pl.x, py = a.y - (pl.y + 0.9), pz = a.z - pl.z;
+      if (px * px + py * py + pz * pz < 0.36) { hurt(4, a.vx * 0.1, a.vz * 0.1); kill = true; }
+    }
+    if (kill) arrows.splice(i, 1);
+  }
+}
+function explode(x, y, z, power) {
+  const R = Math.ceil(power), fx = Math.floor(x), fy = Math.floor(y), fz = Math.floor(z);
+  for (let dy = -R; dy <= R; dy++) for (let dz = -R; dz <= R; dz++) for (let dx = -R; dx <= R; dx++) {
+    const dd = Math.hypot(dx, dy, dz);
+    if (dd > power) continue;
+    const bx = fx + dx, by = fy + dy, bz = fz + dz;
+    if (by < 1) continue;
+    const id = get(bx, by, bz);
+    if (!id || id === WATER || id === BEDROCK) continue;
+    if (dd > power - 1 && Math.random() < 0.45) continue;
+    set(bx, by, bz, AIR);
+  }
+  const cx0 = Math.floor((x - power) / CH), cx1 = Math.floor((x + power) / CH);
+  const cz0 = Math.floor((z - power) / CH), cz1 = Math.floor((z + power) / CH);
+  for (let cz = cz0; cz <= cz1; cz++) for (let cx = cx0; cx <= cx1; cx++) {
+    if (cx < 0 || cz < 0 || cx >= CW || cz >= CD) continue;
+    meshChunk(chunks[cz * CW + cx]);
+  }
+  const pd = Math.hypot(pl.x - x, pl.y + 0.9 - y, pl.z - z);
+  if (pd < power + 2 && pd > 0.01) hurt(Math.round((power + 2 - pd) * 4), (pl.x - x) / pd * 5, (pl.z - z) / pd * 5);
+  spawnBreak(Math.floor(x), Math.floor(y), Math.floor(z), T.STONE);
+  sfx(60, 0.5, 'sawtooth');
+  saveDirty = 1;
+}
+
+/* ------------------------------------------------------ damage + death */
+function hurt(dmg, sx, sz) {
+  if (mode === 'creative' || dead || dmg <= 0 || hurtT > 0) return;
+  hp -= dmg; hurtT = 0.5;
+  if (sx || sz) { pl.vx += sx; pl.vz += sz; pl.vy = Math.max(pl.vy, 3.5); }
+  sfx(150, 0.18, 'sawtooth');
+  if (hp <= 0) { hp = 0; die(); }
+}
+function die() {
+  dead = 1; invOpen = 0;
+  document.getElementById('inv').classList.add('hide');
+  document.getElementById('death').classList.remove('hide');
+  if (document.pointerLockElement) document.exitPointerLock();
+  saveDirty = 1;
+}
+function respawn() {
+  dead = 0; hp = MAXHP; food = MAXFOOD;
+  pl.x = spawnPt.x; pl.y = spawnPt.y; pl.z = spawnPt.z; pl.vx = pl.vy = pl.vz = 0;
+  fallY = pl.y;
+  document.getElementById('death').classList.add('hide');
+  view.requestPointerLock();
+}
+function stepSurvival(dt) {
+  if (hurtT > 0) hurtT -= dt;
+  if (mode !== 'survival' || dead) return;
+  if (food <= 0) { starveT += dt; if (starveT > 4) { starveT = 0; hurt(1, 0, 0); } }
+  else starveT = 0;
+  const moving = Math.hypot(pl.vx, pl.vz) > 1;
+  food = Math.max(0, food - dt * (moving ? 0.045 : 0.012) * (keys['ShiftLeft'] && moving ? 2 : 1));
+  if (food >= 18 && hp < MAXHP && hp > 0 && hurtT <= 0) {
+    regenT += dt;
+    if (regenT > 3) { regenT = 0; hp = Math.min(MAXHP, hp + 1); food = Math.max(0, food - 0.5); }
+  } else regenT = 0;
+  if (attackT > 0) attackT -= dt;
 }
 
 function spawnPlayer() {
@@ -1151,6 +1518,8 @@ function spawnPlayer() {
   pl.x = sx + 0.5; pl.z = sz + 0.5; pl.y = topAt(sx, sz) + 1.05;
   pl.vx = pl.vy = pl.vz = 0; pl.fly = 0;
   cam.yaw = (hash2(sx, sz) - 0.5) * 6.2; cam.pitch = -0.1;
+  spawnPt = { x: pl.x, y: pl.y, z: pl.z };
+  fallY = pl.y;
 }
 
 function moveAxis(ax, amount) {
@@ -1213,6 +1582,17 @@ function physics() {
   pl.bob += Math.hypot(pl.vx, pl.vz) * dt * 1.9;
   breath = head ? breath + dt : Math.max(0, breath - dt * 4);
   if (breath > 14) pl.vy = Math.max(pl.vy, 1.4);
+
+  if (mode === 'survival' && !pl.fly) {
+    if (pl.onGround) {
+      const fd = fallY - pl.y;
+      if (fd > 3.2 && hurtT <= 0) hurt(Math.max(1, Math.round(fd - 3)), 0, 0);
+      fallY = pl.y;
+    } else if (pl.y > fallY) fallY = pl.y;
+  } else fallY = pl.y;
+  if (mode === 'survival' && head) {
+    if (breath > 15) { drownT += dt; if (drownT > 1.2) { drownT = 0; hurt(2, 0, 0); } }
+  } else drownT = 0;
 }
 
 /* ------------------------------------------------------------ raycast */
@@ -1254,12 +1634,16 @@ function edit(p, remove) {
     seedWater(p.x, p.y, p.z);
     remeshAround(p.x, p.z);
     sfx(150 + Math.random() * 60, 0.06, 'square');
+    const drop = blockDrop(p.id);
+    if (mode === 'survival' && drop) addItem(drop, 1);
   } else {
+    const b = heldId();
+    if (!b || b >= 100) { if (mode === 'survival' && b) toast('cannot place ' + itemName(b)); return; }
     const nx = p.x + p.nx, ny = p.y + p.ny, nz = p.z + p.nz;
     if (ny < 0 || ny >= H) return;
     const cur = get(nx, ny, nz);
     if (cur && cur !== WATER) return;
-    const hw = PW / 2 + 0.02, b = HOTBAR[sel];
+    const hw = PW / 2 + 0.02;
     if (BLK[b].solid &&
         nx + 1 > pl.x - hw && nx < pl.x + hw &&
         nz + 1 > pl.z - hw && nz < pl.z + hw &&
@@ -1267,6 +1651,7 @@ function edit(p, remove) {
     set(nx, ny, nz, b);
     remeshAround(nx, nz);
     sfx(430, 0.05, 'triangle');
+    if (mode === 'survival') consumeSel();
   }
   hit = raycast(6.5);
   saveDirty = 1;
@@ -1295,34 +1680,124 @@ const dbgEl = document.getElementById('dbg');
 const toastEl = document.getElementById('toast');
 const menu = document.getElementById('menu');
 const loadEl = document.getElementById('load');
+const invEl = document.getElementById('inv');
+const invGrid = document.getElementById('invgrid');
+const cursorEl = document.getElementById('cursorItem');
+const deathEl = document.getElementById('death');
+const statsEl = document.getElementById('stats');
+const heartsEl = document.getElementById('hearts');
+const foodEl = document.getElementById('food');
 let toastT = 0, nameFade = 0;
 
 function toast(s) { toastEl.textContent = s; toastEl.classList.add('on'); toastT = 2.2; }
-function buildBar() {
+function refreshHotbar() {
   bar.innerHTML = '';
-  HOTBAR.forEach((b, i) => {
-    const def = BLK[b];
+  for (let i = 0; i < 9; i++) {
     const d = document.createElement('div');
     d.className = 'slot';
-    const c = document.createElement('canvas');
-    c.width = c.height = 32;
-    const g = c.getContext('2d');
-    g.imageSmoothingEnabled = false;
-    g.drawImage(tileImg(def.t[0]), 0, 0, 16, 16, 0, 0, 32, 15);
-    g.drawImage(tileImg(def.t[1]), 0, 0, 16, 16, 0, 16, 32, 16);
+    let iconId = 0, count = 0;
+    if (mode === 'creative') iconId = HOTBAR[i];
+    else { const s = INV[i]; if (s) { iconId = s.id; count = s.n; } }
+    const c = document.createElement('canvas'); c.width = c.height = 32;
+    const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
+    if (iconId) g.drawImage(itemCanvas(iconId), 0, 0);
     d.appendChild(c);
+    if (count > 1) { const q = document.createElement('b'); q.className = 'cnt'; q.textContent = count; d.appendChild(q); }
     const n = document.createElement('i'); n.textContent = i + 1;
     d.appendChild(n);
-    d.title = def.n;
+    d.title = iconId ? itemName(iconId) : 'empty';
     bar.appendChild(d);
-  });
+  }
+  for (let k = 0; k < bar.children.length; k++) bar.children[k].classList.toggle('sel', k === sel);
 }
 function select(i) {
-  sel = (i + HOTBAR.length) % HOTBAR.length;
+  sel = (i + 9) % 9;
   for (let k = 0; k < bar.children.length; k++) bar.children[k].classList.toggle('sel', k === sel);
-  nameEl.textContent = BLK[HOTBAR[sel]].n;
+  const id = heldId();
+  nameEl.textContent = id ? itemName(id) : '';
   nameEl.style.opacity = 1; nameFade = 1.6;
 }
+function setMode(m) {
+  if (m === mode) return;
+  mode = m;
+  if (mode === 'survival' && hp <= 0) hp = MAXHP;
+  hudMode = ''; refreshHotbar(); select(sel); updateHUD();
+  toast('mode: ' + mode);
+  saveDirty = 1;
+}
+
+/* --------------------------------------------------- survival HUD */
+let hudHp = -1, hudFood = -1, hudMode = '';
+function renderBar(el, val, cls) {
+  el.innerHTML = '';
+  for (let i = 0; i < 10; i++) {
+    const d = document.createElement('span');
+    d.className = cls + (val - i * 2 <= 0 ? ' empty' : '');
+    el.appendChild(d);
+  }
+}
+function updateHUD() {
+  if (mode !== hudMode) { statsEl.classList.toggle('show', mode === 'survival'); hudMode = mode; hudHp = hudFood = -1; }
+  if (mode !== 'survival') return;
+  if (hp !== hudHp) { renderBar(heartsEl, hp, 'ic'); hudHp = hp; }
+  if (food !== hudFood) { renderBar(foodEl, food, 'ic hunger'); hudFood = food; }
+}
+
+/* --------------------------------------------------- inventory UI */
+function slotIconEl(id) {
+  const c = document.createElement('canvas'); c.width = c.height = 32;
+  const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
+  if (id) g.drawImage(itemCanvas(id), 0, 0);
+  return c;
+}
+function renderInv() {
+  invGrid.innerHTML = '';
+  for (let i = 0; i < INV.length; i++) {
+    const d = document.createElement('div');
+    d.className = 'islot' + (i < 9 && i === sel ? ' selhot' : '');
+    d.setAttribute('data-i', i);
+    const s = INV[i];
+    if (s) {
+      d.appendChild(slotIconEl(s.id));
+      if (s.n > 1) { const q = document.createElement('b'); q.className = 'cnt'; q.textContent = s.n; d.appendChild(q); }
+      d.title = itemName(s.id);
+    }
+    if (i < 9) { const l = document.createElement('span'); l.className = 'ilab'; l.textContent = i + 1; d.appendChild(l); }
+    invGrid.appendChild(d);
+  }
+  renderCursor();
+}
+function renderCursor() {
+  cursorEl.innerHTML = '';
+  if (cursor) {
+    cursorEl.appendChild(slotIconEl(cursor.id));
+    cursorEl.style.display = 'block';
+    cursorEl.style.left = cursorX + 'px';
+    cursorEl.style.top = cursorY + 'px';
+  } else cursorEl.style.display = 'none';
+}
+function openInv() {
+  invOpen = 1;
+  invEl.classList.remove('hide');
+  renderInv();
+  if (document.pointerLockElement) document.exitPointerLock();
+}
+function closeInv() {
+  invOpen = 0;
+  if (cursor) { addItem(cursor.id, cursor.n); cursor = null; }
+  invEl.classList.add('hide');
+  view.requestPointerLock();
+}
+invGrid.addEventListener('click', e => {
+  const d = e.target.closest('.islot'); if (!d) return;
+  const i = +d.getAttribute('data-i'), s = INV[i];
+  if (!cursor) { if (s) { cursor = s; INV[i] = null; } }
+  else if (!s) { INV[i] = cursor; cursor = null; }
+  else if (s.id === cursor.id) { const t = Math.min(64 - s.n, cursor.n); s.n += t; cursor.n -= t; if (cursor.n <= 0) cursor = null; }
+  else { INV[i] = cursor; cursor = s; }
+  refreshHotbar(); renderInv();
+});
+document.getElementById('respawn').addEventListener('click', respawn);
 
 /* --------------------------------------------------------------- input */
 const SCALES = [0.5, 0.65, 0.8, 1];
@@ -1339,6 +1814,9 @@ addEventListener('keydown', e => {
   if (k === 'Tab' || k === 'Space' || k.startsWith('Arrow') || k === 'F3' || k === 'F5') e.preventDefault();
   if (keys[k]) return;
   keys[k] = 1;
+  if (k === 'KeyE') { if (invOpen) closeInv(); else if (running && !dead) openInv(); return; }
+  if (k === 'Escape' && invOpen) { closeInv(); return; }
+  if (k === 'KeyG' && running && !dead) { setMode(mode === 'survival' ? 'creative' : 'survival'); return; }
 if (!running) {
     if (k === 'Enter') {
       const ctn = document.getElementById('continue');
@@ -1362,12 +1840,22 @@ addEventListener('blur', () => { keys = Object.create(null); });
 
 let mining = 0, mineT = 0, swing = 0;
 addEventListener('mousedown', e => {
-  if (!running) return;
-  if (e.button === 0) mining = 1;
-  else if (e.button === 2) { edit(hit, false); swing = 0.34; }
+  if (!running || invOpen) return;
+  if (e.button === 0) {
+    if (mode === 'survival' && !dead) {
+      const em = pickEntity(4.2);
+      if (em) { attack(em); swing = 0.34; return; }
+    }
+    mining = 1;
+  } else if (e.button === 2) { useSel(); swing = 0.34; }
   else if (e.button === 1) {
-    const i = hit ? HOTBAR.indexOf(hit.id) : -1;
-    if (i >= 0) select(i); else if (hit) toast('cannot hold ' + BLK[hit.id].n);
+    if (mode === 'creative') {
+      const i = hit ? HOTBAR.indexOf(hit.id) : -1;
+      if (i >= 0) select(i); else if (hit) toast('cannot hold ' + BLK[hit.id].n);
+    } else if (hit) {
+      for (let i = 0; i < 9; i++) if (INV[i] && INV[i].id === hit.id) { select(i); return; }
+      toast('not in hotbar: ' + BLK[hit.id].n);
+    }
   }
 });
 addEventListener('mouseup', e => { if (e.button === 0) mining = 0; });
@@ -1381,11 +1869,11 @@ addEventListener('wheel', e => {
 document.addEventListener('pointerlockchange', () => {
   hasPointer = document.pointerLockElement === view;
   running = hasPointer;
-  menu.classList.toggle('hide', hasPointer);
+  menu.classList.toggle('hide', hasPointer || invOpen || dead);
   if (!hasPointer) {
     keys = Object.create(null); mining = 0;
     if (savingEnabled && saveDirty) { try { saveWorld(); } catch (e) {} }
-    updateMenu();
+    if (!invOpen && !dead) updateMenu();
   }
 });
 document.addEventListener('visibilitychange', () => {
@@ -1395,6 +1883,8 @@ addEventListener('pagehide', () => {
   if (savingEnabled && saveDirty) { try { saveWorld(); } catch (e) {} }
 });
 addEventListener('mousemove', e => {
+  cursorX = e.clientX; cursorY = e.clientY;
+  if (invOpen && cursor) { cursorEl.style.left = cursorX + 'px'; cursorEl.style.top = cursorY + 'px'; }
   if (!hasPointer) return;
   cam.yaw += e.movementX * 0.0026;
   cam.pitch = clamp(cam.pitch - e.movementY * 0.0026, -1.5533, 1.5533);
@@ -1534,8 +2024,10 @@ function saveWorld() {
     for (let i = 0; i < world.length; i += 8192)
       s += String.fromCharCode.apply(null, world.subarray(i, i + 8192));
     const payload = {
-      v: 1, seed: worldSeed, dayT,
+      v: 2, seed: worldSeed, dayT,
       px: pl.x, py: pl.y, pz: pl.z, yaw: cam.yaw, pitch: cam.pitch, sel,
+      m: mode, hp, food, inv: INV.map(s => s ? [s.id, s.n] : 0),
+      sp: [spawnPt.x, spawnPt.y, spawnPt.z],
       at: Date.now(), w: btoa(s)
     };
     if (!currentId) {
@@ -1573,7 +2065,22 @@ function loadWorld(o) {
   }
   pl.x = o.px; pl.y = o.py; pl.z = o.pz; pl.vx = pl.vy = pl.vz = 0; pl.fly = 0;
   cam.yaw = o.yaw || 0; cam.pitch = clamp(o.pitch !== undefined ? o.pitch : -0.1, -1.5533, 1.5533);
-  select(o.sel || 0);
+  if (o.v === 2) {
+    mode = (o.m === 'creative' || o.m === 'survival') ? o.m : 'survival';
+    hp = (typeof o.hp === 'number') ? o.hp : MAXHP;
+    food = (typeof o.food === 'number') ? o.food : MAXFOOD;
+    INV = new Array(36).fill(null);
+    if (Array.isArray(o.inv)) for (let i = 0; i < 36; i++) {
+      const s = o.inv[i];
+      if (s && s[1] > 0) INV[i] = { id: s[0], n: s[1] };
+    }
+    if (Array.isArray(o.sp)) spawnPt = { x: o.sp[0], y: o.sp[1], z: o.sp[2] };
+  } else {
+    mode = 'creative'; hp = MAXHP; food = MAXFOOD; INV = new Array(36).fill(null);
+  }
+  hostiles = []; arrows = []; dead = 0; hurtT = 0; regenT = 0; starveT = 0; drownT = 0;
+  fallY = pl.y;
+  hudMode = ''; refreshHotbar(); select(o.sel || 0); updateHUD();
   buildClouds();
   spawnAnimals();
   parts.length = 0;
@@ -1583,7 +2090,7 @@ function loadWorld(o) {
 function loadWorldById(id) {
   try {
     const p = JSON.parse(localStorage.getItem('blockcraft_w_' + id));
-    if (!p || p.v !== 1 || typeof p.w !== 'string') return false;
+    if (!p || (p.v !== 1 && p.v !== 2) || typeof p.w !== 'string') return false;
     loadWorld(p);
     currentId = id;
     try { localStorage.setItem(CURRENT_KEY, id); } catch (e) {}
@@ -1658,6 +2165,9 @@ function newWorld(seed) {
   buildClouds();
   spawnAnimals();
   parts.length = 0;
+  mode = 'survival'; hp = MAXHP; food = MAXFOOD; INV = new Array(36).fill(null);
+  hostiles = []; arrows = []; dead = 0; hurtT = 0; regenT = 0; starveT = 0; drownT = 0; fallY = 0;
+  hudMode = ''; refreshHotbar(); select(0); updateHUD();
   genQueue = chunks.slice();
   loadEl.style.display = 'grid';
 }
@@ -1685,16 +2195,24 @@ function frame(now) {
 
   if (running) {
     physics();
-    if (mining) {
-      mineT += dt;
-      if (mineT > 0.17) { mineT = 0; edit(hit || raycast(6.5), true); }
-    }
     hit = raycast(6.5);
+    if (mining && hit) {
+      if (hit.id === BEDROCK) mineT = 0;
+      else {
+        mineT += dt / (mode === 'creative' ? 0.17 : hardnessOf(hit.id));
+        if (mineT >= 1) { mineT = 0; edit(hit, true); }
+      }
+    } else if (!mining) mineT = 0;
   } else {
     cam.yaw += dt * 0.05;
   }
   stepAnimals(dt);
   stepWater();
+  stepHostiles(dt);
+  stepArrows(dt);
+  stepSurvival(dt);
+  spawnHostiles(dt);
+  updateHUD();
   if (swing > 0) swing -= dt;
   if (!dayFrozen) dayT = (dayT + dt / 620) % 1;
   if (savingEnabled && saveDirty) {
@@ -1736,7 +2254,8 @@ function frame(now) {
 try { const c = localStorage.getItem(CURRENT_KEY); if (c) currentId = c; } catch (e) {}
 migrateOld();
 buildTextures();
-buildBar();
+defineItems();
+refreshHotbar();
 select(0);
 resize(rscale);
 newWorld(worldSeed);
