@@ -217,7 +217,9 @@ scene.add(sun);
    WORLD
 ============================================================ */
 const ARENA = 52;                    // half-size
-const walls = [];                    // AABBs {x,z,w,d,h,mesh}
+const walls = [];                    // AABBs {x,z,w,d,h,mesh} — block tanks AND shells
+const solids = [];                   // AABBs {x,z,w,d,owner} — block tanks only, so each
+                                     // HQ stays shootable straight through its own footprint
 
 function addWall(x,z,w,d,h,color){
   const g = new THREE.BoxGeometry(w,h,d);
@@ -227,6 +229,12 @@ function addWall(x,z,w,d,h,color){
   scene.add(mesh);
   walls.push({ x, z, w:w/2, d:d/2, h, mesh });
   return mesh;
+}
+// movement-only blocker; owner ties it to an HQ so it vanishes with the base
+function addSolid(x,z,w,d,owner){
+  const s = { x, z, w:w/2, d:d/2, owner };
+  solids.push(s);
+  return s;
 }
 
 // floor
@@ -290,7 +298,7 @@ function makeHQ(team){
       new THREE.MeshLambertMaterial({ color: team===0?0x6fb6ff:0xff8f7a }));
     p.position.set(sx*11.6, PAD_H+0.75, sz*8.1); p.castShadow=true; g.add(p);
   }
-  g.position.y = PAD_H;
+  g.position.set(0, PAD_H, z);
 
   const base = new THREE.Mesh(new THREE.BoxGeometry(18,4.2,12), bodyMat);
   base.position.y = 2.1; base.castShadow=true; base.receiveShadow=true; g.add(base);
@@ -330,8 +338,12 @@ function makeHQ(team){
   barrel.rotation.x = Math.PI/2; barrel.position.set(0,0.9,3.2); gun.add(barrel);
   gun.position.set(0,4.2+PAD_H, dir*7.5); scene.add(gun);
 
-  return { team, group:g, gun, x:0, z, w:9, d:6, armor:0,
+  const hq = { team, group:g, gun, x:0, z, w:9, d:6, armor:0,
            hp:HQ_HP, maxHp:HQ_HP, cd:1.6, angle: dir===-1?0:Math.PI, alive:true };
+  // solid footprint: the HQ block itself + the cannon mount out front
+  addSolid(0, z, 18, 12, hq);
+  addSolid(0, z - dir*7.5, 7.4, 7.4, hq);
+  return hq;
 }
 const HQS = [ makeHQ(0), makeHQ(1) ];
 
@@ -361,8 +373,8 @@ const CLASSES = {
 };
 const ORDER = ['scout','medium','heavy','arty','sniper'];
 const TEAMS = [
-  { color:0x3b82f6, trim:0x9fd4ff, names:['YOU','B-2','B-3','B-4','B-5'], spawn:[[-12,-38],[0,-38],[12,-38],[-22,-34],[22,-34]] },
-  { color:0xef4444, trim:0xffb0a0, names:['R-1','R-2','R-3','R-4','R-5'], spawn:[[12,38],[0,38],[-12,38],[22,34],[-22,34]] },
+  { color:0x3b82f6, trim:0x9fd4ff, names:['YOU','B-2','B-3','B-4','B-5'], spawn:[[-11,-25],[-5,-27],[0,-25],[5,-27],[11,-25]] },
+  { color:0xef4444, trim:0xffb0a0, names:['R-1','R-2','R-3','R-4','R-5'], spawn:[[11,25],[5,27],[0,25],[-5,27],[-11,25]] },
 ];
 const BOT_LOADOUT = ['medium','heavy','scout','arty','sniper'];
 
@@ -571,11 +583,13 @@ function tracer(x1,y1,z1,x2,y2,z2,col){
    PHYSICS HELPERS
 ============================================================ */
 // point-in / segment-vs AABB in XZ
-function blocked(ax,az,bx,bz,pad=0){
+function blocked(ax,az,bx,bz,pad=0,withSolids=false){
   const dx=bx-ax, dz=bz-az;
-  for(const w of walls){
-    if(!segBox(ax,az,dx,dz,w.x-w.w-pad,w.x+w.w+pad,w.z-w.d-pad,w.z+w.d+pad)) continue;
-    return true;
+  const test=w=>segBox(ax,az,dx,dz,w.x-w.w-pad,w.x+w.w+pad,w.z-w.d-pad,w.z+w.d+pad);
+  for(const w of walls) if(test(w)) return true;
+  if(withSolids) for(const s of solids){
+    if(s.owner && !s.owner.alive) continue;
+    if(test(s)) return true;
   }
   return false;
 }
@@ -592,17 +606,22 @@ function segBox(px,pz,dx,dz,minX,maxX,minZ,maxZ){
   }
   return true;
 }
+function pushOut(e,r,w){
+  const cx=Math.max(w.x-w.w, Math.min(e.x, w.x+w.w));
+  const cz=Math.max(w.z-w.d, Math.min(e.z, w.z+w.d));
+  let dx=e.x-cx, dz=e.z-cz;
+  let d=Math.hypot(dx,dz);
+  if(d<r){
+    if(d<1e-4){ dx=1; dz=0; d=1; }
+    const push=(r-d);
+    e.x += dx/d*push; e.z += dz/d*push;
+  }
+}
 function collideWalls(e,r){
-  for(const w of walls){
-    const cx=Math.max(w.x-w.w, Math.min(e.x, w.x+w.w));
-    const cz=Math.max(w.z-w.d, Math.min(e.z, w.z+w.d));
-    let dx=e.x-cx, dz=e.z-cz;
-    let d=Math.hypot(dx,dz);
-    if(d<r){
-      if(d<1e-4){ dx=1; dz=0; d=1; }
-      const push=(r-d);
-      e.x += dx/d*push; e.z += dz/d*push;
-    }
+  for(const w of walls) pushOut(e,r,w);
+  for(const s of solids){
+    if(s.owner && !s.owner.alive) continue;
+    pushOut(e,r,s);
   }
 }
 function clampArena(e,r){
@@ -790,15 +809,17 @@ function aiUpdate(t, dt){
   // strafe around HQ if it's the target
   if(g.gun){ mx += -nz*0.7; mz += nx*0.7; }
 
-  // avoid getting stuck
+  // avoid getting stuck (walls and the HQ buildings)
   const aheadX=t.x+nx*4, aheadZ=t.z+nz*4;
-  if(blocked(t.x,t.z,aheadX,aheadZ,1.2)){ t.strafe*=-1; mx=-nz*t.strafe; mz=nx*t.strafe; }
+  if(blocked(t.x,t.z,aheadX,aheadZ,1.2,true)){ t.strafe*=-1; mx=-nz*t.strafe; mz=nx*t.strafe; }
 
-  // defenders hold the base: if nothing is close, drift back to the HQ
+  // defenders hold the base: if nothing is close, drift back to the staging
+  // ground in front of the HQ (never into the building itself)
   if(t.role==='guard' && dist>17){
     const hq=HQS[t.team];
-    const bx=hq.x-t.x, bz=hq.z-t.z, bd=Math.hypot(bx,bz)||1;
-    if(bd>13){ mx=bx/bd*0.9; mz=bz/bd*0.9; }
+    const front = -Math.sign(hq.z)*15;
+    const bx=hq.x-t.x, bz=(hq.z+front)-t.z, bd=Math.hypot(bx,bz)||1;
+    if(bd>6){ mx=bx/bd*0.9; mz=bz/bd*0.9; }
   }
 
   t.moveX=mx; t.moveZ=mz;
