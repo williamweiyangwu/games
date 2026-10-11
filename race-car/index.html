@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Sun Circuit — 3D Race Car</title>
+<title>Apex Racing — 3D Race Car</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;font-family:"Segoe UI",system-ui,sans-serif}
   html,body{width:100%;height:100%;overflow:hidden;background:#0b1020;color:#fff}
@@ -36,6 +36,30 @@
   .keys{font-size:13px;opacity:.75;line-height:1.9;max-width:640px}
   #err{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:40px;text-align:center;
        background:#0b1020;font-size:18px;z-index:20}
+  /* menu pickers */
+  #menu{overflow-y:auto;padding:26px 20px}
+  .pickRow{display:flex;gap:22px;flex-wrap:wrap;justify-content:center;margin-top:2px}
+  .pickCol{display:flex;flex-direction:column;gap:8px;align-items:center}
+  .pickLabel{font-size:11px;letter-spacing:.26em;opacity:.7}
+  .cards{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;max-width:820px}
+  .card{pointer-events:auto;cursor:pointer;border:2px solid rgba(255,255,255,.16);background:rgba(255,255,255,.05);
+        border-radius:12px;padding:9px 12px;min-width:118px;text-align:center;transition:.12s;user-select:none}
+  .card:hover{border-color:rgba(255,255,255,.45)}
+  .card.sel{border-color:#ffd75e;background:rgba(255,157,46,.16);box-shadow:0 0 0 2px rgba(255,215,94,.3)}
+  .card b{display:block;font-size:14px;letter-spacing:.06em}
+  .card span{font-size:10.5px;opacity:.72;letter-spacing:.04em}
+  .swatch{height:13px;border-radius:4px;margin:6px 0 4px;border:1px solid rgba(0,0,0,.35)}
+  /* nitro meter */
+  #boostBox{min-width:150px}
+  #boostTrack{width:132px;height:9px;border-radius:6px;background:rgba(255,255,255,.16);overflow:hidden;margin-top:6px}
+  #boostFill{height:100%;width:0%;background:linear-gradient(90deg,#37c9ff,#5affc0)}
+  #boostBox.full #boostFill{background:linear-gradient(90deg,#ffd75e,#ff6a18)}
+  #driftTag{font-size:10px;letter-spacing:.22em;color:#ffd75e;opacity:0;margin-top:4px;transition:opacity .1s}
+  #driftTag.on{opacity:1}
+  #boostTag{font-size:10px;letter-spacing:.22em;color:#ff4d4d;opacity:0;margin-top:2px;transition:opacity .1s}
+  #boostTag.on{opacity:1}
+  #boostBox.using #boostTrack{box-shadow:0 0 12px rgba(55,201,255,.95)}
+  #boostBox.using #boostPct{color:#37c9ff;text-shadow:0 0 8px rgba(55,201,255,.7)}
 </style>
 </head>
 <body>
@@ -45,18 +69,29 @@
   <div class="stat"><b id="pos">1/6</b><span>POSITION</span></div>
   <div class="stat"><b id="time">0.00</b><span>RACE TIME</span></div>
   <div class="stat"><b id="best">--.--</b><span>BEST LAP</span></div>
+  <div class="stat" id="boostBox"><b id="boostPct">0%</b><span>NITRO</span>
+    <div id="boostTrack"><div id="boostFill"></div></div>
+    <div id="driftTag">DRIFT</div><div id="boostTag">BOOST</div></div>
 </div>
 <div id="standings" class="hidden"></div>
 <div id="banner" class="hidden"></div>
 
 <div id="menu" class="overlay">
-  <h1>SUN CIRCUIT</h1>
-  <h2>Round 3 &nbsp;·&nbsp; 2 laps &nbsp;·&nbsp; 5 AI opponents</h2>
+  <h1 id="menuTitle">SUN CIRCUIT</h1>
+  <h2 id="menuSub">2 laps &nbsp;·&nbsp; 4 AI opponents</h2>
+  <div class="pickRow">
+    <div class="pickCol"><div class="pickLabel">TRACK</div><div id="trackPick" class="cards"></div></div>
+  </div>
+  <div class="pickRow">
+    <div class="pickCol"><div class="pickLabel">CAR</div><div id="carPick" class="cards"></div></div>
+  </div>
   <button id="startBtn">START RACE</button>
   <div class="keys">
-    <b>W</b>/<b>↑</b> throttle &nbsp;·&nbsp; <b>S</b>/<b>↓</b> brake &nbsp;·&nbsp;
-    <b>A</b><b>D</b>/<b>←</b><b>→</b> steer &nbsp;·&nbsp; <b>SPACE</b> handbrake<br>
-    <b>C</b> camera &nbsp;·&nbsp; <b>R</b> restart &nbsp;·&nbsp; <b>M</b> sound &nbsp;·&nbsp; <b>ESC</b> pause
+    <b>W</b>/<b>↑</b> throttle &nbsp;·&nbsp; <b>S</b>/<b>↓</b> brake / reverse &nbsp;·&nbsp;
+    <b>A</b><b>D</b>/<b>←</b><b>→</b> steer<br>
+    <b>SPACE</b> nitro boost &nbsp;·&nbsp; <b>SHIFT</b> handbrake (drift) &nbsp;·&nbsp;
+    <b>C</b> camera &nbsp;·&nbsp; <b>R</b> restart &nbsp;·&nbsp; <b>M</b> sound &nbsp;·&nbsp; <b>ESC</b> pause<br>
+    Drift to fill the NITRO meter, then burn it with <b>SPACE</b>.
   </div>
 </div>
 
@@ -104,25 +139,81 @@
   var TOTAL_LAPS = 2;
   var CAR_R = 2.3;      // collision radius (m)
 
-  // Control points for the closed circuit, in metres. The loop starts at the
-  // start/finish line and runs counter-clockwise: a long main straight, then a
-  // slow left hairpin, esses through the infield, a long right-hander and a
-  // fast run back onto the straight. The straight at s=0 is what the grid uses,
-  // so the line deliberately sits on the fastest part of the lap.
-  var CTRL = [
-    [60, -208], [166, -231], [227, -210], [255, -70],
-    [225, 20], [150, 80], [70, 70], [15, 125],
-    [-75, 170], [-175, 155], [-250, 60], [-235, -40],
-    [-150, -95], [-122, -147], [-31, -181]
+  /* ---- the three circuits ------------------------------------------- *
+   *  Each track is a closed Catmull-Rom loop plus a surface model and a  *
+   *  colour palette. `surface` drives the physics:                        *
+   *    accel  engine power multiplier      grip  lateral grip (1/s)       *
+   *    top    top-speed multiplier         roll  rolling resistance       *
+   *  Marsh is boggy (little power, heavy drag), Ice is near-frictionless  *
+   *  (glides, slides wide).                                               *
+   * -------------------------------------------------------------------- */
+  var TRACKS = [
+    {
+      id: 'sun', name: 'SUN CIRCUIT', blurb: 'balanced · flowing',
+      surface: { accel: 1.00, top: 1.00, grip: 8.0, roll: 1.00, aiSpeed: 1.00, aiGrip: 12 },
+      palette: {
+        sky: 0x86c8f0, fogNear: 320, fogFar: 1250, grass: 0x4f8f3a,
+        road: [0.20, 0.20, 0.215], kerb: [0.72, 0.70, 0.66],
+        wallA: [0.93, 0.93, 0.93], wallB: [0.82, 0.16, 0.18],
+        ambient: 0xbfd8ff, ambientI: 0.55, sun: 0xfff3d0, sunI: 2.0,
+        tree: [0x2f6b34, 0x3d8040, 0x275c30],
+        standA: 0x8d9299, standB: 0x7d838b, roof: 0x4a5158
+      },
+      ctrl: [
+        [60, -208], [166, -231], [227, -210], [255, -70],
+        [225, 20], [150, 80], [70, 70], [15, 125],
+        [-75, 170], [-175, 155], [-250, 60], [-235, -40],
+        [-150, -95], [-122, -147], [-31, -181]
+      ]
+    },
+    {
+      id: 'ice', name: 'GLACIER ICE', blurb: 'slippery · fast',
+      surface: { accel: 0.90, top: 1.06, grip: 1.7, roll: 0.75, aiSpeed: 0.82, aiGrip: 6.5 },
+      palette: {
+        sky: 0xdbeaf8, fogNear: 300, fogFar: 1400, grass: 0xcdd9e6,
+        road: [0.80, 0.86, 0.93], kerb: [0.60, 0.70, 0.80],
+        wallA: [0.82, 0.90, 1.00], wallB: [0.34, 0.52, 0.82],
+        ambient: 0xe3f1ff, ambientI: 0.70, sun: 0xeef5ff, sunI: 1.7,
+        tree: [0x7f8fa3, 0x93a4b6, 0x6f7f92],
+        standA: 0x9aa6b4, standB: 0x8a96a4, roof: 0x596675
+      },
+      ctrl: [
+        [294, 0], [285, 137], [178, 224], [54, 237], [-49, 215],
+        [-136, 171], [-207, 100], [-259, 0], [-270, -130], [-195, -245],
+        [-61, -265], [46, -201], [114, -143], [205, -99]
+      ]
+    },
+    {
+      id: 'marsh', name: 'MARSHLAND', blurb: 'boggy · low power',
+      surface: { accel: 0.52, top: 0.86, grip: 5.0, roll: 1.90, aiSpeed: 0.92, aiGrip: 5 },
+      palette: {
+        sky: 0xb7b09a, fogNear: 180, fogFar: 850, grass: 0x56632f,
+        road: [0.30, 0.25, 0.18], kerb: [0.44, 0.38, 0.28],
+        wallA: [0.85, 0.82, 0.72], wallB: [0.42, 0.31, 0.15],
+        ambient: 0xcdc9b0, ambientI: 0.60, sun: 0xffe9c0, sunI: 1.9,
+        tree: [0x3f5a2c, 0x4e6a33, 0x35502a],
+        standA: 0x7d7566, standB: 0x6d6557, roof: 0x4a4438
+      },
+      ctrl: [
+        [200, 0], [202, 90], [124, 138], [44, 135], [-16, 150],
+        [-100, 173], [-179, 130], [-181, 39], [-139, -29], [-122, -89],
+        [-100, -173], [-23, -220], [57, -176], [95, -105], [138, -61]
+      ]
+    }
   ];
 
-  var N = 1400, SUB = 48, NSEG = CTRL.length;
+  var CTRL = TRACKS[0].ctrl;   // active centreline, swapped by carveTrack()
+  var surface = TRACKS[0].surface;
+  var TRACK_R = 320;           // bounding radius, set by carveTrack()
+
+  var N = 1400, SUB = 48;
   var CX = new Float64Array(N + 1), CZ = new Float64Array(N + 1);
   var TX = new Float64Array(N + 1), TZ = new Float64Array(N + 1);
   var KAPPA = new Float64Array(N + 1), HEAD = new Float64Array(N + 1);
   var LEN = 0;
 
-  (function buildTrack() {
+  function buildTrack() {
+    var NSEG = CTRL.length;
     // 1. dense Catmull-Rom samples around the closed loop
     var count = NSEG * SUB;
     var px = new Float64Array(count + 1), pz = new Float64Array(count + 1);
@@ -184,7 +275,14 @@
     }
     KAPPA.set(sm);
     KAPPA[N] = sm[0];
-  })();
+
+    // bounding radius of the centreline, used to frame the menu orbit shot
+    TRACK_R = 0;
+    for (var q = 0; q <= N; q++) {
+      var rr = Math.hypot(CX[q], CZ[q]);
+      if (rr > TRACK_R) TRACK_R = rr;
+    }
+  }
 
   function wrapS(s) { s %= LEN; return s < 0 ? s + LEN : s; }
   function fracAt(s) { var u = (s / LEN * N) % N; return u < 0 ? u + N : u; }
@@ -269,9 +367,8 @@
   renderer.outputColorSpace = THREE.SRGBColorSpace;
 
   var scene = new THREE.Scene();
-  var SKY = 0x86c8f0;
-  scene.background = new THREE.Color(SKY);
-  scene.fog = new THREE.Fog(SKY, 320, 1250);
+  scene.background = new THREE.Color(TRACKS[0].palette.sky);
+  scene.fog = new THREE.Fog(TRACKS[0].palette.sky, 320, 1250);
 
   var camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.5, 4000);
 
@@ -280,7 +377,8 @@
   var sun = new THREE.DirectionalLight(0xfff3d0, 2.0);
   sun.position.copy(sunDir).multiplyScalar(600);
   scene.add(sun);
-  scene.add(new THREE.AmbientLight(0xbfd8ff, 0.55));
+  var ambient = new THREE.AmbientLight(0xbfd8ff, 0.55);
+  scene.add(ambient);
 
   var sunBall = new THREE.Mesh(
     new THREE.SphereGeometry(46, 24, 16),
@@ -334,15 +432,16 @@
     return new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true }));
   }
 
-  // vertical barrier along an edge, alternating red / white panels
-  function wall(lat, h, y0, inward) {
+  // vertical barrier along an edge, alternating two panel colours
+  function wall(lat, h, y0, inward, cA, cB) {
+    cA = cA || [0.93, 0.93, 0.93]; cB = cB || [0.82, 0.16, 0.18];
     var SEG = 300, pos = [], nor = [], col = [], idx = [];
     for (var i = 0; i < SEG; i++) {
       var s0 = i / SEG * LEN, s1 = (i + 1) / SEG * LEN;
       var P0 = offsetPos(s0, lat), P1 = offsetPos(s1, lat);
       var V = normalAt(s0);
       var nx = V.x * inward, nz = V.z * inward;
-      var c = (i % 2) ? [0.93, 0.93, 0.93] : [0.82, 0.16, 0.18];
+      var c = (i % 2) ? cA : cB;
       var b = pos.length / 3;
       pos.push(P0.x, y0, P0.z);
       pos.push(P1.x, y0, P1.z);
@@ -408,33 +507,7 @@
   var world = new THREE.Group();
   scene.add(world);
 
-  var grass = new THREE.Mesh(
-    new THREE.CircleGeometry(1500, 72),
-    new THREE.MeshLambertMaterial({ color: 0x4f8f3a })
-  );
-  grass.rotation.x = -Math.PI / 2;
-  grass.position.y = -0.06;
-  world.add(grass);
-
-  world.add(ribbon(-HALF_W, HALF_W, 0.0, [0.20, 0.20, 0.215], 0, LEN, 900));           // asphalt
-  world.add(ribbon(-HALF_W - 3.2, -HALF_W, 0.01, [0.72, 0.70, 0.66], 0, LEN, 900));    // kerb aprons
-  world.add(ribbon(HALF_W, HALF_W + 3.2, 0.01, [0.72, 0.70, 0.66], 0, LEN, 900));
-  world.add(ribbon(-HALF_W + 0.35, -HALF_W + 0.75, 0.02, [0.95, 0.95, 0.95], 0, LEN, 900));
-  world.add(ribbon(HALF_W - 0.75, HALF_W - 0.35, 0.02, [0.95, 0.95, 0.95], 0, LEN, 900));
-  var DASH = 10, ON = 5;
-  for (var d = 0; d * (ON + DASH) < LEN; d++) {                     // dashed centre line
-    var ds = d * (ON + DASH);
-    world.add(ribbon(-0.22, 0.22, 0.02, [0.92, 0.90, 0.55], ds, Math.min(ds + ON, LEN), 3));
-  }
-
-  // The guardrail is solid: `RAIL_LAT` is the barrier's lateral offset, and the
-  // car is held just inside it by `stepCar`, so these meshes are what you hit.
-  world.add(wall(-RAIL_LAT, 1.15, 0, 1));
-  world.add(wall(RAIL_LAT, 1.15, 0, -1));
-  world.add(wall(-RAIL_LAT, 0.16, 1.15, 1));   // top rail
-  world.add(wall(RAIL_LAT, 0.16, 1.15, -1));
-  world.add(wall(-RAIL_LAT, 0.5, 1.31, 1));    // catch fence
-  world.add(wall(RAIL_LAT, 0.5, 1.31, -1));
+  // (all circuit + scenery meshes are built by buildWorld(), defined below)
 
   /* ---------------------------------- solids ------------------------ *
    *  Trackside obstacles. These are solid, so the car bounces off the scenery
@@ -457,103 +530,148 @@
     return true;
   }
 
-  /* ---- start / finish: chequered band, timing line, gantry, flags ---- */
-  world.add(chequer(-2.6, 6.6, 14, 2));
-  world.add(ribbon(-HALF_W, HALF_W, 0.05, [1, 1, 1], -0.45, 0.45, 3));   // solid timing line
+  /* ---- whole circuit + scenery, rebuilt whenever the track changes ---- *
+   *  Clears the previous world group and the solid list, then lays out the  *
+   *  road, kerbs, guardrail, start gantry, trees and grandstands using the  *
+   *  palette of the track being loaded.                                     */
+  function buildWorld(def) {
+    var P = def.palette;
+    while (world.children.length) world.remove(world.children[0]);
+    solids.length = 0;
 
-  (function gantry() {
-    var g0 = yawAt(0);
-    var steel = new THREE.MeshLambertMaterial({ color: 0x9aa2ad });
-    [-1, 1].forEach(function (side) {
-      // legs stand just outside the guardrail, as they do on a real circuit
-      var p = offsetPos(0, side * (RAIL_LAT + 1.4));
-      var leg = new THREE.Mesh(new THREE.BoxGeometry(1.2, 10, 1.2), steel);
-      leg.position.set(p.x, 5, p.z);
-      leg.rotation.y = g0;
-      world.add(leg);
-      addSolid(p.x, p.z, 0.9, 0.9, 0);
-    });
-    var mid = offsetPos(0, 0);
-    var beam = new THREE.Mesh(new THREE.BoxGeometry((RAIL_LAT + 2.6) * 2, 1.6, 1.3), steel);
-    beam.position.set(mid.x, 10.4, mid.z);
-    beam.rotation.y = g0;
-    world.add(beam);
-
-    // board looks back down the track at the oncoming cars
-    var face = offsetPos(-0.9, 0);
-    var board = new THREE.Mesh(
-      new THREE.PlaneGeometry(17, 4.3),
-      new THREE.MeshBasicMaterial({ map: signTexture('START / FINISH', '#141a24', '#ffd75e'), side: THREE.DoubleSide })
+    var grass = new THREE.Mesh(
+      new THREE.CircleGeometry(1500, 72),
+      new THREE.MeshLambertMaterial({ color: P.grass })
     );
-    board.position.set(face.x, 7.6, face.z);
-    board.rotation.y = g0 + Math.PI;
-    world.add(board);
+    grass.rotation.x = -Math.PI / 2;
+    grass.position.y = -0.06;
+    world.add(grass);
 
-    // chequered flags flanking the line, readable from a long way off. They are
-    // mounted on the far side of the guardrail so they never stand in the racing
-    // line, which also means they never need to be solid.
-    var flagTex = signTexture('', '#f2f2f2', '#16181d');
-    [-1, 1].forEach(function (side) {
-      var fp = offsetPos(2, side * (RAIL_LAT + 1.4));
-      var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 7, 8), steel);
-      pole.position.set(fp.x, 3.5, fp.z);
-      world.add(pole);
-      var flag = new THREE.Mesh(
-        new THREE.PlaneGeometry(2.6, 1.6),
-        new THREE.MeshBasicMaterial({ map: flagTex, side: THREE.DoubleSide })
+    var edge = [0.95, 0.95, 0.95];
+    world.add(ribbon(-HALF_W, HALF_W, 0.0, P.road, 0, LEN, 900));            // asphalt / mud / ice
+    world.add(ribbon(-HALF_W - 3.2, -HALF_W, 0.01, P.kerb, 0, LEN, 900));    // kerb aprons
+    world.add(ribbon(HALF_W, HALF_W + 3.2, 0.01, P.kerb, 0, LEN, 900));
+    world.add(ribbon(-HALF_W + 0.35, -HALF_W + 0.75, 0.02, edge, 0, LEN, 900));
+    world.add(ribbon(HALF_W - 0.75, HALF_W - 0.35, 0.02, edge, 0, LEN, 900));
+    var DASH = 10, ON = 5;
+    for (var d = 0; d * (ON + DASH) < LEN; d++) {                     // dashed centre line
+      var ds = d * (ON + DASH);
+      world.add(ribbon(-0.22, 0.22, 0.02, [0.92, 0.90, 0.55], ds, Math.min(ds + ON, LEN), 3));
+    }
+
+    // The guardrail is solid: `RAIL_LAT` is the barrier's lateral offset, and the
+    // car is held just inside it by `stepCar`, so these meshes are what you hit.
+    world.add(wall(-RAIL_LAT, 1.15, 0, 1, P.wallA, P.wallB));
+    world.add(wall(RAIL_LAT, 1.15, 0, -1, P.wallA, P.wallB));
+    world.add(wall(-RAIL_LAT, 0.16, 1.15, 1, P.wallA, P.wallB));   // top rail
+    world.add(wall(RAIL_LAT, 0.16, 1.15, -1, P.wallA, P.wallB));
+    world.add(wall(-RAIL_LAT, 0.5, 1.31, 1, P.wallA, P.wallB));    // catch fence
+    world.add(wall(RAIL_LAT, 0.5, 1.31, -1, P.wallA, P.wallB));
+
+    /* ---- start / finish: chequered band, timing line, gantry, flags ---- */
+    world.add(chequer(-2.6, 6.6, 14, 2));
+    world.add(ribbon(-HALF_W, HALF_W, 0.05, [1, 1, 1], -0.45, 0.45, 3));   // solid timing line
+
+    (function gantry() {
+      var g0 = yawAt(0);
+      var steel = new THREE.MeshLambertMaterial({ color: 0x9aa2ad });
+      [-1, 1].forEach(function (side) {
+        var p = offsetPos(0, side * (RAIL_LAT + 1.4));
+        var leg = new THREE.Mesh(new THREE.BoxGeometry(1.2, 10, 1.2), steel);
+        leg.position.set(p.x, 5, p.z);
+        leg.rotation.y = g0;
+        world.add(leg);
+        addSolid(p.x, p.z, 0.9, 0.9, 0);
+      });
+      var mid = offsetPos(0, 0);
+      var beam = new THREE.Mesh(new THREE.BoxGeometry((RAIL_LAT + 2.6) * 2, 1.6, 1.3), steel);
+      beam.position.set(mid.x, 10.4, mid.z);
+      beam.rotation.y = g0;
+      world.add(beam);
+
+      var face = offsetPos(-0.9, 0);
+      var board = new THREE.Mesh(
+        new THREE.PlaneGeometry(17, 4.3),
+        new THREE.MeshBasicMaterial({ map: signTexture('START / FINISH', '#141a24', '#ffd75e'), side: THREE.DoubleSide })
       );
-      flag.position.set(fp.x, 6.4, fp.z);
-      flag.rotation.y = g0 + Math.PI;
-      world.add(flag);
+      board.position.set(face.x, 7.6, face.z);
+      board.rotation.y = g0 + Math.PI;
+      world.add(board);
+
+      var flagTex = signTexture('', '#f2f2f2', '#16181d');
+      [-1, 1].forEach(function (side) {
+        var fp = offsetPos(2, side * (RAIL_LAT + 1.4));
+        var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 7, 8), steel);
+        pole.position.set(fp.x, 3.5, fp.z);
+        world.add(pole);
+        var flag = new THREE.Mesh(
+          new THREE.PlaneGeometry(2.6, 1.6),
+          new THREE.MeshBasicMaterial({ map: flagTex, side: THREE.DoubleSide })
+        );
+        flag.position.set(fp.x, 6.4, fp.z);
+        flag.rotation.y = g0 + Math.PI;
+        world.add(flag);
+      });
+    })();
+
+    // scenery: trees and grandstands outside the railings
+    var trunkMat = new THREE.MeshLambertMaterial({ color: 0x6b4a2a });
+    var leafMats = P.tree.map(function (c) { return new THREE.MeshLambertMaterial({ color: c }); });
+    for (var ti = 0; ti < 240; ti++) {
+      var ts = (ti / 240) * LEN;
+      var tside = (ti % 2) ? 1 : -1;
+      var tp = offsetPos(ts, tside * (HALF_W + 13 + (ti % 7) * 6));
+      if (!clearOfTrack(tp.x, tp.z, HALF_W + 9)) continue;
+      var sc = 3.2 + (ti % 4) * 0.7;
+      var trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.32 * sc, 0.42 * sc, 2.6 * sc, 6), trunkMat);
+      trunk.position.set(tp.x, 1.3 * sc, tp.z);
+      world.add(trunk);
+      var leaf = new THREE.Mesh(new THREE.ConeGeometry(1.9 * sc, 5.4 * sc, 8), leafMats[ti % 3]);
+      leaf.position.set(tp.x, 5.2 * sc, tp.z);
+      world.add(leaf);
+      addSolid(tp.x, tp.z, 0.8 * sc, 0.8 * sc, 0);        // trunk, kept clear of the road
+    }
+    [0.05, 0.19, 0.34, 0.47, 0.63, 0.78, 0.91].forEach(function (f, si) {
+      var gs = f * LEN;
+      var sy = yawAt(gs);
+      var SW = 12, SD = 30;                            // half width / half depth
+      [-1, 1].forEach(function (side) {
+        var sp = offsetPos(gs, side * (HALF_W + 19));
+        if (!footprintClear(sp.x, sp.z, sy, SW, SD, 17)) return;
+        var stand = new THREE.Mesh(new THREE.BoxGeometry(SW * 2, 13, SD * 2),
+          new THREE.MeshLambertMaterial({ color: si % 2 ? P.standA : P.standB }));
+        stand.position.set(sp.x, 6.5, sp.z);
+        stand.rotation.y = sy;
+        world.add(stand);
+        var roof = new THREE.Mesh(new THREE.BoxGeometry(SW * 2 + 2, 0.8, SD * 2 + 2),
+          new THREE.MeshLambertMaterial({ color: P.roof }));
+        roof.position.set(sp.x, 13.4, sp.z);
+        roof.rotation.y = sy;
+        world.add(roof);
+        addSolid(sp.x, sp.z, SW, SD, sy);
+      });
     });
-  })();
-
-// (start / finish markings are built with the spline-aware helpers above)
-
-  // (gantry is built with the spline-aware helpers above)
-
-  // scenery: trees and grandstands outside the railings
-  var trunkMat = new THREE.MeshLambertMaterial({ color: 0x6b4a2a });
-  var leafMats = [0x2f6b34, 0x3d8040, 0x275c30].map(function (c) { return new THREE.MeshLambertMaterial({ color: c }); });
-  for (var ti = 0; ti < 240; ti++) {
-    var ts = (ti / 240) * LEN;
-    var tside = (ti % 2) ? 1 : -1;
-    var tp = offsetPos(ts, tside * (HALF_W + 13 + (ti % 7) * 6));
-    if (!clearOfTrack(tp.x, tp.z, HALF_W + 9)) continue;
-    var sc = 3.2 + (ti % 4) * 0.7;
-    var trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.32 * sc, 0.42 * sc, 2.6 * sc, 6), trunkMat);
-    trunk.position.set(tp.x, 1.3 * sc, tp.z);
-    world.add(trunk);
-    var leaf = new THREE.Mesh(new THREE.ConeGeometry(1.9 * sc, 5.4 * sc, 8), leafMats[ti % 3]);
-    leaf.position.set(tp.x, 5.2 * sc, tp.z);
-    world.add(leaf);
-    addSolid(tp.x, tp.z, 0.8 * sc, 0.8 * sc, 0);        // trunk, kept clear of the road
   }
-  // Grandstands run ALONG the track (60 m of seating, 24 m deep) so they sit
-  // beside the circuit instead of jutting across it, and each one is solid.
-  [0.05, 0.19, 0.34, 0.47, 0.63, 0.78, 0.91].forEach(function (f, si) {
-    var gs = f * LEN;
-    var sy = yawAt(gs);
-    var SW = 12, SD = 30;                            // half width / half depth
-    [-1, 1].forEach(function (side) {
-      var sp = offsetPos(gs, side * (HALF_W + 19));
-      if (!footprintClear(sp.x, sp.z, sy, SW, SD, 17)) return;
-      var stand = new THREE.Mesh(new THREE.BoxGeometry(SW * 2, 13, SD * 2),
-        new THREE.MeshLambertMaterial({ color: si % 2 ? 0x8d9299 : 0x7d838b }));
-      stand.position.set(sp.x, 6.5, sp.z);
-      stand.rotation.y = sy;
-      world.add(stand);
-      var roof = new THREE.Mesh(new THREE.BoxGeometry(SW * 2 + 2, 0.8, SD * 2 + 2),
-        new THREE.MeshLambertMaterial({ color: 0x4a5158 }));
-      roof.position.set(sp.x, 13.4, sp.z);
-      roof.rotation.y = sy;
-      world.add(roof);
-      addSolid(sp.x, sp.z, SW, SD, sy);
-    });
-  });
+
+  // swap the live circuit: rebuild the spline data, the world and the sky/light
+  function carveTrack(def) {
+    CTRL = def.ctrl;
+    buildTrack();
+    surface = def.surface;
+    var P = def.palette;
+    scene.background = new THREE.Color(P.sky);
+    scene.fog.color = new THREE.Color(P.sky);
+    scene.fog.near = P.fogNear;
+    scene.fog.far = P.fogFar;
+    var amb = new THREE.Color(P.ambient);
+    ambient.color = amb; ambient.intensity = P.ambientI;
+    sun.color = new THREE.Color(P.sun); sun.intensity = P.sunI;
+    buildWorld(def);
+  }
 
   /* ---------------------------------- cars -------------------------- */
-  function buildCar(color, accent) {
+  function buildCar(color, accent, style) {
+    style = style || 0;
     var g = new THREE.Group();
     var paint = new THREE.MeshLambertMaterial({ color: color });
     var dark = new THREE.MeshLambertMaterial({ color: 0x16181d });
@@ -566,8 +684,12 @@
     nose.position.set(0, 0.5, 2.35); g.add(nose);
     var cabin = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.44, 1.7), glass);
     cabin.position.set(0, 1.05, -0.15); g.add(cabin);
-    var fin = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.5, 0.22), trim);
-    fin.position.set(0, 1.25, -1.95); g.add(fin);
+    // accent stripe down the bonnet/roof, so the five liveries read apart
+    var stripe = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.03, 4.3), trim);
+    stripe.position.set(0, 0.845, 0.05); g.add(stripe);
+    // fin size varies a little per car (style) so each silhouette differs
+    var fin = new THREE.Mesh(new THREE.BoxGeometry(1.4 + 0.2 * (style % 3), 0.42 + 0.14 * (style % 2), 0.22), trim);
+    fin.position.set(0, 1.22 + 0.07 * (style % 2), -1.95); g.add(fin);
     var splitter = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.12, 0.5), dark);
     splitter.position.set(0, 0.36, 2.6); g.add(splitter);
     var wg = new THREE.CylinderGeometry(0.42, 0.42, 0.32, 14);
@@ -586,20 +708,26 @@
     return g;
   }
 
-  var OPPONENTS = [
-    { name: 'VIPER', color: 0x1e88e5, accent: 0xffd54f, skill: 1.030, line: -3.0 },
-    { name: 'NOVA', color: 0x8e24aa, accent: 0xffffff, skill: 1.014, line: 3.4 },
-    { name: 'BOLT', color: 0xf9a825, accent: 0x212121, skill: 1.000, line: -6.2 },
-    { name: 'RAVEN', color: 0x37474f, accent: 0xe53935, skill: 0.986, line: 6.6 },
-    { name: 'EMBER', color: 0xd84315, accent: 0xffe082, skill: 0.972, line: 0.4 }
+  /* The five cars you can pick from. `accel`/`top`/`grip`/`handling` are
+   *  multipliers on the base physics; `skill`/`line` only matter when the car
+   *  is driven by the AI.                                                     */
+  var ROSTER = [
+    { name: 'SCARLET', color: 0xe53935, accent: 0xffffff, accel: 1.00, top: 1.00, grip: 1.00, handling: 1.00, skill: 1.000, line: 0.6, style: 0, blurb: 'balanced' },
+    { name: 'AZURE', color: 0x1e88e5, accent: 0xffd54f, accel: 0.94, top: 1.10, grip: 1.02, handling: 0.95, skill: 1.030, line: -3.0, style: 1, blurb: 'top speed' },
+    { name: 'VERDE', color: 0x43a047, accent: 0xffffff, accel: 1.04, top: 0.94, grip: 1.20, handling: 1.08, skill: 0.986, line: 3.4, style: 2, blurb: 'high grip' },
+    { name: 'AMBER', color: 0xf9a825, accent: 0x212121, accel: 1.20, top: 0.90, grip: 1.00, handling: 0.96, skill: 1.000, line: -6.2, style: 3, blurb: 'quick launch' },
+    { name: 'VIOLET', color: 0x8e24aa, accent: 0xffffff, accel: 1.02, top: 1.02, grip: 1.10, handling: 1.12, skill: 0.972, line: 6.6, style: 4, blurb: 'sharp handling' }
   ];
 
   var cars = [];
-  function makeCar(name, color, accent, isPlayer, skill, line) {
+  function makeCar(spec) {
     var c = {
-      name: name, isPlayer: !!isPlayer, skill: skill, line: line, color: color,
-      mesh: buildCar(color, accent),
+      name: spec.name, color: spec.color, accent: spec.accent, isPlayer: false,
+      skill: spec.skill, line: spec.line,
+      accel: spec.accel, top: spec.top, grip: spec.grip, handling: spec.handling,
+      mesh: buildCar(spec.color, spec.accent, spec.style),
       x: 0, z: 0, yaw: 0, speed: 0, steer: 0,
+      vx: 0, vz: 0, boost: 0, boosting: false, drifting: false,
       lap: 0, s: 0, prevS: 0, lat: 0, i: -1, halfPassed: false,
       lapStart: 0, best: Infinity, finished: false, finishTime: 0,
       wheelSpin: 0, wobble: 0
@@ -608,7 +736,7 @@
     cars.push(c);
     return c;
   }
-  makeCar('YOU', 0xe53935, 0xffffff, true, 1.0, 0);
+  ROSTER.forEach(function (r) { makeCar(r); });
 
   /* ---------------------------------- sound ------------------------- */
   var audio = { ctx: null, osc: null, sub: null, gain: null, on: true };
@@ -663,10 +791,47 @@
 
   var started = false, paused = false, raceOver = false;
   var countdown = 0, clock = 0, camMode = 0, flashTimer = 0, goTimer = -1;
+  var selectedTrack = 0, selectedCar = 0;
+
+  function renderPickers() {
+    var tp = document.getElementById('trackPick');
+    tp.innerHTML = '';
+    TRACKS.forEach(function (t, i) {
+      var d = document.createElement('div');
+      d.className = 'card' + (i === selectedTrack ? ' sel' : '');
+      d.innerHTML = '<b>' + t.name + '</b><span>' + t.blurb + '</span>';
+      d.addEventListener('click', function () {
+        selectedTrack = i;
+        carveTrack(t);
+        placeOnGrid();
+        renderPickers();
+        updateMenuText();
+      });
+      tp.appendChild(d);
+    });
+    var cp = document.getElementById('carPick');
+    cp.innerHTML = '';
+    ROSTER.forEach(function (r, i) {
+      var d = document.createElement('div');
+      d.className = 'card' + (i === selectedCar ? ' sel' : '');
+      var col = '#' + new THREE.Color(r.color).getHexString();
+      d.innerHTML = '<b>' + r.name + '</b><span>' + r.blurb + '</span>' +
+        '<div class="swatch" style="background:' + col + '"></div>';
+      d.addEventListener('click', function () { selectedCar = i; renderPickers(); updateMenuText(); });
+      cp.appendChild(d);
+    });
+  }
+  function updateMenuText() {
+    document.getElementById('menuTitle').textContent = TRACKS[selectedTrack].name;
+    document.getElementById('menuSub').textContent =
+      ROSTER[selectedCar].name + ' &nbsp;·&nbsp; ' + TRACKS[selectedTrack].blurb + ' &nbsp;·&nbsp; 2 laps';
+  }
 
   document.getElementById('startBtn').addEventListener('click', function () {
     initAudio();
     if (audio.ctx && audio.ctx.state === 'suspended') audio.ctx.resume();
+    player = cars[selectedCar];
+    placeOnGrid();
     menu.classList.add('hidden');
     hud.classList.remove('hidden');
     standingsEl.classList.remove('hidden');
@@ -693,11 +858,15 @@
 
   function placeOnGrid() {
     // Staggered two-column grid well behind the line, so the cars are clearly
-    // separated on screen during the countdown instead of stacked up.
-    var order = cars.slice().sort(function (a, b) { return (b.skill || 0) - (a.skill || 0); });
+    // separated on screen during the countdown instead of stacked up. The AI are
+    // seeded by skill; the player gets the middle of the grid so the race is even.
+    var order = cars.filter(function (c) { return c !== player; })
+      .sort(function (a, b) { return (b.skill || 0) - (a.skill || 0); });
+    order.splice(Math.min(2, order.length), 0, player);
     var ROW_GAP = 8.5, COL = 4.6;
     for (var i = 0; i < order.length; i++) {
       var c = order[i];
+      c.isPlayer = (c === player);
       var row = Math.floor(i / 2), side = (i % 2) ? 1 : -1;
       var s = wrapS(LEN - 8 - row * ROW_GAP);
       var lat = side * COL;
@@ -705,6 +874,7 @@
       c.x = P.x; c.z = P.z;
       c.yaw = yawAt(s);
       c.speed = 0; c.steer = 0; c.lap = 0;
+      c.vx = 0; c.vz = 0; c.boost = 0; c.boosting = false; c.drifting = false;
       c.best = Infinity; c.finished = false; c.finishTime = 0;
       c.lapStart = 0;
       c.wobble = 0;
@@ -722,11 +892,6 @@
     countdown = 3.9;
     goTimer = -1;
     clock = 0;
-    OPPONENTS.forEach(function (o) {
-      if (!cars.some(function (c) { return c.name === o.name; })) {
-        makeCar(o.name, o.color, o.accent, false, o.skill, o.line);
-      }
-    });
     // Every car goes back on the grid and its mesh is re-synced, so nothing from
     // the previous round is left standing on the circuit.
     placeOnGrid();
@@ -738,8 +903,6 @@
   }
 
   /* ---------------------------------- AI ---------------------------- */
-  var LAT_ACCEL = 12;     // how much cornering grip the AI assumes (m/s^2)
-
   function aiDrive(c, dt) {
     var lat = c.lat;
     var latErr = (c.line + c.wobble) - lat;
@@ -754,8 +917,8 @@
     // slow down for whatever corner is coming up, not just the current one
     var look = 8 + c.speed * 1.5;
     var kappa = kappaAt(c.s) + kappaAt(c.s + look) + kappaAt(c.s + look * 2);
-    var vCorner = Math.sqrt(LAT_ACCEL / Math.max(kappa / 3, 1e-5));
-    var target = Math.min(46 * c.skill, vCorner);
+    var vCorner = Math.sqrt(surface.aiGrip / Math.max(kappa / 3, 1e-5));
+    var target = Math.min(46 * c.skill, vCorner) * surface.aiSpeed;
     if (Math.abs(latErr) > 2.5) target *= 0.9;
     if (Math.abs(err) > 0.25) target *= 0.93;
 
@@ -789,7 +952,7 @@
      * a tree or a grandstand has to be able to back out of it. Sit still for a
      * while and the car reverses away while steering back towards the circuit. */
     if (!c.finished) {
-      if (Math.abs(c.speed) < 1.6 && Math.abs(lat) > HALF_W - 1) c.stuck = (c.stuck || 0) + dt;
+      if (Math.abs(c.speed) < 1.6 && Math.abs(lat) > HALF_W - 3) c.stuck = (c.stuck || 0) + dt;
       else c.stuck = 0;
       if (c.stuck > 1.2) {
         if (c.stuck < 2.6) {
@@ -846,70 +1009,105 @@
       c.x += wnx * pen;
       c.z += wnz * pen;
 
-      var f = yawToForward(c.yaw);
-      var into = f.x * wnx + f.z * wnz;
+      var vn = c.vx * wnx + c.vz * wnz;        // velocity along the outward normal
       if (deep) {
         // swallowed whole: there is no surface to be heading into, so whatever
         // way the car is pointing this counts as a crash
-        c.speed *= 0.35;
+        c.vx *= 0.35; c.vz *= 0.35;
         c.steer *= 0.5;
-        if (Math.abs(c.speed) < 1.5) c.speed = 0;
-      } else if (c.speed * into < 0) {
-        // scraping along costs a little, hitting it square on costs nearly all
-        var bite = Math.min(1, Math.abs(into));
-        c.speed *= (1 - 0.92 * bite) * 0.98;
+      } else if (vn < 0) {
+        // kill the component driving into the face, then scrub in proportion to
+        // how square the contact was: scraping along costs a little, a square
+        // hit costs nearly all of it
+        var sp = Math.hypot(c.vx, c.vz) || 1e-6;
+        c.vx -= wnx * vn; c.vz -= wnz * vn;
+        var bite = Math.min(1, -vn / sp);
+        c.vx *= (1 - 0.92 * bite) * 0.98;
+        c.vz *= (1 - 0.92 * bite) * 0.98;
         c.steer *= (1 - 0.5 * bite);
-        if (Math.abs(c.speed) < 1.5) c.speed = 0;
       }
       c.i = -1;                             // moved: re-acquire the track index
     }
   }
 
   function stepCar(c, input, dt) {
-    var ACCEL = 15.5, BRAKE = 26, DRAG = 0.0026, ROLL = 1.35;
-    var throttle = input.throttle, brake = input.brake;
+    /* Velocity is a world vector (c.vx, c.vz); heading (c.yaw) is steered
+     * separately. The angle between heading and velocity is the slip angle: on
+     * grippy asphalt the tyres kill sideways velocity almost instantly, on ice
+     * the car keeps travelling the way it was going and slides wide. `grip` is
+     * the per-second rate at which that sideways velocity is bled off.         */
+    var BASE_ACCEL = 15.5, BRAKE = 26, DRAG = 0.0026, ROLL = 1.35, TOP = 74;
+    var surf = surface;
+
+    var fw = { x: Math.sin(c.yaw), z: Math.cos(c.yaw) };
+    var rt = { x: -fw.z, z: fw.x };
+    var accel = BASE_ACCEL * surf.accel * c.accel;
+    var top = TOP * surf.top * c.top;
+    var gripRate = surf.grip * c.grip;         // sideways grip, per second
+    c.boosting = !c.finished && !!input.boost && c.boost > 0.02;
+    if (input.handbrake) gripRate *= 0.35;     // handbrake kicks the tail out
+
     if (!c.finished) {
-      c.speed += throttle * ACCEL * dt;
-      c.speed -= brake * BRAKE * dt;
-      c.speed -= (DRAG * c.speed * Math.abs(c.speed) + ROLL * Math.sign(c.speed || 1)) * dt;
-      if (input.handbrake) c.speed *= (1 - 2.6 * dt);
-      c.speed = Math.max(-14, Math.min(74, c.speed));
+      if (c.boosting) { accel *= 2.1; top += 20; }
+      var vF = c.vx * fw.x + c.vz * fw.z;
+      var dV = input.throttle * accel * dt
+             - input.brake * BRAKE * dt
+             - (DRAG * vF * Math.abs(vF) + ROLL * surf.roll * Math.sign(vF || 1)) * dt;
+      if (input.handbrake) dV -= vF * 0.3 * dt;   // light scrub: keep momentum, break traction
+      c.vx += fw.x * dV; c.vz += fw.z * dV;
+
+      vF = c.vx * fw.x + c.vz * fw.z;          // clamp forward speed
+      var over = vF > top ? vF - top : (vF < -14 ? vF + 14 : 0);
+      if (over) { c.vx -= fw.x * over; c.vz -= fw.z * over; }
+
+      var vR = c.vx * rt.x + c.vz * rt.z;      // bleed sideways slip
+      var f = Math.min(1, gripRate * dt);
+      c.vx -= rt.x * vR * f; c.vz -= rt.z * vR * f;
     } else {
-      c.speed *= (1 - 1.6 * dt);
-      if (c.speed < 0.4) c.speed = 0;
+      var damp = 1 - Math.min(1, 1.6 * dt);
+      c.vx *= damp; c.vz *= damp;
+      if (Math.hypot(c.vx, c.vz) < 0.4) { c.vx = 0; c.vz = 0; }
     }
 
-    var steerAuthority = 2.3 / (1 + c.speed * 0.045);
+    var vSteer = c.vx * fw.x + c.vz * fw.z;
+    var steerAuthority = 2.3 * c.handling / (1 + Math.abs(vSteer) * 0.045);
     c.steer += (input.steer - c.steer) * Math.min(1, dt * 9);
-    var yawRate = c.steer * steerAuthority * Math.min(1, Math.abs(c.speed) / 7) * Math.sign(c.speed || 1);
-    c.yaw += yawRate * dt;
+    var yawRate = c.steer * steerAuthority * Math.min(1, Math.abs(vSteer) / 7) * Math.sign(vSteer || 1);
+    c.yaw += yawRate * dt;                     // heading turns, velocity lags -> slip
 
-    c.x += Math.sin(c.yaw) * c.speed * dt;
-    c.z += Math.cos(c.yaw) * c.speed * dt;
+    c.x += c.vx * dt;
+    c.z += c.vz * dt;
 
 var pr = projectTrack(c.x, c.z, c.i);
     c.s = pr.s; c.lat = pr.lat; c.i = pr.i;
 
-    // rumble strip along the road edge only. It must NOT cover the whole run-off:
-    // a car parked on the barrier there would face more drag than its engine can
-    // pull against, and could never drive away (the "stuck in the railings" bug).
+    // off-track drag: a rumble strip at the road edge plus the run-off apron out
+    // to the barrier. It is CAPPED so it can never out-brake the car's own engine
+    // at low speed -- otherwise a car stopped on the barrier could never drive
+    // away (the "stuck in the railings" bug, worst of all on the boggy marsh).
     var alat = Math.abs(c.lat);
-    if (alat > HALF_W - 2.2 && alat < HALF_W) c.speed -= 9 * dt;
     var off = alat - HALF_W;
-    if (off > 0) {                          // run-off apron out to the barrier: drag, less steering
-      c.speed -= (5 + Math.min(off, 20) * 0.9) * dt;
+    var offBrake = 0;
+    if (alat > HALF_W - 2.2 && alat < HALF_W) offBrake += 5;
+    if (off > 0) {
+      offBrake += 3 + Math.min(off, 20) * 0.5;
       c.steer *= (1 - Math.min(0.6, off * 0.06) * dt);
+    }
+    var maxOff = Math.max(0, accel - ROLL * surf.roll - 0.6);
+    if (offBrake > maxOff) offBrake = maxOff;
+    if (offBrake > 0) {
+      var sp0 = Math.hypot(c.vx, c.vz);
+      if (sp0 > 1e-4) { var kk = Math.max(0, 1 - offBrake * dt / sp0); c.vx *= kk; c.vz *= kk; }
     }
 
     collideSolids(c);
     pr = projectTrack(c.x, c.z, c.i);
     c.s = pr.s; c.lat = pr.lat; c.i = pr.i;
 
-    /* The guardrail is solid. The car is held just inside the barrier face so the
-     * bodywork visually kisses it, and loses speed in proportion to how hard it
-     * is leaning on it: a graze scrubs off a little, a square hit stops you.
-     * (CAR_R is the car-to-car radius and is wider than the body, so the rail
-     * uses the body's own half width instead.)                                 */
+    /* The guardrail is solid. The car is held just inside the barrier face and
+     * its velocity is reflected off the wall: a graze keeps most of its speed, a
+     * square hit loses almost all of it. The nose is then eased down the barrier
+     * so a square hit turns into a slide instead of pinning the car in place.  */
     var lim = RAIL_LAT - 1.15;
     if (c.lat > lim || c.lat < -lim) {
       var side = c.lat > 0 ? 1 : -1;
@@ -917,26 +1115,45 @@ var pr = projectTrack(c.x, c.z, c.i);
       var push = Math.abs(c.lat) - lim;
       c.x -= NV.x * push * side; c.z -= NV.z * push * side;
       c.lat = side * lim;
-      var fw = yawToForward(c.yaw);
-      var into = (fw.x * NV.x + fw.z * NV.z) * side;    // +1 = straight at the rail
-      if (into > 0) {
-        if (c.speed > 0) {
-          c.speed -= (2 + 30 * into * into) * dt;       // quadratic: graze vs square hit
-          if (c.speed < 0) c.speed = 0;
+      var vn = (c.vx * NV.x + c.vz * NV.z) * side;   // + = moving into the barrier
+      if (vn > 0) {
+        var sp1 = Math.hypot(c.vx, c.vz);
+        c.vx -= NV.x * vn * side;                    // remove the inward component
+        c.vz -= NV.z * vn * side;
+        var into = vn / (sp1 + 1e-6);                // 1 = square on, 0 = graze
+        // Wall friction is an ABSOLUTE deceleration, not a per-frame multiplier:
+        // a multiplier compounds over the many frames spent against the barrier
+        // in a corner and pins the car at zero. This way the engine can always
+        // win back the speed once the nose is down the barrier.
+        var sp2 = Math.hypot(c.vx, c.vz);
+        if (sp2 > 1e-4) {
+          var loss = Math.min(sp2, (2 + 8 * into) * dt);
+          var kf = 1 - loss / sp2;
+          c.vx *= kf; c.vz *= kf;
         }
-        /* A rail guides, it does not trap. Swing the nose down the barrier so a
-         * square hit turns into a slide. Without this the car can be pinned dead
-         * square-on at zero speed, where steering has no authority at all
-         * (yaw rate scales with speed) and the only way out is reverse gear.   */
-        var TV = tangentAt(c.s);
-        var dir = (fw.x * TV.x + fw.z * TV.z) < 0 ? -1 : 1;
-        var blend = Math.min(1, (1.4 + 7 * into) * dt);
-        fw.x += (TV.x * dir - fw.x) * blend;
-        fw.z += (TV.z * dir - fw.z) * blend;
-        c.yaw = Math.atan2(fw.x, fw.z);
-        c.steer *= (1 - 0.5 * into * dt);
       }
+      // Ease the nose down the barrier EVERY frame it is in contact, so the car
+      // follows the track shape instead of pinning itself on a corner. The
+      // direction follows the way the car is already travelling (or forward).
+      var TV = tangentAt(c.s);
+      var f2 = { x: Math.sin(c.yaw), z: Math.cos(c.yaw) };
+      var vT = c.vx * TV.x + c.vz * TV.z;
+      var dir = vT < -0.5 ? -1 : 1;
+      var blend = Math.min(1, 10 * dt);
+      f2.x += (TV.x * dir - f2.x) * blend;
+      f2.z += (TV.z * dir - f2.z) * blend;
+      c.yaw = Math.atan2(f2.x, f2.z);
+      c.steer *= (1 - 0.5 * dt);
     }
+
+    // derive HUD/AI speed, then drift -> nitro bookkeeping
+    var fwd = { x: Math.sin(c.yaw), z: Math.cos(c.yaw) };
+    var rgt = { x: -fwd.z, z: fwd.x };
+    c.speed = c.vx * fwd.x + c.vz * fwd.z;
+    var slip = Math.abs(c.vx * rgt.x + c.vz * rgt.z);
+    c.drifting = !c.finished && slip > 2.2 && Math.abs(c.speed) > 5;
+    if (c.drifting) c.boost = Math.min(1, c.boost + 0.16 * dt);   // fills slowly
+    if (c.boosting) c.boost = Math.max(0, c.boost - 0.2 * dt);    // burns slowly, lasts longer
 
     c.wheelSpin += c.speed * dt * 3;
 
@@ -985,7 +1202,7 @@ var pr = projectTrack(c.x, c.z, c.i);
         var dx = b.x - a.x, dz = b.z - a.z;
         var d = Math.hypot(dx, dz);
         if (d >= MIN) continue;
-        var fa = yawToForward(a.yaw), fb = yawToForward(b.yaw);
+        var fa = yawToForward(a.yaw);
 
         // cars at exactly the same spot have no direction to push each other
         // along, so fall back to a normal across the first car's heading
@@ -997,31 +1214,28 @@ var pr = projectTrack(c.x, c.z, c.i);
         var overlap = (MIN - d) * 0.5;
         a.x -= nx * overlap; a.z -= nz * overlap;
         b.x += nx * overlap; b.z += nz * overlap;
+        a.i = b.i = -1;                      // positions moved: re-acquire index
 
         // relative velocity along the contact normal
-        var rvx = fb.x * b.speed - fa.x * a.speed;
-        var rvz = fb.z * b.speed - fa.z * a.speed;
+        var rvx = b.vx - a.vx, rvz = b.vz - a.vz;
         var vn = rvx * nx + rvz * nz;
-        if (vn < 0) {                     // only while they are still closing
-          // equal masses, mild restitution
-          var imp = -(1 + 0.35) * vn * 0.5;
-          var bvx = fb.x * b.speed + imp * nx, bvz = fb.z * b.speed + imp * nz;
-          var avx = fa.x * a.speed - imp * nx, avz = fa.z * a.speed - imp * nz;
-          a.speed = avx * fa.x + avz * fa.z;
-          b.speed = bvx * fb.x + bvz * fb.z;
-          a.speed *= 0.97; b.speed *= 0.97;
+        if (vn < 0) {                        // only while they are still closing
+          var imp = -(1 + 0.35) * vn * 0.5;  // equal masses, mild restitution
+          a.vx -= imp * nx; a.vz -= imp * nz;
+          b.vx += imp * nx; b.vz += imp * nz;
+          a.vx *= 0.97; a.vz *= 0.97; b.vx *= 0.97; b.vz *= 0.97;
         }
 
         // crushing the cars costs energy even when the blow is mostly sideways,
         // which is what stops a shallow overlap sliding through each other
         var crush = 0.55 * (1 - d / MIN);
-        a.speed *= (1 - crush); b.speed *= (1 - crush);
+        a.vx *= (1 - crush); a.vz *= (1 - crush);
+        b.vx *= (1 - crush); b.vz *= (1 - crush);
 
         // a glancing blow spins the struck car
         var vt = rvx * (-nz) + rvz * nx;
         var kick = Math.max(-0.09, Math.min(0.09, vt * 0.02));
         a.yaw -= kick; b.yaw += kick;
-        a.i = b.i = -1;                      // positions moved: re-acquire index
       }
     }
   }
@@ -1034,7 +1248,8 @@ var pr = projectTrack(c.x, c.z, c.i);
     var st = 0;
     if (keys.KeyA || keys.ArrowLeft) st += 1;   // positive steer grows yaw = left
     if (keys.KeyD || keys.ArrowRight) st -= 1;
-    var hb = !!keys.Space;
+    var hb = !!(keys.ShiftLeft || keys.ShiftRight);       // handbrake -> kick the tail out
+    var bo = !!keys.Space;                                // nitro
     var gp = navigator.getGamepads ? navigator.getGamepads()[0] : null;
     if (gp) {
       var ax = gp.axes[0] || 0;
@@ -1042,8 +1257,9 @@ var pr = projectTrack(c.x, c.z, c.i);
       if (gp.buttons[7] && gp.buttons[7].value > 0.1) th = 1;
       if (gp.buttons[6] && gp.buttons[6].value > 0.1) br = 1;
       if (gp.buttons[0] && gp.buttons[0].pressed) hb = true;
+      if (gp.buttons[5] && gp.buttons[5].pressed) bo = true;   // RB = boost
     }
-    return { throttle: th, brake: br, steer: st, handbrake: hb };
+    return { throttle: th, brake: br, steer: st, handbrake: hb, boost: bo };
   }
 
   /* ---------------------------------- standings --------------------- */
@@ -1134,8 +1350,9 @@ var pr = projectTrack(c.x, c.z, c.i);
         var pin = readPlayer();
         if (!player.finished) stepCar(player, pin, dt); else stepCar(player, { throttle: 0, brake: 1, steer: 0, handbrake: false }, dt);
         updateAudio(player.speed, pin.throttle);
-        for (var i = 1; i < cars.length; i++) {
+        for (var i = 0; i < cars.length; i++) {
           var c = cars[i];
+          if (c === player) continue;
           if (c.finished) { stepCar(c, { throttle: 0, brake: 1, steer: 0 }, dt); continue; }
           c.wobble = Math.sin(clock * 0.55 + i * 1.7) * 0.7;
           stepCar(c, aiDrive(c, dt), dt);
@@ -1156,13 +1373,21 @@ var pr = projectTrack(c.x, c.z, c.i);
       document.getElementById('pos').textContent = p + '/' + cars.length;
       document.getElementById('time').textContent = clock.toFixed(2);
       document.getElementById('best').textContent = isFinite(player.best) ? player.best.toFixed(2) : '--.--';
+      var bp = Math.round(player.boost * 100);
+      document.getElementById('boostPct').textContent = bp + '%';
+      document.getElementById('boostFill').style.width = bp + '%';
+      document.getElementById('boostBox').classList.toggle('full', player.boost > 0.999);
+      document.getElementById('boostBox').classList.toggle('using', player.boosting);
+      document.getElementById('boostTag').classList.toggle('on', player.boosting);
+      document.getElementById('driftTag').classList.toggle('on', player.drifting);
     }
 
     if (started) updateCamera(dt);
     else {
       // slow orbit of the circuit behind the menu
       var a = now * 0.00006;
-      camera.position.set(Math.sin(a) * 430, 210, -Math.cos(a) * 430);
+      var orad = Math.max(260, TRACK_R + 150);
+      camera.position.set(Math.sin(a) * orad, 120 + TRACK_R * 0.35, -Math.cos(a) * orad);
       camera.lookAt(0, 0, 0);
     }
     renderer.render(scene, camera);
@@ -1189,9 +1414,9 @@ var pr = projectTrack(c.x, c.z, c.i);
     resultsScreen.classList.remove('hidden');
   }
 
-  OPPONENTS.forEach(function (o) {
-    makeCar(o.name, o.color, o.accent, false, o.skill, o.line);
-  });
+  carveTrack(TRACKS[0]);
+  renderPickers();
+  updateMenuText();
   placeOnGrid();
 
   requestAnimationFrame(frame);
