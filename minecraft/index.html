@@ -105,11 +105,16 @@
   .rule{height:1px;background:var(--line);margin:16px 0}
   button{
     font:inherit;font-weight:700;letter-spacing:2px;text-transform:uppercase;
-    width:100%;padding:12px;border:0;border-radius:8px;cursor:pointer;color:#06210c;
+    flex:1;padding:12px;border:0;border-radius:8px;cursor:pointer;color:#06210c;
     background:linear-gradient(180deg,#a8f0b0,#57c46c);
     box-shadow:0 6px 18px rgba(87,196,108,.25);
   }
-  button:hover{filter:brightness(1.07)}
+  button:hover:not([disabled]){filter:brightness(1.07)}
+  button.ctn{background:linear-gradient(180deg,#a8f0b0,#57c46c);color:#06210c}
+  button.primary{background:linear-gradient(180deg,#ffe08a,#f0a31e);color:#2a1c00;box-shadow:0 6px 18px rgba(240,163,30,.3)}
+  button[disabled]{opacity:.38;cursor:not-allowed;filter:grayscale(1)}
+  .actions{display:flex;gap:10px}
+  #saveinfo{margin-top:10px;min-height:14px;font-size:10px;letter-spacing:1px;color:var(--dim);text-align:center}
   .foot{margin-top:12px;font-size:10px;letter-spacing:1px;color:var(--dim);text-align:center}
   #load{position:fixed;inset:0;display:grid;place-items:center;background:#0a0e16;z-index:5}
   #load .bar{width:220px;height:6px;border-radius:4px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:12px}
@@ -129,13 +134,13 @@
   <div id="bar"></div>
   <div id="dbg"></div>
   <div id="toast"></div>
-  <div id="ver">v1.3 build 2</div>
+  <div id="ver">v1.4 build 1</div>
 </div>
 
 <div id="menu" class="hide">
   <div class="panel">
     <h1>BLOCKCRAFT</h1>
-    <h2>voxel sandbox &middot; v1.3 &middot; software-rendered in canvas 2d</h2>
+    <h2>voxel sandbox &middot; v1.4 &middot; software-rendered in canvas 2d</h2>
     <div class="grid">
       <div><b>W A S D</b> move</div>
       <div><b>Space</b> jump / swim up</div>
@@ -155,7 +160,11 @@
       <div><b>Esc</b> pause</div>
     </div>
     <div class="rule"></div>
-    <button id="play">Click to play</button>
+    <div class="actions">
+      <button id="continue" class="ctn" disabled>Continue World</button>
+      <button id="create" class="primary">Create World</button>
+    </div>
+    <div id="saveinfo"></div>
     <div class="foot">no libraries, no assets &mdash; every texture is painted at runtime</div>
   </div>
 </div>
@@ -1244,6 +1253,7 @@ function edit(p, remove) {
     sfx(430, 0.05, 'triangle');
   }
   hit = raycast(6.5);
+  saveDirty = 1;
 }
 
 /* ------------------------------------------------------------- sound */
@@ -1313,8 +1323,12 @@ addEventListener('keydown', e => {
   if (k === 'Tab' || k === 'Space' || k.startsWith('Arrow') || k === 'F3') e.preventDefault();
   if (keys[k]) return;
   keys[k] = 1;
-  if (!running) {
-    if (k === 'Enter') document.getElementById('play').click();
+if (!running) {
+    if (k === 'Enter') {
+      const ctn = document.getElementById('continue');
+      if (ctn.disabled) document.getElementById('create').click();
+      else ctn.click();
+    }
     return;
   }
   if (k.startsWith('Digit')) { const n = +k.slice(5); if (n >= 1 && n <= 9) select(n - 1); }
@@ -1324,7 +1338,7 @@ addEventListener('keydown', e => {
   else if (k === 'F2') toggleScale();
   else if (k === 'KeyT') { dayFrozen = !dayFrozen; toast(dayFrozen ? 'time frozen' : 'time running'); }
   else if (k === 'KeyM') { muted = !muted; toast(muted ? 'sound muted' : 'sound on'); }
-  else if (k === 'KeyR') newWorld((Math.random() * 1e6) | 0);
+  else if (k === 'KeyR') { newWorld((Math.random() * 1e6) | 0); if (savingEnabled) { saveDirty = 1; saveTimer = 0; } }
 });
 addEventListener('keyup', e => { keys[e.code] = 0; });
 addEventListener('blur', () => { keys = Object.create(null); });
@@ -1351,7 +1365,16 @@ document.addEventListener('pointerlockchange', () => {
   hasPointer = document.pointerLockElement === view;
   running = hasPointer;
   menu.classList.toggle('hide', hasPointer);
-  if (!hasPointer) { keys = Object.create(null); mining = 0; }
+  if (!hasPointer) {
+    keys = Object.create(null); mining = 0;
+    if (savingEnabled && saveDirty) { try { saveWorld(); } catch (e) {} }
+  }
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && savingEnabled && saveDirty) { try { saveWorld(); } catch (e) {} }
+});
+addEventListener('pagehide', () => {
+  if (savingEnabled && saveDirty) { try { saveWorld(); } catch (e) {} }
 });
 addEventListener('mousemove', e => {
   if (!hasPointer) return;
@@ -1360,10 +1383,14 @@ addEventListener('mousemove', e => {
   cam.yaw = (cam.yaw + Math.PI) % (Math.PI * 2) - Math.PI;
   if (cam.yaw < -Math.PI) cam.yaw += Math.PI * 2;
 });
-document.getElementById('play').addEventListener('click', () => {
-  started = true;
-  view.requestPointerLock();
-  if (!AC && !muted) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+document.getElementById('continue').addEventListener('click', () => {
+  const o = readSave(); if (!o) return;
+  loadWorld(o);
+  beginPlay();
+});
+document.getElementById('create').addEventListener('click', () => {
+  newWorld((Math.random() * 1e6) | 0);
+  beginPlay();
 });
 addEventListener('resize', () => resize(rscale));
 
@@ -1438,6 +1465,76 @@ function render() {
 
 /* ----------------------------------------------------------- main loop */
 let last = performance.now(), fps = 60, frameAvg = 16, statT = 0, worldSeed = 1337, genQueue = null;
+let savingEnabled = false, saveDirty = 0, saveTimer = 0, keepPos = false;
+const SAVE_KEY = 'blockcraft_save';
+
+/* ------------------------------------------- save / load world */
+function saveWorld() {
+  try {
+    let s = '';
+    for (let i = 0; i < world.length; i += 8192)
+      s += String.fromCharCode.apply(null, world.subarray(i, i + 8192));
+    localStorage.setItem(SAVE_KEY, JSON.stringify({
+      v: 1, seed: worldSeed, dayT,
+      px: pl.x, py: pl.y, pz: pl.z, yaw: cam.yaw, pitch: cam.pitch, sel,
+      at: Date.now(), w: btoa(s)
+    }));
+    saveDirty = 0;
+  } catch (e) {}
+}
+function readSave() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return null;
+    const o = JSON.parse(raw);
+    if (!o || o.v !== 1 || typeof o.w !== 'string') return null;
+    return o;
+  } catch (e) { return null; }
+}
+function loadWorld(o) {
+  keepPos = true;
+  worldSeed = o.seed;
+  dayT = (o.dayT || 0) % 1;
+  flowL.fill(0); wq.length = 0;
+  try {
+    const bin = atob(o.w);
+    for (let i = 0; i < world.length; i++) world[i] = bin.charCodeAt(i);
+  } catch (e) {
+    for (let i = 0; i < world.length; i++) world[i] = 0;
+  }
+  for (let z = 0; z < W; z++) for (let x = 0; x < W; x++) {
+    let t = H - 1;
+    while (t > 0 && !world[(t * W + z) * W + x]) t--;
+    topY[z * W + x] = t;
+  }
+  pl.x = o.px; pl.y = o.py; pl.z = o.pz; pl.vx = pl.vy = pl.vz = 0; pl.fly = 0;
+  cam.yaw = o.yaw || 0; cam.pitch = clamp(o.pitch !== undefined ? o.pitch : -0.1, -1.5533, 1.5533);
+  select(o.sel || 0);
+  buildClouds();
+  spawnAnimals();
+  parts.length = 0;
+  genQueue = chunks.slice();
+  loadEl.style.display = 'grid';
+}
+function updateMenu() {
+  const o = readSave();
+  const ctn = document.getElementById('continue');
+  const info = document.getElementById('saveinfo');
+  if (o) {
+    ctn.disabled = false;
+    info.textContent = 'Continue world ' + o.seed + ' · saved ' + new Date(o.at).toLocaleString();
+  } else {
+    ctn.disabled = true;
+    info.textContent = 'no saved world yet';
+  }
+}
+function beginPlay() {
+  started = true;
+  savingEnabled = true;
+  saveDirty = 1; saveTimer = 0;
+  view.requestPointerLock();
+  if (!AC && !muted) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+}
 
 function newWorld(seed) {
   worldSeed = seed;
@@ -1457,8 +1554,8 @@ function stepGen() {
   if (!genQueue.length) {
     genQueue = null;
     loadEl.style.display = 'none';
-    spawnPlayer();
-    if (!started) menu.classList.remove('hide');
+    if (keepPos) keepPos = false; else spawnPlayer();
+    if (!started) { updateMenu(); menu.classList.remove('hide'); }
   }
 }
 function frame(now) {
@@ -1485,6 +1582,10 @@ function frame(now) {
   stepWater();
   if (swing > 0) swing -= dt;
   if (!dayFrozen) dayT = (dayT + dt / 620) % 1;
+  if (savingEnabled && saveDirty) {
+    saveTimer -= dt;
+    if (saveTimer <= 0) { saveWorld(); saveTimer = 3; }
+  }
 
   if (frameAvg > 27 && rscale > 0.4) { rscale = Math.max(0.4, rscale - 0.05); resize(rscale); frameAvg = 16; }
   else if (frameAvg < 13 && rscale < SCALES[scaleMode]) {
