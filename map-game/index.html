@@ -719,6 +719,161 @@ const NBY = {};
 [].concat(NATIONS,REGIONS).forEach(function(n){ NBY[n.id]=n; });
 
 /* =======================================================================
+   2b. SECTORS - the big countries are cut into pieces, so a front can
+       only be taken one piece at a time instead of all in a single day.
+   ======================================================================= */
+const SPLITS = {
+  ussr    : {n:4, axis:'x', lab:['West','Centre','East','Far East']},
+  germany : {n:3, axis:'x', lab:['West','Centre','East']},
+  france  : {n:3, axis:'y', lab:['South','Centre','North']},
+  spain   : {n:3, axis:'x', lab:['West','Centre','East']},
+  turkey  : {n:3, axis:'x', lab:['West','Centre','East']},
+  italy   : {n:3, axis:'y', lab:['South','Centre','North']},
+  uk      : {n:3, axis:'y', lab:['South','Centre','North']},
+  sweden  : {n:3, axis:'y', lab:['South','Centre','North']},
+  norway  : {n:3, axis:'x', lab:['West','Centre','East']},
+  poland  : {n:2, axis:'x', lab:['West','East']},
+  romania : {n:2, axis:'x', lab:['West','East']}
+};
+const SECTORS=[];            /* every capturable piece, in map order */
+const NAT_SECTORS={};        /* nation id -> [sector id, ...]        */
+const REGION_IDS = REGIONS.map(function(r){ return r.id; });
+
+function ringArea(p){
+  /* closing the loop explicitly, so a ring that is still open (a freshly
+     clipped one) measures the same as a closed one */
+  var a=0, n=p.length;
+  for(var i=0;i<n;i++){
+    var j=(i+1)%n;
+    a += p[i][0]*p[j][1] - p[j][0]*p[i][1];
+  }
+  return Math.abs(a)/2;
+}
+function polysArea(ps){ var a=0; for(var i=0;i<ps.length;i++) a+=ringArea(ps[i]); return a; }
+/* Sutherland-Hodgman: keep the part of every ring on one side of an axis-parallel line */
+function clipHalf(ps,axis,c,low){
+  var out=[],i,j;
+  for(i=0;i<ps.length;i++){
+    var p=ps[i], res=[], np=p.length;
+    /* walk every edge including the closing one, whether or not the ring
+       already repeats its first point */
+    for(j=0;j<np;j++){
+      var a=p[j], b=p[(j+1)%np];
+      var av=(axis==='x')?a[0]:a[1], bv=(axis==='x')?b[0]:b[1];
+      var ain=low? av<=c : av>=c, bin=low? bv<=c : bv>=c;
+      if(ain) res.push(a);
+      if(ain!==bin && bv!==av){
+        var t=(c-av)/(bv-av); if(t<0)t=0; if(t>1)t=1;
+        res.push(axis==='x' ? [c, a[1]+(b[1]-a[1])*t] : [a[0]+(b[0]-a[0])*t, c]);
+      }
+    }
+    if(res.length>=3) out.push(res);
+  }
+  return out;
+}
+/* cut a pile of rings into n pieces of equal area along one axis */
+function splitEqual(ps,axis,n){
+  if(n<=1) return [ps];
+  var total=polysArea(ps);
+  if(!(total>0)) return [ps];
+  var lo=1e9, hi=-1e9;
+  ps.forEach(function(p){ p.forEach(function(q){
+    var v=(axis==='x')?q[0]:q[1];
+    if(v<lo)lo=v; if(v>hi)hi=v;
+  }); });
+  var target=total/n, best=lo, bestDiff=1e18;
+  for(var it=0; it<26; it++){
+    var mid=(lo+hi)/2;
+    var a=polysArea(clipHalf(ps,axis,mid,true));
+    var d=Math.abs(a-target);
+    if(d<bestDiff){ bestDiff=d; best=mid; }
+    if(a<target) lo=mid; else hi=mid;
+  }
+  var low=clipHalf(ps,axis,best,true), high=clipHalf(ps,axis,best,false);
+  if(!low.length || !high.length) return [ps];
+  return splitEqual(low,axis,n-1).concat([high]);
+}
+function polyBBox(ps){
+  var b={x0:1e9,y0:1e9,x1:-1e9,y1:-1e9};
+  ps.forEach(function(p){ p.forEach(function(q){
+    if(q[0]<b.x0)b.x0=q[0]; if(q[0]>b.x1)b.x1=q[0];
+    if(q[1]<b.y0)b.y0=q[1]; if(q[1]>b.y1)b.y1=q[1];
+  }); });
+  return b;
+}
+function linkSector(a,b){
+  if(!a||!b||a.id===b.id) return;
+  if(a.snb.indexOf(b.id)<0) a.snb.push(b.id);
+}
+(function buildSectors(){
+  var had={};
+  [].concat(NATIONS,REGIONS).forEach(function(n){
+    var polys=GEO[n.id]||[];
+    var sp=SPLITS[n.id];
+    var pieces=(sp && polys.length) ? splitEqual(polys,sp.axis,sp.n) : [polys];
+    if(pieces.length<2) pieces=[polys];
+    NAT_SECTORS[n.id]=[];
+    pieces.forEach(function(ps,i){
+      if(!ps||!ps.length) return;
+      var sid = pieces.length>1 ? (n.id+'#'+i) : n.id;
+      var nm  = pieces.length>1 ? (n.name+' ('+((sp&&sp.lab[i])||('sector '+(i+1)))+')') : n.name;
+      var sec={ id:sid, nat:n.id, name:nm, flag:n.flag, color:n.color, bloc:n.bloc,
+                nb:(n.nb||[]).slice(), snb:[], polys:ps, playable:false, owner:n.owner||undefined };
+      SECTORS.push(sec); NAT_SECTORS[n.id].push(sid); NBY[sid]=sec;
+    });
+    if(!NAT_SECTORS[n.id].length){
+      var sec2=NBY[n.id];
+      sec2.nat=n.id; sec2.snb=sec2.snb||[]; sec2.polys=polys;
+      SECTORS.push(sec2); NAT_SECTORS[n.id]=[n.id];
+    }
+  });
+  /* siblings of one country are always connected, so troops move inside freely */
+  SECTORS.forEach(function(s){
+    (NAT_SECTORS[s.nat]||[]).forEach(function(t){ if(t!==s.id) linkSector(s,NBY[t]); });
+  });
+  /* across a frontier: two pieces touch when their outlines share a point */
+  var grid={}, cell=function(v){ return Math.round(v/0.1); };
+  SECTORS.forEach(function(s){
+    s.polys.forEach(function(p){ p.forEach(function(q){
+      var k=cell(q[0])+':'+cell(q[1]);
+      (grid[k]=grid[k]||[]).push({s:s,x:q[0],y:q[1]});
+    }); });
+  });
+  var EPS=0.2, EPS2=EPS*EPS;
+  SECTORS.forEach(function(s){
+    s.polys.forEach(function(p){ p.forEach(function(q){
+      var kx=cell(q[0]), ky=cell(q[1]);
+      for(var dx=-3;dx<=3;dx++) for(var dy=-3;dy<=3;dy++){
+        var arr=grid[(kx+dx)+':'+(ky+dy)]; if(!arr) continue;
+        for(var i=0;i<arr.length;i++){
+          var e=arr[i];
+          if(e.s===s) continue;
+          var ax=e.x-q[0], ay=e.y-q[1];
+          if(ax*ax+ay*ay>EPS2) continue;
+          linkSector(s,e.s);
+          if(s.nat!==e.s.nat){ had[s.nat+'>'+e.s.nat]=1; had[e.s.nat+'>'+s.nat]=1; }
+        }
+      }
+    }); });
+  });
+  /* a declared frontier that the outlines did not prove gets every-to-every */
+  [].concat(NATIONS,REGIONS).forEach(function(n){
+    (n.nb||[]).forEach(function(m){
+      if(m==='iceland') return;
+      if(had[n.id+'>'+m]) return;
+      (NAT_SECTORS[n.id]||[]).forEach(function(a){
+        (NAT_SECTORS[m]||[]).forEach(function(b){ linkSector(NBY[a],NBY[b]); });
+      });
+    });
+  });
+})();
+function sectorsOf(nat){ return NAT_SECTORS[nat]||[nat]; }
+function natOf(id){ return (NBY[id] && NBY[id].nat) || id; }
+function firstSector(nat){ var a=NAT_SECTORS[nat]; return (a&&a.length)?a[0]:nat; }
+/* sectors that belong to a real nation - the player wins by owning all of them */
+const WIN_NEED = SECTORS.filter(function(s){ return REGION_IDS.indexOf(s.nat)<0; }).length;
+
+/* =======================================================================
    3. UNITS
    ======================================================================= */
 const UNITS = {
@@ -1049,34 +1204,46 @@ function buildMap(){
   landG=el('g',{}); g.appendChild(landG);
   unitG=el('g',{}); g.appendChild(unitG);
 
-  ALL.slice().sort(function(a,b){ return (a.id==='ussr'?-1:0)-(b.id==='ussr'?-1:0); })
-  .forEach(function(n){
-    var polys=GEO[n.id]||[];
+  SECTORS.slice().sort(function(a,b){ return (a.nat==='ussr'?-1:0)-(b.nat==='ussr'?-1:0); })
+  .forEach(function(sec){
     /* a fat same-colour stroke drawn under every land path fills the hairline
-       gaps between adjacent countries, so the map reads as one continent */
-    polys.forEach(function(p){
-    landG.appendChild(el('path',{d:polyD(p),fill:'none',stroke:n.color,'stroke-width':0.8,
-      'stroke-linejoin':'round','data-id':n.id,'data-bridge':'1','pointer-events':'none'}));
+       gaps between adjacent pieces, so the map reads as one continent */
+    sec.polys.forEach(function(p){
+    landG.appendChild(el('path',{d:polyD(p),fill:'none',stroke:sec.color,'stroke-width':0.8,
+      'stroke-linejoin':'round','data-id':sec.id,'data-bridge':'1','pointer-events':'none'}));
     });
   });
 
-  ALL.slice().sort(function(a,b){ return (a.id==='ussr'?-1:0)-(b.id==='ussr'?-1:0); })
-  .forEach(function(n){
-    var polys=GEO[n.id]||[];
+  SECTORS.slice().sort(function(a,b){ return (a.nat==='ussr'?-1:0)-(b.nat==='ussr'?-1:0); })
+  .forEach(function(sec){
     var x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
-    PP[n.id]=[];
-    polys.forEach(function(p){
+    PP[sec.id]=[];
+    sec.polys.forEach(function(p){
       var flat=[];
-      landG.appendChild(el('path',{d:polyD(p),fill:n.color,class:'land','data-id':n.id}));
+      landG.appendChild(el('path',{d:polyD(p),fill:sec.color,class:'land','data-id':sec.id}));
       p.forEach(function(q){
         var x=px(q[0]), y=py(q[1]);
         flat.push(x,y);
         if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y;
       });
-      PP[n.id].push(flat);
+      PP[sec.id].push(flat);
     });
     if(x0>x1){ x0=0; y0=0; x1=W; y1=H; }
-    markEl[n.id]={x:(x0+x1)/2,y:(y0+y1)/2};
+    markEl[sec.id]={x:(x0+x1)/2,y:(y0+y1)/2};
+  });
+
+  /* one label per country, centred over all of its pieces */
+  ALL.forEach(function(n){
+    var x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+    (NAT_SECTORS[n.id]||[]).forEach(function(sid){
+      (PP[sid]||[]).forEach(function(flat){
+        for(var i=0;i<flat.length;i+=2){
+          var x=flat[i], y=flat[i+1];
+          if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y;
+        }
+      });
+    });
+    if(x0>x1) return;
     var l=el('text',{x:((x0+x1)/2).toFixed(1),y:((y0+y1)/2-17).toFixed(1),class:'lbl'});
     l.innerHTML=n.flag+' '+n.name;
     labEl[n.id]=l; unitG.appendChild(l);
@@ -1101,15 +1268,16 @@ var WAR_MAP=null;
 function warMap(){
   if(WAR_MAP) return WAR_MAP;
   WAR_MAP={};
-  ALL.forEach(function(n){
-    if(n.id==='iceland') return;
-    (n.nb||[]).forEach(function(m){
-      if(m==='iceland' || !S.prov[m]) return;
-      var a=S.prov[n.id].owner, b=S.prov[m].owner;
-      if(a===b || a==='iceland' || b==='iceland') return;
+  for(var id in S.prov){
+    var a=S.prov[id].owner, sn=(NBY[id]&&NBY[id].snb)||[];
+    for(var i=0;i<sn.length;i++){
+      var t=S.prov[sn[i]];
+      if(!t) continue;
+      var b=t.owner;
+      if(a===b || a==='iceland' || b==='iceland') continue;
       WAR_MAP[warKey(a,b)]=true;
-    });
-  });
+    }
+  }
   return WAR_MAP;
 }
 function invalidateWars(){ WAR_MAP=null; }
@@ -1128,12 +1296,18 @@ function declareWar(a,b){
 }
 
 function newGame(player){
-  S={ player:player, day:0, uid:0, sel:player, pick:new Set(), log:[], over:null, wars:new Set(),
+  S={ player:player, day:0, uid:0, sel:firstSector(player), pick:new Set(), log:[], over:null, wars:new Set(),
       prov:{}, units:[], targets:[], aggro:{}, aiT:{}, orderMode:true, gold:{}, news:[], elimSet:new Set(),
+      capSet:new Set(),
       brokeSet:new Set(), mail:[], pact:new Set(), mood:{}, mailSeq:0, nextDispatchDay:0, nextMailDay:2 };
+  SECTORS.forEach(function(sec){
+    var nat=NBY[sec.nat];
+    var home=(sec.nat!=='iceland' && !nat.owner);
+    var first=(sectorsOf(sec.nat)[0]===sec.id);
+    S.prov[sec.id]={ id:sec.id, nat:sec.nat, owner:(nat.owner||sec.nat), units:[],
+                     mines:(home&&first)?2:0, mineBy:(home&&first)?sec.nat:null, mineT:5, pend:0 };
+  });
   ALL.forEach(function(n){
-    var home=(n.id!=='iceland' && !n.owner);
-    S.prov[n.id]={ id:n.id, owner:(n.owner||n.id), units:[], mines:home?2:0, mineBy:home?n.id:null, mineT:5 };
     S.gold[n.id]=(n.id==='iceland')?0:START_MONEY;
     S.aiT[n.id]=(n.id==='iceland')?99:(4+(Math.random()*4|0));
     S.aggro[n.id]=0.9+Math.random()*0.45;
@@ -1147,16 +1321,18 @@ function newGame(player){
       S.wars.add(warKey(n.id,m));
     });
   });
-  /* three riflemen per land nation so no front starts naked */
+  /* three riflemen per land nation so no front starts naked - spread over its pieces */
   ALL.forEach(function(n){
     if(n.id==='iceland') return;
-    spawn('infantry', n.id, S.prov[n.id].owner);
-    spawn('infantry', n.id, S.prov[n.id].owner);
-    spawn('infantry', n.id, S.prov[n.id].owner);
+    var secs=sectorsOf(n.id);
+    for(var i=0;i<3;i++){
+      var sid=secs[i%secs.length];
+      spawn('infantry', sid, S.prov[sid].owner);
+    }
   });
   S.pick.clear();
   invalidateWars();
-  selectProv(player);
+  selectProv(firstSector(player));
   log('War breaks out. 50 gold in the treasury, three riflemen and two mine fields at home.');
   log('Click a territory to inspect it, recruit, and give orders.');
   render();
@@ -1198,7 +1374,7 @@ function capacity(c){
 }
 function power(u,loc){
   var t=UNITS[u.type], m=(S.prov[loc].owner===u.owner)?t.def:1;
-  if(m>1 && loc===u.owner) m*=CAPITAL_DEF;   /* homeland fighting is fiercer */
+  if(m>1 && natOf(loc)===u.owner) m*=CAPITAL_DEF;   /* homeland fighting is fiercer */
   return t.atk*m*(0.55+0.45*u.hp/t.hp);
 }
 function defPower(id){
@@ -1315,25 +1491,40 @@ function tick(){
     });
   }
 
-  /* --- capture --- */
+  /* --- capture: only ONE piece on the whole map may change hands in a day --- */
   var capEv=[];
+  var cand=[];
   for(var id3 in S.prov){
     var pp=S.prov[id3], c={};
     unitsAt(id3).forEach(function(u){ c[u.owner]=(c[u.owner]||0)+1; });
     var ks=Object.keys(c);
     if(ks.length===1 && ks[0]!==pp.owner){
-      var old=pp.owner, nu=ks[0];
-      pp.owner=nu;
-      pp.mines=0; pp.mineBy=null;
-      capEv.push({taker:nu, prov:id3, old:old, d:S.day});
-      mailWarEvent(nu, old);
-      invalidateWars();
-      if(nu===S.player || old===S.player) declareWar(S.player, (nu===S.player?old:nu));
-      if(nu===S.player || old===S.player) log(captureMsg(nu,pp.id,old,'captured'));
-      else if(Math.random()<0.18) log(captureMsg(nu,pp.id,old,'took'));
+      pp.pend=(pp.pend||0)+1;
+      cand.push({id:id3, nu:ks[0], pend:pp.pend});
+    } else {
+      pp.pend=0;
     }
   }
-  if(capEv.length){ newsCaptures(capEv); newsElim(); }
+  if(cand.length){
+    /* the piece that has been held longest gets the day; a player's own front wins ties */
+    cand.sort(function(a,b){
+      if(a.pend!==b.pend) return b.pend-a.pend;
+      var ap=(a.nu===S.player)?1:0, bp=(b.nu===S.player)?1:0;
+      if(ap!==bp) return bp-ap;
+      return Math.random()-0.5;
+    });
+    var win=cand[0], wp=S.prov[win.id];
+    var old=wp.owner, nu=win.nu;
+    wp.owner=nu;
+    wp.mines=0; wp.mineBy=null; wp.pend=0;
+    capEv.push({taker:nu, prov:win.id, old:old, d:S.day});
+    mailWarEvent(nu, old);
+    invalidateWars();
+    if(nu===S.player || old===S.player) declareWar(S.player, (nu===S.player?old:nu));
+    if(nu===S.player || old===S.player) log(captureMsg(nu,wp.id,old,'captured'));
+    else if(Math.random()<0.18) log(captureMsg(nu,wp.id,old,'took'));
+  }
+  if(capEv.length){ newsCaptures(capEv); capitulateCheck(); newsElim(); }
 
   /* --- income: mine fields only --- */
   ALL.forEach(function(n){
@@ -1364,7 +1555,7 @@ function checkEnd(){
   var mine=landOf(S.player);
   if(mine===0 && unitsOf(S.player).length===0){
     end(false,'Your nation has been overrun. The map belongs to whoever is left standing.');
-  }else if(mine>=NATIONS.length){
+  }else if(mine>=WIN_NEED){
     end(true,'Every territory on the continent flies your flag. Europe is yours.');
   }
 }
@@ -1408,13 +1599,11 @@ function aiTurn(){
       else if(gold>=artU.cost && (threat||Math.random()<0.3)) choice=artU.type;
       else if(gold>=tankU.cost && (threat || Math.random()<0.35)) choice=tankU.type;
       else choice=ar[0].type;
-      if(UNITS[choice].cost<=gold && unitsOf(n.id).length<capacity(n.id)){
-        var spot=pickRecruit(n.id);
-        if(spot){
+      var spot=pickRecruit(n.id);
+      if(spot && UNITS[choice].cost<=gold && unitsAt(spot).length<capacity(n.id)){
           spawn(choice,spot,n.id);
           S.gold[n.id]-=UNITS[choice].cost;
           if(SHOWCASE[choice]) newsUnveil(n.id,choice,spot);
-        }
       }
     }
 
@@ -1428,7 +1617,7 @@ function aiTurn(){
       if(stack.length<2) continue;
       var here=totalPower(id);
       var best=null,bestScore=0;
-      (NBY[id].nb||[]).forEach(function(m){
+      (NBY[id].snb||[]).forEach(function(m){
         if(!S.prov[m] || !atWar(n.id,S.prov[m].owner)) return;
         var theirs=totalPower(m);
         if(here>theirs*aggro && here-theirs>bestScore){
@@ -1457,7 +1646,7 @@ function pickRecruit(c){
     if(S.prov[id].owner!==c) continue;
     if(unitsAt(id).length>=7) continue;
     var d=0, b=0;
-    (NBY[id].nb||[]).forEach(function(m){
+    (NBY[id].snb||[]).forEach(function(m){
       if(!S.prov[m] || S.prov[m].owner===c) return;
       d=Math.max(d, totalPower(m));
     });
@@ -1482,7 +1671,7 @@ function selectProv(id){
 }
 function known(id){
   if(S.prov[id].owner===S.player) return true;
-  var ns=NBY[id].nb||[];
+  var ns=NBY[id].snb||[];
   for(var k in S.prov){
     if(S.prov[k].owner===S.player && ns.indexOf(k)>=0) return true;
   }
@@ -1494,7 +1683,7 @@ function moveTo(dst){
   var ids=[],n=0;
   unitsOf(S.player).forEach(function(u){
     if(!S.pick.has(u.id)) return;                                 /* only selected units */
-    if((NBY[u.loc].nb||[]).indexOf(dst)<0) return;                 /* must border the target */
+    if((NBY[u.loc].snb||[]).indexOf(dst)<0) return;                 /* must border the target */
     ids.push(u.id);
     if(UNITS[u.type].air && S.prov[dst].owner!==S.player) u.air=dst;
     else u.moving={to:dst,t:1};
@@ -1737,7 +1926,7 @@ function renderMini(id){
 function renderBorderGarrisons(id, me){
   var box=document.getElementById('bGar');
   if(!box) return;
-  var rows=(NBY[id].nb||[]).filter(function(nb){ return nb!=='iceland' && S.prov[nb]; });
+  var rows=(NBY[id].snb||[]).filter(function(nb){ return nb!=='iceland' && S.prov[nb]; });
   if(!rows.length){ box.innerHTML=''; return; }
 
   var h='<div class="bgHead">Units in neighbouring countries</div>';
@@ -1772,7 +1961,7 @@ function computeTargets(){
   }
   var out={};
   from.forEach(function(f){
-    (NBY[f].nb||[]).forEach(function(m){
+    (NBY[f].snb||[]).forEach(function(m){
       if(m==='iceland' || !S.prov[m]) return;
       if(!atWar(S.player,S.prov[m].owner)) return;
       out[m]=1;
@@ -1818,7 +2007,7 @@ function render(){
 }
 function warAround(id){
   var o=S.prov[id].owner;
-  var ns=NBY[id].nb||[];
+  var ns=NBY[id].snb||[];
   for(var i=0;i<ns.length;i++){
     if(S.prov[ns[i]] && atWar(o,S.prov[ns[i]].owner)) return true;
   }
@@ -2002,7 +2191,7 @@ function wireTop(){
     S.pick.clear();
     var n=0;
     unitsOf(S.player).forEach(function(u){
-      var ns=NBY[u.loc].nb||[];
+      var ns=NBY[u.loc].snb||[];
       for(var i=0;i<ns.length;i++){
         if(S.prov[ns[i]] && atWar(S.player,S.prov[ns[i]].owner)){ S.pick.add(u.id); n++; return; }
       }
@@ -2026,10 +2215,10 @@ function wireTop(){
     var k=svgR.width/(W+12);
     var id=S.sel, p=S.prov[id];
     if(!p || p.owner!==S.player){
-      id=S.player;
+        id=firstSector(S.player);
       for(var k2 in S.prov){
         if(S.prov[k2].owner!==S.player) continue;
-        var hot=(NBY[k2].nb||[]).some(function(m){
+        var hot=(NBY[k2].snb||[]).some(function(m){
           return S.prov[m] && m!=='iceland' && atWar(S.player,S.prov[m].owner); });
         id=k2; if(hot) break;
       }
@@ -2094,7 +2283,9 @@ function startGame(){
   setTimeout(function(){
     var wrap=document.getElementById('mapwrap');
     var k=document.getElementById('map').getBoundingClientRect().width/(W+12);
-    var m=markEl[S.player];
+    var lb=labEl[S.player];
+    var m=(lb? {x:+lb.getAttribute('x'), y:+lb.getAttribute('y')} : null) || markEl[firstSector(S.player)];
+    if(!m) return;
     wrap.scrollTo({ left:Math.max(0,(m.x-6)*k-wrap.clientWidth*0.45),
                     top:Math.max(0,(m.y-6)*k-wrap.clientHeight*0.45) });
   },80);
@@ -2460,7 +2651,7 @@ function netGuestStart(){
   document.getElementById('start').style.display='none';
   document.getElementById('net').style.display='none';
   if(!NET.myNation){ flash('You are seated?'); return; }
-  S.player=NET.myNation; S.sel=NET.myNation;
+  S.player=NET.myNation; S.sel=firstSector(NET.myNation);
   setSpeed(0);
   document.getElementById('bPause').innerHTML='&#9654; (remote)';
   flash('Syncing with host '+NET.hostName+'...');
@@ -2495,6 +2686,7 @@ function netStateOut(){
   return {v:1, day:S.day, uid:S.uid, wars:wars, prov:prov, units:units,
           gold:S.gold, log:S.log.slice(-20), over:!!S.over,
           news:S.news.slice(-30), elim:Array.prototype.slice.call(S.elimSet||[]),
+          cap:Array.prototype.slice.call(S.capSet||[]),
           mail:(S.mail||[]).slice(-60), pact:Array.prototype.slice.call(S.pact||[]), mood:S.mood||{}, mailSeq:S.mailSeq||0, nextDispatchDay:S.nextDispatchDay||0, nextMailDay:S.nextMailDay||S.day+1};
 }
 function applyNetState(o){
@@ -2514,6 +2706,7 @@ function applyNetState(o){
   S.log=o.log||S.log;
   S.news=o.news||[];
   S.elimSet=new Set(o.elim||[]);
+  S.capSet=new Set(o.cap||[]);
   S.mail=o.mail||[];
   S.pact=new Set(o.pact||[]);
   S.mood=o.mood||{};
@@ -2533,7 +2726,7 @@ function guestCheck(){
   if(landOf(me)===0 && unitsOf(me).length===0){
     S.over={win:false};
     end(false,'Your nation has been overrun. You now watch the war from the gallery.');
-  } else if(landOf(me)>=NATIONS.length){
+  } else if(landOf(me)>=WIN_NEED){
     S.over={win:true};
     end(true,'Every territory on the continent flies your flag. Europe is yours.');
   }
@@ -2548,7 +2741,7 @@ function netApplyCmd(nat,msg){
     for(var i=0;i<ids.length;i++){
       var u=byId(Number(ids[i]));
       if(!u || u.owner!==nat || u.hp<=0) continue;
-      if((NBY[u.loc].nb||[]).indexOf(dst)<0) continue;
+      if((NBY[u.loc].snb||[]).indexOf(dst)<0) continue;
       if(UNITS[u.type].air && S.prov[dst].owner!==nat) u.air=dst;
       else u.moving={to:dst,t:1};
       n++;
@@ -2746,10 +2939,33 @@ function newsCollapse(nid){
     'On '+dayFull(S.day)+', the treasury of '+Nname(nid)+' closed its doors. With no gold to pay the troops, '+
     'whole formations were stood down and sold for scrap - a front that once held the line now holds only arrears.', true);
 }
+/* a country that has lost its last piece stops fighting there and then */
+function capitulateCheck(){
+  if(!S || !S.capSet) return;
+  NATIONS.forEach(function(n){
+    if(S.capSet.has(n.id)) return;
+    if(landOf(n.id)>0) return;
+    S.capSet.add(n.id);
+    var gone=0;
+    for(var i=S.units.length-1;i>=0;i--){
+      if(S.units[i].owner===n.id){ S.units.splice(i,1); gone++; }
+    }
+    S.elimSet.add(n.id);
+    if(!newsCanvas()) return;
+    news(Nname(n.id)+' lays down its arms',
+      'On '+dayFull(S.day)+', with every scrap of territory that once flew the '+Nname(n.id)+
+      ' flag now in enemy hands, '+Nname(n.id)+' accepted an armistice. '+
+      (gone? 'The '+gone+' formation'+(gone===1?'':'s')+' still in the field stacked their weapons and marched home. '
+           : 'What remained of the army stacked its weapons. ')+
+      'The front that ran the length of the country simply stops existing.', true);
+  });
+}
 function newsElim(){
   if(!newsCanvas()) return;
   ALL.forEach(function(n){
     if(n.id==='iceland') return;
+    if(n.owner) return;                       /* annexed land never was a country of its own */
+    if(S.capSet && S.capSet.has(n.id)) return;
     if(S.elimSet.has(n.id)) return;
     if(landOf(n.id)===0 && unitsOf(n.id).length===0){
       S.elimSet.add(n.id);
