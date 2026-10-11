@@ -39,6 +39,7 @@
   }
   .btn:hover{border-color:#4b5878;background:#232b3d}
   .btn.on{background:#31405f;border-color:#5f7bb5}
+  .btn:disabled{opacity:.4;cursor:not-allowed;background:var(--panel2);border-color:var(--line)}
   .btn.danger{border-color:#6b2b2b}
   .btn.danger:hover{background:#3a1f1f}
   #dateBox b{color:#9fc4ff}
@@ -517,6 +518,7 @@
       <div id="nlSeats"></div>
       <div id="nlBtns">
         <button class="btn" id="nlCancel">&#8592; Leave room</button>
+        <button class="btn" id="nlReady">&#10003; Ready up</button>
         <button class="btn on" id="nlGo">&#9654; Start the war</button>
       </div>
     </div>
@@ -2193,7 +2195,7 @@ MQTT.prototype.subscribe=function(topic,qos,cb){
 };
 MQTT.prototype.close=function(){ try{ this.ws.send(new Uint8Array([0xE0,0x00])); this.ws.close(); }catch(e){} };
 
-var NET={ mode:0, mq:null, pid:'', name:'', room:'', hostP:'', hostName:'', roster:{}, seats:{},
+var NET={ mode:0, mq:null, pid:'', name:'', room:'', hostP:'', hostName:'', roster:{}, seats:{}, ready:{},
   myNation:null, hostNation:null, started:false, dirty:false, lastSeen:{}, rooms:{},
   lastState:0, netConn:false, pendingJoin:false, hostOfflineWarned:false };
 var LOBBY='ow/lobby';
@@ -2239,6 +2241,7 @@ function netSubForMode(){
     NET.mq.subscribe(OW(NET.room,'join'),0);
     NET.mq.subscribe(OW(NET.room,'claim'),0);
     NET.mq.subscribe(OW(NET.room,'hb'),0);
+    NET.mq.subscribe(OW(NET.room,'ready'),0);
     NET.mq.subscribe(OW(NET.room,'cmd'),0);
   } else {
     NET.mq.subscribe(LOBBY,0);
@@ -2261,11 +2264,23 @@ function netRecv(topic,txt){
     if(!NET.room) return;
     var s=topic.slice(topic.lastIndexOf('/')+1);
     var o=JSON.parse(txt);
-    if(s==='join'){ if(o&&o.p&&!NET.roster[o.p]){ NET.roster[o.p]=o.name||'Player'; netPushLobby(); } }
+    if(s==='join'){ if(o&&o.p&&!NET.roster[o.p]){ NET.roster[o.p]=o.name||'Player'; netPushLobby(); if(NET.mode===1){ nlHint(); paintReady(); } } }
     else if(s==='claim'){
-      if(NET.mode===1 && !NET.started && o && o.p && o.nation && NBY[o.nation] && !NET.seats[o.nation]){
-        NET.seats[o.nation]=o.p; NET.roster[o.p]=NET.roster[o.p]||'Player';
-        NET.dirty=true; netPushLobby();
+      if(NET.mode===1 && !NET.started && o && o.p && o.nation && NBY[o.nation]){
+        var cSeat=NET.seats[o.nation];
+        if(!cSeat || cSeat===o.p){                 /* one country per player */
+          for(var sk in NET.seats) if(NET.seats[sk]===o.p) delete NET.seats[sk];
+          NET.seats[o.nation]=o.p;
+          delete NET.ready[o.p];                    /* re-confirm after changing */
+          NET.roster[o.p]=NET.roster[o.p]||'Player';
+          NET.dirty=true; netPushLobby(); paintSeats(); nlHint(); paintReady();
+        }
+      }
+    }
+    else if(s==='ready'){
+      if(NET.mode===1 && !NET.started && o && o.p && netHasSeat(o.p)){
+        if(o.on) NET.ready[o.p]=1; else delete NET.ready[o.p];
+        netPushLobby(); paintSeats(); nlHint(); paintReady();
       }
     }
     else if(s==='hb'){ if(o && o.p) NET.lastSeen[o.p]=Date.now(); }
@@ -2276,24 +2291,71 @@ function netRecv(topic,txt){
   }catch(e){}
 }
 function netPushLobby(){ netPubRoom('lobby', JSON.stringify(snap())); }
-function snap(){ return {h:NET.pid, hn:NET.name, seats:NET.seats, names:NET.roster, started:!!NET.started}; }
+function snap(){ return {h:NET.pid, hn:NET.name, seats:NET.seats, names:NET.roster, ready:NET.ready, started:!!NET.started}; }
 function recvLobby(o){
   if(!o) return;
   NET.hostP=o.h; NET.hostName=o.hn||'Host';
   NET.roster=o.names||{};
   NET.seats=o.seats||{};
+  NET.ready=o.ready||{};
   NET.started=!!o.started;
   NET.myNation=null;
   for(var k in NET.seats) if(NET.seats[k]===NET.pid) NET.myNation=k;
   paintSeats();
   nlHint();
+  paintReady();
 }
 function nlHint(){
   var who=0,i;
   for(i=0;i<NATIONS.length;i++) if(NET.seats[NATIONS[i].id]) who++;
+  var gate=netStartGate();
   document.getElementById('nlSt').textContent =
-    NET.mode===1 ? ('Room '+NET.room+' is live - waiting for players.\nSlot '+(NATIONS.length-who)+' seat'+(NATIONS.length-who===1?'':'s')+' open - unclaimed nations fight for the AI.') :
-    ('Joined '+NET.room+' (host: '+NET.hostName+'). Pick a nation - the war starts whenever the host says so.');
+    NET.mode===1 ? ('Room '+NET.room+' is live - waiting for players.\nSlot '+(NATIONS.length-who)+' seat'+(NATIONS.length-who===1?'':'s')+' open - unclaimed nations fight for the AI.\n'+gate.text) :
+    ('Joined '+NET.room+' (host: '+NET.hostName+'). Pick a country, then press Ready.\n'+gate.text);
+}
+
+/* ---------- ready gate: one country per player, everybody readies up ---------- */
+function netRoomPlayers(){
+  var ps={},k;
+  for(k in NET.roster) ps[k]=1;
+  for(k in NET.seats) if(NET.seats[k]) ps[NET.seats[k]]=1;
+  if(NET.hostP) ps[NET.hostP]=1;             /* the host is always in the room */
+  if(NET.pid) ps[NET.pid]=1;
+  return ps;
+}
+function netPlayerName(p){
+  if(p===NET.pid) return NET.name||'you';
+  if(NET.hostP && p===NET.hostP) return NET.hostName||'the host';
+  return NET.roster[p]||p.slice(-4);
+}
+function netStartGate(){
+  if(!NET.room || NET.started) return {ok:false, text:''};
+  var ps=netRoomPlayers(), k, noSeat=[], notReady=[], names;
+  for(k in ps){
+    if(!netHasSeat(k)) noSeat.push(k);
+    else if(!NET.ready[k]) notReady.push(k);
+  }
+  names=function(a){ return a.map(netPlayerName).join(', '); };
+  if(noSeat.length) return {ok:false, text:'Waiting for '+names(noSeat)+' to pick a country.'};
+  if(notReady.length) return {ok:false, text:'Waiting for '+names(notReady)+' to press Ready.'};
+  return {ok:true, text:'Everyone is ready - the host can start the war.'};
+}
+function paintReady(){
+  var go=document.getElementById('nlGo'), rb=document.getElementById('nlReady');
+  if(!go || !rb) return;
+  var mine=!!NET.ready[NET.pid];
+  var show=!NET.started;
+  rb.style.display=show?'inline-block':'none';
+  rb.textContent=mine? '\u2713 Ready' : '\u2713 Ready up';
+  rb.classList.toggle('on',mine);
+  if(NET.mode===1){
+    var g=netStartGate();
+    go.style.display=show?'inline-block':'none';
+    go.disabled=!g.ok;
+    go.title=g.ok?'':'Start the war once everyone has picked a country and readied up.';
+  } else {
+    go.style.display='none';
+  }
 }
 function paintSeats(){
   var el=document.getElementById('nlSeats'); if(!el) return;
@@ -2303,7 +2365,9 @@ function paintSeats(){
     who=p? (me?'YOU':(NET.roster[p]||'?')) : null;
     h+='<div class="seat'+(p?' taken':'')+(me?' me':'')+'" data-n="'+n.id+'">'+
         '<span class="f">'+n.flag+'</span><span>'+n.name+
-        (p? ' <b style="color:#e2b13c">'+who+'</b>' : ' <span style="color:#5b6b85">AI</span>')+
+        (p? ' <b style="color:#e2b13c">'+who+'</b>'+
+             (NET.ready[p]? ' <b style="color:#57b567">&#10003; ready</b>' : '')
+          : ' <span style="color:#5b6b85">AI</span>')+
         '</span></div>';
   }
   el.innerHTML=h;
@@ -2311,12 +2375,17 @@ function paintSeats(){
     b.onclick=function(){
       var nid=b.getAttribute('data-n');
       if(NET.started) return;
-      if(NET.seats[nid] && NET.seats[nid]!==NET.pid) return;
+      if(NET.seats[nid] && NET.seats[nid]!==NET.pid) return;   /* one country each */
+      if(NET.seats[nid]===NET.pid) return;                     /* already yours */
+      /* picking another country cancels your ready - confirm the new one */
       if(NET.mode===1){
         for(var k in NET.seats) if(NET.seats[k]===NET.pid) delete NET.seats[k];
         NET.seats[nid]=NET.pid; NET.myNation=nid; NET.hostNation=nid;
-        paintSeats(); nlHint(); netPushLobby();
+        delete NET.ready[NET.pid];
+        paintSeats(); nlHint(); paintReady(); netPushLobby();
       } else {
+        delete NET.ready[NET.pid]; NET.myNation=nid;
+        paintSeats(); nlHint(); paintReady();
         netPubRoom('claim', JSON.stringify({p:NET.pid, nation:nid}));
       }
     };
@@ -2357,7 +2426,7 @@ function netOpenMain(){
 function hostRoom(){
   netInit();
   NET.room=roomCode();
-  NET.mode=1; NET.started=false; NET.seats={}; NET.roster={}; NET.lastSeen={};
+  NET.mode=1; NET.started=false; NET.seats={}; NET.roster={}; NET.ready={}; NET.lastSeen={};
   NET.hostP=NET.pid;
   document.getElementById('nlRole').textContent='you are the host';
   enterLobbyView();
@@ -2367,7 +2436,7 @@ function joinRoom(code){
   if(!code) return;
   netInit();
   NET.room=code.toUpperCase();
-  NET.mode=2; NET.started=false; NET.seats={}; NET.roster={}; NET.pendingJoin=true;
+  NET.mode=2; NET.started=false; NET.seats={}; NET.roster={}; NET.ready={}; NET.pendingJoin=true;
   NET.hostP='';
   document.getElementById('nlRole').textContent='guest - waiting for the host';
   enterLobbyView();
@@ -2379,11 +2448,12 @@ function enterLobbyView(){
   document.getElementById('netLobby').style.display='block';
   document.getElementById('net').style.display='flex';
   document.getElementById('nlRoom').textContent=NET.room;
-  document.getElementById('nlGo').style.display=(NET.mode===1 && !NET.started)?'inline-block':'none';
   paintSeats();
+  nlHint();
+  paintReady();
 }
 function netLeave(){
-  NET.mode=0; NET.started=false; NET.room=''; NET.hostP=''; NET.seats={}; NET.roster={};
+  NET.mode=0; NET.started=false; NET.room=''; NET.hostP=''; NET.seats={}; NET.roster={}; NET.ready={};
   document.getElementById('net').style.display='none';
 }
 function netGuestStart(){
@@ -2399,7 +2469,9 @@ function netGuestStart(){
 }
 
 function netHostStart(){
-  if(!NET.hostNation){ netSt('Pick your nation in the seat list first.'); return; }
+  if(!NET.hostNation){ netSt('Pick your country in the seat list first.'); return; }
+  var gate=netStartGate();
+  if(!gate.ok){ netSt(gate.text); return; }
   NET.started=true;
   netPushLobby();
   netPubRoom('go', JSON.stringify({s:1}));
@@ -2502,15 +2574,25 @@ setInterval(function(){
     netPub(LOBBY, JSON.stringify({r:NET.room, h:NET.name, f:n>=NATIONS.length, n:n}));
     if(NET.started && NET.dirty){ NET.dirty=false; netPubRoom('state', JSON.stringify(netStateOut())); }
     var now=Date.now();
+    var lobbyDirty=false;
     for(k in NET.seats){
       var p=NET.seats[k];
       if(p===NET.pid) continue;
       if(NET.lastSeen[p] && now-NET.lastSeen[p]>12000){
-        delete NET.seats[k]; delete NET.lastSeen[p];
+        delete NET.seats[k]; delete NET.lastSeen[p]; delete NET.ready[p];
         log(NBY[k].name+' was released back to the AI (player offline).');
-        netPushLobby();
+        lobbyDirty=true;
       }
     }
+    /* a guest who dropped out must not hold the Ready gate shut for everyone */
+    for(k in NET.roster){
+      if(k===NET.pid) continue;
+      if(NET.lastSeen[k] && now-NET.lastSeen[k]>12000){
+        delete NET.roster[k]; delete NET.ready[k]; delete NET.lastSeen[k];
+        lobbyDirty=true;
+      }
+    }
+    if(lobbyDirty){ netPushLobby(); paintSeats(); nlHint(); paintReady(); }
   }
 },1800);
 setInterval(function(){
@@ -2533,6 +2615,18 @@ document.getElementById('nlCancel').onclick=function(){
   netLeave();
 };
 document.getElementById('nlGo').onclick=function(){ if(NET.mode===1) netHostStart(); };
+document.getElementById('nlReady').onclick=function(){
+  if(NET.started) return;
+  if(!netHasSeat(NET.pid)){
+    document.getElementById('nlSt').textContent='Pick a country in the list first, then press Ready.';
+    return;
+  }
+  var on=!NET.ready[NET.pid];
+  if(on) NET.ready[NET.pid]=1; else delete NET.ready[NET.pid];
+  paintSeats(); nlHint(); paintReady();
+  if(NET.mode===1) netPushLobby();
+  else netPubRoom('ready', JSON.stringify({p:NET.pid, on:on?1:0}));
+};
 document.getElementById('netCode').onkeydown=function(e){ if(e.key==='Enter'){ try{ document.getElementById('bJoin').click(); }catch(err){} } };
 document.getElementById('netName').onkeydown=function(e){ if(e.key==='Enter'){ try{ document.getElementById('bHost').click(); }catch(err){} } };
 
