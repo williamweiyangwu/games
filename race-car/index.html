@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Apex Racing — 3D Race Car</title>
+<title>Apex Racing - 3D Race Car</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;font-family:"Segoe UI",system-ui,sans-serif}
   html,body{width:100%;height:100%;overflow:hidden;background:#0b1020;color:#fff}
@@ -122,11 +122,11 @@
 </div>
 <div id="standings" class="hidden"></div>
 <div id="banner" class="hidden"></div>
-<div id="verTag">v2.2</div>
+  <div id="verTag">v2.3</div>
 
 <div id="menu" class="overlay">
   <h1 id="menuTitle">SUN CIRCUIT</h1>
-  <h2 id="menuSub">2 laps &nbsp;·&nbsp; 4 AI opponents</h2>
+    <h2 id="menuSub">2 laps - 5 AI opponents</h2>
   <div class="pickRow">
     <div class="pickCol"><div class="pickLabel">TRACK</div><div id="trackPick" class="cards"></div></div>
   </div>
@@ -138,9 +138,9 @@
     <button id="onlineBtn" class="ghost">PLAY ONLINE</button>
   </div>
   <div class="keys">
-    <b>W</b>/<b>↑</b> throttle &nbsp;·&nbsp; <b>S</b>/<b>↓</b> brake / reverse &nbsp;·&nbsp;
+    <b>W</b>/<b>↑</b> throttle &nbsp;·&nbsp; <b>S</b>/<b>↓</b> brake / reverse &nbsp;·&nbsp; 
     <b>A</b><b>D</b>/<b>←</b><b>→</b> steer<br>
-    <b>SPACE</b> nitro boost &nbsp;·&nbsp; <b>SHIFT</b> handbrake (drift) &nbsp;·&nbsp;
+    <b>SPACE</b> nitro boost &nbsp;·&nbsp; <b>SHIFT</b> handbrake (drift) &nbsp;·&nbsp; 
     <b>C</b> camera &nbsp;·&nbsp; <b>R</b> restart &nbsp;·&nbsp; <b>M</b> sound &nbsp;·&nbsp; <b>ESC</b> pause<br>
     Drift to fill the NITRO meter, then burn it with <b>SPACE</b>.
   </div>
@@ -184,8 +184,8 @@
         </div>
         <label class="netField">VISIBILITY
           <select id="netVisibility">
-            <option value="public">Public — listed in the lobby</option>
-            <option value="private">Private — join by code only</option>
+            <option value="public">Public &middot; listed in the lobby</option>
+            <option value="private">Private &middot; join by code only</option>
           </select>
         </label>
         <button id="netCreateBtn" class="netPrimary">CREATE ROOM</button>
@@ -303,9 +303,9 @@
         standA: 0x9aa6b4, standB: 0x8a96a4, roof: 0x596675
       },
       ctrl: [
-        [294, 0], [285, 137], [178, 224], [54, 237], [-49, 215],
-        [-136, 171], [-207, 100], [-259, 0], [-270, -130], [-195, -245],
-        [-61, -265], [46, -201], [114, -143], [205, -99]
+        [0, 300], [150, 285], [250, 210], [292, 110], [252, 28], [288, -80],
+        [230, -170], [110, -250], [-10, -260], [-120, -215], [-200, -140],
+        [-180, -58], [-250, 20], [-285, 130], [-200, 220], [-70, 250]
       ]
     },
     {
@@ -833,15 +833,16 @@
     return g;
   }
 
-  /* The five cars you can pick from. `accel`/`top`/`grip`/`handling` are
+  /* The six cars you can pick from. `accel`/`top`/`grip`/`handling` are
    *  multipliers on the base physics; `skill`/`line` only matter when the car
    *  is driven by the AI.                                                     */
   var ROSTER = [
     { name: 'SCARLET', color: 0xe53935, accent: 0xffffff, accel: 1.00, top: 1.00, grip: 1.00, handling: 1.00, skill: 1.000, line: 0.6, style: 0, blurb: 'balanced' },
-    { name: 'AZURE', color: 0x1e88e5, accent: 0xffd54f, accel: 0.94, top: 1.10, grip: 1.02, handling: 0.95, skill: 1.030, line: -3.0, style: 1, blurb: 'top speed' },
-    { name: 'VERDE', color: 0x43a047, accent: 0xffffff, accel: 1.04, top: 0.94, grip: 1.20, handling: 1.08, skill: 0.986, line: 3.4, style: 2, blurb: 'high grip' },
-    { name: 'AMBER', color: 0xf9a825, accent: 0x212121, accel: 1.20, top: 0.90, grip: 1.00, handling: 0.96, skill: 1.000, line: -6.2, style: 3, blurb: 'quick launch' },
-    { name: 'VIOLET', color: 0x8e24aa, accent: 0xffffff, accel: 1.02, top: 1.02, grip: 1.10, handling: 1.12, skill: 0.972, line: 6.6, style: 4, blurb: 'sharp handling' }
+    { name: 'AZURE',   color: 0x1e88e5, accent: 0xffd54f, accel: 0.94, top: 1.10, grip: 1.02, handling: 0.95, skill: 1.030, line: -3.0, style: 1, blurb: 'top speed' },
+    { name: 'VERDE',   color: 0x43a047, accent: 0xffffff, accel: 1.04, top: 0.94, grip: 1.20, handling: 1.08, skill: 0.986, line: 3.4, style: 2, blurb: 'high grip' },
+    { name: 'AMBER',   color: 0xf9a825, accent: 0x212121, accel: 1.20, top: 0.90, grip: 1.00, handling: 0.96, skill: 1.000, line: -6.2, style: 3, blurb: 'quick launch' },
+    { name: 'VIOLET',  color: 0x8e24aa, accent: 0xffffff, accel: 1.02, top: 1.02, grip: 1.10, handling: 1.12, skill: 0.972, line: 6.6, style: 4, blurb: 'sharp handling' },
+    { name: 'CYAN',    color: 0x26c6da, accent: 0xffffff, accel: 1.06, top: 1.04, grip: 1.06, handling: 1.04, skill: 1.010, line: -1.0, style: 5, blurb: 'well rounded' }
   ];
 
   var cars = [];
@@ -950,7 +951,7 @@
   function updateMenuText() {
     document.getElementById('menuTitle').textContent = TRACKS[selectedTrack].name;
     document.getElementById('menuSub').textContent =
-      ROSTER[selectedCar].name + ' &nbsp;·&nbsp; ' + TRACKS[selectedTrack].blurb + ' &nbsp;·&nbsp; 2 laps';
+      ROSTER[selectedCar].name + ' \u00b7 ' + TRACKS[selectedTrack].blurb + ' \u00b7 ' + (ROSTER.length - 1) + ' AI \u00b7 2 laps';
   }
 
   document.getElementById('startBtn').addEventListener('click', function () {
@@ -1611,7 +1612,7 @@ var pr = projectTrack(c.x, c.z, c.i);
           : reject(new Error('Online library failed to load.'));
       };
       s.onerror = function () {
-        reject(new Error('Could not load the online library — check your connection.'));
+        reject(new Error('Could not load the online library - check your connection.'));
       };
       document.head.appendChild(s);
     });
@@ -1623,7 +1624,7 @@ var pr = projectTrack(c.x, c.z, c.i);
     if (t === 'peer-unavailable') return 'That room code was not found.';
     if (t === 'unavailable-id') return 'That room code is already taken.';
     if (t === 'network' || t === 'server-error' || t === 'socket-error') {
-      return 'Could not reach the matchmaking service — check your connection.';
+      return 'Could not reach the matchmaking service - check your connection.';
     }
     if (t === 'browser-incompatible') return 'This browser does not support WebRTC.';
     return e.message || 'Connection error.';
@@ -1805,7 +1806,7 @@ var pr = projectTrack(c.x, c.z, c.i);
       setTimeout(function () {
         if (!settled && net.connecting) {
           net.connecting = false;
-          net.error = net.error || 'The room did not respond — check the code.';
+          net.error = net.error || 'The room did not respond - check the code.';
           netRender();
         }
       }, 14000);
@@ -2000,7 +2001,7 @@ var pr = projectTrack(c.x, c.z, c.i);
         }
       });
       setTimeout(function () {
-        if (net.dirBusy && !net.hubConn) finishErr('Lobby directory is unavailable — join by code.');
+        if (net.dirBusy && !net.hubConn) finishErr('Lobby directory is unavailable - join by code.');
       }, 11000);
     }).catch(function (e) { net.error = e.message; net.dirBusy = false; netRender(); });
   }
@@ -2146,7 +2147,7 @@ var pr = projectTrack(c.x, c.z, c.i);
     });
   }
   function netRender() {
-    netStatusEl.textContent = net.connecting ? 'CONNECTING…' : (net.status || '');
+    netStatusEl.textContent = net.connecting ? 'CONNECTING...' : (net.status || '');
     if (net.error) { netErrorEl.textContent = net.error; netErrorEl.classList.remove('hidden'); }
     else netErrorEl.classList.add('hidden');
 
@@ -2159,18 +2160,18 @@ var pr = projectTrack(c.x, c.z, c.i);
       document.getElementById('netCreatePane').classList.toggle('hidden', net.tab !== 'create');
       netRenderTrackPick();
       // public room list
-      if (net.dirBusy) netRoomList.innerHTML = '<div class="netEmpty">Searching…</div>';
+      if (net.dirBusy) netRoomList.innerHTML = '<div class="netEmpty">Searching...</div>';
       else if (net.dirError) netRoomList.innerHTML = '<div class="netEmpty">' + netEsc(net.dirError) + '</div>';
       else {
         var codes = Object.keys(net.dirRooms);
-        if (!codes.length) netRoomList.innerHTML = '<div class="netEmpty">No public rooms — create one, or join by code.</div>';
+        if (!codes.length) netRoomList.innerHTML = '<div class="netEmpty">No public rooms &middot; create one, or join by code.</div>';
         else {
           var h = '';
           codes.forEach(function (code) {
             var r = net.dirRooms[code];
             h += '<div class="netRoom" data-code="' + netEsc(code) + '">' +
               '<span><b>' + netEsc(code) + '</b><br><span>' + netEsc(r.host || 'HOST') +
-              ' · ' + netEsc((TRACKS[r.track] || TRACKS[0]).name) + '</span></span>' +
+              ' &middot; ' + netEsc((TRACKS[r.track] || TRACKS[0]).name) + '</span></span>' +
               '<span>' + (r.players || 1) + '/' + (r.max || NET_MAX) + ' &nbsp; <button class="netMini netJoinOne" data-code="' +
               netEsc(code) + '">JOIN</button></span></div>';
           });
@@ -2217,7 +2218,7 @@ var pr = projectTrack(c.x, c.z, c.i);
       netStartBtn.style.cursor = allReady ? 'pointer' : 'not-allowed';
       netStartBtn.textContent = allReady
         ? 'START RACE (' + players.length + ')'
-        : 'WAITING FOR DRIVERS…';
+        : 'WAITING FOR DRIVERS...';
       netReadyBtn.classList.add('hidden');
     } else {
       var mine = netSelf();
@@ -2405,7 +2406,7 @@ var pr = projectTrack(c.x, c.z, c.i);
     });
     var place = order.indexOf(player) + 1;
     document.getElementById('resultTitle').textContent =
-      place === 1 ? 'WINNER!' : place <= 3 ? 'PODIUM — P' + place : 'FINISHED — P' + place;
+      place === 1 ? 'WINNER!' : place <= 3 ? 'PODIUM - P' + place : 'FINISHED - P' + place;
     var rows = '';
     order.forEach(function (c, i) {
       rows += '<tr class="' + (c.isPlayer ? 'me' : '') + '"><td>' + (i + 1) + '</td><td>' + c.name +
