@@ -99,6 +99,14 @@
   .mcard.d h3 { color:#6fd0ff; }
   .mcard p { font-size:11.5px; line-height:1.7; color:#9fc0e8; }
   .mrow { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; }
+  .diffrow { display:flex; gap:8px; align-items:center; justify-content:center; margin-bottom:22px; }
+  .dlab { font-size:11px; letter-spacing:3px; color:#7d90ad; margin-right:4px; }
+  .dbtn { font-family:inherit; font-size:12px; letter-spacing:2px; padding:7px 16px; cursor:pointer;
+    background:#0b1424; color:#9fc0e8; border:2px solid #2b4a7a; border-radius:4px; transition:.12s; }
+  .dbtn:hover { border-color:#8fd0ff; color:#fff; }
+  .dbtn.on { background:#1b3b63; color:#fff; border-color:#8fd0ff; box-shadow:0 0 14px #3b82f655; }
+  .dbtn.on[data-diff="easy"] { border-color:#b6ff8a; box-shadow:0 0 14px #22c55e55; }
+  .dbtn.on[data-diff="hard"] { border-color:#ff8f7a; box-shadow:0 0 14px #ef444455; }
 </style>
 </head>
 <body>
@@ -138,6 +146,12 @@
     <div style="font-size:34px;letter-spacing:8px;color:#8fd0ff;font-weight:bold">TANK WAR</div>
     <div style="font-size:11px;color:#7d90ad;letter-spacing:2px">2D-RENDER 3D ARENA</div>
   </div>
+  <div class="diffrow" id="diffrow">
+    <span class="dlab">AI LEVEL</span>
+    <button class="dbtn" data-diff="easy">EASY</button>
+    <button class="dbtn on" data-diff="normal">NORMAL</button>
+    <button class="dbtn" data-diff="hard">HARD</button>
+  </div>
   <div class="mrow">
     <div class="mcard d" id="mDef"><h3>SIEGE</h3>
       <p>3:00 TIMER<br>You are randomly spawned on the <b>DEFENDER (blue)</b> or <b>ATTACKER (red)</b>.<br><br>Defender has the HQ (<b>2000 HP</b>). Attacker has no HQ at all.<br><br>Destroy the blue HQ before time runs out to win as attacker — otherwise the defender holds.</p></div>
@@ -172,6 +186,15 @@ import * as THREE from 'three';
 /* ---- tuning constants (declared up front: makeHQ() runs below) ---- */
 const SIEGE_TIME = 180;      // 3:00 for siege / tdm
 const HQ_HP      = 2000;     // HQ hp in siege and skirmish
+
+// AI difficulty — only affects bots, never the player
+const DIFFS = {
+  easy:   { label:'EASY',   spread:0.135, cdMul:1.55, dmgMul:0.62, retargetMul:1.6, aimTol:0.50 },
+  normal: { label:'NORMAL', spread:0.055, cdMul:1.00, dmgMul:1.00, retargetMul:1.0, aimTol:0.22 },
+  hard:   { label:'HARD',   spread:0.020, cdMul:0.62, dmgMul:1.38, retargetMul:0.55, aimTol:0.10 },
+};
+let aiLevel = 'normal';
+const AI = () => DIFFS[aiLevel] || DIFFS.normal;
 
 /* ============================================================
    SETUP
@@ -336,7 +359,7 @@ function makeHQ(team){
   const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.42,0.5,7,8),
     new THREE.MeshLambertMaterial({color:0x22262c}));
   barrel.rotation.x = Math.PI/2; barrel.position.set(0,0.9,3.2); gun.add(barrel);
-  gun.position.set(0,4.2+PAD_H, dir*7.5); scene.add(gun);
+  gun.position.set(0,4.2+PAD_H, z - dir*7.5); scene.add(gun);
 
   const hq = { team, group:g, gun, x:0, z, w:9, d:6, armor:0,
            hp:HQ_HP, maxHp:HQ_HP, cd:1.6, angle: dir===-1?0:Math.PI, alive:true };
@@ -634,6 +657,7 @@ function clampArena(e,r){
 ============================================================ */
 function damage(t, dmg, from){
   if(!t.alive) return;
+  if(from && !from.isPlayer) dmg *= AI().dmgMul;
   t.hp -= dmg; t.hitFlash=0.12;
   if(from && from.isPlayer){ money += Math.round(dmg*0.35); }
   if(t.hp<=0){
@@ -659,6 +683,7 @@ function hqRangeK(b, hq){
 }
 function damageHQ(hq, dmg, from){
   if(!hq.alive) return;
+  if(from && !from.isPlayer) dmg *= AI().dmgMul;
   hq.hp -= dmg * (1-(hq.armor||0)); hq.hitFlash=0.12;
   if(from && from.isPlayer){ money += Math.round(dmg*0.4); }
   if(hq.hp<=0){
@@ -679,13 +704,13 @@ function fire(t){
   const mx=t.x + Math.sin(ang)*c.radius*3.2;
   const mz=t.z + Math.cos(ang)*c.radius*3.2;
   const my=1.95;
-  const spread = t.isPlayer ? 0.012 : 0.055;
+  const spread = t.isPlayer ? 0.012 : AI().spread;
   const a = ang + (Math.random()-0.5)*spread*2;
   bullets.push({ x:mx, y:my, z:mz,
     vx:Math.sin(a)*c.bs, vz:Math.cos(a)*c.bs, vy:0,
     dmg:c.dmg, splash:c.splash, team:t.team, owner:t,
     life:c.range/c.bs+0.6, col: t.team===0?0xffe27a:0xff9a7a });
-  t.cd = c.rate;
+  t.cd = c.rate * (t.isPlayer ? 1 : AI().cdMul);
   t.mesh.flame.material.opacity = 0.95;
   tracer(mx,my,mz, mx+Math.sin(a)*3, my, mz+Math.cos(a)*3, 0xfff3b0);
   if(t.isPlayer) SFX.shoot();
@@ -792,7 +817,7 @@ function nearestEnemy(t){
 function aiUpdate(t, dt){
   t.retarget-=dt;
   if(t.retarget<=0 || !t.target || !t.target.alive){
-    const n=nearestEnemy(t); t.target=n.e; t.retarget=0.7+Math.random()*0.8;
+    const n=nearestEnemy(t); t.target=n.e; t.retarget=(0.7+Math.random()*0.8)*AI().retargetMul;
   }
   const g=t.target;
   if(!g){ return; }
@@ -824,7 +849,7 @@ function aiUpdate(t, dt){
 
   t.moveX=mx; t.moveZ=mz;
   const clear = !blocked(t.x,t.z,g.x,g.z,0.4);
-  if(clear && dist<t.c.range && Math.abs(wrap(t.turAng - t.aim))<0.22) t.wantFire=true;
+  if(clear && dist<t.c.range && Math.abs(wrap(t.turAng - t.aim))<AI().aimTol) t.wantFire=true;
 }
 
 function wrap(a){ while(a>Math.PI) a-=Math.PI*2; while(a<-Math.PI) a+=Math.PI*2; return a; }
@@ -1047,7 +1072,7 @@ function update(dt){
       }
     }
     h.gun.rotation.y = h.angle;
-    h.gun.position.z = (h.team===0?-1:1)*(ARENA-9) + (h.team===0?1:-1)*7.5;
+    h.gun.position.z = h.z + (h.team===0?1:-1)*7.5;
   }
 
   stepBullets(dt);
@@ -1133,10 +1158,19 @@ function startGame(mode){
   modeEl.classList.add('off');
   setup(mode);
   money = 0;
+  el('hint').innerHTML = 'AI — <b style="color:#8fd0ff">'+AI().label+'</b><br>'
+    + 'WASD / ARROWS — move<br>MOUSE — aim &nbsp;|&nbsp; CLICK / SPACE — fire<br>B — shop &nbsp;|&nbsp; 1-5 — quick buy';
 }
 el('mDef').onclick = ()=>startGame('siege');
 el('mTdm').onclick = ()=>startGame('tdm');
 el('mSkl').onclick = ()=>startGame('skirmish');
+
+el('diffrow').querySelectorAll('.dbtn').forEach(b=>{
+  b.onclick = ()=>{
+    aiLevel = b.dataset.diff;
+    el('diffrow').querySelectorAll('.dbtn').forEach(x=>x.classList.toggle('on', x===b));
+  };
+});
 
 const mm=el('minimap'), mg=mm.getContext('2d');
 function drawMinimap(){
