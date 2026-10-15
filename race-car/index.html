@@ -34,6 +34,52 @@
   td,th{padding:6px 14px;text-align:left}
   tr.me{background:rgba(255,255,255,.16)}
   .keys{font-size:13px;opacity:.75;line-height:1.9;max-width:640px}
+  .btnRow{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+  .menuBtns{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;align-items:center}
+  button.ghost{background:linear-gradient(#3a5f9e,#243b63);color:#e6efff;box-shadow:0 8px 24px rgba(30,60,110,.4)}
+  .onlineCard{width:min(560px,94vw);max-height:92vh;overflow:auto;background:#0e1526;border:1px solid rgba(255,255,255,.14);
+              border-radius:16px;padding:16px 18px;box-shadow:0 24px 70px rgba(0,0,0,.6);text-align:left;pointer-events:auto}
+  .onlineHead{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .onlineHead b{font-size:18px;letter-spacing:.12em}
+  .netStatus{margin-left:auto;font-size:11px;letter-spacing:.12em;opacity:.7}
+  .netX{pointer-events:auto;background:none;border:0;color:#fff;font-size:26px;line-height:1;cursor:pointer;padding:0 6px;
+        border-radius:6px;display:flex;align-items:center;justify-content:center;width:36px;height:36px}
+  .netX:hover{background:rgba(255,255,255,.1)}
+  .netError{background:rgba(255,80,80,.14);border:1px solid rgba(255,80,80,.4);color:#ffb3b3;border-radius:8px;
+            padding:8px 10px;font-size:12px;margin-bottom:10px}
+  .netField{display:flex;flex-direction:column;gap:6px;font-size:11px;letter-spacing:.16em;opacity:.92;margin-bottom:10px}
+  .netField input,.netField select{font:inherit;font-size:14px;letter-spacing:normal;padding:9px 10px;border-radius:8px;
+            border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#fff}
+  .netTabs{display:flex;gap:8px;margin:6px 0 12px}
+  .netTab{pointer-events:auto;flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:#cdd8ee;
+          border-radius:8px;padding:9px;font:inherit;font-size:12px;letter-spacing:.1em;cursor:pointer;
+          box-shadow:none;font-weight:600}
+  .netTab.sel{background:linear-gradient(#ffd75e,#ff9d2e);color:#10131c;border-color:transparent}
+  .netPrimary{pointer-events:auto;width:100%;padding:11px;border:0;border-radius:9px;background:linear-gradient(#ffd75e,#ff9d2e);
+          color:#10131c;font:inherit;font-weight:700;letter-spacing:.1em;font-size:15px;cursor:pointer;margin-top:2px;
+          box-shadow:0 8px 24px rgba(255,157,46,.3)}
+  .netMini{pointer-events:auto;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);color:#dfe8ff;
+          border-radius:7px;padding:6px 11px;font:inherit;font-size:11px;letter-spacing:.08em;cursor:pointer;box-shadow:none}
+  .netLeave{pointer-events:auto;width:100%;margin-top:10px;background:none;border:1px solid rgba(255,120,120,.4);
+          color:#ffb3b3;border-radius:9px;padding:9px;font:inherit;font-size:12px;letter-spacing:.1em;cursor:pointer;box-shadow:none}
+  .netRowBetween{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0}
+  .netRoomList{display:flex;flex-direction:column;gap:7px;min-height:70px;max-height:210px;overflow:auto}
+  .netEmpty{font-size:12px;opacity:.55;padding:16px 4px;text-align:center}
+  .netRoom{display:flex;justify-content:space-between;align-items:center;gap:8px;background:rgba(255,255,255,.05);
+          border:1px solid rgba(255,255,255,.12);border-radius:9px;padding:8px 10px}
+  .netRoom b{font-size:14px;letter-spacing:.14em}
+  .netRoom span{font-size:10.5px;opacity:.7}
+  .netSeats{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:6px 0 12px}
+  .netSeat{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:9px;padding:8px 10px;
+          font-size:12px;min-height:42px;display:flex;align-items:center;gap:8px}
+  .netSeat i{width:11px;height:11px;border-radius:3px;flex:0 0 auto}
+  .netSeat.ready{border-color:#57c46c}
+  .netSeat.empty{opacity:.4}
+  .netSeat .netName{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .netSeat .netTag{margin-left:auto;font-size:9px;letter-spacing:.1em;opacity:.75;flex:0 0 auto}
+  .netLabel{display:inline-block;font-size:10px;letter-spacing:.2em;opacity:.6}
+  .netPing{font-size:11px;opacity:.7}
+  .pickCol .pickLabel{font-size:9px}
   #err{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:40px;text-align:center;
        background:#0b1020;font-size:18px;z-index:20}
   /* menu pickers */
@@ -76,7 +122,7 @@
 </div>
 <div id="standings" class="hidden"></div>
 <div id="banner" class="hidden"></div>
-<div id="verTag">v2.0</div>
+<div id="verTag">v2.2</div>
 
 <div id="menu" class="overlay">
   <h1 id="menuTitle">SUN CIRCUIT</h1>
@@ -87,7 +133,10 @@
   <div class="pickRow">
     <div class="pickCol"><div class="pickLabel">CAR</div><div id="carPick" class="cards"></div></div>
   </div>
-  <button id="startBtn">START RACE</button>
+  <div class="menuBtns">
+    <button id="startBtn">START RACE</button>
+    <button id="onlineBtn" class="ghost">PLAY ONLINE</button>
+  </div>
   <div class="keys">
     <b>W</b>/<b>↑</b> throttle &nbsp;·&nbsp; <b>S</b>/<b>↓</b> brake / reverse &nbsp;·&nbsp;
     <b>A</b><b>D</b>/<b>←</b><b>→</b> steer<br>
@@ -105,7 +154,81 @@
 <div id="results" class="overlay hidden">
   <h1 id="resultTitle">FINISH</h1>
   <table id="resultTable"></table>
-  <button id="againBtn">RACE AGAIN</button>
+  <div class="btnRow">
+    <button id="againBtn">RACE AGAIN</button>
+    <button id="lobbyBtn">LOBBY</button>
+  </div>
+</div>
+
+<div id="onlineDialog" class="overlay hidden">
+  <div class="onlineCard">
+    <div class="onlineHead">
+      <b>ONLINE</b>
+      <span id="netStatus" class="netStatus"></span>
+      <button id="onlineClose" class="netX" title="Close">&#215;</button>
+    </div>
+    <div id="netError" class="netError hidden"></div>
+
+    <div id="netEntry">
+      <label class="netField">RACING NAME
+        <input id="netName" maxlength="16" placeholder="Your name" autocomplete="off">
+      </label>
+      <div class="netTabs">
+        <button id="netTabJoin" class="netTab sel">JOIN ROOM</button>
+        <button id="netTabCreate" class="netTab">CREATE ROOM</button>
+      </div>
+
+      <div id="netCreatePane" class="hidden">
+        <div class="pickRow">
+          <div class="pickCol"><div class="pickLabel">TRACK</div><div id="netTrackPick" class="cards"></div></div>
+        </div>
+        <label class="netField">VISIBILITY
+          <select id="netVisibility">
+            <option value="public">Public — listed in the lobby</option>
+            <option value="private">Private — join by code only</option>
+          </select>
+        </label>
+        <button id="netCreateBtn" class="netPrimary">CREATE ROOM</button>
+      </div>
+
+      <div id="netJoinPane">
+        <label class="netField">ROOM CODE
+          <input id="netCodeInput" maxlength="4" placeholder="e.g. K4QP" autocomplete="off"
+                 style="text-transform:uppercase;letter-spacing:.4em;font-size:20px;text-align:center">
+        </label>
+        <button id="netJoinBtn" class="netPrimary">JOIN ROOM</button>
+        <div class="netRowBetween" style="margin-top:14px">
+          <span class="netLabel">PUBLIC ROOMS</span>
+          <button id="netBrowseBtn" class="netMini">REFRESH</button>
+        </div>
+        <div id="netRoomList" class="netRoomList"></div>
+      </div>
+    </div>
+
+    <div id="netLobby" class="hidden">
+      <div class="netRowBetween">
+        <span><span class="netLabel">ROOM CODE</span><b id="netRoomCodeText">----</b></span>
+        <button id="netCopyBtn" class="netMini">COPY CODE</button>
+      </div>
+      <div class="netRowBetween">
+        <span class="netLabel">DRIVERS</span><span id="netPing" class="netPing"></span>
+      </div>
+      <div id="netSeats" class="netSeats"></div>
+      <div id="netHostControls" class="hidden">
+        <div class="pickRow">
+          <div class="pickCol"><div class="pickLabel">TRACK</div><div id="netHostTrackPick" class="cards"></div></div>
+        </div>
+      </div>
+      <div id="netGuestControls" class="hidden">
+        <label class="netField">YOUR CAR
+          <select id="netCarSelect"></select>
+        </label>
+      </div>
+      <button id="netReadyBtn" class="netPrimary">READY</button>
+      <button id="netStartBtn" class="netPrimary hidden">START RACE</button>
+      <button id="netLeaveBtn" class="netLeave">LEAVE ROOM</button>
+    </div>
+  </div>
 </div>
 
 <div id="err"></div>
@@ -729,10 +852,11 @@
       accel: spec.accel, top: spec.top, grip: spec.grip, handling: spec.handling,
       mesh: buildCar(spec.color, spec.accent, spec.style),
       x: 0, z: 0, yaw: 0, speed: 0, steer: 0,
-      vx: 0, vz: 0, boost: 0, boosting: false, drifting: false,
+      vx: 0, vz: 0, boost: 0, boosting: false, drifting: false, contact: 0,
       lap: 0, s: 0, prevS: 0, lat: 0, i: -1, halfPassed: false,
       lapStart: 0, best: Infinity, finished: false, finishTime: 0,
-      wheelSpin: 0, wobble: 0
+      wheelSpin: 0, wobble: 0,
+      remote: false, hidden: false, id: null
     };
     scene.add(c.mesh);
     cars.push(c);
@@ -792,7 +916,7 @@
   var standingsEl = document.getElementById('standings');
 
   var started = false, paused = false, raceOver = false;
-  var countdown = 0, clock = 0, camMode = 0, flashTimer = 0, goTimer = -1;
+  var countdown = 0, clock = 0, camMode = 0, flashTimer = 0, goTimer = -1, smokeAcc = 0;
   var selectedTrack = 0, selectedCar = 0;
 
   function renderPickers() {
@@ -843,8 +967,22 @@
   });
   document.getElementById('resumeBtn').addEventListener('click', togglePause);
   document.getElementById('againBtn').addEventListener('click', function () {
+    if (netRace) { netRematch(); return; }
     resultsScreen.classList.add('hidden');
     resetRace();
+  });
+  document.getElementById('lobbyBtn').addEventListener('click', function () {
+    if (netRace) { netReturnToRoom(); return; }
+    // return to the start menu (lobby): put the field back on the grid, drop the
+    // HUD and results, and let the menu's slow orbit camera take over again
+    resultsScreen.classList.add('hidden');
+    resetRace();
+    started = false;
+    raceOver = false;
+    banner.classList.add('hidden');
+    menu.classList.remove('hidden');
+    hud.classList.add('hidden');
+    standingsEl.classList.add('hidden');
   });
 
   function togglePause() {
@@ -876,7 +1014,7 @@
       c.x = P.x; c.z = P.z;
       c.yaw = yawAt(s);
       c.speed = 0; c.steer = 0; c.lap = 0;
-      c.vx = 0; c.vz = 0; c.boost = 0; c.boosting = false; c.drifting = false;
+      c.vx = 0; c.vz = 0; c.boost = 0; c.boosting = false; c.drifting = false; c.contact = 0;
       c.best = Infinity; c.finished = false; c.finishTime = 0;
       c.lapStart = 0;
       c.wobble = 0;
@@ -894,6 +1032,7 @@
     countdown = 3.9;
     goTimer = -1;
     clock = 0;
+    clearSmoke();
     // Every car goes back on the grid and its mesh is re-synced, so nothing from
     // the previous round is left standing on the circuit.
     placeOnGrid();
@@ -1047,7 +1186,7 @@
     var top = TOP * surf.top * c.top;
     var gripRate = surf.grip * c.grip;         // sideways grip, per second
     c.boosting = !c.finished && !!input.boost && c.boost > 0.02;
-    if (input.handbrake) gripRate *= 0.35;     // handbrake kicks the tail out
+    if (input.handbrake) gripRate *= 0.16;     // handbrake breaks lateral grip -> the tail slides (drift)
 
     if (!c.finished) {
       if (c.boosting) { accel *= 2.1; top += 20; }
@@ -1055,7 +1194,7 @@
       var dV = input.throttle * accel * dt
              - input.brake * BRAKE * dt
              - (DRAG * vF * Math.abs(vF) + ROLL * surf.roll * Math.sign(vF || 1)) * dt;
-      if (input.handbrake) dV -= vF * 0.3 * dt;   // light scrub: keep momentum, break traction
+      if (input.handbrake) dV -= vF * 0.05 * dt;   // faint scrub only: a drift slides, it does not brake
       c.vx += fw.x * dV; c.vz += fw.z * dV;
 
       vF = c.vx * fw.x + c.vz * fw.z;          // clamp forward speed
@@ -1075,6 +1214,7 @@
     var steerAuthority = 2.3 * c.handling / (1 + Math.abs(vSteer) * 0.045);
     c.steer += (input.steer - c.steer) * Math.min(1, dt * 9);
     var yawRate = c.steer * steerAuthority * Math.min(1, Math.abs(vSteer) / 7) * Math.sign(vSteer || 1);
+    if (input.handbrake) yawRate *= 1.35;      // while drifting the tail steps out faster
     c.yaw += yawRate * dt;                     // heading turns, velocity lags -> slip
 
     c.x += c.vx * dt;
@@ -1148,6 +1288,23 @@ var pr = projectTrack(c.x, c.z, c.i);
       c.steer *= (1 - 0.5 * dt);
     }
 
+    // Anti-spin: for a short window after a car-to-car bump, ease the nose back
+    // onto the direction the car is actually travelling. A crash can therefore
+    // never leave the car rotating on the spot -- but this only runs while the
+    // car moves FORWARDS and not on the handbrake, so a deliberate drift (which
+    // points the nose away from travel) is left completely untouched.
+    if (c.contact > 0) {
+      c.contact -= dt;
+      if (!input.handbrake) {
+        var hx = Math.sin(c.yaw), hz = Math.cos(c.yaw);
+        var vfwd = c.vx * hx + c.vz * hz;
+        if (vfwd > 3) {
+          var dyaw = wrapPi(Math.atan2(c.vx, c.vz) - c.yaw);
+          c.yaw += dyaw * Math.min(1, 8 * dt);
+        }
+      }
+    }
+
     // derive HUD/AI speed, then drift -> nitro bookkeeping
     var fwd = { x: Math.sin(c.yaw), z: Math.cos(c.yaw) };
     var rgt = { x: -fwd.z, z: fwd.x };
@@ -1199,8 +1356,10 @@ var pr = projectTrack(c.x, c.z, c.i);
     var MIN = CAR_R * 2;
     for (var i = 0; i < cars.length; i++) {
       var a = cars[i];
+      if (a.hidden) continue;
       for (var j = i + 1; j < cars.length; j++) {
         var b = cars[j];
+        if (b.hidden) continue;
         var dx = b.x - a.x, dz = b.z - a.z;
         var d = Math.hypot(dx, dz);
         if (d >= MIN) continue;
@@ -1212,32 +1371,28 @@ var pr = projectTrack(c.x, c.z, c.i);
         if (d > 1e-6) { nx = dx / d; nz = dz / d; }
         else { nx = -fa.z; nz = fa.x; d = 0; }
 
-        // separate the pair
-        var overlap = (MIN - d) * 0.5;
+        // separate the pair fully (plus a hair) so they never sit overlapped and
+        // grind against each other -- that grinding is what made cars feel stuck
+        var overlap = (MIN - d) * 0.5 + 0.01;
         a.x -= nx * overlap; a.z -= nz * overlap;
         b.x += nx * overlap; b.z += nz * overlap;
         a.i = b.i = -1;                      // positions moved: re-acquire index
+        a.contact = 0.3; b.contact = 0.3;    // opens the anti-spin window
 
-        // relative velocity along the contact normal
+        // impulse along the contact normal, only while the pair is still closing
         var rvx = b.vx - a.vx, rvz = b.vz - a.vz;
         var vn = rvx * nx + rvz * nz;
-        if (vn < 0) {                        // only while they are still closing
-          var imp = -(1 + 0.35) * vn * 0.5;  // equal masses, mild restitution
+        if (vn < 0) {
+          var imp = -(1 + 0.3) * vn * 0.5;   // equal masses, mild restitution
           a.vx -= imp * nx; a.vz -= imp * nz;
           b.vx += imp * nx; b.vz += imp * nz;
-          a.vx *= 0.97; a.vz *= 0.97; b.vx *= 0.97; b.vz *= 0.97;
+          // squeezing the cars together costs speed (this stops a shallow
+          // overlap sliding through), but a SEPARATING pair keeps its velocity
+          // so a car is never pinned at zero after a bump
+          var crush = 0.4 * (1 - d / MIN);
+          a.vx *= (1 - crush); a.vz *= (1 - crush);
+          b.vx *= (1 - crush); b.vz *= (1 - crush);
         }
-
-        // crushing the cars costs energy even when the blow is mostly sideways,
-        // which is what stops a shallow overlap sliding through each other
-        var crush = 0.55 * (1 - d / MIN);
-        a.vx *= (1 - crush); a.vz *= (1 - crush);
-        b.vx *= (1 - crush); b.vz *= (1 - crush);
-
-        // a glancing blow spins the struck car
-        var vt = rvx * (-nz) + rvz * nx;
-        var kick = Math.max(-0.09, Math.min(0.09, vt * 0.02));
-        a.yaw -= kick; b.yaw += kick;
       }
     }
   }
@@ -1265,9 +1420,12 @@ var pr = projectTrack(c.x, c.z, c.i);
   }
 
   /* ---------------------------------- standings --------------------- */
+  function activeCars() {
+    return cars.filter(function (c) { return !c.hidden; });
+  }
   function progress(c) { return c.lap * LEN + c.s; }
   function updateStandings() {
-    var order = cars.slice().sort(function (a, b) {
+    var order = activeCars().sort(function (a, b) {
       if (a.finished && b.finished) return a.finishTime - b.finishTime;
       if (a.finished) return -1;
       if (b.finished) return 1;
@@ -1329,6 +1487,839 @@ var pr = projectTrack(c.x, c.z, c.i);
     camera.lookAt(camLook);
   }
 
+  /* ---------------------------------- boost smoke ------------------- *
+   *  A small pooled burst of white puffs from the tailpipes while a car is  *
+   *  on the nitro. Each puff swells and fades, so a boost visibly trails    *
+   *  white smoke out of the back of the car.                               */
+  var smokeGeo = new THREE.SphereGeometry(0.45, 6, 6);
+  var smokes = [];
+  var SMOKE_CAP = 220;
+  function spawnSmoke(c) {
+    if (smokes.length >= SMOKE_CAP) return;
+    var fw = yawToForward(c.yaw);
+    var rt = rightOf(fw);
+    var side = (Math.random() - 0.5) * 1.1;
+    var m = new THREE.Mesh(smokeGeo, new THREE.MeshBasicMaterial({
+      color: 0xffffff, transparent: true, opacity: 0.72, depthWrite: false
+    }));
+    m.position.set(
+      c.x - fw.x * 2.35 + rt.x * side,
+      0.55 + Math.random() * 0.25,
+      c.z - fw.z * 2.35 + rt.z * side
+    );
+    m.scale.setScalar(0.55 + Math.random() * 0.35);
+    scene.add(m);
+    smokes.push({
+      mesh: m, life: 0.65, max: 0.65,
+      vx: -fw.x * 3 + (Math.random() - 0.5) * 1.4,
+      vy: 0.9 + Math.random() * 0.7,
+      vz: -fw.z * 3 + (Math.random() - 0.5) * 1.4
+    });
+  }
+  function updateSmoke(dt) {
+    for (var i = smokes.length - 1; i >= 0; i--) {
+      var s = smokes[i];
+      s.life -= dt;
+      if (s.life <= 0) {
+        scene.remove(s.mesh);
+        s.mesh.material.dispose();
+        smokes.splice(i, 1);
+        continue;
+      }
+      var t = s.life / s.max;
+      s.mesh.position.x += s.vx * dt;
+      s.mesh.position.y += s.vy * dt;
+      s.mesh.position.z += s.vz * dt;
+      s.mesh.scale.multiplyScalar(1 + 1.7 * dt);
+      s.mesh.material.opacity = 0.72 * t;
+    }
+  }
+  function clearSmoke() {
+    for (var i = 0; i < smokes.length; i++) {
+      scene.remove(smokes[i].mesh);
+      smokes[i].mesh.material.dispose();
+    }
+    smokes.length = 0;
+  }
+
+  /* ============================== ONLINE (P2P) ======================= *
+   *  Peer-to-peer rooms over WebRTC (PeerJS). No game server is needed:  *
+   *  the room host is authoritative for the lobby and relays car states; *
+   *  every peer drives its own simulated car and streams its transform.  *
+   *  "Browse public rooms" uses a best-effort directory peer (the first  *
+   *  player to claim the well-known id runs the directory).              */
+  var NET_PREFIX = 'apexRacing-v1-';
+  var NET_HUB_ID = 'apexRacing-directory-v1';
+  var NET_MAX = ROSTER.length;          // one car per roster slot -> unique colours
+  var NET_SEND_HZ = 0.066;              // ~15 state updates a second
+  var netRace = false;
+
+  var net = {
+    view: 'entry',          // entry | lobby
+    tab: 'join',            // join | create
+    name: '', role: null, selfId: null,
+    peer: null, conns: {}, room: null,
+    status: '', error: '', latencyMs: null,
+    races: {}, lastSend: 0, pingAt: 0,
+    dirRooms: {}, dirPeer: null, dirConn: null, dirBusy: false, dirError: '',
+    hubPeer: null, hubConns: {}, hubConn: null, hubRooms: {},
+    connecting: false, selfCar: -1
+  };
+
+  var netNameEl = document.getElementById('netName');
+  var netDialog = document.getElementById('onlineDialog');
+  var netStatusEl = document.getElementById('netStatus');
+  var netErrorEl = document.getElementById('netError');
+  var netEntry = document.getElementById('netEntry');
+  var netLobbyEl = document.getElementById('netLobby');
+  var netRoomList = document.getElementById('netRoomList');
+  var netSeatsEl = document.getElementById('netSeats');
+  var netPingEl = document.getElementById('netPing');
+  var netReadyBtn = document.getElementById('netReadyBtn');
+  var netStartBtn = document.getElementById('netStartBtn');
+  var netCodeInput = document.getElementById('netCodeInput');
+
+  function netRoomId(code) { return NET_PREFIX + String(code || '').toUpperCase(); }
+  function netRandCode() {
+    var A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', s = '';
+    for (var i = 0; i < 4; i++) s += A[Math.floor(Math.random() * A.length)];
+    return s;
+  }
+  function netEsc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (ch) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch];
+    });
+  }
+  function netSeedName() {
+    var n = '';
+    try { n = localStorage.getItem('apexRacing-name') || ''; } catch (e) {}
+    return n;
+  }
+  function netStoreName(n) {
+    try { localStorage.setItem('apexRacing-name', n); } catch (e) {}
+  }
+
+  var peerLib = null;
+  function netLoadPeer() {
+    if (window.Peer) return Promise.resolve(window.Peer);
+    if (peerLib) return peerLib;
+    peerLib = new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js';
+      s.onload = function () {
+        window.Peer ? resolve(window.Peer)
+          : reject(new Error('Online library failed to load.'));
+      };
+      s.onerror = function () {
+        reject(new Error('Could not load the online library — check your connection.'));
+      };
+      document.head.appendChild(s);
+    });
+    return peerLib;
+  }
+  function netErrText(e) {
+    if (!e) return 'Connection error.';
+    var t = e.type || '';
+    if (t === 'peer-unavailable') return 'That room code was not found.';
+    if (t === 'unavailable-id') return 'That room code is already taken.';
+    if (t === 'network' || t === 'server-error' || t === 'socket-error') {
+      return 'Could not reach the matchmaking service — check your connection.';
+    }
+    if (t === 'browser-incompatible') return 'This browser does not support WebRTC.';
+    return e.message || 'Connection error.';
+  }
+
+  function netPlayer(id, name, car, host) {
+    return { id: id, name: name, car: car, ready: false, host: !!host };
+  }
+  function netFreeCar(room, exceptId) {
+    var used = {};
+    room.players.forEach(function (p) { if (p.id !== exceptId) used[p.car] = 1; });
+    for (var i = 0; i < NET_MAX; i++) if (!used[i]) return i;
+    return -1;
+  }
+  function netSend(conn, msg) { try { if (conn && conn.open) conn.send(msg); } catch (e) {} }
+  function netSendAll(msg) { for (var id in net.conns) netSend(net.conns[id], msg); }
+  function netSelf() {
+    return net.room && net.room.players.filter(function (p) { return p.id === net.selfId; })[0];
+  }
+
+  /* ---- host side ---- */
+  function netHostOnData(conn, msg) {
+    if (!msg || !net.room) return;
+    var room = net.room, id = conn.peer;
+    var p = room.players.filter(function (x) { return x.id === id; })[0];
+    if (msg.type === 'hello') {
+      if (room.phase !== 'lobby' || (room.players.length >= NET_MAX && !p)) {
+        netSend(conn, { type: 'closed', reason: 'This race is already under way.' });
+        try { conn.close(); } catch (e) {}
+        return;
+      }
+      if (!p) {
+        room.players.push(netPlayer(id,
+          String(msg.name || 'RACER').slice(0, 16).toUpperCase() || 'RACER',
+          netFreeCar(room, id), false));
+      }
+      netBroadcastRoom();
+    } else if (msg.type === 'ready' && p) {
+      p.ready = !!msg.ready; netBroadcastRoom();
+    } else if (msg.type === 'rematch') {
+      if (room.players.length >= 2) netHostStart();
+    } else if (msg.type === 'select' && p) {
+      var want = msg.car;
+      var taken = room.players.some(function (x) { return x.id !== id && x.car === want; });
+      if (typeof want === 'number' && want >= 0 && want < NET_MAX && !taken) p.car = want;
+      netBroadcastRoom();
+    } else if (msg.type === 'state') {
+      net.races[id] = { st: msg.st, t: performance.now() };
+    } else if (msg.type === 'ping') {
+      netSend(conn, { type: 'pong', t: msg.t });
+    } else if (msg.type === 'pong') {
+      net.latencyMs = Math.max(0, Math.round(performance.now() - msg.t));
+    } else if (msg.type === 'leave') {
+      netHostDrop(id);
+    }
+  }
+  function netHostDrop(id) {
+    if (!net.room) return;
+    if (id === net.selfId) return;
+    net.room.players = net.room.players.filter(function (p) { return p.id !== id; });
+    delete net.conns[id]; delete net.races[id];
+    netBroadcastRoom();
+  }
+  function netBroadcastRoom() {
+    if (net.role !== 'host' || !net.room) return;
+    netSendAll({ type: 'room', room: net.room });
+    if (net.room.visibility === 'public') netHubRegister();
+    netRender();
+  }
+
+  /* ---- guest side ---- */
+  function netGuestOnData(msg) {
+    if (!msg) return;
+    if (msg.type === 'room') {
+      net.room = msg.room;
+      if (net.view !== 'lobby') { net.view = 'lobby'; }
+      netRender();
+    } else if (msg.type === 'states') {
+      for (var id in msg.states) {
+        if (id !== net.selfId) net.races[id] = { st: msg.states[id], t: performance.now() };
+      }
+    } else if (msg.type === 'start') {
+      netStartRace(msg.track, msg.players);
+    } else if (msg.type === 'ping') {
+      netSend(net.conns.__host, { type: 'pong', t: msg.t });
+    } else if (msg.type === 'pong') {
+      net.latencyMs = Math.max(0, Math.round(performance.now() - msg.t));
+      netRender();
+    } else if (msg.type === 'closed') {
+      net.error = msg.reason || 'The room closed.';
+      netLeave(true);
+    }
+  }
+
+  /* ---- create / join / leave ---- */
+  function netNormalizeName() {
+    var n = (netNameEl.value || '').trim().slice(0, 16) || 'RACER';
+    netNameEl.value = n; net.name = n; netStoreName(n);
+    return n;
+  }
+  function netCreateRoom() {
+    if (net.connecting) return;
+    net.error = ''; net.connecting = true; netRender();
+    var name = netNormalizeName();
+    netLoadPeer().then(function (Peer) {
+      var code = netRandCode();
+      var selfId = netRoomId(code);
+      var host = netPlayer(selfId, name, 0, true);
+      net.selfId = selfId; net.role = 'host';
+      net.room = {
+        code: code, hostId: selfId, phase: 'lobby',
+        visibility: document.getElementById('netVisibility').value,
+        track: selectedTrack, players: [host]
+      };
+      net.hubConn = null;
+      var peer = new Peer(selfId, { debug: 1 });
+      net.peer = peer;
+      var settled = false;
+      peer.on('open', function () {
+        settled = true; net.connecting = false;
+        net.view = 'lobby'; net.status = 'Room open';
+        netStartComms();
+        netRender();
+      });
+      peer.on('connection', function (conn) {
+        conn.on('open', function () { net.conns[conn.peer] = conn; });
+        conn.on('data', function (msg) { netHostOnData(conn, msg); });
+        conn.on('close', function () { netHostDrop(conn.peer); });
+        conn.on('error', function () { netHostDrop(conn.peer); });
+      });
+      peer.on('error', function (e) {
+        if (e.type === 'unavailable-id' && !settled) {   // code clash: try another
+          try { peer.destroy(); } catch (x) {}
+          net.connecting = false;
+          netCreateRoom();
+          return;
+        }
+        net.error = netErrText(e); net.connecting = false; netRender();
+      });
+    }).catch(function (e) {
+      net.error = e.message; net.connecting = false; netRender();
+    });
+  }
+  function netJoinRoom(code) {
+    if (net.connecting) return;
+    code = String(code || '').trim().toUpperCase();
+    if (code.length < 4) { net.error = 'Enter the 4-character room code.'; netRender(); return; }
+    net.error = ''; net.connecting = true; netRender();
+    var name = netNormalizeName();
+    netLoadPeer().then(function (Peer) {
+      net.role = 'guest';
+      var peer = new Peer({ debug: 1 });
+      net.peer = peer;
+      var settled = false;
+      peer.on('open', function (id) {
+        net.selfId = id;
+        var conn = peer.connect(netRoomId(code), { reliable: true });
+        net.conns.__host = conn;
+        conn.on('open', function () {
+          settled = true; net.connecting = false;
+          netSend(conn, { type: 'hello', name: name });
+          net.view = 'lobby'; net.status = 'Joined room';
+          netStartComms();
+          netRender();
+        });
+        conn.on('data', function (msg) { netGuestOnData(msg); });
+        conn.on('close', function () {
+          if (!settled) { net.connecting = false; net.error = 'Could not reach that room.'; netRender(); }
+          else { net.error = 'Lost connection to the room host.'; netLeave(true); }
+        });
+        conn.on('error', function () {
+          net.connecting = false; net.error = 'Could not reach that room.'; netRender();
+        });
+      });
+      peer.on('error', function (e) {
+        if (settled) return;
+        net.connecting = false; net.error = netErrText(e); netRender();
+      });
+      setTimeout(function () {
+        if (!settled && net.connecting) {
+          net.connecting = false;
+          net.error = net.error || 'The room did not respond — check the code.';
+          netRender();
+        }
+      }, 14000);
+    }).catch(function (e) {
+      net.error = e.message; net.connecting = false; netRender();
+    });
+  }
+  function netLeave(silent) {
+    if (net.role === 'guest' && net.conns.__host) netSend(net.conns.__host, { type: 'leave' });
+    netStopComms();
+    try { if (net.peer) net.peer.destroy(); } catch (e) {}
+    try { if (net.dirPeer) net.dirPeer.destroy(); } catch (e) {}
+    net.peer = null; net.dirPeer = null; net.dirConn = null;
+    net.conns = {}; net.room = null; net.role = null; net.selfId = null;
+    net.races = {}; net.hubConn = null;
+    net.racing = false;
+    net.view = 'entry'; net.status = ''; net.latencyMs = null;
+    netHubUnregister();
+    if (netRace) netExitRace();
+    if (!silent) { net.error = ''; }
+    netRender();
+  }
+  function netExitRace() {
+    netRace = false;
+    started = false; paused = false; raceOver = false;
+    net.selfCar = -1;
+    player = cars[0];
+    cars.forEach(function (c) { c.hidden = false; c.remote = false; c.isPlayer = false; c.id = null; });
+    banner.classList.add('hidden');
+    menu.classList.remove('hidden');
+    hud.classList.add('hidden');
+    standingsEl.classList.add('hidden');
+    resultsScreen.classList.add('hidden');
+  }
+
+  /* ---- periodic comms (state relay + ping) ---- */
+  var netTimer = null;
+  function netStartComms() {
+    netStopComms();
+    netTimer = setInterval(function () {
+      var now = performance.now();
+      if (now - net.pingAt > 2000) {
+        net.pingAt = now;
+        netSendAll({ type: 'ping', t: now });
+        if (net.role === 'guest') netSend(net.conns.__host, { type: 'ping', t: now });
+      }
+      if (netRace) netFlushStates(now);
+    }, 120);
+  }
+  function netStopComms() { if (netTimer) { clearInterval(netTimer); netTimer = null; } }
+
+  function netSelfState() {
+    return {
+      x: player.x, z: player.z, yaw: player.yaw, speed: player.speed,
+      lap: player.lap, s: player.s, best: isFinite(player.best) ? player.best : -1,
+      finished: player.finished, finishTime: player.finishTime,
+      boost: player.boost, boosting: player.boosting, drifting: player.drifting
+    };
+  }
+  function netFlushStates(now) {
+    if (!netRace) return;
+    if (now - net.lastSend < NET_SEND_HZ * 1000) return;
+    net.lastSend = now;
+    net.races[net.selfId] = { st: netSelfState(), t: now };
+    if (net.role === 'guest') {
+      netSend(net.conns.__host, { type: 'state', st: net.races[net.selfId].st });
+    } else {
+      var states = {};
+      for (var id in net.races) states[id] = net.races[id].st;
+      netSendAll({ type: 'states', states: states });
+    }
+  }
+
+  /* ---- directory (browse public rooms) -------------------------------
+   *  Best-effort, server-free. The first browser to claim the well-known
+   *  directory id keeps a live list of public rooms; public hosts connect
+   *  to it to register, and anyone browsing connects to it to list. If the
+   *  directory is not reachable when you browse, this browser takes over
+   *  the id and serves an (initially empty) list.                        */
+  function netHubInfo() {
+    var self = netSelf();
+    return { code: net.room.code, host: self ? self.name : net.name,
+             players: net.room.players.length, max: NET_MAX, track: net.room.track };
+  }
+  function netHubRegister() {
+    if (net.role !== 'host' || !net.room || net.room.visibility !== 'public') return;
+    netHubConnect(function (conn) {
+      if (conn) netSend(conn, { type: 'register', room: netHubInfo() });
+    });
+  }
+  function netHubUnregister() {
+    if (net.hubConn && net.hubConn.open && net.room) {
+      netSend(net.hubConn, { type: 'unregister', code: net.room.code });
+    }
+  }
+  // Connect (or reuse a connection) to the directory. cb(conn|null).
+  function netHubConnect(cb) {
+    var HubPeer = window.Peer;
+    if (!HubPeer) { if (cb) cb(null); return; }
+    if (net.hubConn && net.hubConn.open) { if (cb) cb(net.hubConn); return; }
+    if (net.hubPending) { net.hubPending.push(cb); return; }
+    net.hubPending = [cb];
+    if (net.hubClientPeer) { try { net.hubClientPeer.destroy(); } catch (e) {} }
+    var p = new HubPeer({ debug: 0 });
+    net.hubClientPeer = p;
+    var flush = function (conn) {
+      var cbs = net.hubPending || []; net.hubPending = null;
+      cbs.forEach(function (f) { if (f) f(conn); });
+    };
+    p.on('open', function () {
+      var conn = p.connect(NET_HUB_ID, { reliable: true });
+      conn.on('open', function () { net.hubConn = conn; flush(conn); });
+      conn.on('data', function (msg) {           // directory pushes updates
+        if (msg && msg.type === 'rooms') netApplyDir(msg.rooms);
+      });
+      conn.on('close', function () { if (net.hubConn === conn) net.hubConn = null; });
+      conn.on('error', function () { if (net.hubConn === conn) net.hubConn = null; });
+    });
+    p.on('error', function () { net.hubConn = null; flush(null); });
+  }
+  function netApplyDir(rooms) {
+    net.dirRooms = {};
+    (rooms || []).forEach(function (r) { if (r && r.code) net.dirRooms[r.code] = r; });
+    net.dirBusy = false; net.dirError = '';
+    if (net.view === 'entry') netRender();
+  }
+  function netDirArray() {
+    var out = [];
+    for (var k in net.hubRooms) out.push(net.hubRooms[k]);
+    return out;
+  }
+  // Serve as the directory: answer connections with the room list.
+  function netHubHandle(conn) {
+    conn.on('data', function (msg) {
+      if (!msg) return;
+      if (msg.type === 'register' && msg.room) {
+        net.hubRooms[msg.room.code] = msg.room;
+        conn.__code = msg.room.code;
+        netHubBroadcast();
+      } else if (msg.type === 'unregister') {
+        delete net.hubRooms[msg.code || conn.__code];
+        netHubBroadcast();
+      } else if (msg.type === 'list') {
+        netSend(conn, { type: 'rooms', rooms: netDirArray() });
+      }
+    });
+    conn.on('close', function () {
+      if (conn.__code) { delete net.hubRooms[conn.__code]; netHubBroadcast(); }
+    });
+  }
+  function netHubBroadcast() {
+    for (var id in net.hubConns) netSend(net.hubConns[id], { type: 'rooms', rooms: netDirArray() });
+  }
+  // Claim the directory id in this browser (for when none is reachable).
+  function netBecomeHub(then) {
+    if (net.hubPeer) { then(); return; }
+    var HubPeer = window.Peer;
+    if (!HubPeer) { then(); return; }
+    var ok = false;
+    try { net.hubPeer = new HubPeer(NET_HUB_ID, { debug: 0 }); }
+    catch (e) { net.hubPeer = null; then(); return; }
+    net.hubPeer.on('connection', function (conn) {
+      var id = 'h' + Math.random().toString(36).slice(2);
+      net.hubConns[id] = conn;
+      conn.on('close', function () { delete net.hubConns[id]; });
+      netHubHandle(conn);
+    });
+    net.hubPeer.on('open', function () { ok = true; then(); });
+    net.hubPeer.on('error', function (e) {
+      if (!ok) { try { net.hubPeer.destroy(); } catch (x) {} net.hubPeer = null; }
+      then();
+    });
+  }
+  function netBrowse() {
+    net.error = ''; net.dirBusy = true; net.dirError = ''; netRender();
+    netLoadPeer().then(function () {
+      var finishErr = function (msg) {
+        net.dirBusy = false; net.dirError = msg || '';
+        net.dirRooms = {};
+        netRender();
+      };
+      netHubConnect(function (conn) {
+        if (conn) {
+          netSend(conn, { type: 'list' });
+          // the directory replies with 'rooms' -> netApplyDir clears dirBusy
+          setTimeout(function () {
+            if (net.dirBusy) { net.dirBusy = false; netRender(); }
+          }, 6000);
+        } else {
+          // No directory reachable -> this browser becomes it, then lists.
+          netBecomeHub(function () { netBrowse(); });
+        }
+      });
+      setTimeout(function () {
+        if (net.dirBusy && !net.hubConn) finishErr('Lobby directory is unavailable — join by code.');
+      }, 11000);
+    }).catch(function (e) { net.error = e.message; net.dirBusy = false; netRender(); });
+  }
+  /* ---- race start / grid ---- */
+  function netStartRace(track, players) {
+    netRace = true;
+    raceOver = false; started = true; paused = false; net.racing = true;
+    selectedTrack = track;
+    carveTrack(TRACKS[track]);
+    cars.forEach(function (c) {
+      c.remote = false; c.hidden = true; c.isPlayer = false; c.id = null;
+      c.mesh.visible = false;
+    });
+    net.selfCar = -1;
+    players.forEach(function (pl) {
+      var c = cars[pl.car];
+      if (!c) return;
+      c.hidden = false; c.id = pl.id;
+      c.name = String(pl.name || 'RACER').slice(0, 16).toUpperCase();
+      c.isRemote = (pl.id !== net.selfId);
+      c.remote = c.isRemote;
+      c.mesh.visible = true;
+      if (!c.isRemote) { player = c; net.selfCar = pl.car; }
+    });
+    if (net.selfCar < 0) { player = cars[0]; }
+    net.races = {};
+    net.lastSend = 0;
+    netPlaceGrid(players);
+    netDialog.classList.add('hidden');
+    netEntry.classList.remove('hidden');
+    netLobbyEl.classList.add('hidden');
+    menu.classList.add('hidden');
+    hud.classList.remove('hidden');
+    standingsEl.classList.remove('hidden');
+    resultsScreen.classList.add('hidden');
+    paused = false; pauseScreen.classList.add('hidden');
+    clock = 0; countdown = 3.9; goTimer = -1;
+    clearSmoke();
+    banner.classList.remove('hidden');
+    banner.textContent = '4';
+    netRender();
+  }
+  function netPlaceGrid(players) {
+    var ROW_GAP = 8.5, COL = 4.6;
+    players.slice().sort(function (a, b) { return (a.seat || 0) - (b.seat || 0); })
+      .forEach(function (pl, i) {
+        var c = cars[pl.car]; if (!c) return;
+        var row = Math.floor(i / 2), side = (i % 2) ? 1 : -1;
+        var s = wrapS(LEN - 8 - row * ROW_GAP);
+        var P = offsetPos(s, side * COL);
+        c.x = P.x; c.z = P.z; c.yaw = yawAt(s);
+        c.speed = 0; c.steer = 0; c.lap = 0;
+        c.vx = 0; c.vz = 0; c.boost = 0; c.boosting = false; c.drifting = false; c.contact = 0;
+        c.best = Infinity; c.finished = false; c.finishTime = 0; c.lapStart = 0;
+        c.wobble = 0; c.halfPassed = false; c.i = -1;
+        var pr = projectTrack(c.x, c.z, -1);
+        c.s = pr.s; c.prevS = pr.s; c.lat = pr.lat; c.i = pr.i;
+        syncMesh(c);
+      });
+  }
+  function netTickRemotes(dt) {
+    var k = Math.min(1, 12 * dt);
+    for (var i = 0; i < cars.length; i++) {
+      var c = cars[i];
+      if (!c.remote || c.hidden) continue;
+      var rec = c.id != null ? net.races[c.id] : null;
+      if (!rec) continue;
+      var st = rec.st;
+      c.x += (st.x - c.x) * k;
+      c.z += (st.z - c.z) * k;
+      c.yaw += wrapPi(st.yaw - c.yaw) * k;
+      c.speed = st.speed || 0;
+      c.lap = st.lap | 0; c.s = st.s || 0;
+      c.boost = st.boost || 0;
+      c.boosting = !!st.boosting; c.drifting = !!st.drifting;
+      c.best = (typeof st.best === 'number' && st.best >= 0) ? st.best : c.best;
+      c.finished = !!st.finished;
+      c.finishTime = st.finishTime || 0;
+      c.i = -1;
+      var pr = projectTrack(c.x, c.z, c.i);
+      c.s = pr.s; c.lat = pr.lat; c.i = pr.i;
+      syncMesh(c);
+    }
+  }
+  // push only the local car out of remote cars (remotes own their own position)
+  function netResolveContacts() {
+    var MIN = CAR_R * 2;
+    for (var i = 0; i < cars.length; i++) {
+      var c = cars[i];
+      if (!c.remote || c.hidden) continue;
+      var dx = player.x - c.x, dz = player.z - c.z, d = Math.hypot(dx, dz);
+      if (d >= MIN || d < 1e-6) continue;
+      var nx = dx / d, nz = dz / d, push = (MIN - d);
+      player.x += nx * push; player.z += nz * push;
+      player.i = -1; player.contact = 0.2;
+      var vn = player.vx * nx + player.vz * nz;
+      if (vn < 0) { player.vx -= vn * nx; player.vz -= vn * nz; }
+    }
+  }
+  function netOnLocalFinish() {
+    // tell the field our finishing state promptly
+    netFlushStates(performance.now() + 1000);
+  }
+
+  /* ---- lobby rendering ---- */
+  function netCarOptions(selected) {
+    var html = '';
+    ROSTER.forEach(function (r, i) {
+      html += '<option value="' + i + '"' + (i === selected ? ' selected' : '') + '>' + r.name + '</option>';
+    });
+    return html;
+  }
+  function netRenderTrackPick() {
+    var el = document.getElementById('netTrackPick');
+    el.innerHTML = '';
+    TRACKS.forEach(function (t, i) {
+      var d = document.createElement('div');
+      d.className = 'card' + (i === selectedTrack ? ' sel' : '');
+      d.innerHTML = '<b>' + t.name + '</b><span>' + t.blurb + '</span>';
+      d.addEventListener('click', function () {
+        selectedTrack = i;
+        if (net.role === 'host' && net.room) { net.room.track = i; netBroadcastRoom(); }
+        netRenderTrackPick();
+        netRenderTrackPickHost();
+      });
+      el.appendChild(d);
+    });
+  }
+  function netRenderTrackPickHost() {
+    var el = document.getElementById('netHostTrackPick');
+    if (!el) return;
+    el.innerHTML = '';
+    var cur = net.room ? net.room.track : selectedTrack;
+    TRACKS.forEach(function (t, i) {
+      var d = document.createElement('div');
+      d.className = 'card' + (i === cur ? ' sel' : '');
+      d.innerHTML = '<b>' + t.name + '</b><span>' + t.blurb + '</span>';
+      d.addEventListener('click', function () {
+        if (net.role !== 'host' || !net.room) return;
+        net.room.track = i; netBroadcastRoom(); netRenderTrackPickHost();
+      });
+      el.appendChild(d);
+    });
+  }
+  function netRender() {
+    netStatusEl.textContent = net.connecting ? 'CONNECTING…' : (net.status || '');
+    if (net.error) { netErrorEl.textContent = net.error; netErrorEl.classList.remove('hidden'); }
+    else netErrorEl.classList.add('hidden');
+
+    if (net.view === 'entry') {
+      netEntry.classList.remove('hidden');
+      netLobbyEl.classList.add('hidden');
+      document.getElementById('netTabJoin').classList.toggle('sel', net.tab === 'join');
+      document.getElementById('netTabCreate').classList.toggle('sel', net.tab === 'create');
+      document.getElementById('netJoinPane').classList.toggle('hidden', net.tab !== 'join');
+      document.getElementById('netCreatePane').classList.toggle('hidden', net.tab !== 'create');
+      netRenderTrackPick();
+      // public room list
+      if (net.dirBusy) netRoomList.innerHTML = '<div class="netEmpty">Searching…</div>';
+      else if (net.dirError) netRoomList.innerHTML = '<div class="netEmpty">' + netEsc(net.dirError) + '</div>';
+      else {
+        var codes = Object.keys(net.dirRooms);
+        if (!codes.length) netRoomList.innerHTML = '<div class="netEmpty">No public rooms — create one, or join by code.</div>';
+        else {
+          var h = '';
+          codes.forEach(function (code) {
+            var r = net.dirRooms[code];
+            h += '<div class="netRoom" data-code="' + netEsc(code) + '">' +
+              '<span><b>' + netEsc(code) + '</b><br><span>' + netEsc(r.host || 'HOST') +
+              ' · ' + netEsc((TRACKS[r.track] || TRACKS[0]).name) + '</span></span>' +
+              '<span>' + (r.players || 1) + '/' + (r.max || NET_MAX) + ' &nbsp; <button class="netMini netJoinOne" data-code="' +
+              netEsc(code) + '">JOIN</button></span></div>';
+          });
+          netRoomList.innerHTML = h;
+          netRoomList.querySelectorAll('.netJoinOne').forEach(function (b) {
+            b.addEventListener('click', function () { netJoinRoom(b.getAttribute('data-code')); });
+          });
+        }
+      }
+      return;
+    }
+
+    // lobby
+    netEntry.classList.add('hidden');
+    netLobbyEl.classList.remove('hidden');
+    var room = net.room;
+    if (!room) return;
+    document.getElementById('netRoomCodeText').textContent = room.code;
+    netPingEl.textContent = net.latencyMs == null ? '' : ('PING ' + net.latencyMs + ' ms');
+    var self = netSelf();
+    var isHost = net.role === 'host';
+    var html = '';
+    var players = room.players;
+    for (var i = 0; i < Math.max(NET_MAX, players.length); i++) {
+      var p = players[i];
+      if (!p) { html += '<div class="netSeat empty">OPEN</div>'; continue; }
+      var col = '#' + new THREE.Color(ROSTER[p.car] ? ROSTER[p.car].color : 0x888888).getHexString();
+      var tag = p.host ? 'HOST' : (p.ready ? 'READY' : '');
+      html += '<div class="netSeat' + (p.ready && !p.host ? ' ready' : '') + '">' +
+        '<i style="background:' + col + '"></i>' +
+        '<span class="netName">' + netEsc(p.name) + (p.id === net.selfId ? ' (you)' : '') + '</span>' +
+        '<span class="netTag">' + tag + '</span></div>';
+    }
+    netSeatsEl.innerHTML = html;
+
+    document.getElementById('netHostControls').classList.toggle('hidden', !isHost);
+    document.getElementById('netGuestControls').classList.toggle('hidden', isHost);
+    if (isHost) {
+      netRenderTrackPickHost();
+      var allReady = players.length >= 2 && players.every(function (p) { return p.host || p.ready; });
+      netStartBtn.classList.remove('hidden');
+      netStartBtn.disabled = !allReady;
+      netStartBtn.style.opacity = allReady ? '1' : '.5';
+      netStartBtn.style.cursor = allReady ? 'pointer' : 'not-allowed';
+      netStartBtn.textContent = allReady
+        ? 'START RACE (' + players.length + ')'
+        : 'WAITING FOR DRIVERS…';
+      netReadyBtn.classList.add('hidden');
+    } else {
+      var mine = netSelf();
+      netReadyBtn.classList.remove('hidden');
+      netStartBtn.classList.add('hidden');
+      var sel = document.getElementById('netCarSelect');
+      sel.innerHTML = netCarOptions(mine ? mine.car : 0);
+      netReadyBtn.textContent = (mine && mine.ready) ? 'NOT READY' : 'READY';
+      netReadyBtn.classList.toggle('sel', !!(mine && mine.ready));
+    }
+  }
+  function netSelfReadyToggle() {
+    var mine = netSelf(); if (!mine) return;
+    mine.ready = !mine.ready;
+    if (net.role === 'guest') netSend(net.conns.__host, { type: 'ready', ready: mine.ready });
+    netRender();
+  }
+  function netHostStart() {
+    if (net.role !== 'host' || !net.room) return;
+    var room = net.room;
+    if (room.players.length < 2) return;
+    room.phase = 'racing';
+    var players = room.players.map(function (p, i) {
+      return { id: p.id, name: p.name, car: p.car, seat: i };
+    });
+    netSendAll({ type: 'start', track: room.track, players: players });
+    netStartRace(room.track, players);
+  }
+
+  /* ---- open / close dialog ---- */
+  function netOpen() {
+    netDialog.classList.remove('hidden');
+    if (!netNameEl.value) netNameEl.value = netSeedName();
+    net.view = net.room ? 'lobby' : 'entry';
+    net.tab = 'join';
+    net.error = '';
+    netRender();
+    netBrowse();
+  }
+  function netClose() {
+    netDialog.classList.add('hidden');
+  }
+
+  function netRematch() {
+    if (net.role === 'host' && net.room) netHostStart();
+    else if (net.role === 'guest') netSend(net.conns.__host, { type: 'rematch' });
+  }
+  function netReturnToRoom() {
+    netRace = false; started = false; paused = false; raceOver = false; net.selfCar = -1;
+    player = cars[0];
+    cars.forEach(function (c) {
+      c.hidden = false; c.remote = false; c.isPlayer = false; c.id = null; c.mesh.visible = true;
+    });
+    placeOnGrid();
+    banner.classList.add('hidden');
+    hud.classList.add('hidden');
+    standingsEl.classList.add('hidden');
+    resultsScreen.classList.add('hidden');
+    pauseScreen.classList.add('hidden');
+    if (net.role === 'host' && net.room) {
+      net.room.phase = 'lobby';
+      net.room.players.forEach(function (p) { if (!p.host) p.ready = false; });
+      netBroadcastRoom();
+    }
+    net.view = 'lobby';
+    net.error = '';
+    netDialog.classList.remove('hidden');
+    netRender();
+  }
+
+  /* ---- UI wiring ---- */
+  document.getElementById('onlineBtn').addEventListener('click', netOpen);
+  document.getElementById('onlineClose').addEventListener('click', netClose);
+  document.getElementById('netTabJoin').addEventListener('click', function () {
+    net.tab = 'join'; net.error = ''; netRender();
+  });
+  document.getElementById('netTabCreate').addEventListener('click', function () {
+    net.tab = 'create'; net.error = ''; netRender();
+  });
+  document.getElementById('netCreateBtn').addEventListener('click', netCreateRoom);
+  document.getElementById('netJoinBtn').addEventListener('click', function () {
+    netJoinRoom(netCodeInput.value);
+  });
+  netCodeInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') netJoinRoom(netCodeInput.value);
+  });
+  netNameEl.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && net.tab === 'join') netJoinRoom(netCodeInput.value);
+  });
+  netNameEl.addEventListener('input', function () { net.error = ''; });
+  document.getElementById('netBrowseBtn').addEventListener('click', netBrowse);
+  netReadyBtn.addEventListener('click', netSelfReadyToggle);
+  netStartBtn.addEventListener('click', netHostStart);
+  document.getElementById('netLeaveBtn').addEventListener('click', function () { netLeave(); });
+  document.getElementById('netCarSelect').addEventListener('change', function (e) {
+    var mine = netSelf(); if (!mine) return;
+    var want = parseInt(e.target.value, 10);
+    mine.car = want;
+    if (net.role === 'guest') netSend(net.conns.__host, { type: 'select', car: want });
+    netRender();
+  });
+
   /* ---------------------------------- main loop --------------------- */
   var last = performance.now();
   function frame(now) {
@@ -1352,14 +2343,24 @@ var pr = projectTrack(c.x, c.z, c.i);
         var pin = readPlayer();
         if (!player.finished) stepCar(player, pin, dt); else stepCar(player, { throttle: 0, brake: 1, steer: 0, handbrake: false }, dt);
         updateAudio(player.speed, pin.throttle);
-        for (var i = 0; i < cars.length; i++) {
-          var c = cars[i];
-          if (c === player) continue;
-          if (c.finished) { stepCar(c, { throttle: 0, brake: 1, steer: 0 }, dt); continue; }
-          c.wobble = Math.sin(clock * 0.55 + i * 1.7) * 0.7;
-          stepCar(c, aiDrive(c, dt), dt);
+        if (netRace) {
+          netTickRemotes(dt);
+          netResolveContacts();
+        } else {
+          for (var i = 0; i < cars.length; i++) {
+            var c = cars[i];
+            if (c === player) continue;
+            if (c.finished) { stepCar(c, { throttle: 0, brake: 1, steer: 0 }, dt); continue; }
+            c.wobble = Math.sin(clock * 0.55 + i * 1.7) * 0.7;
+            stepCar(c, aiDrive(c, dt), dt);
+          }
+          collideCars();
         }
-        collideCars();
+        if (player.boosting) {
+          smokeAcc += dt;
+          while (smokeAcc > 0.035) { spawnSmoke(player); smokeAcc -= 0.035; }
+        } else smokeAcc = 0;
+        updateSmoke(dt);
         if (!raceOver && player.finished) {
           raceOver = true;
           showResults();
@@ -1372,7 +2373,7 @@ var pr = projectTrack(c.x, c.z, c.i);
       var p = updateStandings();
       document.getElementById('speed').textContent = Math.round(Math.abs(player.speed) * 3.6);
       document.getElementById('lap').textContent = Math.min(player.lap + 1, TOTAL_LAPS) + '/' + TOTAL_LAPS;
-      document.getElementById('pos').textContent = p + '/' + cars.length;
+      document.getElementById('pos').textContent = p + '/' + activeCars().length;
       document.getElementById('time').textContent = clock.toFixed(2);
       document.getElementById('best').textContent = isFinite(player.best) ? player.best.toFixed(2) : '--.--';
       var bp = Math.round(player.boost * 100);
