@@ -1518,7 +1518,7 @@ function spawnPlayer() {
     if (best > SEA + 4) break;
   }
   pl.x = sx + 0.5; pl.z = sz + 0.5; pl.y = topAt(sx, sz) + 1.05;
-  pl.vx = pl.vy = pl.vz = 0; pl.fly = 0;
+  pl.vx = pl.vy = pl.vz = 0; pl.fly = (mode === 'creative' ? 1 : 0);
   cam.yaw = (hash2(sx, sz) - 0.5) * 6.2; cam.pitch = -0.1;
   spawnPt = { x: pl.x, y: pl.y, z: pl.z };
   fallY = pl.y;
@@ -2078,6 +2078,7 @@ function loadWorld(o) {
   }
   hostiles = []; arrows = []; dead = 0; hurtT = 0; regenT = 0; starveT = 0; drownT = 0;
   fallY = pl.y;
+  pl.fly = (mode === 'creative' ? 1 : 0);
   hudMode = ''; refreshHotbar(); select(o.sel || 0); updateHUD();
   buildClouds();
   spawnAnimals();
@@ -2257,7 +2258,7 @@ defineItems();
 refreshHotbar();
 select(0);
 resize(rscale);
-newWorld(worldSeed);
+newWorld(worldSeed, 'survival');
 requestAnimationFrame(frame);
 </script>
 </body>
