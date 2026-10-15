@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -313,6 +313,18 @@
   .paper .sNewsB{font:600 15px/1.6 Georgia,"Times New Roman",serif;color:#e6dcc0}
   .paper .sNewsB b{color:#f0e2be}
 
+  /* ---- tutorial ---- */
+  #tutModal .mbox{width:min(680px,94vw)}
+  #tutModal .tut{display:flex;flex-direction:column;gap:11px;margin-bottom:14px}
+  #tutModal .tutS{display:flex;gap:12px;align-items:flex-start;background:#161d2b;
+    border:1px solid #26334d;border-radius:9px;padding:11px 13px}
+  #tutModal .tutN{flex:0 0 26px;height:26px;border-radius:50%;display:flex;align-items:center;
+    justify-content:center;font-weight:800;font-size:13px;color:#0f1420;background:var(--gold)}
+  #tutModal .tutS h4{margin:0 0 3px;font-size:13.5px;letter-spacing:.4px;color:#e6dbb8}
+  #tutModal .tutS p{margin:0;font-size:12.5px;line-height:1.5;color:#b7c2d6}
+  #tutModal .tutS b{color:#f0e2be}
+  #tutModal .tutChk{display:flex;gap:7px;align-items:center;font-size:12px;color:#9fb0c8;cursor:pointer}
+
   #end{
     position:fixed;inset:0;z-index:30;display:none;align-items:center;justify-content:center;
     background:#05070bb8;backdrop-filter:blur(3px);
@@ -375,10 +387,12 @@
   <div class="stat" id="dateBox"><b id="sDate">1 Sep 1939</b><span>day</span></div>
   <div class="spacer"></div>
   <button class="btn on" id="bPause" title="Space">&#10073;&#10073; Pause</button>
+  <button class="btn" data-sp="0.5">0.5&times;</button>
   <button class="btn" data-sp="1">1&times;</button>
   <button class="btn" data-sp="2">2&times;</button>
   <button class="btn" data-sp="3">3&times;</button>
 <button class="btn" id="bFocus">My front</button>
+  <button class="btn" id="bHelp" title="How to play">&#10067; Help</button>
   <button class="btn" id="bNews">&#128240; News<span class="badge" id="nbNews"></span></button>
   <button class="btn" id="bMail">&#9993; Mail<span class="badge" id="nbMail"></span></button>
   <button class="btn" id="bNet">&#127760; Multi</button>
@@ -443,8 +457,10 @@
       the AI nations fight each other too, so a war can be won without fighting the whole continent.<br>
       Units fight at their best on friendly soil, and hardest of all in their homeland. Tanks, artillery and bombers
       cost upkeep every day, so a huge army can bankrupt you.<br>
-      Big countries field bigger garrisons &mdash; a garrison cap scaled to each nation's size, from about <b>6</b> for
-      the smallest states to <b>17</b> for the Soviet Union.<br>
+      Garrison caps follow the map: the smallest states hold about <b>6</b>, the big western ones up to <b>12</b>,
+      and the Soviet Union is split into three separate fronts &mdash; <b>South 4</b>, <b>Centre 4</b>, <b>North 5</b>.<br>
+      Orders are raids: send your men at a front, they fight, and <b>the survivors march back home</b> to rearm.
+      Only <b>one territory on the whole map</b> changes hands each day.<br>
       You win by holding <b>every</b> territory. You lose if you hold none.
     </p>
     <div id="pick"></div>
@@ -550,9 +566,73 @@
   </div>
 </div>
 
+<div id="tutModal" class="modal">
+  <div class="mbox">
+    <div class="mhead"><b>&#127891; HOW TO PLAY</b>
+      <button class="btn" id="tutClose">&#10005; Close</button></div>
+    <div class="tut">
+      <div class="tutS">
+        <div class="tutN">1</div>
+        <div>
+          <h4>Pick a country</h4>
+          <p>Aim of the war: hold <b>every</b> territory on the map. You start with
+          <b>50 gold</b>, three riflemen and two mine fields at home. The Soviet Union is split
+          into three fronts of its own &mdash; South, Centre and North.</p>
+        </div>
+      </div>
+      <div class="tutS">
+        <div class="tutN">2</div>
+        <div>
+          <h4>Money comes from mines</h4>
+          <p>There is <b>no daily income</b> &mdash; mine fields pay <b>4 gold a day each</b>.
+          Buy <b>mine cars</b> in the Shop and send them to your front to lay more fields. No mines,
+          no money to pay for troops.</p>
+        </div>
+      </div>
+      <div class="tutS">
+        <div class="tutN">3</div>
+        <div>
+          <h4>Recruit &amp; move</h4>
+          <p>Click a territory you own to open it, pick a unit in the Shop. Then click
+          <b>Battle</b>, tick your units, and click a flashing border to send them into a
+          neighbouring country. <b>Select every unit on my fronts</b> grabs your whole line at once.
+          Survivors retire back to the ground they came from.</p>
+        </div>
+      </div>
+      <div class="tutS">
+        <div class="tutN">4</div>
+        <div>
+          <h4>One piece a day</h4>
+          <p>Only <b>one territory on the whole map</b> can change hands each day &mdash; whoever has
+          held the front longest takes it. Attack on several borders and the strongest claim wins.
+          When a nation loses its last piece it <b>capitulates</b> and its army disbands.</p>
+        </div>
+      </div>
+      <div class="tutS">
+        <div class="tutN">5</div>
+        <div>
+          <h4>Defend your homeland</h4>
+          <p>Units fight at their best on friendly soil, and hardest of all in their home country.
+          Mines maul attackers. Tanks, artillery and bombers cost upkeep every day, so a huge army
+          can bankrupt you.</p>
+        </div>
+      </div>
+      <div class="tutS">
+        <div class="tutN">6</div>
+        <div>
+          <h4>Speed controls</h4>
+          <p>Use <b>0.5&times;</b>, <b>1&times;</b>, <b>2&times;</b> or <b>3&times;</b> to speed up or slow the
+          war down, and <b>Pause</b> to stop it. Open <b>News</b> for dispatches and <b>Mail</b> to talk
+          to other nations.</p>
+        </div>
+      </div>
+    </div>
+    <label class="tutChk"><input type="checkbox" id="tutNoShow"> Don&rsquo;t show this on a new war again</label>
+  </div>
+</div>
+
 <div id="end"><div class="box"><h2 id="endT"></h2><div id="endS" class="sub"></div>
   <button class="btn" style="margin-top:14px" onclick="location.reload()">New game</button></div></div>
-
 <div id="toast"></div>
 
 <div id="err"></div>
@@ -723,17 +803,7 @@ const NBY = {};
        only be taken one piece at a time instead of all in a single day.
    ======================================================================= */
 const SPLITS = {
-  ussr    : {n:4, axis:'x', lab:['West','Centre','East','Far East']},
-  germany : {n:3, axis:'x', lab:['West','Centre','East']},
-  france  : {n:3, axis:'y', lab:['South','Centre','North']},
-  spain   : {n:3, axis:'x', lab:['West','Centre','East']},
-  turkey  : {n:3, axis:'x', lab:['West','Centre','East']},
-  italy   : {n:3, axis:'y', lab:['South','Centre','North']},
-  uk      : {n:3, axis:'y', lab:['South','Centre','North']},
-  sweden  : {n:3, axis:'y', lab:['South','Centre','North']},
-  norway  : {n:3, axis:'x', lab:['West','Centre','East']},
-  poland  : {n:2, axis:'x', lab:['West','East']},
-  romania : {n:2, axis:'x', lab:['West','East']}
+  ussr    : {n:3, axis:'y', lab:['South','Centre','North']},
 };
 const SECTORS=[];            /* every capturable piece, in map order */
 const NAT_SECTORS={};        /* nation id -> [sector id, ...]        */
@@ -791,7 +861,8 @@ function splitEqual(ps,axis,n){
   }
   var low=clipHalf(ps,axis,best,true), high=clipHalf(ps,axis,best,false);
   if(!low.length || !high.length) return [ps];
-  return splitEqual(low,axis,n-1).concat([high]);
+  /* `low` is already one n-th of the whole, so carve the REST into n-1 */
+  return [low].concat(splitEqual(high,axis,n-1));
 }
 function polyBBox(ps){
   var b={x0:1e9,y0:1e9,x1:-1e9,y1:-1e9};
@@ -970,7 +1041,7 @@ const ARSENAL = {
     'fighter:Dewoitine D.520|Fast, agile, and starved of the engines to use it.',
     'dive:Bloch MB.210|Worked hard over the Maginot, then vanished from the skies.',
     'bomber:Breguet 693|Legion bomber that flew the first French raids on Germany.',
-    'rocket:Lioré et Olivier LeO 45|The only true French bomber worth the name.',
+    'rocket:Lior茅 et Olivier LeO 45|The only true French bomber worth the name.',
     'hnky:Dewoitine D.522|An upgraded D.520 with a far better engine. Still too few.']},
 
   italy:{army:[
@@ -1105,7 +1176,7 @@ const ARSENAL = {
     'motor:Motorizovana rota|Truck columns that broke down on Bulgarian roads.',
     'assault:Granichni voyska|Border troops used as assault infantry in 1942-43.',
     'antitank:45 mm prot-tankova|French equipment again - Bulgaria bought France\'s hardware.',
-    'flak:20 mm protivovzdušna|Sparse AA coverage, and the Germans noticed.',
+    'flak:20 mm protivovzdu拧na|Sparse AA coverage, and the Germans noticed.',
     'engineer:Sapey|Sapper units that turned Bulgarian mountains into defensive country.',
     'tank:Panzer 38(t)|Supplied by Germany, and the backbone of Bulgarian armour.',
     'artillery:122 mm howitzer|The standard Bulgarian field gun.',
@@ -1253,7 +1324,7 @@ function buildMap(){
 /* =======================================================================
    5. GAME STATE
    ======================================================================= */
-const TICK_MS=[0,1500,750,400];
+const SPEED_MS={0.5:3000,1:1500,2:750,3:400};
 const START_MONEY=50;
 const MINE_GOLD=4;         /* gold a mine field pays out every day - the only income */
 const CAPITAL_DEF=1.45;   /* extra defence multiplier inside your own homeland */
@@ -1368,7 +1439,11 @@ function areaOf(c){
   SIZE_AREA[c]=Math.abs(a)/2;
   return SIZE_AREA[c];
 }
+/* per-piece garrison caps: the Soviet Union is carved into three, and one of
+   them holds an extra regiment. Anything not listed falls back to area size. */
+const SEC_CAP = {'ussr#0':4, 'ussr#1':4, 'ussr#2':5};
 function capacity(c){
+  if(SEC_CAP[c]!==undefined) return SEC_CAP[c];
   var a=areaOf(c)||1500;
   return Math.max(6, Math.min(18, Math.round(7 + 1.6*Math.log(a/1500)/Math.log(2))));
 }
@@ -1411,8 +1486,11 @@ function tick(){
   /* --- movement arrives --- */
   S.units.forEach(function(u){
     if(u.moving){
+      var mv=u.moving;
       u.moving.t--;
       if(u.moving.t<=0){
+        u.cameFrom=(u.moving.from!==undefined)?u.moving.from:u.loc;
+        u.assault=!!u.moving.assault;
         u.loc=u.moving.to; u.moving=null;
         if(u.owner===S.player) log('Your '+UNITS[u.type].name.toLowerCase()+' reached '+NBY[u.loc].name+'.');
       }
@@ -1496,13 +1574,14 @@ function tick(){
   var cand=[];
   for(var id3 in S.prov){
     var pp=S.prov[id3], c={};
-    unitsAt(id3).forEach(function(u){ c[u.owner]=(c[u.owner]||0)+1; });
+    var uu=unitsAt(id3);
+    uu.forEach(function(u){ c[u.owner]=(c[u.owner]||0)+1; });
     var ks=Object.keys(c);
     if(ks.length===1 && ks[0]!==pp.owner){
       pp.pend=(pp.pend||0)+1;
       cand.push({id:id3, nu:ks[0], pend:pp.pend});
-    } else {
-      pp.pend=0;
+    } else if(uu.length){
+      pp.pend=0;   /* an empty province keeps its claim alive across a raid */
     }
   }
   if(cand.length){
@@ -1525,6 +1604,27 @@ function tick(){
     else if(Math.random()<0.18) log(captureMsg(nu,wp.id,old,'took'));
   }
   if(capEv.length){ newsCaptures(capEv); capitulateCheck(); newsElim(); }
+
+  /* --- survivors fall back to the province they attacked from --- */
+  S.units.forEach(function(u){
+    if(u.assault && u.cameFrom && u.hp>0 && u.loc!==u.cameFrom && S.prov[u.cameFrom]){
+      var home=u.cameFrom;
+      /* if the enemy took it while we were away, fall back to a friendly neighbour */
+      if(S.prov[home].owner!==u.owner){
+        var alt=null, snb=(NBY[home].snb||[]);
+        for(var j=0;j<snb.length && !alt;j++){ if(S.prov[snb[j]] && S.prov[snb[j]].owner===u.owner) alt=snb[j]; }
+        if(!alt){
+          var mine=sectorsOf(u.owner);
+          for(var k=0;k<mine.length && !alt;k++){ if(S.prov[mine[k]] && S.prov[mine[k]].owner===u.owner) alt=mine[k]; }
+        }
+        if(!alt) alt=home;   /* nowhere friendly left - it fights where it stands */
+        home=alt;
+      }
+      u.loc=home;
+      if(u.owner===S.player) log('Your '+UNITS[u.type].name.toLowerCase()+' fell back to '+NBY[home].name+'.');
+    }
+    u.assault=false; u.cameFrom=null;
+  });
 
   /* --- income: mine fields only --- */
   ALL.forEach(function(n){
@@ -1600,7 +1700,7 @@ function aiTurn(){
       else if(gold>=tankU.cost && (threat || Math.random()<0.35)) choice=tankU.type;
       else choice=ar[0].type;
       var spot=pickRecruit(n.id);
-      if(spot && UNITS[choice].cost<=gold && unitsAt(spot).length<capacity(n.id)){
+      if(spot && UNITS[choice].cost<=gold && unitsAt(spot).length<capacity(spot)){
           spawn(choice,spot,n.id);
           S.gold[n.id]-=UNITS[choice].cost;
           if(SHOWCASE[choice]) newsUnveil(n.id,choice,spot);
@@ -1633,7 +1733,7 @@ function aiTurn(){
         var w=power(u,id);
         if(sent>=force && sent>0) break;
         if(UNITS[u.type].air && Math.random()<0.6) continue;
-        u.moving={to:best,t:1}; sent+=w;
+        u.moving={to:best,t:1,from:id,assault:true}; sent+=w;
       }
       break;   /* one offensive action per turn */
     }
@@ -1686,7 +1786,7 @@ function moveTo(dst){
     if((NBY[u.loc].snb||[]).indexOf(dst)<0) return;                 /* must border the target */
     ids.push(u.id);
     if(UNITS[u.type].air && S.prov[dst].owner!==S.player) u.air=dst;
-    else u.moving={to:dst,t:1};
+    else u.moving={to:dst,t:1,from:u.loc,assault:(S.prov[dst].owner!==S.player)};
     n++;
   });
   if(!n){
@@ -1703,7 +1803,7 @@ function recruit(type){
   var id=S.sel;
   var u=UNITS[type];
   if(!S.prov[id] || S.prov[id].owner!==S.player){ flash('Select one of your own territories to recruit.'); return; }
-  if(unitsAt(id).length>=capacity(S.player)){ flash('Garrison is full ('+capacity(S.player)+' units).'); return; }
+  if(unitsAt(id).length>=capacity(id)){ flash('Garrison is full ('+capacity(id)+' units).'); return; }
   if((S.gold[S.player]||0)<u.cost){ flash('Not enough gold for a '+u.name.toLowerCase()+' ('+u.cost+').'); return; }
   S.gold[S.player]-=u.cost;
   spawn(type,id,S.player);
@@ -1791,7 +1891,7 @@ function paintShop(el, provId){
   var mine=(S.prov[provId] && S.prov[provId].owner===S.player);
   var gold=S.gold[S.player]||0;
   var here=unitsAt(provId).length;
-  var cap=capacity(S.player);
+  var cap=capacity(provId||S.player);
   Array.prototype.forEach.call(el.querySelectorAll('.unit'),function(e){
     var t=UNITS[e.getAttribute('data-t')];
     e.disabled=!mine || gold<t.cost || here>=cap;
@@ -1911,9 +2011,9 @@ function renderMini(id){
 
   /* captions: mine yield, and what cannot be seen */
   var cap=el('text',{class:'cap',x:(vx+vw*0.03).toFixed(1),y:(vy+vh*0.09).toFixed(1)});
-  cap.textContent=(see? '' : 'no intelligence \· ')+
-    (p.mines>0&&see? p.mines+' mine field'+(p.mines>1?'s':'')+' \· +'+(p.mines*MINE_GOLD)+' gold/day'
-                   : (p.owner===S.player? 'no mines \· no income' : ''));
+  cap.textContent=(see? '' : 'no intelligence \路 ')+
+    (p.mines>0&&see? p.mines+' mine field'+(p.mines>1?'s':'')+' \路 +'+(p.mines*MINE_GOLD)+' gold/day'
+                   : (p.owner===S.player? 'no mines \路 no income' : ''));
   svg.appendChild(cap);
   if(us.length && !see){
     var q2=el('text',{class:'cap',x:(vx+vw*0.5).toFixed(1),y:(vy+vh*0.56).toFixed(1)});
@@ -2068,15 +2168,12 @@ function renderPanel(){
            (u.hp>t.hp*0.6?'#57b567':u.hp>t.hp*0.3?'#e2b13c':'#d64545')+'"></i></span>'+
          '<span class="hp">'+Math.max(0,Math.ceil(u.hp))+'/'+t.hp+(u.moving?' &rarr;':'')+(u.air?' &#9992;':'')+'</span></div>';
     });
-    document.getElementById('uSub').innerHTML=(listing&&listing.length)
-      ? 'Tick the units you want to attack with. They light up green.'+where
-      : 'No units to show &mdash; click one of your territories on the map, or use the button below.';
     var l=document.getElementById('uList');
     l.innerHTML=h;
     Array.prototype.forEach.call(l.querySelectorAll('.u'),function(e){
       e.onclick=function(){
-        var id2=+e.getAttribute('data-u');
-        if(S.pick.has(id2)) S.pick.delete(id2); else S.pick.add(id2);
+        var uid=Number(e.getAttribute('data-u'));
+        if(S.pick.has(uid)) S.pick.delete(uid); else S.pick.add(uid);
         render();
       };
     });
@@ -2181,7 +2278,7 @@ function setSpeed(s){
   document.getElementById('bPause').classList.toggle('on',s===0);
   document.getElementById('bPause').innerHTML=s===0?'&#9654; Resume':'&#10073;&#10073; Pause';
   if(timer) clearInterval(timer);
-  timer=s? setInterval(tick,TICK_MS[s]) : null;
+  timer=s? setInterval(tick,SPEED_MS[s]||1500) : null;
 }
 function wireTop(){
   document.getElementById('mShop').onclick=function(){ showPage('shop'); };
@@ -2680,7 +2777,7 @@ function netStateOut(){
   for(k in S.prov){ var p=S.prov[k]; prov[k]={o:p.owner,m:p.mines,mb:p.mineBy,mt:p.mineT}; }
   var units=S.units.map(function(u){
     var o={id:u.id, type:u.type, loc:u.loc, owner:u.owner, hp:u.hp, mv:null, ar:u.air||null};
-    if(u.moving) o.mv=[u.moving.to, u.moving.t];
+    if(u.moving) o.mv=[u.moving.to, u.moving.t, u.moving.from, u.moving.assault?1:0];
     return o;
   });
   return {v:1, day:S.day, uid:S.uid, wars:wars, prov:prov, units:units,
@@ -2696,7 +2793,7 @@ function applyNetState(o){
   S.wars=new Set(o.wars||[]);
   S.units=(o.units||[]).map(function(x){
     var u={id:x.id, type:x.type, loc:x.loc, owner:x.owner, hp:x.hp, moving:null, air:null};
-    if(x.mv) u.moving={to:x.mv[0], t:x.mv[1]};
+    if(x.mv) u.moving={to:x.mv[0], t:x.mv[1], from:x.mv[2], assault:!!x.mv[3]};
     if(x.ar) u.air=x.ar;
     return u;
   });
@@ -2743,14 +2840,14 @@ function netApplyCmd(nat,msg){
       if(!u || u.owner!==nat || u.hp<=0) continue;
       if((NBY[u.loc].snb||[]).indexOf(dst)<0) continue;
       if(UNITS[u.type].air && S.prov[dst].owner!==nat) u.air=dst;
-      else u.moving={to:dst,t:1};
+      else u.moving={to:dst,t:1,from:u.loc,assault:(S.prov[dst].owner!==nat)};
       n++;
     }
     if(n) NET.dirty=true;
   } else if(msg.k==='r' && msg.t && msg.loc){
     var uu=UNITS[msg.t]; if(!uu) return;
     if(!S.prov[msg.loc] || S.prov[msg.loc].owner!==nat) return;
-    if(unitsAt(msg.loc).length>=capacity(nat)) return;
+    if(unitsAt(msg.loc).length>=capacity(msg.loc)) return;
     if((S.gold[nat]||0)<uu.cost) return;
     S.gold[nat]-=uu.cost;
     spawn(msg.t,msg.loc,nat);
@@ -3003,11 +3100,11 @@ function updateNewsBadge(){
    mail, mood and pacts live in S and travel with the broadcast state; guests
    post their replies and notes back to the host as commands.
    ======================================================================= */
-var MAIL_SUBJ=null, MAIL_FOCUS=null, MAIL_PREV=0, NEWS_FOCUS=false, NEWS_HOVER=false, NEWS_HOVER_T=null, UI_PAUSED=false;
+var MAIL_SUBJ=null, MAIL_FOCUS=null, MAIL_PREV=0, NEWS_FOCUS=false, NEWS_HOVER=false, NEWS_HOVER_T=null, UI_PAUSED=false, TUT_FOCUS=false;
 
 /* opening the newspaper or a letter pauses the war until both are closed */
 function syncUIPause(){
-  var now=(MAIL_FOCUS!==null)||NEWS_FOCUS||NEWS_HOVER;
+  var now=(MAIL_FOCUS!==null)||NEWS_FOCUS||NEWS_HOVER||TUT_FOCUS;
   if(now && !UI_PAUSED){ UI_PAUSED=true; MAIL_PREV=spd; setSpeed(0); }
   else if(!now && UI_PAUSED){ UI_PAUSED=false; if(MAIL_PREV>0) setSpeed(MAIL_PREV); }
 }
@@ -3347,6 +3444,19 @@ function closeMailModal(){
   document.getElementById('mModal').style.display='none';
   render();
 }
+function openTutorial(){
+  TUT_FOCUS=true;
+  document.getElementById('tutModal').style.display='flex';
+  syncUIPause();
+}
+function closeTutorial(){
+  var chk=document.getElementById('tutNoShow');
+  try{ if(chk && chk.checked) localStorage.setItem('e1939_tut','off');
+       else if(chk && !chk.checked) localStorage.removeItem('e1939_tut'); }catch(e){}
+  TUT_FOCUS=false;
+  document.getElementById('tutModal').style.display='none';
+  syncUIPause();
+}
 function openNewsModal(){
   var el=document.getElementById('nModalBody');
   var nw=S.news||[];
@@ -3393,7 +3503,10 @@ function updateMailBadge(){
 }
 document.getElementById('bNews').onclick=openNewsModal;
 document.getElementById('bMail').onclick=openMailModal;
+document.getElementById('bHelp').onclick=openTutorial;
+document.getElementById('tutClose').onclick=closeTutorial;
 (function(){
+  try{ if(localStorage.getItem('e1939_tut')!=='off') setTimeout(openTutorial,400); }catch(e){ setTimeout(openTutorial,400); }
   /* reading the paper in the sidebar holds the war too - with a short dwell so
      merely gliding the pointer across the card does not stall the front */
   var panel=document.getElementById('newsPanel');
