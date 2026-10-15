@@ -196,7 +196,7 @@
 <div id="hud">
   <div id="cross"></div>
   <div id="name"></div>
-  <div id="hint">LMB attack / break &middot; RMB place / eat &middot; 1-9 / wheel select &middot; E inventory &middot; G mode &middot; F fly &middot; F3 stats</div>
+  <div id="hint">LMB attack / break &middot; RMB place / eat &middot; 1-9 / wheel select &middot; E inventory &middot; F fly &middot; F3 stats</div>
   <div id="stats">
     <div id="hearts" class="bar2"></div>
     <div id="food" class="bar2"></div>
@@ -237,7 +237,6 @@
       <div><b>RMB</b> place / eat</div>
       <div><b>MMB</b> pick block</div>
       <div><b>E</b> inventory</div>
-      <div><b>G</b> survival / creative</div>
       <div><b>1-9 / Wheel</b> select</div>
       <div><b>Enter</b> third person view</div>
       <div><b>F</b> toggle flight</div>
@@ -251,7 +250,10 @@
     <div id="worldlist"></div>
     <div class="actions">
       <button id="continue" class="ctn" disabled>Continue World</button>
-      <button id="create" class="primary">Create World</button>
+    </div>
+    <div class="actions" style="margin-top:8px">
+      <button id="createC" class="primary">Create Creative</button>
+      <button id="createS" class="primary">Create Survival</button>
     </div>
     <button id="savebtn">Save World</button>
     <div id="saveinfo"></div>
@@ -1717,14 +1719,6 @@ function select(i) {
   nameEl.textContent = id ? itemName(id) : '';
   nameEl.style.opacity = 1; nameFade = 1.6;
 }
-function setMode(m) {
-  if (m === mode) return;
-  mode = m;
-  if (mode === 'survival' && hp <= 0) hp = MAXHP;
-  hudMode = ''; refreshHotbar(); select(sel); updateHUD();
-  toast('mode: ' + mode);
-  saveDirty = 1;
-}
 
 /* --------------------------------------------------- survival HUD */
 let hudHp = -1, hudFood = -1, hudMode = '';
@@ -1816,11 +1810,10 @@ addEventListener('keydown', e => {
   keys[k] = 1;
   if (k === 'KeyE') { if (invOpen) closeInv(); else if (running && !dead) openInv(); return; }
   if (k === 'Escape' && invOpen) { closeInv(); return; }
-  if (k === 'KeyG' && running && !dead) { setMode(mode === 'survival' ? 'creative' : 'survival'); return; }
 if (!running) {
     if (k === 'Enter') {
       const ctn = document.getElementById('continue');
-      if (ctn.disabled) document.getElementById('create').click();
+      if (ctn.disabled) document.getElementById('createS').click();
       else ctn.click();
     }
     return;
@@ -1832,7 +1825,7 @@ if (!running) {
   else if (k === 'F2') toggleScale();
   else if (k === 'KeyT') { dayFrozen = !dayFrozen; toast(dayFrozen ? 'time frozen' : 'time running'); }
   else if (k === 'KeyM') { muted = !muted; toast(muted ? 'sound muted' : 'sound on'); }
-  else if (k === 'KeyR') { newWorld((Math.random() * 1e6) | 0); if (savingEnabled) { saveDirty = 1; saveTimer = 0; } }
+  else if (k === 'KeyR') { newWorld((Math.random() * 1e6) | 0, mode); if (savingEnabled) { saveDirty = 1; saveTimer = 0; } }
   else if (k === 'F5') { const r = saveWorld(); toast(r.ok ? ('world saved · ' + worldSeed + ' @ ' + new Date().toLocaleTimeString()) : ('world NOT saved — ' + r.reason)); }
 });
 addEventListener('keyup', e => { keys[e.code] = 0; });
@@ -1912,9 +1905,14 @@ document.getElementById('savebtn').addEventListener('click', () => {
   }
   updateMenu();
 });
-document.getElementById('create').addEventListener('click', () => {
+document.getElementById('createC').addEventListener('click', () => {
   currentId = 0;
-  newWorld((Math.random() * 1e6) | 0);
+  newWorld((Math.random() * 1e6) | 0, 'creative');
+  beginPlay();
+});
+document.getElementById('createS').addEventListener('click', () => {
+  currentId = 0;
+  newWorld((Math.random() * 1e6) | 0, 'survival');
   beginPlay();
 });
 addEventListener('resize', () => resize(rscale));
@@ -2158,14 +2156,15 @@ function beginPlay() {
   if (!AC && !muted) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
 }
 
-function newWorld(seed) {
+function newWorld(seed, m) {
   worldSeed = seed;
   flowL.fill(0); wq.length = 0;
   generate(seed);
   buildClouds();
   spawnAnimals();
   parts.length = 0;
-  mode = 'survival'; hp = MAXHP; food = MAXFOOD; INV = new Array(36).fill(null);
+  mode = (m === 'creative') ? 'creative' : 'survival';
+  hp = MAXHP; food = MAXFOOD; INV = new Array(36).fill(null);
   hostiles = []; arrows = []; dead = 0; hurtT = 0; regenT = 0; starveT = 0; drownT = 0; fallY = 0;
   hudMode = ''; refreshHotbar(); select(0); updateHUD();
   genQueue = chunks.slice();
