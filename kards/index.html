@@ -174,13 +174,40 @@
   #roomlist .rrow .btn { padding: 4px 12px; font-size: 11px; }
   #roomlist .tip { font-size: 11px; color: #8a917c; text-align: center; margin: 12px 0; }
   #roomlist .btns { display: flex; gap: 8px; justify-content: center; margin-top: 12px; }
+
+  #tutorial { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.72); align-items: center; justify-content: center; z-index: 60; }
+  #tutorial.show { display: flex; }
+  #tutorial .tbox {
+    position: relative; width: 460px; max-width: 92vw; max-height: 84vh; overflow: auto;
+    background: linear-gradient(160deg, #33371f, #1c2012);
+    border: 3px solid #c9b458; border-radius: 12px; padding: 22px 26px 18px;
+  }
+  #tutorial .tclose {
+    position: absolute; top: 8px; right: 12px; width: 28px; height: 28px; line-height: 26px;
+    text-align: center; font-size: 15px; color: #c9b458; cursor: pointer;
+    border: 2px solid #6f6040; border-radius: 50%; background: rgba(0,0,0,.35);
+  }
+  #tutorial .tclose:hover { background: rgba(201,180,88,.3); color: #fff; }
+  #tutorial h2 { font-size: 16px; letter-spacing: 3px; color: #c9b458; margin-bottom: 12px; padding-right: 34px; }
+  #tutorial .tbody {
+    font-family: "Segoe UI", Arial, sans-serif; font-size: 13px; line-height: 1.7;
+    color: #e6e9d5; min-height: 168px;
+  }
+  #tutorial .tbody b { color: #ffd95e; }
+  #tutorial .tbody ul { padding-left: 20px; margin: 6px 0; }
+  #tutorial .tbody li { margin-bottom: 6px; }
+  #tutorial .tbody p { margin-bottom: 8px; }
+  #tutorial .tfoot { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; }
+  #tutorial .tfoot .btn { padding: 6px 18px; font-size: 12px; }
+  #tutorial .tfoot .btn[disabled] { opacity: .3; }
+  #tutorial .dots { font-size: 11px; color: #8a917c; letter-spacing: 2px; }
 </style>
 </head>
 <body>
   <div id="fit">
     <div id="stage">
       <header>
-        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v6</span></h1>
+        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v8</span></h1>
         <div id="turnbar">Player 1's Turn</div>
       </header>
 
@@ -188,6 +215,7 @@
         <div class="mgroup">
           <button class="btn mmode active" id="modeLocal" onclick="setMode('local')">LOCAL</button>
           <button class="btn mmode" id="modeOnline" onclick="setMode('online')">ONLINE</button>
+          <button class="btn mmode" onclick="openTutorial()">TUTORIAL</button>
         </div>
         <div id="onlinePanel">
           <input id="nameIn" maxlength="12" value="Player#1" onfocus="if(this.value==='Player#1'){this.value='';}" onblur="if(this.value===''){this.value='Player#1';}">
@@ -240,23 +268,48 @@
     </div>
   </div>
 
+  <div id="tutorial">
+    <div class="tbox">
+      <div class="tclose" onclick="closeTutorial()" title="Close tutorial">✕</div>
+      <h2 id="tTitle"></h2>
+      <div class="tbody" id="tBody"></div>
+      <div class="tfoot">
+        <span id="tPage" class="dots"></span>
+        <span>
+          <button class="btn" id="tPrev" onclick="tutPrev()">BACK</button>
+          <button class="btn" id="tNext" onclick="tutNext()">NEXT</button>
+        </span>
+      </div>
+    </div>
+  </div>
+
 <script>
 // ---------------- Card definitions ----------------
 var DEFS = {
   infantry:  { name: "Infantry",   cost: 1, atk: 2, hp: 2, art: "▲", text: "" },
+  scout:     { name: "Scout",      cost: 1, atk: 1, hp: 2, art: "➤", text: "Haste - attacks the turn it is played" },
   medic:     { name: "Medic",      cost: 2, atk: 1, hp: 3, art: "✚", text: "Heals HQ for 3" },
   grenadier: { name: "Grenadier",  cost: 2, atk: 2, hp: 2, art: "★", text: "Deals 1 to all enemy units" },
+  fighter:   { name: "Fighter",    cost: 2, atk: 3, hp: 1, art: "✈", air: true, text: "Air - ignores Guard" },
+  sniper:    { name: "Sniper",     cost: 3, atk: 4, hp: 2, art: "✛", text: "Deals 2 to the strongest enemy" },
   artillery: { name: "Artillery",  cost: 3, atk: 2, hp: 3, art: "◎", text: "Deals 2 to a random enemy unit" },
   tank:      { name: "Tank",       cost: 4, atk: 3, hp: 5, art: "▣", guard: true, text: "Guard - enemies must fight it first" },
+  bunker:    { name: "Bunker",     cost: 4, atk: 1, hp: 7, art: "⌂", guard: true, text: "Guard - a concrete wall" },
   bomber:    { name: "Bomber",     cost: 5, atk: 4, hp: 3, art: "≫", air: true, text: "Breakthrough - ignores Guard" },
   produce:   { name: "Produce",    cost: 0, type: "order", art: "◆", text: "Gain 1 resource" },
+  rally:     { name: "Rally",      cost: 1, type: "order", art: "⚑", text: "All your units can attack again" },
   explode:   { name: "Explode",    cost: 1, type: "order", art: "✶", text: "Deal 1 damage to a unit" },
-  plan:      { name: "Plan",       cost: 2, type: "order", art: "✎", text: "Draw a card" }
+  plan:      { name: "Plan",       cost: 2, type: "order", art: "✎", text: "Draw a card" },
+  snipe:     { name: "Snipe",      cost: 2, type: "order", art: "☠", text: "Deal 3 damage to a unit" },
+  bombard:   { name: "Bombard",    cost: 2, type: "order", art: "◉", text: "Deal 2 damage to the enemy HQ" },
+  airstrike: { name: "Airstrike",  cost: 3, type: "order", art: "☄", text: "Deal 2 damage to all enemy units" }
 };
 
 var MAX_HAND = 5;
 var MAX_BOARD = 4;
 var MAX_RES = 12;
+
+function orderNeedsTarget(key) { return key === "explode" || key === "snipe"; }
 
 // ---------------- Game state ----------------
 var S = null;
@@ -265,10 +318,17 @@ function freshPlayer() {
   return { hq: 20, res: 0, hand: [], board: [], deck: [], turnNum: 0 };
 }
 
+var DECK_COMP = [ ["infantry",5], ["scout",2], ["medic",4], ["grenadier",3], ["fighter",2], ["sniper",2], ["artillery",3], ["tank",2], ["bunker",2], ["bomber",2], ["produce",2], ["rally",2], ["explode",3], ["snipe",2], ["plan",2], ["bombard",2], ["airstrike",2] ];
+
+function deckSize() {
+  var n = 0;
+  DECK_COMP.forEach(function (c) { n += c[1]; });
+  return n;
+}
+
 function buildDeck() {
   var list = [];
-  var comp = [ ["infantry",6], ["medic",5], ["grenadier",4], ["artillery",3], ["tank",3], ["bomber",3], ["produce",2], ["explode",3], ["plan",2] ];
-  comp.forEach(function (c) { for (var i = 0; i < c[1]; i++) list.push(c[0]); });
+  DECK_COMP.forEach(function (c) { for (var i = 0; i < c[1]; i++) list.push(c[0]); });
   for (var i = list.length - 1; i > 0; i--) {
     var j = Math.floor(Math.random() * (i + 1));
     var t = list[i]; list[i] = list[j]; list[j] = t;
@@ -360,10 +420,10 @@ function play(hidx) {
   var inst = pl.hand[hidx];
   if (!inst) return;
   if (inst.cost > pl.res) return;
-  if (inst.key === "explode") {
+  if (orderNeedsTarget(inst.key)) {
     if (S.players[other(S.cur)].board.length === 0) { log("No enemy units to target!"); return; }
-    S.readyOrder = { hidx: hidx, key: "explode" };
-    log("Choose a target for Explode. Click the card again to cancel.");
+    S.readyOrder = { hidx: hidx, key: inst.key };
+    log("Choose a target for " + inst.name + ". Click the card again to cancel.");
     render();
     return;
   }
@@ -394,10 +454,11 @@ function resolveOrderTarget(tidx) {
   var foe = S.players[other(S.cur)];
   var def = foe.board[tidx];
   if (!inst || !def) return;
+  var dmg = (inst.key === "snipe") ? 3 : 1;
   pl.res -= inst.cost;
   pl.hand.splice(S.readyOrder.hidx, 1);
-  def.hp -= 1;
-  say("Explode hits " + def.name + " for 1!");
+  def.hp -= dmg;
+  say(inst.name + " hits " + def.name + " for " + dmg + "!");
   cleanBoard(foe);
   S.readyOrder = null;
   syncPub(S.cur);
@@ -408,12 +469,29 @@ function resolveOrderTarget(tidx) {
 
 function resolveOrder(inst, p) {
   var me = S.players[p];
-  if (inst.key === "produce") {
+  var foe = S.players[other(p)];
+  var k = inst.key;
+  if (k === "produce") {
     me.res = Math.min(me.res + 1, MAX_RES);
     say("Produce: +1 resource!");
-  } else if (inst.key === "plan") {
+  } else if (k === "plan") {
     draw(me, 1);
     say("Plan: drew a card!");
+  } else if (k === "rally") {
+    me.board.forEach(function (u) { u.canAttack = true; });
+    say("Rally: all your units can attack again!");
+  } else if (k === "bombard") {
+    foe.hq -= 2;
+    say("Bombard: the enemy HQ takes 2!");
+  } else if (k === "airstrike") {
+    if (foe.board.length > 0) {
+      foe.board.forEach(function (u) { u.hp -= 2; });
+      say("Airstrike hits every enemy unit for 2!");
+      cleanBoard(foe);
+    } else {
+      foe.hq -= 2;
+      say("Airstrike strikes the enemy HQ for 2!");
+    }
   }
 }
 
@@ -438,6 +516,19 @@ function resolveBattlecry(inst, p) {
     } else {
       foe.hq -= 2;
       say("Artillery strikes the enemy HQ for 2!");
+    }
+  } else if (inst.key === "scout") {
+    inst.canAttack = true;
+    say("Scout is ready to attack!");
+  } else if (inst.key === "sniper") {
+    var best = null;
+    foe.board.forEach(function (u) { if (!best || u.atk > best.atk) best = u; });
+    if (best) {
+      best.hp -= 2;
+      say("Sniper hits the enemy " + best.name + " for 2!");
+      cleanBoard(foe);
+    } else {
+      say("Sniper finds no target.");
     }
   }
 }
@@ -674,7 +765,8 @@ function resetOnline() {
   snap.hq = [20, 20];
   snap.res = [0, 0];
   snap.hand = [4, 4];
-  snap.deck = [27, 27];
+  var ds = deckSize() - 4;
+  snap.deck = [ds, ds];
   snap.board = [[], []];
   snap.ver = NET.ver;
   if (MQ.connected) {
@@ -1062,8 +1154,9 @@ function handHTML(pl, isActive, cnt) {
   for (var i = 0; i < n; i++) {
     var inst = isActive ? pl.hand[i] : null;
     if (isActive) {
-      var playable = interactive && inst.cost <= pl.res && (inst.type === "order" ? (inst.key === "explode" ? S.players[other(S.cur)].board.length > 0 : true) : pl.board.length < MAX_BOARD);
-      html += '<div class="cardwrap"><div class="card ' + (playable ? "playable" : "unplayable") + (inst.type === "order" ? " order" : "") + '" onclick="play(' + i + ')">' +
+      var foeUnits = S.players[other(S.cur)].board.length;
+      var playable = interactive && inst.cost <= pl.res && (inst.type === "order" ? (!orderNeedsTarget(inst.key) || foeUnits > 0) : pl.board.length < MAX_BOARD);
+      html += '<div class="cardwrap"><div class="card ' + (playable ? "playable" : "unplayable") + (inst.type === "order" ? " order" : "") + '" title="' + DEFS[inst.key].text + '" onclick="play(' + i + ')">' +
         '<div class="cost">' + inst.cost + '</div>' +
         '<div class="cname">' + inst.name + '</div>' +
         '<div class="art">' + DEFS[inst.key].art + '</div>' +
@@ -1110,7 +1203,7 @@ function boardHTML(pl, role) {
     if (inst.guard) badges += '<div class="badge guard">GUARD</div>';
     if (inst.air) badges += '<div class="badge air">AIR</div>';
 
-    html += '<div class="cardwrap"><div class="' + cls + '"' + attm + '>' +
+    html += '<div class="cardwrap"><div class="' + cls + '"' + attm + ' title="' + DEFS[inst.key].text + '">' +
       '<div class="cost">' + inst.cost + '</div>' +
       '<div class="cname">' + inst.name + '</div>' +
       '<div class="art">' + DEFS[inst.key].art + '</div>' +
@@ -1196,7 +1289,55 @@ window.addEventListener("resize", fit);
 document.getElementById("endBtn").onclick = function () { endTurn(); };
 document.getElementById("newBtn").onclick = function () { newGame(); };
 
+// ---------------- Tutorial ----------------
+var TUT_STEPS = [
+  { t: "1. THE GOAL", h: "<p>Each player has an <b>HQ with 20 HP</b> \u2014 the enemy HQ is at the top, yours at the bottom.</p><p>Bring the enemy HQ down to <b>0 HP</b> and you win. If your own HQ hits 0 first, you lose.</p>" },
+  { t: "2. RESOURCES & CARDS", h: "<ul><li>Every turn you gain <b>+1 resource</b> (up to 12), so bigger cards unlock as the game goes on.</li><li>Cards you can afford <b>glow gold</b> \u2014 click one to play it. Cards that cost too much look dark.</li><li>Press <b>END TURN</b> to pass play: in LOCAL mode the other player takes the screen, in ONLINE mode you wait for your opponent.</li></ul>" },
+  { t: "3. UNITS", h: "<p>Units go to your front row (max 4). Cost is the blue circle; red = attack, green = HP. Hover any card to see its power.</p><ul><li><b>Scout</b> (1) 1/2 \u2014 <b>Haste</b>: may attack the turn it is played.</li><li><b>Infantry</b> (1) 2/2 \u2014 basic soldier.</li><li><b>Medic</b> (2) 1/3 \u2014 on play, heals your HQ for 3.</li><li><b>Grenadier</b> (2) 2/2 \u2014 on play, deals 1 to all enemy units.</li><li><b>Fighter</b> (2) 3/1 \u2014 <b>Air</b>: ignores Guard.</li><li><b>Sniper</b> (3) 4/2 \u2014 on play, deals 2 to the strongest enemy.</li><li><b>Artillery</b> (3) 2/3 \u2014 on play, deals 2 to a random enemy unit.</li><li><b>Tank</b> (4) 3/5 \u2014 <b>Guard</b>.</li><li><b>Bunker</b> (4) 1/7 \u2014 <b>Guard</b>, a tough wall.</li><li><b>Bomber</b> (5) 4/3 \u2014 <b>Air</b>: ignores Guard.</li></ul>" },
+  { t: "4. UNITS & ATTACKS", h: "<ul><li>A unit <b>cannot attack the turn it is played</b> \u2014 unless it has <b>Haste</b> (Scout).</li><li>To attack: click your unit, then click an enemy unit or the enemy HQ.</li><li>Each unit attacks <b>once per turn</b>. When two units fight, both deal their attack to each other.</li><li><b>Rally</b> lets your whole row attack again in the same turn.</li></ul>" },
+  { t: "5. GUARD & AIR", h: "<ul><li><b>Guard</b> (Tank, Bunker) must be fought first \u2014 it shields the enemy HQ and weaker units.</li><li><b>Air</b> (Fighter, Bomber) ignores Guard and can always strike the HQ.</li><li>Powers trigger when a unit is played: <b>Medic</b> heals your HQ 3, <b>Grenadier</b> hits all enemies 1, <b>Artillery</b> hits one at random for 2, <b>Sniper</b> hits the strongest enemy for 2.</li></ul>" },
+  { t: "6. ORDERS", h: "<p>Orders are one-shot cards \u2014 they resolve, then vanish:</p><ul><li><b>Produce</b> (0) \u2014 gain 1 resource (free!).</li><li><b>Explode</b> (1) \u2014 deal 1 damage to a unit.</li><li><b>Rally</b> (1) \u2014 all your units can attack again.</li><li><b>Plan</b> (2) \u2014 draw a card.</li><li><b>Snipe</b> (2) \u2014 deal 3 damage to a unit.</li><li><b>Bombard</b> (2) \u2014 deal 2 straight to the enemy HQ.</li><li><b>Airstrike</b> (3) \u2014 deal 2 to every enemy unit.</li><li>Explode and Snipe need a target \u2014 click an enemy unit.</li></ul>" },
+  { t: "7. PLAY & MENU", h: "<ul><li><b>LOCAL</b> \u2014 two players share one screen (hot-seat).</li><li><b>ONLINE</b> \u2014 HOST gives you a room code to share, or press <b>ROOMS</b> to join a game that is waiting.</li><li>The <b>TUTORIAL</b> button reopens this guide anytime; the <b>\u2715</b> or <b>CLOSE</b> button shuts it.</li><li>Start a fresh match with <b>NEW GAME</b> (Local mode only).</li></ul><p>Good luck, Commander!</p>" }
+];
+var TUT_PAGE = 0;
+
+function openTutorial() {
+  TUT_PAGE = 0;
+  tutRender();
+  document.getElementById("tutorial").classList.add("show");
+}
+
+function closeTutorial() {
+  document.getElementById("tutorial").classList.remove("show");
+  try { localStorage.setItem("k6_tut_v2", "1"); } catch (e) {}
+}
+
+function tutNext() {
+  if (TUT_PAGE < TUT_STEPS.length - 1) { TUT_PAGE++; tutRender(); }
+  else closeTutorial();
+}
+
+function tutPrev() {
+  if (TUT_PAGE > 0) { TUT_PAGE--; tutRender(); }
+}
+
+function tutRender() {
+  var s = TUT_STEPS[TUT_PAGE];
+  document.getElementById("tTitle").textContent = s.t;
+  document.getElementById("tBody").innerHTML = s.h;
+  document.getElementById("tPage").textContent = (TUT_PAGE + 1) + " / " + TUT_STEPS.length;
+  document.getElementById("tPrev").disabled = (TUT_PAGE === 0);
+  document.getElementById("tNext").textContent = (TUT_PAGE === TUT_STEPS.length - 1) ? "CLOSE" : "NEXT";
+}
+
+function maybeShowTutorial() {
+  var seen = false;
+  try { seen = localStorage.getItem("k6_tut_v2") === "1"; } catch (e) {}
+  if (!seen) openTutorial();
+}
+
 newGame();
+maybeShowTutorial();
 </script>
 </body>
 </html>
