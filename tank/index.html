@@ -46,11 +46,17 @@
     padding:6px 12px; border-radius:4px; font-size:16px; font-weight:bold; color:#b6ff8a; }
   #hint { left:10px; top:10px; background:#0a1120cc; border:2px solid #2b4a7a;
     padding:6px 10px; border-radius:4px; font-size:11px; line-height:1.5; color:#9fc0e8; }
-  #feed { left:50%; transform:translateX(-50%); bottom:172px; text-align:center; font-size:12px; }
+  #feed { left:50%; transform:translateX(-50%); bottom:184px; text-align:center; font-size:12px; z-index:52; }
   #feed div { margin:2px 0; }
   #minimap { position:fixed; z-index:50; left:50%; transform:translateX(-50%); bottom:8px;
     border:2px solid #2b4a7a; background:#050a14cc; border-radius:3px; }
   #cross { position:fixed; z-index:45; width:26px; height:26px; margin:-13px 0 0 -13px; pointer-events:none; }
+  @media (max-width:760px){
+    #left, #right { min-width:0; width:176px; font-size:11px; padding:6px; }
+    .slotname { width:60px; } .slothp { width:46px; }
+    #minimap { width:116px; height:116px; }
+    #feed { bottom:134px; }
+  }
 
   #shop { position:fixed; inset:0; z-index:70; background:#02040acc; display:none;
     align-items:center; justify-content:center; }
