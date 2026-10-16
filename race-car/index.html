@@ -122,7 +122,7 @@
 </div>
 <div id="standings" class="hidden"></div>
 <div id="banner" class="hidden"></div>
-  <div id="verTag">v2.10</div>
+  <div id="verTag">v2.11</div>
 
 <div id="menu" class="overlay">
   <h1 id="menuTitle">SUN CIRCUIT</h1>
@@ -326,6 +326,40 @@
         [200, 0], [202, 90], [124, 138], [44, 135], [-16, 150],
         [-100, 173], [-179, 130], [-181, 39], [-139, -29], [-122, -89],
         [-100, -173], [-23, -220], [57, -176], [95, -105], [138, -61]
+      ]
+    },
+    {
+      id: 'neon', name: 'NEON CITY', blurb: 'night \u00b7 grippy streets',
+      surface: { accel: 1.05, top: 1.02, grip: 9.0, roll: 1.05, aiSpeed: 1.03, aiGrip: 14 },
+      palette: {
+        sky: 0x0d1220, fogNear: 260, fogFar: 950, grass: 0x141a26,
+        road: [0.16, 0.18, 0.22], kerb: [0.85, 0.25, 0.38],
+        wallA: [0.28, 0.30, 0.36], wallB: [0.04, 0.05, 0.09],
+        ambient: 0x8fa0c8, ambientI: 0.62, sun: 0xffffff, sunI: 1.4,
+        tree: [0x1c2a2a, 0x243636, 0x172222],
+        standA: 0x2a3344, standB: 0x232c3c, roof: 0x151b28
+      },
+      ctrl: [
+        [150, -150], [190, -60], [190, 40], [120, 90], [40, 120], [-40, 120],
+        [-120, 90], [-190, 40], [-190, -60], [-150, -150], [-70, -150],
+        [-20, -180], [40, -170], [90, -150]
+      ]
+    },
+    {
+      id: 'alpine', name: 'ALPINE PASS', blurb: 'hairpins \u00b7 altitude',
+      surface: { accel: 0.95, top: 1.08, grip: 6.5, roll: 1.15, aiSpeed: 0.96, aiGrip: 9 },
+      palette: {
+        sky: 0x9fc4e8, fogNear: 350, fogFar: 1500, grass: 0x3f6b3f,
+        road: [0.28, 0.28, 0.30], kerb: [0.85, 0.83, 0.80],
+        wallA: [0.95, 0.95, 0.95], wallB: [0.25, 0.40, 0.60],
+        ambient: 0xdfe9f5, ambientI: 0.66, sun: 0xfff6e0, sunI: 1.8,
+        tree: [0x2f5c34, 0x3a6b3f, 0x274c2c],
+        standA: 0x7d858d, standB: 0x6d757d, roof: 0x454c54
+      },
+      ctrl: [
+        [60, 200], [170, 160], [220, 80], [210, -20], [130, -90], [160, -180],
+        [60, -220], [-60, -190], [-40, -90], [-140, -70], [-200, -140],
+        [-220, -40], [-170, 50], [-150, 160]
       ]
     }
   ];
@@ -880,6 +914,15 @@
       new THREE.MeshBasicMaterial({ color: 0x37e08a }));
     display.position.set(0, 0.07, 0.03);
     wheelRoot.add(display);
+    // Driver's hands gripping the rim at 10 and 2 o'clock.
+    var skinMat = new THREE.MeshLambertMaterial({ color: 0xd9a066 });
+    var handGeo = new THREE.BoxGeometry(0.09, 0.08, 0.09);
+    [[-0.17, 0.12], [0.17, 0.12]].forEach(function (h) {
+      var hand = new THREE.Mesh(handGeo, skinMat);
+      hand.name = 'hand';
+      hand.position.set(h[0], h[1], 0.05);
+      wheelRoot.add(hand);
+    });
 
     // Dashboard shelf under the windscreen and A-pillars framing it
     var dashMat = new THREE.MeshLambertMaterial({ color: 0x2e333b });
@@ -1716,16 +1759,23 @@ var pr = projectTrack(c.x, c.z, c.i);
     if (window.Peer) return Promise.resolve(window.Peer);
     if (peerLib) return peerLib;
     peerLib = new Promise(function (resolve, reject) {
-      var s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js';
-      s.onload = function () {
-        window.Peer ? resolve(window.Peer)
-          : reject(new Error('Online library failed to load.'));
+      var sources = ['./lib/peerjs.min.js',
+        'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js'];
+      var tryNext = function (i) {
+        if (i >= sources.length) {
+          reject(new Error('Could not load the online library - check your connection.'));
+          return;
+        }
+        var s = document.createElement('script');
+        s.src = sources[i];
+        s.onload = function () {
+          window.Peer ? resolve(window.Peer)
+            : tryNext(i + 1);
+        };
+        s.onerror = function () { tryNext(i + 1); };
+        document.head.appendChild(s);
       };
-      s.onerror = function () {
-        reject(new Error('Could not load the online library - check your connection.'));
-      };
-      document.head.appendChild(s);
+      tryNext(0);
     });
     return peerLib;
   }
