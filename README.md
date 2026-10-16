@@ -10,7 +10,7 @@ A single website that collects five browser games in one place.
 | Europe 1939 — map game | [`map-game/`](map-game/) | Ready |
 | Blockcraft — voxel sandbox | [`minecraft/`](minecraft/) | Ready |
 | Tank War — 2D arena | [`tank/`](tank/) | Ready |
-| Sun Circuit — 3D race car | [`race-car/`](race-car/) | Developing |
+| Apex Racing — 3D race car | [`race-car/`](race-car/) | Ready |
 
 ## Run locally
 
