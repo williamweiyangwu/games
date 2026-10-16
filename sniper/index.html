@@ -291,8 +291,9 @@
       <b>MOVE MOUSE</b><span>Aim</span>
       <b>W / A / S / D</b><span>Walk</span>
       <b>LEFT CLICK (hold)</b><span>Fire</span>
+      <b>E</b><span>Toggle scope</span>
       <b>RIGHT CLICK (hold)</b><span>Scope / Iron sights</span>
-      <b>SCROLL WHEEL</b><span>Zoom 倍镜</span>
+      <b>SCROLL WHEEL</b><span>Zoom level</span>
       <b>1 / 2 / 3</b><span>Switch weapon</span>
       <b>SHIFT (hold)</b><span>Hold breath</span>
       <b>R</b><span>Reload</span>
@@ -786,7 +787,9 @@
     let started = false;
     let locked = false;
     let paused = false;
-    let aiming = false;
+    let scopeOn = false;
+    let rmbHeld = false;
+    function isAiming() { return scopeOn || rmbHeld; }
     let holdingBreath = false;
     let mouseDown = false;
     let score = 0;
@@ -963,7 +966,7 @@
     function fireOne() {
       const w = WEAPONS[currentWeapon];
       const dir = getAimDir();
-      const spread = w.spread * (aiming ? (w.scope ? 0.3 : 0.6) : 1.3);
+      const spread = w.spread * (isAiming() ? (w.scope ? 0.3 : 0.6) : 1.3);
       dir.x += (Math.random() - 0.5) * spread;
       dir.y += (Math.random() - 0.5) * spread;
       dir.z += (Math.random() - 0.5) * spread * 0.4;
@@ -1168,19 +1171,19 @@
         mouseDown = true;
         tryFire();
       } else if (e.button === 2) {
-        aiming = true;
+        rmbHeld = true;
       }
     });
     document.addEventListener('mouseup', (e) => {
       if (e.button === 0) mouseDown = false;
-      if (e.button === 2) aiming = false;
+      if (e.button === 2) rmbHeld = false;
     });
     document.addEventListener('contextmenu', (e) => e.preventDefault());
 
     document.addEventListener('wheel', (e) => {
       if (!started || paused) return;
       const w = WEAPONS[currentWeapon];
-      if (!w.zooms || !aiming) return;
+      if (!w.zooms || !isAiming()) return;
       zoomIdx[currentWeapon] = THREE.MathUtils.clamp(
         zoomIdx[currentWeapon] + (e.deltaY > 0 ? 1 : -1),
         0, w.zooms.length - 1
@@ -1192,6 +1195,7 @@
       keys[e.code] = true;
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') holdingBreath = true;
       if (e.code === 'KeyR' && started) startReload();
+      if (e.code === 'KeyE' && started) scopeOn = !scopeOn;
       if (e.code === 'Digit1') switchWeapon(0);
       if (e.code === 'Digit2') switchWeapon(1);
       if (e.code === 'Digit3') switchWeapon(2);
@@ -1215,7 +1219,7 @@
 
     function updateRangefinder() {
       const w = WEAPONS[currentWeapon];
-      const scoped = aiming && w.scope;
+      const scoped = isAiming() && w.scope;
       if (!scoped) {
         distLabel.textContent = '';
         magLabel.textContent = '';
@@ -1339,9 +1343,9 @@
 
       // FOV zoom
       const w = WEAPONS[currentWeapon];
-      const scoped = aiming && w.scope;
+      const scoped = isAiming() && w.scope;
       let targetFov = 70;
-      if (aiming) targetFov = w.scope ? w.zooms[zoomIdx[currentWeapon]].fov : 45;
+      if (isAiming()) targetFov = w.scope ? w.zooms[zoomIdx[currentWeapon]].fov : 45;
       camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 14);
       camera.updateProjectionMatrix();
 
