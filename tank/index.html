@@ -42,8 +42,23 @@
   .slothp.low { color:#ff5a5a; }
   .deadTxt { color:#7d90ad; font-style:italic; }
 
-  #cash { right:10px; top:10px; background:#0a1120cc; border:2px solid #3b6a2b;
+  #cash { right:112px; top:10px; background:#0a1120cc; border:2px solid #3b6a2b;
     padding:6px 12px; border-radius:4px; font-size:16px; font-weight:bold; color:#b6ff8a; }
+  #mute { position:fixed; z-index:55; right:58px; top:10px; width:44px; height:34px;
+    font-size:16px; line-height:1; cursor:pointer; background:#0a1120cc; border:2px solid #2b4a7a;
+    color:#cfe3ff; border-radius:4px; }
+  #shopBtn { position:fixed; z-index:55; right:10px; top:10px; width:44px; height:34px;
+    font-weight:bold; font-size:12px; letter-spacing:1px; cursor:pointer; background:#0a1120cc;
+    border:2px solid #3b6a2b; color:#b6ff8a; border-radius:4px; display:none; }
+  #touch { position:fixed; left:0; right:0; bottom:0; height:52%; z-index:54; display:none; touch-action:none; }
+  #touch.on { display:block; }
+  .joy { position:fixed; left:0; top:0; width:116px; height:116px; margin:-58px 0 0 -58px;
+    border:2px solid rgba(143,208,255,.35); border-radius:50%; background:rgba(10,17,32,.18);
+    display:flex; align-items:center; justify-content:center; will-change:transform; }
+  .joy .knob { width:54px; height:54px; border-radius:50%;
+    background:rgba(143,208,255,.28); border:2px solid rgba(143,208,255,.6); will-change:transform; }
+  #joyR { border-color:rgba(255,143,122,.35); }
+  #joyR .knob { background:rgba(255,143,122,.28); border-color:rgba(255,143,122,.6); }
   #hint { left:10px; top:10px; background:#0a1120cc; border:2px solid #2b4a7a;
     padding:6px 10px; border-radius:4px; font-size:11px; line-height:1.5; color:#9fc0e8; }
   #feed { left:50%; transform:translateX(-50%); bottom:184px; text-align:center; font-size:12px; z-index:52; }
@@ -177,11 +192,18 @@
   B — shop &nbsp;|&nbsp; 1-5 — quick buy
 </div>
 <div class="hud" id="cash">$0</div>
+<button id="mute" title="toggle sound">🔊</button>
+<button id="shopBtn" title="open armory">SHOP</button>
 <div class="hud" id="netbadge" style="display:none"></div>
 <div class="hud" id="left"></div>
 <div class="hud" id="right"></div>
 <div class="hud" id="feed"></div>
 <canvas id="minimap" width="150" height="150"></canvas>
+
+<div id="touch">
+  <div class="joy" id="joyL"><div class="knob"></div></div>
+  <div class="joy" id="joyR"><div class="knob"></div></div>
+</div>
 
 <div id="respawn"><div class="n" id="resN">3</div><div class="l">RESPAWNING</div></div>
 
@@ -515,9 +537,18 @@ const cover = [
   [-20,-24,8,6,3.2],[20,-24,8,6,3.2],[-20,24,8,6,3.2],[20,24,8,6,3.2],
   [-34,0,5,10,3.0],[34,0,5,10,3.0],
   [-27,-40,6,5,2.6],[27,-40,6,5,2.6],[-27,40,6,5,2.6],[27,40,6,5,2.6],
-  [-40,-12,4,4,2.2],[40,-12,4,4,2.2],[-40,12,4,4,2.2],[40,12,4,4,2.2]
+  [-40,-12,4,4,2.2],[40,-12,4,4,2.2],[-40,12,4,4,2.2],[40,12,4,4,2.2],
+  // flank cover — colour/height variety (color optional, defaults to olive)
+  [-18,-16,5,4,2.8,0x5a6a48],[18,-16,5,4,2.8,0x5a6a48],
+  [-18,16,5,4,2.8,0x5a6a48],[18,16,5,4,2.8,0x5a6a48],
+  [-10,-36,5,4,2.4,0x6a5238],[10,-36,5,4,2.4,0x6a5238],
+  [-10,36,5,4,2.4,0x6a5238],[10,36,5,4,2.4,0x6a5238],
+  [-33,-16,4,4,2.6,0x5a5f66],[33,-16,4,4,2.6,0x5a5f66],
+  [-33,16,4,4,2.6,0x5a5f66],[33,16,4,4,2.6,0x5a5f66],
+  [-13,-6,4,3,1.8,0x6a6a48],[13,-6,4,3,1.8,0x6a6a48],
+  [-13,6,4,3,1.8,0x6a6a48],[13,6,4,3,1.8,0x6a6a48]
 ];
-cover.forEach(([x,z,w,d,h])=> addWall(x,z,w,d,h,0x55604a));
+cover.forEach(([x,z,w,d,h,c])=> addWall(x,z,w,d,h, c||0x55604a));
 
 /* ============================================================
    HQ — the cannon emplacement (炮台) IS the objective
@@ -723,6 +754,7 @@ function resetHQS(){
 }
 
 function setup(mode, roster, localId){
+  musicStart();
   for(const t of tanks) scene.remove(t.mesh.group);
   MODE = mode; tanks.length = 0;
   resetHQS();
@@ -802,24 +834,64 @@ function addMoney(t,amt){ if(!t||!amt) return; if(t.isPlayer) money += amt; else
 /* ============================================================
    AUDIO (tiny synth)
 ============================================================ */
-let AC=null;
+let AC=null, muted = (()=>{ try{ return localStorage.getItem('tw.mute')==='1'; }catch(e){ return false; } })();
 function ac(){ if(!AC) AC=new (window.AudioContext||window.webkitAudioContext)(); return AC; }
-function beep(f,d,type,vol){
+function beep(f,d,type,vol,t0){
+  if(muted) return;
   try{
     const a=ac(), o=a.createOscillator(), g=a.createGain();
+    const st=t0||a.currentTime;
     o.type=type||'square'; o.frequency.value=f;
-    g.gain.setValueAtTime(vol,a.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+d);
-    o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime+d);
+    g.gain.setValueAtTime(vol,st);
+    g.gain.exponentialRampToValueAtTime(0.001,st+d);
+    o.connect(g); g.connect(a.destination); o.start(st); o.stop(st+d);
+  }catch(e){}
+}
+let noiseBuf=null;
+function noise(d,vol,t0){
+  if(muted) return;
+  try{
+    const a=ac();
+    if(!noiseBuf){
+      noiseBuf=a.createBuffer(1, a.sampleRate*0.5, a.sampleRate);
+      const c=noiseBuf.getChannelData(0);
+      for(let i=0;i<c.length;i++) c[i]=Math.random()*2-1;
+    }
+    const src=a.createBufferSource(); src.buffer=noiseBuf;
+    const f=a.createBiquadFilter(); f.type='lowpass'; f.frequency.value=900;
+    const g=a.createGain(); const st=t0||a.currentTime;
+    g.gain.setValueAtTime(vol,st); g.gain.exponentialRampToValueAtTime(0.001,st+d);
+    src.connect(f); f.connect(g); g.connect(a.destination); src.start(st); src.stop(st+d);
   }catch(e){}
 }
 const SFX = {
-  shoot(){ beep(180,0.07,'square',0.05); },
-  boom(){ beep(70,0.28,'sawtooth',0.10); },
-  hit(){ beep(320,0.05,'triangle',0.05); },
+  shoot(){ beep(200,0.08,'square',0.06); beep(88,0.10,'sawtooth',0.05); },
+  boom(){ noise(0.35,0.16); beep(60,0.35,'sawtooth',0.10); },
+  hit(){ beep(340,0.06,'triangle',0.06); },
   buy(){ beep(660,0.08,'square',0.07); setTimeout(()=>beep(880,0.10,'square',0.06),70); },
   alarm(){ beep(440,0.5,'square',0.08); }
 };
+let musicOn=false, musicTimer=null, musicStep=0;
+const BASS=[55,55,65.4,55, 49,49,58.3,49, 43.7,43.7,49,43.7, 55,55,65.4,73.4];
+const PAD =[220,220,261.6,220, 196,196,233.1,196, 174.6,174.6,196,174.6, 220,220,261.6,293.7];
+function musicTick(){
+  musicTimer=null;
+  if(!musicOn) return;
+  if(!muted && ac().state==='running'){
+    const s=musicStep%16, t=ac().currentTime;
+    beep(BASS[s],0.16,'triangle',0.05,t);
+    if(s%2===0) beep(PAD[s],0.10,'square',0.018,t);
+    if(s%4===2) noise(0.04,0.03,t);
+    musicStep++;
+  }
+  musicTimer=setTimeout(musicTick, 210);
+}
+function musicStart(){ if(musicOn) return; musicOn=true; if(!musicTimer) musicTimer=setTimeout(musicTick, 10); }
+function musicStop(){ musicOn=false; }
+const muteBtn=document.getElementById('mute');
+function setMute(v){ muted=v; try{ localStorage.setItem('tw.mute', v?'1':'0'); }catch(e){} muteBtn.textContent = muted?'🔇':'🔊'; }
+muteBtn.onclick=()=>{ ac(); setMute(!muted); };
+setMute(muted);
 
 /* ============================================================
    FX
@@ -1075,6 +1147,24 @@ function nearestEnemy(t){
   }
   return { e:best, d:bd };
 }
+// steer around walls/solids (the central building, HQ platforms) by fanning
+// the desired heading left/right until an unobstructed one is found
+function aiSteer(t, mx, mz){
+  const r = t.c.radius + 0.7;
+  const len = Math.hypot(mx,mz);
+  if(len<1e-3) return {mx:0, mz:0};
+  const bx=mx/len, bz=mz/len;
+  const open=(x,z)=>!blocked(t.x,t.z, t.x+x*5, t.z+z*5, r, true);
+  if(open(bx,bz)) return {mx, mz};
+  for(const s of [1,-1]){
+    for(let a=0.4;a<=Math.PI+0.01;a+=0.4){
+      const ca=Math.cos(a), sa=Math.sin(a*s);
+      const rx=bx*ca - bz*sa, rz=bx*sa + bz*ca;
+      if(open(rx,rz)) return {mx:rx, mz:rz};
+    }
+  }
+  return {mx:0, mz:0};
+}
 function aiUpdate(t, dt){
   t.retarget-=dt;
   if(t.retarget<=0 || !t.target || !t.target.alive){
@@ -1095,10 +1185,6 @@ function aiUpdate(t, dt){
   // strafe around HQ if it's the target
   if(g.gun){ mx += -nz*0.7; mz += nx*0.7; }
 
-  // avoid getting stuck (walls and the HQ buildings)
-  const aheadX=t.x+nx*4, aheadZ=t.z+nz*4;
-  if(blocked(t.x,t.z,aheadX,aheadZ,1.2,true)){ t.strafe*=-1; mx=-nz*t.strafe; mz=nx*t.strafe; }
-
   // defenders hold the base: if nothing is close, drift back to the staging
   // ground in front of the HQ (never into the building itself)
   if(t.role==='guard' && dist>17){
@@ -1108,7 +1194,9 @@ function aiUpdate(t, dt){
     if(bd>6){ mx=bx/bd*0.9; mz=bz/bd*0.9; }
   }
 
-  t.moveX=mx; t.moveZ=mz;
+  // fan the desired heading around obstacles so bots don't grind on walls
+  const st = aiSteer(t, mx, mz);
+  t.moveX=st.mx; t.moveZ=st.mz;
   const clear = !blocked(t.x,t.z,g.x,g.z,0.4);
   if(clear && dist<t.c.range && Math.abs(wrap(t.turAng - t.aim))<AI().aimTol) t.wantFire=true;
 }
@@ -1137,6 +1225,51 @@ addEventListener('mousemove', e=>{ mxS=e.clientX; myS=e.clientY;
 addEventListener('mousedown', e=>{ if(e.button===0){ firing=true; if(e.target===renderer.domElement && player) player.wantFire=true; } });
 addEventListener('mouseup',   e=>{ if(e.button===0){ firing=false; if(player) player.wantFire=false; } });
 renderer.domElement.addEventListener('contextmenu', e=>e.preventDefault());
+
+/* ---- touch controls (twin stick) ---- */
+const touch = { active:false, left:{x:0,z:0}, right:{x:0,z:0} };
+function initTouch(){
+  const isTouch = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+  if(!isTouch) return;
+  touch.active = true;
+  const layer = document.getElementById('touch');
+  const joy = { L:document.getElementById('joyL'), R:document.getElementById('joyR') };
+  const knob = { L:joy.L.querySelector('.knob'), R:joy.R.querySelector('.knob') };
+  layer.classList.add('on');
+  document.getElementById('cross').style.display = 'none';
+  const sb = document.getElementById('shopBtn');
+  sb.style.display = 'block';
+  sb.onclick = ()=>toggleShop();
+  const MAX = 46;
+  const sticks = {};
+  function place(e, side){
+    const s = sticks[e.pointerId];
+    const dx = e.clientX - s.ox, dy = e.clientY - s.oy;
+    const len = Math.hypot(dx, dy), cl = Math.min(len, MAX), ang = Math.atan2(dy, dx);
+    knob[side].style.transform = `translate(${Math.cos(ang)*cl}px,${Math.sin(ang)*cl}px)`;
+    const mag = Math.min(1, len/MAX);
+    const ux = len<1e-3 ? 0 : (dx/len)*mag, uy = len<1e-3 ? 0 : (dy/len)*mag;
+    touch[side].x = ux; touch[side].z = uy;
+  }
+  layer.addEventListener('pointerdown', e=>{
+    const r = layer.getBoundingClientRect();
+    const side = e.clientX < r.left + r.width/2 ? 'L' : 'R';
+    joy[side].style.transform = `translate(${e.clientX}px,${e.clientY}px)`;
+    sticks[e.pointerId] = { side, ox:e.clientX, oy:e.clientY };
+    layer.setPointerCapture(e.pointerId);
+    place(e, side);
+  });
+  layer.addEventListener('pointermove', e=>{ if(sticks[e.pointerId]) place(e, sticks[e.pointerId].side); });
+  const release = e=>{
+    const s = sticks[e.pointerId]; if(!s) return;
+    touch[s.side].x = 0; touch[s.side].z = 0;
+    knob[s.side].style.transform = 'translate(0,0)';
+    delete sticks[e.pointerId];
+  };
+  layer.addEventListener('pointerup', release);
+  layer.addEventListener('pointercancel', release);
+}
+initTouch();
 
 const ray = new THREE.Raycaster(), ndc=new THREE.Vector2(), ground=new THREE.Plane(new THREE.Vector3(0,1,0),0);
 const hitPt=new THREE.Vector3();
@@ -1232,6 +1365,15 @@ document.getElementById('again').onclick=()=>{
 =========================================================== */
 function readLocalInput(){
   if(!player) return;
+  if(touch.active){
+    player.moveX = touch.left.x; player.moveZ = touch.left.z;
+    const rm = Math.hypot(touch.right.x, touch.right.z);
+    if(rm > 0.3){
+      player.aim = Math.atan2(touch.right.x, touch.right.z);
+      player.wantFire = true;
+    }
+    return;
+  }
   let ax=0, az=0;
   if(keys['w']||keys['arrowup']) az-=1;
   if(keys['s']||keys['arrowdown']) az+=1;
@@ -1447,8 +1589,10 @@ function startGame(mode){
   modeEl.classList.add('off');
   setup(mode);
   money = 0;
-  el('hint').innerHTML = 'AI — <b style="color:#8fd0ff">'+AI().label+'</b><br>'
-    + 'WASD / ARROWS — move<br>MOUSE — aim &nbsp;|&nbsp; CLICK / SPACE — fire<br>B — shop &nbsp;|&nbsp; 1-5 — quick buy';
+  el('hint').innerHTML = touch.active
+    ? 'AI — <b style="color:#8fd0ff">'+AI().label+'</b><br>LEFT STICK — move<br>RIGHT STICK — aim &amp; fire<br>SHOP — upgrade tank'
+    : 'AI — <b style="color:#8fd0ff">'+AI().label+'</b><br>'
+      + 'WASD / ARROWS — move<br>MOUSE — aim &nbsp;|&nbsp; CLICK / SPACE — fire<br>B — shop &nbsp;|&nbsp; 1-5 — quick buy';
 }
 el('mDef').onclick = ()=>startGame('siege');
 el('mTdm').onclick = ()=>startGame('tdm');
