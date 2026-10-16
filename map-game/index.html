@@ -3102,8 +3102,10 @@ function updateNewsBadge(){
    ======================================================================= */
 var MAIL_SUBJ=null, MAIL_FOCUS=null, MAIL_PREV=0, NEWS_FOCUS=false, NEWS_HOVER=false, NEWS_HOVER_T=null, UI_PAUSED=false, TUT_FOCUS=false;
 
-/* opening the newspaper or a letter pauses the war until both are closed */
+/* solo: opening the newspaper, a letter or help pauses the war until it is closed.
+   online: the war keeps running - reading mail, news or help never stops the clock */
 function syncUIPause(){
+  if(NET && NET.mode!==0){ UI_PAUSED=false; return; }
   var now=(MAIL_FOCUS!==null)||NEWS_FOCUS||NEWS_HOVER||TUT_FOCUS;
   if(now && !UI_PAUSED){ UI_PAUSED=true; MAIL_PREV=spd; setSpeed(0); }
   else if(!now && UI_PAUSED){ UI_PAUSED=false; if(MAIL_PREV>0) setSpeed(MAIL_PREV); }
