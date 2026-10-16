@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>欧洲二战全过程</title>
+<title>World War II in Europe</title>
 <style>
   :root {
     --bg: #0d1117;
@@ -130,8 +130,8 @@
   .map-counter { text-align: center; color: var(--muted); font-size: 0.8rem; margin-bottom: 10px; }
   .map-stats { text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 8px; }
   .map-svg-wrap { position: relative; }
-  #europeMap polygon { transition: fill .5s ease; stroke: #0d1117; stroke-width: 1; cursor: pointer; }
-  #europeMap polygon:hover { stroke: #fff; stroke-width: 1.5; }
+  #europeMap path { transition: fill .5s ease; cursor: pointer; }
+  #europeMap path:hover { stroke: #fff; stroke-width: 1.2; stroke-opacity: 1; }
   #europeMap text { pointer-events: none; user-select: none; }
   #europeMap .battle { cursor: pointer; animation: pulse 1.5s ease-in-out infinite; }
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
@@ -159,6 +159,40 @@
   .figure .en-name { color: var(--muted); font-size: 0.85rem; margin-bottom: 4px; }
   .figure .role { color: var(--gold); font-size: 0.85rem; margin-bottom: 8px; }
   .figure .fact { color: var(--muted); font-size: 0.85rem; text-align: left; }
+  .figure .hint { color: var(--gold); font-size: 0.75rem; margin-top: 8px; opacity: 0.8; }
+
+  /* 人物详情弹窗 */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.65);
+    display: none; align-items: center; justify-content: center;
+    z-index: 100; padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 16px;
+    max-width: 640px; width: 100%; max-height: 86vh; overflow-y: auto;
+    padding: 30px; position: relative; animation: modalIn .25s ease;
+  }
+  @keyframes modalIn { from { opacity: 0; transform: translateY(20px) scale(.98); } to { opacity: 1; transform: none; } }
+  .modal-close { position: absolute; top: 12px; right: 16px; background: none; border: none; color: var(--muted); font-size: 30px; cursor: pointer; line-height: 1; }
+  .modal-close:hover { color: #fff; }
+  .modal-head { display: flex; align-items: center; gap: 18px; margin-bottom: 18px; }
+  .modal-avatar { width: 76px; height: 76px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.9rem; font-weight: 700; color: #fff; border: 3px solid var(--border); flex-shrink: 0; }
+  .modal-avatar.axis { background: linear-gradient(135deg, #e5534b, #7a2e2a); }
+  .modal-avatar.allies { background: linear-gradient(135deg, #3b82f6, #1e40af); }
+  .modal-name { font-size: 1.5rem; font-weight: 700; }
+  .modal-role { color: var(--gold); }
+  .modal-life { color: var(--muted); font-size: 0.85rem; }
+  .modal-detail { color: var(--text); line-height: 1.7; margin-bottom: 16px; }
+  .modal-events h4 { color: var(--text); margin-bottom: 8px; font-size: 0.95rem; }
+  .modal-events ul { list-style: none; }
+  .modal-events li { padding: 8px 0; border-bottom: 1px solid var(--border); color: var(--muted); font-size: 0.92rem; display: flex; gap: 12px; align-items: baseline; }
+  .modal-events li:last-child { border-bottom: none; }
+  .modal-events .yr { color: var(--gold); font-weight: 700; min-width: 58px; flex-shrink: 0; }
+
+  /* 人物头像照片 */
+  .avatar, .modal-avatar { position: relative; overflow: hidden; }
+  .portrait { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: none; }
 
   footer { text-align: center; color: var(--muted); padding: 40px 20px; font-size: 0.85rem; border-top: 1px solid var(--border); }
 </style>
@@ -198,7 +232,7 @@
       </div>
       <div class="map-counter" id="mapCounter"></div>
       <div class="map-svg-wrap">
-        <svg id="europeMap" width="100%" viewBox="0 0 900 560" preserveAspectRatio="xMidYMid meet"></svg>
+        <svg id="europeMap" width="100%" viewBox="0 0 800 766" preserveAspectRatio="xMidYMid meet"></svg>
         <div class="tooltip" id="mapTip"></div>
       </div>
       <div class="map-stats" id="mapStats"></div>
@@ -232,11 +266,28 @@
 
 </div>
 
-<footer data-i18n="footer">数据基于公开历史资料整理，为教学演示用途，部分数字为估算值。</footer>
+<div class="modal-overlay" id="figureModal">
+  <div class="modal">
+    <button class="modal-close" id="modalClose">&times;</button>
+    <div class="modal-head">
+      <div class="modal-avatar" id="modalAvatar">H</div>
+      <div>
+        <div class="modal-name" id="modalName"></div>
+        <div class="modal-role" id="modalRole"></div>
+        <div class="modal-life" id="modalLife"></div>
+      </div>
+    </div>
+    <div class="modal-detail" id="modalDetail"></div>
+    <div class="modal-events" id="modalEvents"></div>
+  </div>
+</div>
 
+<footer data-i18n="footer">数据基于公开历史资料整理，为教学演示用途，部分数字为估算值。地图数据：© ammap.com</footer>
+
+<script src="europe-geo.js"></script>
 <script>
 // ================= 语言 =================
-let lang = "zh";
+let lang = "en";
 const I18N = {
   zh: {
     brand: "欧洲二战全过程", title: "欧洲二战全过程",
@@ -254,7 +305,8 @@ const I18N = {
     legendCurve: "轴心国控制比例", legendCounter: "盟军反攻（1943后）", legendNode: "关键战役节点",
     stateAxis: "轴心国", stateOccupied: "轴心占领", stateAllies: "盟军", stateNeutral: "中立",
     axisCount: "轴心控制国家：{n} 个", stage: "阶段 {i} / {n}",
-    all: "全部", pause: "暂停", resume: "继续"
+    all: "全部", pause: "暂停", resume: "继续",
+    keyEvents: "重要经历", life: "生卒", viewDetail: "点击查看详情"
   },
   en: {
     brand: "WWII in Europe", title: "World War II in Europe",
@@ -272,7 +324,8 @@ const I18N = {
     legendCurve: "Axis-controlled share", legendCounter: "Allied counteroffensive (1943+)", legendNode: "Key battle node",
     stateAxis: "Axis", stateOccupied: "Axis-occupied", stateAllies: "Allies", stateNeutral: "Neutral",
     axisCount: "Axis-controlled nations: {n}", stage: "Stage {i} / {n}",
-    all: "All", pause: "Pause", resume: "Resume"
+    all: "All", pause: "Pause", resume: "Resume",
+    keyEvents: "Key events", life: "Life", viewDetail: "Click for details"
   }
 };
 function t(key) { return I18N[lang][key]; }
@@ -388,38 +441,43 @@ const events = [
     detail:{zh:"投降书于5月8日生效（俄罗斯因时差纪念为5月9日胜利日）。欧洲二战至此结束，但太平洋战场仍在继续。",en:"The surrender took effect on 8 May (Victory Day, 9 May in Russia). War in Europe ended, though the Pacific war continued."} },
 ];
 
-// ================= 地图国家 =================
-const countries = [
-  { id:"uk", name:{zh:"英国",en:"United Kingdom"}, shapes:["162,76 202,68 226,90 222,132 202,152 176,152 160,126 154,100"], lx:188, ly:112, label:"UK" },
-  { id:"ireland", name:{zh:"爱尔兰",en:"Ireland"}, shapes:["120,92 150,86 160,112 150,138 128,146 116,122"], lx:138, ly:118, label:"IRL" },
-  { id:"norway", name:{zh:"挪威",en:"Norway"}, shapes:["318,32 342,20 370,28 378,45 372,75 386,100 382,130 366,142 348,128 340,102 330,72 324,50"], lx:350, ly:80, label:"NOR" },
-  { id:"sweden", name:{zh:"瑞典",en:"Sweden"}, shapes:["378,42 428,30 458,40 466,70 466,110 460,140 442,156 402,152 380,138 374,98 372,60"], lx:420, ly:95, label:"SWE" },
-  { id:"finland", name:{zh:"芬兰",en:"Finland"}, shapes:["464,58 508,46 556,58 570,92 566,128 548,158 506,166 474,152 462,118 462,82"], lx:512, ly:105, label:"FIN" },
-  { id:"denmark", name:{zh:"丹麦",en:"Denmark"}, shapes:["340,152 360,148 370,162 358,174 344,170 336,162"], lx:353, ly:163, label:"DEN" },
-  { id:"france", name:{zh:"法国",en:"France"}, shapes:["230,200 300,188 318,204 322,240 312,300 288,336 252,342 236,306 226,262"], lx:266, ly:265, label:"FRA" },
-  { id:"netherlands", name:{zh:"荷兰",en:"Netherlands"}, shapes:["306,174 322,172 328,190 318,196 306,190"], lx:317, ly:184, label:"NED" },
-  { id:"belgium", name:{zh:"比利时",en:"Belgium"}, shapes:["306,190 320,188 326,204 314,210 304,206"], lx:315, ly:199, label:"BEL" },
-  { id:"luxembourg", name:{zh:"卢森堡",en:"Luxembourg"}, shapes:["320,206 328,206 330,214 322,216"], lx:325, ly:211, label:"LUX" },
-  { id:"germany", name:{zh:"德国",en:"Germany"}, shapes:["330,168 398,156 428,174 434,210 426,246 402,260 362,256 346,242 340,212 334,186"], lx:382, ly:205, label:"GER" },
-  { id:"switzerland", name:{zh:"瑞士",en:"Switzerland"}, shapes:["318,236 346,232 352,258 340,272 320,268 314,250"], lx:334, ly:252, label:"SUI" },
-  { id:"austria", name:{zh:"奥地利",en:"Austria"}, shapes:["398,250 438,248 444,280 420,292 396,284"], lx:420, ly:270, label:"AUT" },
-  { id:"czechoslovakia", name:{zh:"捷克斯洛伐克",en:"Czechoslovakia"}, shapes:["428,212 462,208 468,240 452,264 432,258 426,232"], lx:446, ly:235, label:"CZE" },
-  { id:"poland", name:{zh:"波兰",en:"Poland"}, shapes:["464,178 520,168 534,200 530,242 506,260 470,250 460,222"], lx:497, ly:215, label:"POL" },
-  { id:"estonia", name:{zh:"爱沙尼亚",en:"Estonia"}, shapes:["524,148 552,142 556,162 540,172 526,170 520,158"], lx:538, ly:158, label:"EST" },
-  { id:"latvia", name:{zh:"拉脱维亚",en:"Latvia"}, shapes:["520,158 546,156 550,178 534,188 518,186 514,170"], lx:532, ly:172, label:"LVA" },
-  { id:"lithuania", name:{zh:"立陶宛",en:"Lithuania"}, shapes:["514,170 542,168 548,192 530,202 510,198 506,182"], lx:527, ly:185, label:"LTU" },
-  { id:"ussr", name:{zh:"苏联",en:"Soviet Union"}, shapes:["556,150 560,100 700,80 820,95 832,200 818,300 742,360 662,362 576,330 566,250 558,200 556,170"], lx:690, ly:220, label:"USSR" },
-  { id:"portugal", name:{zh:"葡萄牙",en:"Portugal"}, shapes:["204,338 226,334 230,364 220,392 202,384 196,356"], lx:213, ly:365, label:"POR" },
-  { id:"spain", name:{zh:"西班牙",en:"Spain"}, shapes:["226,328 290,322 306,350 312,396 296,434 270,448 246,438 232,402 224,362"], lx:262, ly:385, label:"ESP" },
-  { id:"italy", name:{zh:"意大利",en:"Italy"}, shapes:["348,286 400,280 430,298 432,340 418,392 402,428 388,436 374,416 370,386 360,342 346,306", "392,442 416,440 422,458 402,466 386,456"], lx:392, ly:360, label:"ITA" },
-  { id:"hungary", name:{zh:"匈牙利",en:"Hungary"}, shapes:["452,244 498,240 504,266 490,284 458,282 446,262"], lx:476, ly:265, label:"HUN" },
-  { id:"romania", name:{zh:"罗马尼亚",en:"Romania"}, shapes:["500,244 560,240 566,290 548,326 516,332 500,306 496,268"], lx:528, ly:285, label:"ROM" },
-  { id:"yugoslavia", name:{zh:"南斯拉夫",en:"Yugoslavia"}, shapes:["434,282 480,278 488,320 472,348 442,346 428,316"], lx:458, ly:312, label:"YUG" },
-  { id:"bulgaria", name:{zh:"保加利亚",en:"Bulgaria"}, shapes:["498,332 546,330 550,372 522,380 496,370 494,348"], lx:522, ly:355, label:"BUL" },
-  { id:"albania", name:{zh:"阿尔巴尼亚",en:"Albania"}, shapes:["476,352 502,350 508,378 488,384 474,368"], lx:491, ly:366, label:"ALB" },
-  { id:"greece", name:{zh:"希腊",en:"Greece"}, shapes:["494,382 536,380 540,432 516,448 490,432 486,402"], lx:512, ly:410, label:"GRE" },
-  { id:"turkey", name:{zh:"土耳其",en:"Turkey"}, shapes:["552,400 626,394 642,430 626,472 590,480 560,462 550,426"], lx:595, ly:438, label:"TUR" },
+// ================= 地图国家（使用真实地理边界 europe-geo.js）=================
+// 每个“集团”对应二战中的一个政治实体，codes 为 europe-geo.js 中的 ISO 代码。
+const groups = [
+  { id:"uk", name:{zh:"英国",en:"United Kingdom"}, codes:["GB"], label:[185,530], abbr:"UK" },
+  { id:"ireland", name:{zh:"爱尔兰",en:"Ireland"}, codes:["IE"], label:[156,533], abbr:"IRL" },
+  { id:"norway", name:{zh:"挪威",en:"Norway"}, codes:["NO"], label:[330,373], abbr:"NOR" },
+  { id:"sweden", name:{zh:"瑞典",en:"Sweden"}, codes:["SE"], label:[330,410], abbr:"SWE" },
+  { id:"finland", name:{zh:"芬兰",en:"Finland"}, codes:["FI"], label:[386,372], abbr:"FIN" },
+  { id:"denmark", name:{zh:"丹麦",en:"Denmark"}, codes:["DK"], label:[289,501], abbr:"DEN" },
+  { id:"france", name:{zh:"法国",en:"France"}, codes:["FR"], label:[225,600], abbr:"FRA" },
+  { id:"netherlands", name:{zh:"荷兰",en:"Netherlands"}, codes:["NL"], label:[246,548], abbr:"NED" },
+  { id:"belgium", name:{zh:"比利时",en:"Belgium"}, codes:["BE"], label:[241,565], abbr:"BEL" },
+  { id:"luxembourg", name:{zh:"卢森堡",en:"Luxembourg"}, codes:["LU"], label:[252,572], abbr:"LUX", skipLabel:true },
+  { id:"germany", name:{zh:"德国",en:"Germany"}, codes:["DE"], label:[285,560], abbr:"GER" },
+  { id:"switzerland", name:{zh:"瑞士",en:"Switzerland"}, codes:["CH"], label:[266,603], abbr:"SUI" },
+  { id:"austria", name:{zh:"奥地利",en:"Austria"}, codes:["AT"], label:[301,594], abbr:"AUT" },
+  { id:"czechoslovakia", name:{zh:"捷克斯洛伐克",en:"Czechoslovakia"}, codes:["CZ","SK"], label:[325,575], abbr:"CZE" },
+  { id:"poland", name:{zh:"波兰",en:"Poland"}, codes:["PL"], label:[340,548], abbr:"POL" },
+  { id:"estonia", name:{zh:"爱沙尼亚",en:"Estonia"}, codes:["EE"], label:[379,471], abbr:"EST" },
+  { id:"latvia", name:{zh:"拉脱维亚",en:"Latvia"}, codes:["LV"], label:[376,492], abbr:"LVA" },
+  { id:"lithuania", name:{zh:"立陶宛",en:"Lithuania"}, codes:["LT"], label:[371,513], abbr:"LTU" },
+  { id:"ussr", name:{zh:"苏联",en:"Soviet Union"}, codes:["RU","UA","BY","MD","GE","AM","AZ","KZ"], label:[475,450], abbr:"USSR" },
+  { id:"portugal", name:{zh:"葡萄牙",en:"Portugal"}, codes:["PT"], label:[120,678], abbr:"POR" },
+  { id:"spain", name:{zh:"西班牙",en:"Spain"}, codes:["ES"], label:[160,688], abbr:"ESP" },
+  { id:"italy", name:{zh:"意大利",en:"Italy"}, codes:["IT"], label:[290,655], abbr:"ITA" },
+  { id:"hungary", name:{zh:"匈牙利",en:"Hungary"}, codes:["HU"], label:[342,599], abbr:"HUN" },
+  { id:"romania", name:{zh:"罗马尼亚",en:"Romania"}, codes:["RO"], label:[379,610], abbr:"ROM" },
+  { id:"yugoslavia", name:{zh:"南斯拉夫",en:"Yugoslavia"}, codes:["RS","HR","BA","ME","MK","SI","KV"], label:[332,625], abbr:"YUG" },
+  { id:"bulgaria", name:{zh:"保加利亚",en:"Bulgaria"}, codes:["BG"], label:[382,641], abbr:"BUL" },
+  { id:"albania", name:{zh:"阿尔巴尼亚",en:"Albania"}, codes:["AL"], label:[347,655], abbr:"ALB" },
+  { id:"greece", name:{zh:"希腊",en:"Greece"}, codes:["GR"], label:[372,680], abbr:"GRE" },
+  { id:"turkey", name:{zh:"土耳其",en:"Turkey"}, codes:["TR"], label:[448,674], abbr:"TUR" },
+  { id:"iceland", name:{zh:"冰岛",en:"Iceland"}, codes:["IS"], label:[83,379], abbr:"ISL" },
 ];
+
+const codeToGroup = {};
+groups.forEach(g => g.codes.forEach(code => codeToGroup[code] = g));
 
 const STATE_COLORS = { axis:"#e5534b", occupied:"#7a2e2a", allies:"#3b82f6", neutral:"#4a5568" };
 
@@ -429,7 +487,8 @@ const baseControl = {
   france:"allies", netherlands:"neutral", belgium:"neutral", luxembourg:"neutral", germany:"axis", switzerland:"neutral",
   austria:"axis", czechoslovakia:"occupied", poland:"occupied",
   estonia:"neutral", latvia:"neutral", lithuania:"neutral", ussr:"neutral", portugal:"neutral", spain:"neutral", italy:"axis",
-  hungary:"neutral", romania:"neutral", yugoslavia:"neutral", bulgaria:"neutral", albania:"occupied", greece:"neutral", turkey:"neutral"
+  hungary:"neutral", romania:"neutral", yugoslavia:"neutral", bulgaria:"neutral", albania:"occupied", greece:"neutral", turkey:"neutral",
+  iceland:"neutral"
 };
 
 const periodDefs = [
@@ -477,57 +536,99 @@ periodDefs.forEach((p, i) => {
 
 // ================= 城市与战役标记 =================
 const cities = [
-  { name:{zh:"伦敦",en:"London"}, x:190, y:100 },
-  { name:{zh:"巴黎",en:"Paris"}, x:272, y:245 },
-  { name:{zh:"柏林",en:"Berlin"}, x:392, y:185 },
-  { name:{zh:"华沙",en:"Warsaw"}, x:500, y:205 },
-  { name:{zh:"莫斯科",en:"Moscow"}, x:720, y:150 },
-  { name:{zh:"列宁格勒",en:"Leningrad"}, x:575, y:110 },
-  { name:{zh:"斯大林格勒",en:"Stalingrad"}, x:720, y:260 },
-  { name:{zh:"罗马",en:"Rome"}, x:388, y:360 },
-  { name:{zh:"维也纳",en:"Vienna"}, x:420, y:268 },
+  { name:{zh:"伦敦",en:"London"}, x:195, y:545 },
+  { name:{zh:"巴黎",en:"Paris"}, x:222, y:588 },
+  { name:{zh:"柏林",en:"Berlin"}, x:295, y:540 },
+  { name:{zh:"华沙",en:"Warsaw"}, x:355, y:540 },
+  { name:{zh:"莫斯科",en:"Moscow"}, x:475, y:448 },
+  { name:{zh:"列宁格勒",en:"Leningrad"}, x:388, y:435 },
+  { name:{zh:"斯大林格勒",en:"Stalingrad"}, x:505, y:505 },
+  { name:{zh:"罗马",en:"Rome"}, x:300, y:662 },
+  { name:{zh:"维也纳",en:"Vienna"}, x:308, y:590 },
 ];
 const battles = [
-  { name:{zh:"波兰战役",en:"Invasion of Poland"}, date:{zh:"1939.09",en:"Sep 1939"}, x:500, y:200, at:0 },
-  { name:{zh:"挪威战役",en:"Norwegian Campaign"}, date:{zh:"1940.04",en:"Apr 1940"}, x:345, y:90, at:1 },
-  { name:{zh:"敦刻尔克",en:"Dunkirk"}, date:{zh:"1940.05",en:"May 1940"}, x:282, y:175, at:2 },
-  { name:{zh:"不列颠空战",en:"Battle of Britain"}, date:{zh:"1940.07",en:"Jul 1940"}, x:195, y:120, at:3 },
-  { name:{zh:"列宁格勒围城",en:"Siege of Leningrad"}, date:{zh:"1941.09",en:"Sep 1941"}, x:588, y:104, at:6 },
-  { name:{zh:"莫斯科战役",en:"Battle of Moscow"}, date:{zh:"1941.12",en:"Dec 1941"}, x:732, y:145, at:7 },
-  { name:{zh:"斯大林格勒",en:"Stalingrad"}, date:{zh:"1942.08",en:"Aug 1942"}, x:732, y:268, at:8 },
-  { name:{zh:"库尔斯克",en:"Kursk"}, date:{zh:"1943.07",en:"Jul 1943"}, x:690, y:210, at:10 },
-  { name:{zh:"诺曼底登陆",en:"D-Day Normandy"}, date:{zh:"1944.06",en:"Jun 1944"}, x:258, y:225, at:11 },
-  { name:{zh:"柏林战役",en:"Battle of Berlin"}, date:{zh:"1945.04",en:"Apr 1945"}, x:380, y:178, at:15 },
+  { name:{zh:"波兰战役",en:"Invasion of Poland"}, date:{zh:"1939.09",en:"Sep 1939"}, x:352, y:538, at:0 },
+  { name:{zh:"挪威战役",en:"Norwegian Campaign"}, date:{zh:"1940.04",en:"Apr 1940"}, x:330, y:368, at:1 },
+  { name:{zh:"敦刻尔克",en:"Dunkirk"}, date:{zh:"1940.05",en:"May 1940"}, x:245, y:558, at:2 },
+  { name:{zh:"不列颠空战",en:"Battle of Britain"}, date:{zh:"1940.07",en:"Jul 1940"}, x:192, y:548, at:3 },
+  { name:{zh:"列宁格勒围城",en:"Siege of Leningrad"}, date:{zh:"1941.09",en:"Sep 1941"}, x:400, y:430, at:6 },
+  { name:{zh:"莫斯科战役",en:"Battle of Moscow"}, date:{zh:"1941.12",en:"Dec 1941"}, x:487, y:440, at:7 },
+  { name:{zh:"斯大林格勒",en:"Stalingrad"}, date:{zh:"1942.08",en:"Aug 1942"}, x:517, y:510, at:8 },
+  { name:{zh:"库尔斯克",en:"Kursk"}, date:{zh:"1943.07",en:"Jul 1943"}, x:458, y:492, at:10 },
+  { name:{zh:"诺曼底登陆",en:"D-Day Normandy"}, date:{zh:"1944.06",en:"Jun 1944"}, x:228, y:578, at:11 },
+  { name:{zh:"柏林战役",en:"Battle of Berlin"}, date:{zh:"1945.04",en:"Apr 1945"}, x:284, y:534, at:15 },
 ];
 const seaLabels = [
-  { zh:"大西洋", en:"Atlantic Ocean", x:70, y:230 },
-  { zh:"北海", en:"North Sea", x:252, y:128 },
-  { zh:"波罗的海", en:"Baltic Sea", x:490, y:140 },
-  { zh:"地中海", en:"Mediterranean", x:330, y:478 },
-  { zh:"黑海", en:"Black Sea", x:618, y:372 },
+  { zh:"大西洋", en:"Atlantic Ocean", x:75, y:470 },
+  { zh:"北海", en:"North Sea", x:235, y:478 },
+  { zh:"波罗的海", en:"Baltic Sea", x:345, y:452 },
+  { zh:"地中海", en:"Mediterranean", x:300, y:708 },
+  { zh:"黑海", en:"Black Sea", x:455, y:640 },
 ];
 
 // ================= 人物 =================
 const figures = [
   { name:{zh:"阿道夫·希特勒",en:"Adolf Hitler"}, role:{zh:"纳粹德国元首",en:"Führer of Nazi Germany"}, side:"axis", initial:"H",
-    fact:{zh:"1933年上台，推行扩张与种族灭绝政策，发动二战。1945年4月30日在柏林地堡自杀。",en:"Came to power in 1933, launched WWII and the Holocaust; committed suicide in his Berlin bunker on 30 April 1945."} },
+    born:{zh:"1889年4月20日",en:"20 Apr 1889"}, died:{zh:"1945年4月30日",en:"30 Apr 1945"},
+    fact:{zh:"1933年上台，推行扩张与种族灭绝政策，发动二战。1945年4月30日在柏林地堡自杀。",en:"Came to power in 1933, launched WWII and the Holocaust; committed suicide in his Berlin bunker on 30 April 1945."},
+    detail:{zh:"奥地利裔德国政治家、纳粹党领袖。1933年就任德国总理，逐步建立一党独裁的极权统治，推行种族主义与反犹政策，并通过军事扩张于1939年挑起第二次世界大战。战争后期在盟军东西夹击下节节败退，最终在柏林地堡自杀。",en:"Austrian-born German politician and Nazi leader. Becoming Chancellor in 1933, he built a totalitarian one-party state, pursued racist and anti-Semitic policies, and launched WWII in 1939. Defeated on both fronts, he committed suicide in his Berlin bunker."},
+    events:[{y:{zh:"1933",en:"1933"},t:{zh:"就任德国总理",en:"Became Chancellor of Germany"}},{y:{zh:"1939",en:"1939"},t:{zh:"入侵波兰，发动二战",en:"Invaded Poland, starting WWII"}},{y:{zh:"1941",en:"1941"},t:{zh:"入侵苏联",en:"Invaded the USSR"}},{y:{zh:"1945",en:"1945"},t:{zh:"在柏林地堡自杀",en:"Committed suicide in Berlin"}}] },
   { name:{zh:"约瑟夫·斯大林",en:"Joseph Stalin"}, role:{zh:"苏联领导人",en:"Soviet leader"}, side:"allies", initial:"S",
-    fact:{zh:"领导苏联在1941年后抗击德国入侵，取得东线决定性胜利。",en:"Led the USSR against the German invasion from 1941, winning the decisive Eastern Front victories."} },
+    born:{zh:"1878年12月18日",en:"18 Dec 1878"}, died:{zh:"1953年3月5日",en:"5 Mar 1953"},
+    fact:{zh:"领导苏联在1941年后抗击德国入侵，取得东线决定性胜利。",en:"Led the USSR against the German invasion from 1941, winning the decisive Eastern Front victories."},
+    detail:{zh:"苏联最高领导人。通过大清洗巩固权力，二战期间领导苏联军民抗击纳粹侵略，指挥红军在东线取得莫斯科、斯大林格勒、库尔斯克等决定性胜利，战后成为超级大国苏联的象征性领袖。",en:"Supreme leader of the USSR. Having consolidated power through the Great Purge, he led the Soviet war effort against Nazi Germany, overseeing the decisive Eastern Front victories at Moscow, Stalingrad and Kursk, and emerged as leader of a superpower."},
+    events:[{y:{zh:"1924",en:"1924"},t:{zh:"成为苏联领导人",en:"Rose to lead the USSR"}},{y:{zh:"1941",en:"1941"},t:{zh:"领导卫国战争",en:"Led the Great Patriotic War"}},{y:{zh:"1943",en:"1943"},t:{zh:"斯大林格勒转折",en:"Presided over the Stalingrad turning point"}},{y:{zh:"1945",en:"1945"},t:{zh:"攻克柏林",en:"Oversaw the capture of Berlin"}}] },
   { name:{zh:"温斯顿·丘吉尔",en:"Winston Churchill"}, role:{zh:"英国首相",en:"British Prime Minister"}, side:"allies", initial:"C",
-    fact:{zh:"1940年临危受命，在不列颠空战期间鼓舞英国坚持抵抗，是盟军重要领袖。",en:"Became PM in 1940, rallying Britain through the Blitz as a key Allied leader."} },
+    born:{zh:"1874年11月30日",en:"30 Nov 1874"}, died:{zh:"1965年1月24日",en:"24 Jan 1965"},
+    fact:{zh:"1940年临危受命，在不列颠空战期间鼓舞英国坚持抵抗，是盟军重要领袖。",en:"Became PM in 1940, rallying Britain through the Blitz as a key Allied leader."},
+    detail:{zh:"英国政治家、作家、演说家。1940年就任首相，在法国沦陷、英国孤立无援之际以坚定意志和雄辩口才鼓舞国民抵抗到底，与美苏结成反法西斯同盟，是同盟国核心领袖之一。",en:"British statesman, writer and orator. Becoming Prime Minister in 1940, he rallied Britain to fight on alone after the fall of France, and helped forge the grand alliance with the United States and the USSR as a central Allied leader."},
+    events:[{y:{zh:"1940",en:"1940"},t:{zh:"就任英国首相",en:"Became Prime Minister"}},{y:{zh:"1940",en:"1940"},t:{zh:"不列颠空战",en:"Rallied Britain during the Battle of Britain"}},{y:{zh:"1941",en:"1941"},t:{zh:"与罗斯福签署《大西洋宪章》",en:"Signed the Atlantic Charter with FDR"}},{y:{zh:"1945",en:"1945"},t:{zh:"出席雅尔塔会议",en:"Attended the Yalta Conference"}}] },
   { name:{zh:"富兰克林·罗斯福",en:"Franklin D. Roosevelt"}, role:{zh:"美国总统",en:"US President"}, side:"allies", initial:"R",
-    fact:{zh:"领导美国参战并提供巨大工业与军事资源，与丘吉尔、斯大林共同规划战后秩序。",en:"Led the US into the war and, with Churchill and Stalin, shaped the postwar order."} },
+    born:{zh:"1882年1月30日",en:"30 Jan 1882"}, died:{zh:"1945年4月12日",en:"12 Apr 1945"},
+    fact:{zh:"领导美国参战并提供巨大工业与军事资源，与丘吉尔、斯大林共同规划战后秩序。",en:"Led the US into the war and, with Churchill and Stalin, shaped the postwar order."},
+    detail:{zh:"美国第32任总统，唯一连任四届的美国总统。领导美国走出大萧条，珍珠港事件后推动美国全面参战，凭借强大的工业与军事实力成为「民主国家兵工厂」，与丘吉尔、斯大林共同规划战后世界秩序。",en:"The 32nd US President and the only one elected four times. He guided America out of the Great Depression and, after Pearl Harbor, led the nation into full war, making the US the 'arsenal of democracy' and shaping the postwar order with Churchill and Stalin."},
+    events:[{y:{zh:"1933",en:"1933"},t:{zh:"就任美国总统",en:"Became US President"}},{y:{zh:"1941",en:"1941"},t:{zh:"珍珠港事件后对轴心宣战",en:"Brought the US into the war"}},{y:{zh:"1943",en:"1943"},t:{zh:"出席德黑兰会议",en:"Attended the Tehran Conference"}},{y:{zh:"1945",en:"1945"},t:{zh:"出席雅尔塔会议（同年病逝）",en:"Attended Yalta; died that April"}}] },
   { name:{zh:"贝尼托·墨索里尼",en:"Benito Mussolini"}, role:{zh:"意大利独裁者",en:"Italian dictator"}, side:"axis", initial:"M",
-    fact:{zh:"法西斯主义创始人，意大利轴心领袖。1943年被推翻，1945年4月被游击队员处决。",en:"Fascist founder and Italian Axis leader; deposed in 1943 and executed by partisans in April 1945."} },
+    born:{zh:"1883年7月29日",en:"29 Jul 1883"}, died:{zh:"1945年4月28日",en:"28 Apr 1945"},
+    fact:{zh:"法西斯主义创始人，意大利轴心领袖。1943年被推翻，1945年4月被游击队员处决。",en:"Fascist founder and Italian Axis leader; deposed in 1943 and executed by partisans in April 1945."},
+    detail:{zh:"意大利法西斯主义创始人、独裁者。1922年「进军罗马」后执政，建立法西斯政权。1936年与德国结盟形成轴心，1940年参战。军事上屡遭挫败，1943年被罢免，1945年被意大利游击队员抓获并处决。",en:"Founder of Italian Fascism and dictator. He seized power in the 1922 'March on Rome', allied with Nazi Germany in 1936 to form the Axis, and entered the war in 1940. After repeated defeats he was deposed in 1943 and executed by partisans in 1945."},
+    events:[{y:{zh:"1922",en:"1922"},t:{zh:"进军罗马上台",en:"Seized power in the March on Rome"}},{y:{zh:"1936",en:"1936"},t:{zh:"与德国结盟",en:"Allied with Nazi Germany"}},{y:{zh:"1940",en:"1940"},t:{zh:"意大利参战",en:"Brought Italy into the war"}},{y:{zh:"1943",en:"1943"},t:{zh:"被罢免",en:"Deposed in 1943"}}] },
   { name:{zh:"夏尔·戴高乐",en:"Charles de Gaulle"}, role:{zh:"自由法国领导人",en:"Free French leader"}, side:"allies", initial:"G",
-    fact:{zh:"法国沦陷后在伦敦号召继续抵抗，领导自由法国运动，1944年凯旋巴黎。",en:"Refused to accept defeat, led Free France from London, and returned in triumph to Paris in 1944."} },
+    born:{zh:"1890年11月22日",en:"22 Nov 1890"}, died:{zh:"1970年11月9日",en:"9 Nov 1970"},
+    fact:{zh:"法国沦陷后在伦敦号召继续抵抗，领导自由法国运动，1944年凯旋巴黎。",en:"Refused to accept defeat, led Free France from London, and returned in triumph to Paris in 1944."},
+    detail:{zh:"法国将军、政治家。法国沦陷后拒绝投降，在伦敦通过广播号召抵抗，组织自由法国运动。1944年随盟军重返巴黎，成为法国抵抗的象征，战后建立法兰西第五共和国并任总统。",en:"French general and statesman. Refusing to surrender after France fell, he broadcast an appeal from London and organized Free France. He returned to Paris with the Allies in 1944 as the symbol of French resistance, and later founded the Fifth Republic."},
+    events:[{y:{zh:"1940",en:"1940"},t:{zh:"发表「6·18」广播号召抵抗",en:"Broadcast the 18 June appeal"}},{y:{zh:"1940",en:"1940"},t:{zh:"组织自由法国",en:"Founded Free France"}},{y:{zh:"1944",en:"1944"},t:{zh:"凯旋巴黎",en:"Returned to liberated Paris"}},{y:{zh:"1958",en:"1958"},t:{zh:"建立法兰西第五共和国",en:"Founded the Fifth Republic"}}] },
   { name:{zh:"埃尔温·隆美尔",en:"Erwin Rommel"}, role:{zh:"德军元帅（沙漠之狐）",en:"German field marshal ('Desert Fox')"}, side:"axis", initial:"R",
-    fact:{zh:"在北非指挥非洲军团屡获胜绩，后负责大西洋壁垒防御，1944年卷入刺杀希特勒事件被迫自杀。",en:"Commanded the Afrika Korps and later defended the Atlantic Wall; forced to take his own life in 1944."} },
+    born:{zh:"1891年11月15日",en:"15 Nov 1891"}, died:{zh:"1944年10月14日",en:"14 Oct 1944"},
+    fact:{zh:"在北非指挥非洲军团屡获胜绩，后负责大西洋壁垒防御，1944年卷入刺杀希特勒事件被迫自杀。",en:"Commanded the Afrika Korps and later defended the Atlantic Wall; forced to take his own life in 1944."},
+    detail:{zh:"德国陆军元帅，绰号「沙漠之狐」。一战即崭露头角，二战初期指挥第7装甲师在法国战役中屡建战功，后统帅北非非洲军团，以灵活机动的战术著称。1944年负责大西洋壁垒防御，卷入刺杀希特勒事件后被迫服毒自杀。",en:"German field marshal, nicknamed the 'Desert Fox'. He distinguished himself in France in 1940 and later led the Afrika Korps in North Africa, famed for bold, mobile tactics. In 1944 he defended the Atlantic Wall and was forced to commit suicide after being implicated in the plot against Hitler."},
+    events:[{y:{zh:"1940",en:"1940"},t:{zh:"指挥第7装甲师（法国战役）",en:"Led a panzer division in France"}},{y:{zh:"1941",en:"1941"},t:{zh:"统帅北非非洲军团",en:"Commanded the Afrika Korps"}},{y:{zh:"1942",en:"1942"},t:{zh:"阿拉曼战役",en:"Fought at El Alamein"}},{y:{zh:"1944",en:"1944"},t:{zh:"负责大西洋壁垒，被迫自杀",en:"Defended the Atlantic Wall; died Oct 1944"}}] },
   { name:{zh:"格奥尔基·朱可夫",en:"Georgy Zhukov"}, role:{zh:"苏联元帅",en:"Soviet marshal"}, side:"allies", initial:"Z",
-    fact:{zh:"指挥莫斯科、斯大林格勒、库尔斯克及柏林战役，被誉为最杰出的苏军统帅之一。",en:"Directed the battles of Moscow, Stalingrad, Kursk and Berlin — among the finest Soviet commanders."} },
+    born:{zh:"1896年12月1日",en:"1 Dec 1896"}, died:{zh:"1974年6月18日",en:"18 Jun 1974"},
+    fact:{zh:"指挥莫斯科、斯大林格勒、库尔斯克及柏林战役，被誉为最杰出的苏军统帅之一。",en:"Directed the battles of Moscow, Stalingrad, Kursk and Berlin — among the finest Soviet commanders."},
+    detail:{zh:"苏联元帅，被誉为二战最杰出的军事统帅之一。参与或指挥哈勒欣河、莫斯科保卫战、斯大林格勒、库尔斯克、白俄罗斯攻势及柏林战役，四次获「苏联英雄」称号，1945年代表苏联接受德国投降。",en:"Soviet marshal and one of WWII's finest commanders. He directed or took part in the battles of Khalkhin Gol, Moscow, Stalingrad, Kursk, Operation Bagration and Berlin, was four times a Hero of the Soviet Union, and accepted Germany's surrender in 1945."},
+    events:[{y:{zh:"1939",en:"1939"},t:{zh:"哈勒欣河击败日本",en:"Defeated Japan at Khalkhin Gol"}},{y:{zh:"1941",en:"1941"},t:{zh:"指挥莫斯科保卫战",en:"Directed the defense of Moscow"}},{y:{zh:"1943",en:"1943"},t:{zh:"指挥库尔斯克会战",en:"Commanded at Kursk"}},{y:{zh:"1945",en:"1945"},t:{zh:"攻克柏林",en:"Led the assault on Berlin"}}] },
   { name:{zh:"德怀特·艾森豪威尔",en:"Dwight D. Eisenhower"}, role:{zh:"盟军最高统帅",en:"Supreme Allied Commander"}, side:"allies", initial:"E",
-    fact:{zh:"指挥诺曼底登陆及西线盟军，统筹对德最后攻势，后成为美国总统。",en:"Planned D-Day and led the Western Allies to victory; later became US President."} },
+    born:{zh:"1890年10月14日",en:"14 Oct 1890"}, died:{zh:"1969年3月28日",en:"28 Mar 1969"},
+    fact:{zh:"指挥诺曼底登陆及西线盟军，统筹对德最后攻势，后成为美国总统。",en:"Planned D-Day and led the Western Allies to victory; later became US President."},
+    detail:{zh:"美国陆军五星上将、政治家。1943年起任欧洲盟军最高统帅，筹划并指挥诺曼底登陆及西线作战，协调多国盟军最终击败纳粹德国。战后任北约最高司令，1953–1961年任美国总统。",en:"American five-star general and statesman. As Supreme Allied Commander in Europe from 1943, he planned and led D-Day and the Western campaign that defeated Nazi Germany. After the war he became NATO commander and, from 1953 to 1961, US President."},
+    events:[{y:{zh:"1943",en:"1943"},t:{zh:"任欧洲盟军最高统帅",en:"Became Supreme Allied Commander"}},{y:{zh:"1944",en:"1944"},t:{zh:"筹划并指挥诺曼底登陆",en:"Planned and led D-Day"}},{y:{zh:"1945",en:"1945"},t:{zh:"接受德国投降",en:"Accepted Germany's surrender"}},{y:{zh:"1953",en:"1953"},t:{zh:"就任美国总统",en:"Became US President"}}] },
 ];
+
+const figurePhoto = [
+  "Bundesarchiv_Bild_183-S33882,_Adolf_Hitler_retouched.jpg",
+  "JStalin_Secretary_general_CCCP_1942_flipped.jpg",
+  "Sir_Winston_Churchill_-_19086236948.jpg",
+  "President_Roosevelt_-_Pach_Bros.jpg",
+  "Mussolini_biografia.jpg",
+  "Charles_de_Gaulle_1943.jpg",
+  "Erwin_Rommel.jpg",
+  "Zhukov_1944.jpg",
+  "Dwight_D._Eisenhower,_official_photo_portrait,_May_29,_1959.jpg"
+];
+function portraitUrl(filename, size) {
+  return "https://images.weserv.nl/?url=" + encodeURIComponent("commons.wikimedia.org/wiki/Special:FilePath/" + filename) + "&w=" + size;
+}
 
 // ================= 图表数据 =================
 const controlData = [
@@ -684,39 +785,45 @@ function renderMap() {
   document.getElementById("mapSlider").value = mapPeriod;
 
   // 海洋背景
-  svg.appendChild(add("rect", { x:0, y:0, width:900, height:560, fill:"#0e1b2b" }));
+  svg.appendChild(add("rect", { x:0, y:0, width:800, height:766, fill:"#0e1b2b" }));
   // 海域标签
   seaLabels.forEach(s => {
-    const tx = add("text", { x:s.x, y:s.y, "text-anchor":"middle", fill:"#4a6b8a", "font-size":9, "font-style":"italic", opacity:0.75 });
+    const tx = add("text", { x:s.x, y:s.y, "text-anchor":"middle", fill:"#4a6b8a", "font-size":10, "font-style":"italic", opacity:0.75 });
     tx.textContent = tt(s); svg.appendChild(tx);
   });
 
-  // 国家
+  // 国家（真实地理边界）
   let axisCount = 0;
-  countries.forEach(c => {
-    const state = p.control[c.id];
+  groups.forEach(g => {
+    const state = p.control[g.id];
     if (state === "axis" || state === "occupied") axisCount++;
+  });
+  Object.keys(EUROPE_GEO).forEach(code => {
+    const g = codeToGroup[code];
+    const state = g ? p.control[g.id] : "neutral";
     const color = STATE_COLORS[state];
-    c.shapes.forEach(pts => {
-      const poly = add("polygon", { points:pts, fill:color });
-      bindTip(poly, () => `<b>${tt(c.name)}</b><br>${t("state"+capitalize(state))}`);
-      svg.appendChild(poly);
-    });
-    const lbl = add("text", { x:c.lx, y:c.ly, "text-anchor":"middle", fill:"#0d1117", "font-size":9, "font-weight":700 });
-    lbl.textContent = c.label; svg.appendChild(lbl);
+    const path = add("path", { d:EUROPE_GEO[code], fill:color, stroke:"#dfe6ee", "stroke-width":0.5, "stroke-opacity":0.45 });
+    if (g) bindTip(path, () => `<b>${tt(g.name)}</b><br>${t("state"+capitalize(state))}`);
+    svg.appendChild(path);
+  });
+  // 集团标签
+  groups.forEach(g => {
+    if (g.skipLabel) return;
+    const lbl = add("text", { x:g.label[0], y:g.label[1], "text-anchor":"middle", fill:"#0d1117", "font-size":10, "font-weight":700 });
+    lbl.textContent = g.abbr; svg.appendChild(lbl);
   });
 
   // 城市
   cities.forEach(ct => {
-    svg.appendChild(add("circle", { cx:ct.x, cy:ct.y, r:3, fill:"#e6edf3", stroke:"#0d1117", "stroke-width":1 }));
-    const lbl = add("text", { x:ct.x+6, y:ct.y-4, fill:"#cbd5e1", "font-size":9 });
+    svg.appendChild(add("circle", { cx:ct.x, cy:ct.y, r:3.5, fill:"#e6edf3", stroke:"#0d1117", "stroke-width":1 }));
+    const lbl = add("text", { x:ct.x+7, y:ct.y-5, fill:"#dbe4ee", "font-size":10, "font-weight":600 });
     lbl.textContent = tt(ct.name); svg.appendChild(lbl);
   });
 
   // 战役（时间窗口内显示）
   battles.forEach(b => {
     if (mapPeriod < b.at || mapPeriod > b.at + 2) return;
-    const star = add("text", { x:b.x, y:b.y, "text-anchor":"middle", fill:"#f5c518", "font-size":14, "font-weight":700, class:"battle" });
+    const star = add("text", { x:b.x, y:b.y, "text-anchor":"middle", fill:"#f5c518", "font-size":16, "font-weight":700, class:"battle" });
     star.textContent = "★";
     bindTip(star, () => `<b>${tt(b.name)}</b><br>${tt(b.date)}`);
     svg.appendChild(star);
@@ -763,15 +870,42 @@ function stopMapPlay() {
 
 // ================= 渲染：人物 =================
 function renderFigures() {
-  document.getElementById("figuresList").innerHTML = figures.map(f => `
-    <div class="figure">
-      <div class="avatar ${f.side}">${f.initial}</div>
+  document.getElementById("figuresList").innerHTML = figures.map((f, i) => `
+    <div class="figure" data-idx="${i}" style="cursor:pointer;">
+      <div class="avatar ${f.side}"><span>${f.initial}</span><img class="portrait" src="${portraitUrl(figurePhoto[i], 200)}" alt="${tt(f.name)}" loading="lazy" onerror="this.style.display='none'"></div>
       <div class="name">${tt(f.name)}</div>
       <div class="en-name">${lang==="zh"?f.name.en:f.name.zh}</div>
       <div class="role">${tt(f.role)}</div>
       <div class="fact">${tt(f.fact)}</div>
+      <div class="hint">${t("viewDetail")} ›</div>
     </div>`).join("");
+  document.querySelectorAll("#figuresList .figure").forEach(el => {
+    el.addEventListener("click", () => openFigure(+el.dataset.idx));
+  });
 }
+
+function openFigure(i) {
+  const f = figures[i];
+  const av = document.getElementById("modalAvatar");
+  av.className = "modal-avatar " + f.side;
+  av.innerHTML = `<span>${f.initial}</span><img class="portrait" src="${portraitUrl(figurePhoto[i], 500)}" alt="" onerror="this.style.display='none'">`;
+  document.getElementById("modalName").textContent = tt(f.name);
+  document.getElementById("modalRole").textContent = tt(f.role);
+  document.getElementById("modalLife").textContent = t("life") + (lang==="zh"?"：":": ") + tt(f.born) + " – " + tt(f.died);
+  document.getElementById("modalDetail").textContent = tt(f.detail);
+  document.getElementById("modalEvents").innerHTML =
+    "<h4>" + t("keyEvents") + "</h4><ul>" +
+    f.events.map(ev => `<li><span class="yr">${tt(ev.y)}</span><span>${tt(ev.t)}</span></li>`).join("") +
+    "</ul>";
+  document.getElementById("figureModal").classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+function closeFigure() {
+  document.getElementById("figureModal").classList.remove("open");
+  document.body.style.overflow = "";
+}
+
+
 
 // ================= 时间轴自动播放 =================
 let tlPlaying = false, tlTimer = null, tlIdx = 0;
@@ -800,6 +934,7 @@ function timelinePlayToggle() {
 // ================= 应用语言 =================
 function applyI18n() {
   document.querySelectorAll("[data-i18n]").forEach(el => el.textContent = t(el.dataset.i18n));
+  closeFigure();
   renderStats();
   renderTimeline();
   renderFilters();
@@ -822,6 +957,11 @@ document.getElementById("mapSpeed").addEventListener("change", e => {
   if (mapPlaying) startMapTimer();
 });
 document.getElementById("timelinePlay").addEventListener("click", timelinePlayToggle);
+
+// 人物详情弹窗
+document.getElementById("modalClose").addEventListener("click", closeFigure);
+document.getElementById("figureModal").addEventListener("click", e => { if (e.target === e.currentTarget) closeFigure(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeFigure(); });
 
 applyI18n();
 </script>
