@@ -110,6 +110,12 @@
     border:1px solid var(--line);box-shadow:0 24px 70px rgba(0,0,0,.6)
   }
   .invpanel h3{margin:0 0 12px;font-size:12px;letter-spacing:4px;text-transform:uppercase;color:var(--dim);font-weight:600}
+  .craftwrap{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:14px}
+  #craftgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;width:156px}
+  .carrow{color:var(--dim);font-size:20px;line-height:1}
+  #craftout{width:54px;height:54px}
+  #craftout.out{border-color:rgba(255,224,138,.4)}
+  #craftout.has{border-color:rgba(120,255,150,.75);box-shadow:0 0 0 1px rgba(120,255,150,.35)}
   #invgrid{display:grid;grid-template-columns:repeat(9,1fr);gap:5px}
   .islot{position:relative;aspect-ratio:1;border-radius:6px;background:rgba(255,255,255,.05);border:1px solid var(--line);display:grid;place-items:center;cursor:pointer}
   .islot:hover{background:rgba(255,255,255,.12)}
@@ -204,14 +210,19 @@
   <div id="bar"></div>
   <div id="dbg"></div>
   <div id="toast"></div>
-  <div id="ver">v1.5 build 1</div>
+  <div id="ver">v1.5 build 2</div>
 </div>
 
 <div id="inv" class="hide">
   <div class="invpanel">
     <h3>Inventory</h3>
+    <div class="craftwrap">
+      <div id="craftgrid"></div>
+      <div class="carrow">&#8594;</div>
+      <div id="craftout" class="islot out"></div>
+    </div>
     <div id="invgrid"></div>
-    <div class="invfoot">click a stack to pick up &middot; click again to place / swap &middot; <b>E</b> / <b>Esc</b> to close</div>
+    <div class="invfoot">click a stack to pick up &middot; click again to place / swap &middot; fill the 3&times;3 grid to craft &middot; <b>E</b> / <b>Esc</b> to close</div>
     <div id="cursorItem"></div>
   </div>
 </div>
@@ -471,9 +482,29 @@ const HOTBAR = [GRASS, DIRT, STONE, COBBLE, PLANKS, LOG, LEAVES, GLASS, BRICK];
 
 /* ------------------------------------------------- items & survival */
 const IT = { BEEF: 100, PORK: 101, MUTTON: 102, CHICKEN: 103, LEATHER: 104, WOOL: 105,
-             FEATHER: 106, BONE: 107, STRING: 108, GUNPOWDER: 109, ROTTEN: 110, ARROW: 111 };
+             FEATHER: 106, BONE: 107, STRING: 108, GUNPOWDER: 109, ROTTEN: 110, ARROW: 111,
+             STICK: 112,
+             WPICK: 120, WAXE: 121, WSHOVEL: 122, WSWORD: 123,
+             SPICK: 124, SAXE: 125, SSHOVEL: 126, SSWORD: 127 };
 const ITEM = {};
 function rect(g, x, y, w, h, c) { g.fillStyle = c; g.fillRect(x, y, w, h); }
+function toolIcon(kind, c1, c2) {
+  return g => {
+    rect(g, 13, 12, 6, 17, '#6b4a2a'); rect(g, 13, 12, 2, 17, '#8a6238');
+    if (kind === 'pick') {
+      rect(g, 4, 5, 24, 5, c1); rect(g, 4, 5, 24, 2, c2);
+      rect(g, 4, 5, 4, 9, c1); rect(g, 24, 5, 4, 9, c1);
+    } else if (kind === 'axe') {
+      rect(g, 9, 3, 7, 14, c1); rect(g, 16, 3, 8, 10, c1);
+      rect(g, 9, 3, 7, 3, c2); rect(g, 16, 3, 8, 3, c2); rect(g, 9, 14, 7, 3, c1);
+    } else if (kind === 'shovel') {
+      rect(g, 9, 20, 14, 9, c1); rect(g, 9, 20, 14, 3, c2); rect(g, 13, 16, 6, 5, '#8a6238');
+    } else {
+      rect(g, 13, 3, 6, 15, c1); rect(g, 13, 3, 2, 15, c2);
+      rect(g, 9, 18, 14, 3, '#6b4a2a'); rect(g, 13, 21, 6, 7, '#6b4a2a'); rect(g, 13, 21, 2, 7, '#8a6238');
+    }
+  };
+}
 function defineItems() {
   const R = (id, n, col, food, fn) => { ITEM[id] = { n, col, food: food || 0, draw: fn }; };
   R(IT.BEEF, 'Raw Beef', 0xa0342c, 8, g => { rect(g,4,9,24,15,'#b23b31'); rect(g,4,9,24,4,'#d05a4c'); rect(g,8,13,4,3,'#e8a89e'); rect(g,17,17,5,3,'#e8a89e'); rect(g,4,21,24,3,'#7d241d'); });
@@ -488,6 +519,16 @@ function defineItems() {
   R(IT.GUNPOWDER, 'Gunpowder', 0x6f6f76, 0, g => { rect(g,7,20,18,6,'#5d5d63'); rect(g,9,15,14,6,'#6f6f76'); rect(g,12,11,8,5,'#828290'); rect(g,15,16,3,3,'#9a9aa6'); });
   R(IT.ROTTEN, 'Rotten Flesh', 0x8a6a3a, 4, g => { rect(g,6,10,20,14,'#7d8a4a'); rect(g,6,10,20,4,'#96a45c'); rect(g,6,21,20,3,'#5c6636'); rect(g,10,14,4,3,'#b3bd78'); });
   R(IT.ARROW, 'Arrow', 0xb8b8b8, 0, g => { rect(g,15,5,2,22,'#c9c9c9'); rect(g,11,5,10,4,'#d9d9d9'); rect(g,12,24,8,3,'#e6e6e6'); rect(g,9,26,4,3,'#8a8a8a'); rect(g,19,26,4,3,'#8a8a8a'); });
+  R(IT.STICK, 'Stick', 0x6b4a2a, 0, g => { rect(g,13,4,6,24,'#6b4a2a'); rect(g,13,4,2,24,'#8a6238'); rect(g,15,8,2,16,'#5a3d22'); });
+  const W1 = '#b58b57', W2 = '#d3ab77', S1 = '#9a9a9a', S2 = '#c2c2c2';
+  R(IT.WPICK, 'Wooden Pickaxe', W1, 0, toolIcon('pick', W1, W2));
+  R(IT.WAXE, 'Wooden Axe', W1, 0, toolIcon('axe', W1, W2));
+  R(IT.WSHOVEL, 'Wooden Shovel', W1, 0, toolIcon('shovel', W1, W2));
+  R(IT.WSWORD, 'Wooden Sword', W1, 0, toolIcon('sword', W1, W2));
+  R(IT.SPICK, 'Stone Pickaxe', S1, 0, toolIcon('pick', S1, S2));
+  R(IT.SAXE, 'Stone Axe', S1, 0, toolIcon('axe', S1, S2));
+  R(IT.SSHOVEL, 'Stone Shovel', S1, 0, toolIcon('shovel', S1, S2));
+  R(IT.SSWORD, 'Stone Sword', S1, 0, toolIcon('sword', S1, S2));
 }
 const DROPBLK = {}; DROPBLK[GRASS] = DIRT; DROPBLK[STONE] = COBBLE; DROPBLK[LEAVES] = 0; DROPBLK[GLASS] = 0; DROPBLK[BEDROCK] = 0;
 function blockDrop(id) { return (id in DROPBLK) ? DROPBLK[id] : id; }
@@ -506,6 +547,41 @@ LOOT.creeper = [[IT.GUNPOWDER,0,2]];
 LOOT.spider = [[IT.STRING,0,2]];
 function itemName(id) { return id < 100 ? (BLK[id] ? BLK[id].n : '?') : (ITEM[id] ? ITEM[id].n : '?'); }
 function itemFood(id) { return (id >= 100 && ITEM[id]) ? ITEM[id].food : 0; }
+const RECIPES = [
+  { out: [IT.STICK, 4], shape: [[0, PLANKS, 0], [0, PLANKS, 0], [0, 0, 0]] },
+  { out: [IT.WPICK, 1], shape: [[PLANKS, PLANKS, PLANKS], [0, IT.STICK, 0], [0, IT.STICK, 0]] },
+  { out: [IT.WAXE, 1], shape: [[PLANKS, PLANKS, 0], [PLANKS, IT.STICK, 0], [0, IT.STICK, 0]] },
+  { out: [IT.WSHOVEL, 1], shape: [[0, PLANKS, 0], [0, IT.STICK, 0], [0, IT.STICK, 0]] },
+  { out: [IT.WSWORD, 1], shape: [[0, PLANKS, 0], [0, PLANKS, 0], [0, IT.STICK, 0]] },
+  { out: [IT.SPICK, 1], shape: [[COBBLE, COBBLE, COBBLE], [0, IT.STICK, 0], [0, IT.STICK, 0]] },
+  { out: [IT.SAXE, 1], shape: [[COBBLE, COBBLE, 0], [COBBLE, IT.STICK, 0], [0, IT.STICK, 0]] },
+  { out: [IT.SSHOVEL, 1], shape: [[0, COBBLE, 0], [0, IT.STICK, 0], [0, IT.STICK, 0]] },
+  { out: [IT.SSWORD, 1], shape: [[0, COBBLE, 0], [0, COBBLE, 0], [0, IT.STICK, 0]] }
+];
+function trimShape(rows) {
+  let minR = 3, maxR = -1, minC = 3, maxC = -1;
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) if (rows[r][c]) {
+    if (r < minR) minR = r; if (r > maxR) maxR = r;
+    if (c < minC) minC = c; if (c > maxC) maxC = c;
+  }
+  if (maxR < 0) return { h: 0, w: 0, cells: [] };
+  const cells = [];
+  for (let r = minR; r <= maxR; r++) { const row = []; for (let c = minC; c <= maxC; c++) row.push(rows[r][c] || 0); cells.push(row); }
+  return { h: maxR - minR + 1, w: maxC - minC + 1, cells };
+}
+function matchRecipe(grid) {
+  const rows = [[grid[0], grid[1], grid[2]], [grid[3], grid[4], grid[5]], [grid[6], grid[7], grid[8]]];
+  const g = trimShape(rows);
+  if (!g.h) return null;
+  for (const rec of RECIPES) {
+    const t = trimShape(rec.shape);
+    if (t.h !== g.h || t.w !== g.w) continue;
+    let ok = true;
+    for (let r = 0; r < t.h && ok; r++) for (let c = 0; c < t.w; c++) if (t.cells[r][c] !== g.cells[r][c]) { ok = false; break; }
+    if (ok) return rec;
+  }
+  return null;
+}
 const itemCanvasCache = {};
 function itemCanvas(id) {
   if (itemCanvasCache[id]) return itemCanvasCache[id];
@@ -1276,6 +1352,7 @@ const MAXHP = 20, MAXFOOD = 20;
 let mode = 'survival', hp = MAXHP, food = MAXFOOD;
 let hurtT = 0, regenT = 0, starveT = 0, drownT = 0, fallY = 0, dead = 0, attackT = 0;
 let INV = new Array(36).fill(null);
+let craftSlots = new Array(9).fill(null);
 let invOpen = 0, cursor = null, cursorX = 0, cursorY = 0;
 let hostiles = [], arrows = [], spawnPt = { x: 0, y: 0, z: 0 };
 
@@ -1302,6 +1379,19 @@ function waterNear(x, z, r) {
 
 /* --------------------------------------------------- inventory + items */
 function heldId() { return mode === 'creative' ? HOTBAR[sel] : (INV[sel] ? INV[sel].id : 0); }
+const TOOLDEF = {};
+TOOLDEF[IT.WPICK] = { k: 'pick', s: 2.5 }; TOOLDEF[IT.SPICK] = { k: 'pick', s: 5 };
+TOOLDEF[IT.WAXE] = { k: 'axe', s: 2.5 }; TOOLDEF[IT.SAXE] = { k: 'axe', s: 5 };
+TOOLDEF[IT.WSHOVEL] = { k: 'shovel', s: 2.5 }; TOOLDEF[IT.SSHOVEL] = { k: 'shovel', s: 5 };
+TOOLDEF[IT.WSWORD] = { k: 'sword', s: 1 }; TOOLDEF[IT.SSWORD] = { k: 'sword', s: 1 };
+function heldTool() { return mode === 'survival' ? TOOLDEF[heldId()] || null : null; }
+function toolSpeed(blk) {
+  const t = heldTool(); if (!t) return 1;
+  if (t.k === 'pick' && (blk === STONE || blk === COBBLE || blk === BRICK)) return t.s;
+  if (t.k === 'axe' && (blk === LOG || blk === PLANKS)) return t.s;
+  if (t.k === 'shovel' && (blk === GRASS || blk === DIRT || blk === SAND || blk === GRAVEL)) return t.s;
+  return 1;
+}
 function addItem(id, n) {
   if (!id || n <= 0) return;
   for (let i = 0; i < INV.length && n > 0; i++) {
@@ -1351,7 +1441,8 @@ function pickEntity(maxD) {
 }
 function attack(e) {
   if (!e || e.hp === undefined) return;
-  e.hp -= 5;
+  const t = heldTool();
+  e.hp -= (t && t.k === 'sword') ? (t.s >= 5 ? 8 : 6) : 5;
   e.flee = 3;
   const ax = e.x - pl.x, az = e.z - pl.z, al = Math.hypot(ax, az) || 1;
   e.kx = ax / al * 3.4; e.kz = az / al * 3.4;
@@ -1684,6 +1775,8 @@ const menu = document.getElementById('menu');
 const loadEl = document.getElementById('load');
 const invEl = document.getElementById('inv');
 const invGrid = document.getElementById('invgrid');
+const craftGridEl = document.getElementById('craftgrid');
+const craftOutEl = document.getElementById('craftout');
 const cursorEl = document.getElementById('cursorItem');
 const deathEl = document.getElementById('death');
 const statsEl = document.getElementById('stats');
@@ -1759,7 +1852,42 @@ function renderInv() {
     if (i < 9) { const l = document.createElement('span'); l.className = 'ilab'; l.textContent = i + 1; d.appendChild(l); }
     invGrid.appendChild(d);
   }
+  renderCraft();
   renderCursor();
+}
+function craftResult() {
+  const grid = craftSlots.map(s => s ? s.id : 0);
+  const rec = matchRecipe(grid);
+  return rec ? { id: rec.out[0], n: rec.out[1] } : null;
+}
+function renderCraft() {
+  craftGridEl.innerHTML = '';
+  for (let i = 0; i < 9; i++) {
+    const d = document.createElement('div');
+    d.className = 'islot';
+    d.setAttribute('data-c', i);
+    const s = craftSlots[i];
+    if (s) {
+      d.appendChild(slotIconEl(s.id));
+      if (s.n > 1) { const q = document.createElement('b'); q.className = 'cnt'; q.textContent = s.n; d.appendChild(q); }
+      d.title = itemName(s.id);
+    }
+    craftGridEl.appendChild(d);
+  }
+  craftOutEl.innerHTML = '';
+  const r = craftResult();
+  if (r) {
+    craftOutEl.appendChild(slotIconEl(r.id));
+    if (r.n > 1) { const q = document.createElement('b'); q.className = 'cnt'; q.textContent = r.n; craftOutEl.appendChild(q); }
+    craftOutEl.title = itemName(r.id);
+    craftOutEl.classList.add('has');
+  } else { craftOutEl.title = ''; craftOutEl.classList.remove('has'); }
+}
+function consumeCraft() {
+  for (let i = 0; i < 9; i++) {
+    const s = craftSlots[i];
+    if (s) { s.n--; if (s.n <= 0) craftSlots[i] = null; }
+  }
 }
 function renderCursor() {
   cursorEl.innerHTML = '';
@@ -1778,18 +1906,35 @@ function openInv() {
 }
 function closeInv() {
   invOpen = 0;
+  for (let i = 0; i < 9; i++) if (craftSlots[i]) { const s = craftSlots[i]; addItem(s.id, s.n); craftSlots[i] = null; }
   if (cursor) { addItem(cursor.id, cursor.n); cursor = null; }
   invEl.classList.add('hide');
   view.requestPointerLock();
 }
+function slotSwap(arr, i) {
+  const s = arr[i];
+  if (!cursor) { if (s) { cursor = s; arr[i] = null; } }
+  else if (!s) { arr[i] = cursor; cursor = null; }
+  else if (s.id === cursor.id) { const t = Math.min(64 - s.n, cursor.n); s.n += t; cursor.n -= t; if (cursor.n <= 0) cursor = null; }
+  else { arr[i] = cursor; cursor = s; }
+}
 invGrid.addEventListener('click', e => {
   const d = e.target.closest('.islot'); if (!d) return;
-  const i = +d.getAttribute('data-i'), s = INV[i];
-  if (!cursor) { if (s) { cursor = s; INV[i] = null; } }
-  else if (!s) { INV[i] = cursor; cursor = null; }
-  else if (s.id === cursor.id) { const t = Math.min(64 - s.n, cursor.n); s.n += t; cursor.n -= t; if (cursor.n <= 0) cursor = null; }
-  else { INV[i] = cursor; cursor = s; }
+  slotSwap(INV, +d.getAttribute('data-i'));
   refreshHotbar(); renderInv();
+});
+craftGridEl.addEventListener('click', e => {
+  const d = e.target.closest('.islot'); if (!d) return;
+  slotSwap(craftSlots, +d.getAttribute('data-c'));
+  refreshHotbar(); renderInv();
+});
+craftOutEl.addEventListener('click', () => {
+  const r = craftResult(); if (!r) return;
+  if (cursor && (cursor.id !== r.id || cursor.n + r.n > 64)) return;
+  if (!cursor) cursor = { id: r.id, n: r.n };
+  else cursor.n += r.n;
+  consumeCraft();
+  renderInv();
 });
 document.getElementById('respawn').addEventListener('click', respawn);
 
@@ -2077,6 +2222,7 @@ function loadWorld(o) {
     mode = 'creative'; hp = MAXHP; food = MAXFOOD; INV = new Array(36).fill(null);
   }
   hostiles = []; arrows = []; dead = 0; hurtT = 0; regenT = 0; starveT = 0; drownT = 0;
+  craftSlots = new Array(9).fill(null);
   fallY = pl.y;
   pl.fly = (mode === 'creative' ? 1 : 0);
   hudMode = ''; refreshHotbar(); select(o.sel || 0); updateHUD();
@@ -2165,7 +2311,7 @@ function newWorld(seed, m) {
   spawnAnimals();
   parts.length = 0;
   mode = (m === 'creative') ? 'creative' : 'survival';
-  hp = MAXHP; food = MAXFOOD; INV = new Array(36).fill(null);
+  hp = MAXHP; food = MAXFOOD; INV = new Array(36).fill(null); craftSlots = new Array(9).fill(null);
   hostiles = []; arrows = []; dead = 0; hurtT = 0; regenT = 0; starveT = 0; drownT = 0; fallY = 0;
   hudMode = ''; refreshHotbar(); select(0); updateHUD();
   genQueue = chunks.slice();
@@ -2199,7 +2345,7 @@ function frame(now) {
     if (mining && hit) {
       if (hit.id === BEDROCK) mineT = 0;
       else {
-        mineT += dt / (mode === 'creative' ? 0.17 : hardnessOf(hit.id));
+        mineT += dt * (mode === 'creative' ? 5.9 : toolSpeed(hit.id)) / hardnessOf(hit.id);
         if (mineT >= 1) { mineT = 0; edit(hit, true); }
       }
     } else if (!mining) mineT = 0;
