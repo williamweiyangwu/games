@@ -548,6 +548,7 @@ LOOT.spider = [[IT.STRING,0,2]];
 function itemName(id) { return id < 100 ? (BLK[id] ? BLK[id].n : '?') : (ITEM[id] ? ITEM[id].n : '?'); }
 function itemFood(id) { return (id >= 100 && ITEM[id]) ? ITEM[id].food : 0; }
 const RECIPES = [
+  { out: [PLANKS, 4], shape: [[0, 0, 0], [0, LOG, 0], [0, 0, 0]] },
   { out: [IT.STICK, 4], shape: [[0, PLANKS, 0], [0, PLANKS, 0], [0, 0, 0]] },
   { out: [IT.WPICK, 1], shape: [[PLANKS, PLANKS, PLANKS], [0, IT.STICK, 0], [0, IT.STICK, 0]] },
   { out: [IT.WAXE, 1], shape: [[PLANKS, PLANKS, 0], [PLANKS, IT.STICK, 0], [0, IT.STICK, 0]] },
