@@ -2077,9 +2077,23 @@ function slotSwapHalf(arr, i) {
   else { arr[i] = cursor; cursor = s; }
 }
 let hoverSlot = null;
+function hoveredSlot() {
+  try {
+    const el = document.elementFromPoint(cursorX, cursorY);
+    if (el && el.closest) {
+      const d = el.closest('.islot');
+      if (d && d.parentElement === invGrid) return { arr: INV, i: +d.getAttribute('data-i') };
+      if (d && d.parentElement === craftGridEl) return { arr: craftSlots, i: +d.getAttribute('data-c') };
+    }
+  } catch (e) {}
+  return hoverSlot;
+}
 function dropHovered(all) {
-  if (!hoverSlot) return;
-  const arr = hoverSlot.arr, i = hoverSlot.i;
+  const hs = hoveredSlot();
+  let arr, i;
+  if (hs) { arr = hs.arr; i = hs.i; }
+  else if (mode === 'survival' && INV[sel]) { arr = INV; i = sel; }
+  else return;
   const s = arr[i]; if (!s) return;
   const n = all ? s.n : 1;
   dropItem(s.id, n, pl.x, pl.y + 0.4, pl.z, Math.sin(cam.yaw) * 2.4, 2.2, Math.cos(cam.yaw) * 2.4);
