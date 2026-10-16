@@ -17,6 +17,7 @@
     --allies: #3b82f6;
     --neutral: #4a5568;
     --gold: #d4a72c;
+    --sea: #0e1b2b;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
@@ -27,7 +28,6 @@
     line-height: 1.6;
   }
 
-  /* 顶部导航 + 语言切换 */
   .topbar {
     position: sticky; top: 0; z-index: 50;
     display: flex; justify-content: space-between; align-items: center;
@@ -55,10 +55,8 @@
   header p { color: var(--muted); font-size: 1.05rem; }
 
   .stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 16px;
-    max-width: 900px; margin: 28px auto 0;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 16px; max-width: 900px; margin: 28px auto 0;
   }
   .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
   .stat .num { font-size: 1.6rem; font-weight: 700; color: var(--gold); }
@@ -69,18 +67,15 @@
   section > h2 { font-size: 1.5rem; margin-bottom: 6px; padding-left: 14px; border-left: 4px solid var(--axis); }
   .sub { color: var(--muted); margin: 0 0 20px 14px; font-size: 0.95rem; }
 
-  /* 通用按钮 */
   .btn {
     background: var(--panel); color: var(--text);
     border: 1px solid var(--border); border-radius: 8px;
-    padding: 8px 16px; cursor: pointer; font-size: 0.9rem;
-    transition: all .2s;
+    padding: 8px 14px; cursor: pointer; font-size: 0.9rem; transition: all .2s;
   }
   .btn:hover { border-color: var(--muted); }
   .btn.primary { background: var(--axis); border-color: var(--axis); color: #fff; }
   .btn.primary:hover { background: #d44a43; }
 
-  /* 阶段筛选 */
   .filters { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 24px; }
   .filters button {
     background: var(--panel); color: var(--text);
@@ -90,7 +85,6 @@
   .filters button:hover { border-color: var(--muted); }
   .filters button.active { background: var(--axis); border-color: var(--axis); color: #fff; }
 
-  /* 时间轴 */
   .timeline { position: relative; padding-left: 40px; }
   .timeline::before {
     content: ""; position: absolute; left: 14px; top: 0; bottom: 0; width: 3px;
@@ -122,7 +116,6 @@
   .event.open .detail { display: block; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 
-  /* 图表 */
   .chart-wrap { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; position: relative; }
   .legend { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; margin-top: 10px; color: var(--muted); font-size: 0.85rem; }
   .legend span { display: flex; align-items: center; gap: 6px; }
@@ -130,21 +123,25 @@
 
   /* 地图 */
   .map-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
-  .map-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; margin-bottom: 14px; }
-  .map-year { text-align: center; font-size: 1.4rem; font-weight: 700; color: var(--gold); margin-bottom: 2px; }
-  .map-phase { text-align: center; color: var(--muted); font-size: 0.9rem; margin-bottom: 10px; }
+  .map-year { text-align: center; font-size: 1.5rem; font-weight: 700; color: var(--gold); margin-bottom: 2px; }
+  .map-phase { text-align: center; font-size: 1rem; font-weight: 600; margin-bottom: 4px; }
+  .map-desc { color: var(--text); font-size: 0.95rem; line-height: 1.7; text-align: center; max-width: 780px; margin: 0 auto 12px; min-height: 2.4em; }
+  .map-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; margin-bottom: 6px; }
+  .map-counter { text-align: center; color: var(--muted); font-size: 0.8rem; margin-bottom: 10px; }
   .map-stats { text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 8px; }
   .map-svg-wrap { position: relative; }
   #europeMap polygon { transition: fill .5s ease; stroke: #0d1117; stroke-width: 1; cursor: pointer; }
   #europeMap polygon:hover { stroke: #fff; stroke-width: 1.5; }
   #europeMap text { pointer-events: none; user-select: none; }
+  #europeMap .battle { cursor: pointer; animation: pulse 1.5s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+  #mapSpeed { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 0.85rem; cursor: pointer; }
   .tooltip {
     position: absolute; background: #000; border: 1px solid var(--border);
     padding: 8px 12px; border-radius: 8px; font-size: 0.85rem;
     pointer-events: none; white-space: nowrap; display: none; z-index: 10;
   }
 
-  /* 人物 */
   .figures { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 18px; }
   .figure {
     background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
@@ -154,8 +151,7 @@
   .avatar {
     width: 84px; height: 84px; border-radius: 50%; margin: 0 auto 14px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 2rem; font-weight: 700; color: #fff;
-    border: 3px solid var(--border);
+    font-size: 2rem; font-weight: 700; color: #fff; border: 3px solid var(--border);
   }
   .avatar.axis { background: linear-gradient(135deg, #e5534b, #7a2e2a); }
   .avatar.allies { background: linear-gradient(135deg, #3b82f6, #1e40af); }
@@ -182,6 +178,34 @@
 
 <div class="container">
 
+  <section id="map">
+    <h2 data-i18n="mapTitle">欧洲领土控制变化</h2>
+    <p class="sub" data-i18n="mapSub">拖动或播放查看 1939–1945 年轴心国与盟军控制区域及关键战役的演变。</p>
+    <div class="map-panel">
+      <div class="map-year" id="mapYear">1939.09</div>
+      <div class="map-phase" id="mapPhase"></div>
+      <div class="map-desc" id="mapDesc"></div>
+      <div class="map-toolbar">
+        <button class="btn primary" id="mapPlay">&#9654;</button>
+        <button class="btn" id="mapPrev">&#9664;</button>
+        <button class="btn" id="mapNext">&#9658;</button>
+        <input type="range" id="mapSlider" min="0" max="16" value="0" style="flex:1;min-width:160px;">
+        <select id="mapSpeed">
+          <option value="3500">0.5x</option>
+          <option value="2500" selected>1x</option>
+          <option value="1500">2x</option>
+        </select>
+      </div>
+      <div class="map-counter" id="mapCounter"></div>
+      <div class="map-svg-wrap">
+        <svg id="europeMap" width="100%" viewBox="0 0 900 560" preserveAspectRatio="xMidYMid meet"></svg>
+        <div class="tooltip" id="mapTip"></div>
+      </div>
+      <div class="map-stats" id="mapStats"></div>
+    </div>
+    <div class="legend" id="mapLegend"></div>
+  </section>
+
   <section id="chart">
     <h2 data-i18n="chartTitle">轴心国控制欧洲版图的变化</h2>
     <p class="sub" data-i18n="chartSub">以下曲线估算轴心国（纳粹德国及其盟友）控制的欧洲领土比例，从闪电战扩张到最终崩溃。</p>
@@ -190,27 +214,6 @@
       <div class="tooltip" id="chartTip"></div>
     </div>
     <div class="legend" id="chartLegend"></div>
-  </section>
-
-  <section id="map">
-    <h2 data-i18n="mapTitle">欧洲领土控制变化</h2>
-    <p class="sub" data-i18n="mapSub">拖动或播放查看 1939–1945 年轴心国与盟军控制区域的演变。</p>
-    <div class="map-panel">
-      <div class="map-year" id="mapYear">1939</div>
-      <div class="map-phase" id="mapPhase"></div>
-      <div class="map-toolbar">
-        <button class="btn primary" id="mapPlay">&#9654;</button>
-        <button class="btn" id="mapPrev">&#9664;</button>
-        <button class="btn" id="mapNext">&#9658;</button>
-        <input type="range" id="mapSlider" min="0" max="6" value="0" style="flex:1;min-width:160px;">
-      </div>
-      <div class="map-svg-wrap">
-        <svg id="europeMap" width="100%" viewBox="0 0 900 560" preserveAspectRatio="xMidYMid meet"></svg>
-        <div class="tooltip" id="mapTip"></div>
-      </div>
-      <div class="map-stats" id="mapStats"></div>
-    </div>
-    <div class="legend" id="mapLegend"></div>
   </section>
 
   <section id="timeline">
@@ -241,15 +244,16 @@ const I18N = {
     chartTitle: "轴心国控制欧洲版图的变化",
     chartSub: "以下曲线估算轴心国（纳粹德国及其盟友）控制的欧洲领土比例，从闪电战扩张到最终崩溃。",
     mapTitle: "欧洲领土控制变化",
-    mapSub: "拖动或播放查看 1939–1945 年轴心国与盟军控制区域的演变。",
+    mapSub: "拖动或播放查看 1939–1945 年轴心国与盟军控制区域及关键战役的演变。",
     timelineTitle: "事件时间轴", figuresTitle: "关键人物", autoPlay: "自动播放",
     footer: "数据基于公开历史资料整理，为教学演示用途，部分数字为估算值。",
     statDuration: "战争持续时间", statCountries: "参战国（含殖民地）",
     statDeaths: "死亡人数（全球）", statCamps: "主要阵营",
     legendAxis: "轴心国", legendAllies: "盟军", legendNeutral: "中立", legendOccupied: "轴心占领",
+    legendBattle: "战役", legendCity: "主要城市",
     legendCurve: "轴心国控制比例", legendCounter: "盟军反攻（1943后）", legendNode: "关键战役节点",
     stateAxis: "轴心国", stateOccupied: "轴心占领", stateAllies: "盟军", stateNeutral: "中立",
-    axisCount: "轴心控制国家：{n} 个",
+    axisCount: "轴心控制国家：{n} 个", stage: "阶段 {i} / {n}",
     all: "全部", pause: "暂停", resume: "继续"
   },
   en: {
@@ -258,15 +262,16 @@ const I18N = {
     chartTitle: "Axis Control of Europe Over Time",
     chartSub: "Estimated share of European territory under Axis (Nazi Germany and allies) control, from Blitzkrieg expansion to final collapse.",
     mapTitle: "Territorial Control of Europe",
-    mapSub: "Drag or play through 1939–1945 to see how Axis and Allied control evolved.",
+    mapSub: "Drag or play through 1939–1945 to see how Axis and Allied control, plus key battles, evolved.",
     timelineTitle: "Timeline of Events", figuresTitle: "Key Figures", autoPlay: "Autoplay",
     footer: "Data compiled from public historical sources for educational purposes; some figures are estimates.",
     statDuration: "Duration", statCountries: "Belligerent nations",
     statDeaths: "Fatalities (worldwide)", statCamps: "Major camps",
     legendAxis: "Axis", legendAllies: "Allies", legendNeutral: "Neutral", legendOccupied: "Axis-occupied",
+    legendBattle: "Battle", legendCity: "Major city",
     legendCurve: "Axis-controlled share", legendCounter: "Allied counteroffensive (1943+)", legendNode: "Key battle node",
     stateAxis: "Axis", stateOccupied: "Axis-occupied", stateAllies: "Allies", stateNeutral: "Neutral",
-    axisCount: "Axis-controlled nations: {n}",
+    axisCount: "Axis-controlled nations: {n}", stage: "Stage {i} / {n}",
     all: "All", pause: "Pause", resume: "Resume"
   }
 };
@@ -385,71 +390,121 @@ const events = [
 
 // ================= 地图国家 =================
 const countries = [
-  { id:"uk", name:{zh:"英国",en:"United Kingdom"}, shapes:["162,78 200,70 225,90 220,130 200,150 175,150 160,125 155,100"], lx:188, ly:112, label:"UK" },
-  { id:"ireland", name:{zh:"爱尔兰",en:"Ireland"}, shapes:["120,95 150,88 158,112 150,138 128,145 118,122"], lx:138, ly:118, label:"IRL" },
-  { id:"norway", name:{zh:"挪威",en:"Norway"}, shapes:["320,30 345,18 375,28 372,70 385,100 380,135 362,140 340,120 335,85 325,55"], lx:350, ly:80, label:"NOR" },
-  { id:"sweden", name:{zh:"瑞典",en:"Sweden"}, shapes:["378,40 430,28 460,38 462,95 458,135 445,155 400,150 380,135 375,90"], lx:418, ly:95, label:"SWE" },
-  { id:"finland", name:{zh:"芬兰",en:"Finland"}, shapes:["462,60 505,45 555,58 565,95 560,130 540,160 500,165 470,150 462,115"], lx:512, ly:105, label:"FIN" },
-  { id:"denmark", name:{zh:"丹麦",en:"Denmark"}, shapes:["342,152 360,150 368,162 358,172 344,168 338,160"], lx:353, ly:163, label:"DEN" },
-  { id:"france", name:{zh:"法国",en:"France"}, shapes:["230,200 300,190 315,205 320,240 310,300 285,335 250,340 235,305 225,260"], lx:268, ly:265, label:"FRA" },
-  { id:"benelux", name:{zh:"比荷卢",en:"Benelux"}, shapes:["310,175 340,172 345,190 335,205 315,205 308,190"], lx:326, ly:190, label:"BNL" },
-  { id:"germany", name:{zh:"德国",en:"Germany"}, shapes:["332,168 400,158 428,175 432,210 425,245 400,258 360,255 345,240 340,210 335,185"], lx:382, ly:205, label:"GER" },
-  { id:"switzerland", name:{zh:"瑞士",en:"Switzerland"}, shapes:["320,235 348,232 352,258 340,272 322,268 318,250"], lx:335, ly:252, label:"SUI" },
-  { id:"austria", name:{zh:"奥地利",en:"Austria"}, shapes:["400,250 438,248 442,278 420,290 398,282"], lx:420, ly:270, label:"AUT" },
-  { id:"czechoslovakia", name:{zh:"捷克斯洛伐克",en:"Czechoslovakia"}, shapes:["430,212 462,208 466,240 452,262 432,258 428,230"], lx:446, ly:235, label:"CZE" },
-  { id:"poland", name:{zh:"波兰",en:"Poland"}, shapes:["465,178 520,168 532,200 528,240 505,258 470,250 462,220"], lx:497, ly:215, label:"POL" },
-  { id:"baltic", name:{zh:"波罗的海三国",en:"Baltic states"}, shapes:["528,150 562,145 566,170 555,188 530,186 524,168"], lx:545, ly:170, label:"BAL" },
-  { id:"ussr", name:{zh:"苏联",en:"Soviet Union"}, shapes:["530,150 560,100 700,80 820,95 830,200 815,300 740,360 660,360 575,330 565,250 535,200"], lx:690, ly:220, label:"USSR" },
-  { id:"portugal", name:{zh:"葡萄牙",en:"Portugal"}, shapes:["205,340 225,335 228,365 218,390 202,382 198,355"], lx:213, ly:365, label:"POR" },
-  { id:"spain", name:{zh:"西班牙",en:"Spain"}, shapes:["227,330 290,325 305,350 310,395 295,432 270,445 245,435 232,400 225,360"], lx:262, ly:385, label:"ESP" },
-  { id:"italy", name:{zh:"意大利",en:"Italy"}, shapes:["350,288 400,282 428,300 430,340 415,390 400,425 385,432 372,415 368,385 360,340 348,305", "390,440 415,438 420,455 400,462 385,452"], lx:392, ly:360, label:"ITA" },
-  { id:"hungary", name:{zh:"匈牙利",en:"Hungary"}, shapes:["452,246 498,242 502,268 490,285 458,282 448,262"], lx:476, ly:265, label:"HUN" },
-  { id:"romania", name:{zh:"罗马尼亚",en:"Romania"}, shapes:["500,246 558,242 562,290 545,325 515,330 500,305 498,268"], lx:528, ly:285, label:"ROM" },
-  { id:"yugoslavia", name:{zh:"南斯拉夫",en:"Yugoslavia"}, shapes:["436,282 480,278 486,320 470,348 442,345 430,315"], lx:458, ly:312, label:"YUG" },
-  { id:"bulgaria", name:{zh:"保加利亚",en:"Bulgaria"}, shapes:["500,332 545,330 548,370 520,378 498,368 496,348"], lx:522, ly:355, label:"BUL" },
-  { id:"albania", name:{zh:"阿尔巴尼亚",en:"Albania"}, shapes:["478,352 502,350 506,378 488,382 476,368"], lx:491, ly:366, label:"ALB" },
-  { id:"greece", name:{zh:"希腊",en:"Greece"}, shapes:["495,382 535,380 538,430 515,445 490,430 488,400"], lx:512, ly:410, label:"GRE" },
-  { id:"turkey", name:{zh:"土耳其",en:"Turkey"}, shapes:["555,400 625,395 640,430 625,470 590,478 560,460 552,425"], lx:595, ly:438, label:"TUR" },
+  { id:"uk", name:{zh:"英国",en:"United Kingdom"}, shapes:["162,76 202,68 226,90 222,132 202,152 176,152 160,126 154,100"], lx:188, ly:112, label:"UK" },
+  { id:"ireland", name:{zh:"爱尔兰",en:"Ireland"}, shapes:["120,92 150,86 160,112 150,138 128,146 116,122"], lx:138, ly:118, label:"IRL" },
+  { id:"norway", name:{zh:"挪威",en:"Norway"}, shapes:["318,32 342,20 370,28 378,45 372,75 386,100 382,130 366,142 348,128 340,102 330,72 324,50"], lx:350, ly:80, label:"NOR" },
+  { id:"sweden", name:{zh:"瑞典",en:"Sweden"}, shapes:["378,42 428,30 458,40 466,70 466,110 460,140 442,156 402,152 380,138 374,98 372,60"], lx:420, ly:95, label:"SWE" },
+  { id:"finland", name:{zh:"芬兰",en:"Finland"}, shapes:["464,58 508,46 556,58 570,92 566,128 548,158 506,166 474,152 462,118 462,82"], lx:512, ly:105, label:"FIN" },
+  { id:"denmark", name:{zh:"丹麦",en:"Denmark"}, shapes:["340,152 360,148 370,162 358,174 344,170 336,162"], lx:353, ly:163, label:"DEN" },
+  { id:"france", name:{zh:"法国",en:"France"}, shapes:["230,200 300,188 318,204 322,240 312,300 288,336 252,342 236,306 226,262"], lx:266, ly:265, label:"FRA" },
+  { id:"netherlands", name:{zh:"荷兰",en:"Netherlands"}, shapes:["306,174 322,172 328,190 318,196 306,190"], lx:317, ly:184, label:"NED" },
+  { id:"belgium", name:{zh:"比利时",en:"Belgium"}, shapes:["306,190 320,188 326,204 314,210 304,206"], lx:315, ly:199, label:"BEL" },
+  { id:"luxembourg", name:{zh:"卢森堡",en:"Luxembourg"}, shapes:["320,206 328,206 330,214 322,216"], lx:325, ly:211, label:"LUX" },
+  { id:"germany", name:{zh:"德国",en:"Germany"}, shapes:["330,168 398,156 428,174 434,210 426,246 402,260 362,256 346,242 340,212 334,186"], lx:382, ly:205, label:"GER" },
+  { id:"switzerland", name:{zh:"瑞士",en:"Switzerland"}, shapes:["318,236 346,232 352,258 340,272 320,268 314,250"], lx:334, ly:252, label:"SUI" },
+  { id:"austria", name:{zh:"奥地利",en:"Austria"}, shapes:["398,250 438,248 444,280 420,292 396,284"], lx:420, ly:270, label:"AUT" },
+  { id:"czechoslovakia", name:{zh:"捷克斯洛伐克",en:"Czechoslovakia"}, shapes:["428,212 462,208 468,240 452,264 432,258 426,232"], lx:446, ly:235, label:"CZE" },
+  { id:"poland", name:{zh:"波兰",en:"Poland"}, shapes:["464,178 520,168 534,200 530,242 506,260 470,250 460,222"], lx:497, ly:215, label:"POL" },
+  { id:"estonia", name:{zh:"爱沙尼亚",en:"Estonia"}, shapes:["524,148 552,142 556,162 540,172 526,170 520,158"], lx:538, ly:158, label:"EST" },
+  { id:"latvia", name:{zh:"拉脱维亚",en:"Latvia"}, shapes:["520,158 546,156 550,178 534,188 518,186 514,170"], lx:532, ly:172, label:"LVA" },
+  { id:"lithuania", name:{zh:"立陶宛",en:"Lithuania"}, shapes:["514,170 542,168 548,192 530,202 510,198 506,182"], lx:527, ly:185, label:"LTU" },
+  { id:"ussr", name:{zh:"苏联",en:"Soviet Union"}, shapes:["556,150 560,100 700,80 820,95 832,200 818,300 742,360 662,362 576,330 566,250 558,200 556,170"], lx:690, ly:220, label:"USSR" },
+  { id:"portugal", name:{zh:"葡萄牙",en:"Portugal"}, shapes:["204,338 226,334 230,364 220,392 202,384 196,356"], lx:213, ly:365, label:"POR" },
+  { id:"spain", name:{zh:"西班牙",en:"Spain"}, shapes:["226,328 290,322 306,350 312,396 296,434 270,448 246,438 232,402 224,362"], lx:262, ly:385, label:"ESP" },
+  { id:"italy", name:{zh:"意大利",en:"Italy"}, shapes:["348,286 400,280 430,298 432,340 418,392 402,428 388,436 374,416 370,386 360,342 346,306", "392,442 416,440 422,458 402,466 386,456"], lx:392, ly:360, label:"ITA" },
+  { id:"hungary", name:{zh:"匈牙利",en:"Hungary"}, shapes:["452,244 498,240 504,266 490,284 458,282 446,262"], lx:476, ly:265, label:"HUN" },
+  { id:"romania", name:{zh:"罗马尼亚",en:"Romania"}, shapes:["500,244 560,240 566,290 548,326 516,332 500,306 496,268"], lx:528, ly:285, label:"ROM" },
+  { id:"yugoslavia", name:{zh:"南斯拉夫",en:"Yugoslavia"}, shapes:["434,282 480,278 488,320 472,348 442,346 428,316"], lx:458, ly:312, label:"YUG" },
+  { id:"bulgaria", name:{zh:"保加利亚",en:"Bulgaria"}, shapes:["498,332 546,330 550,372 522,380 496,370 494,348"], lx:522, ly:355, label:"BUL" },
+  { id:"albania", name:{zh:"阿尔巴尼亚",en:"Albania"}, shapes:["476,352 502,350 508,378 488,384 474,368"], lx:491, ly:366, label:"ALB" },
+  { id:"greece", name:{zh:"希腊",en:"Greece"}, shapes:["494,382 536,380 540,432 516,448 490,432 486,402"], lx:512, ly:410, label:"GRE" },
+  { id:"turkey", name:{zh:"土耳其",en:"Turkey"}, shapes:["552,400 626,394 642,430 626,472 590,480 560,462 550,426"], lx:595, ly:438, label:"TUR" },
 ];
 
 const STATE_COLORS = { axis:"#e5534b", occupied:"#7a2e2a", allies:"#3b82f6", neutral:"#4a5568" };
 
-const periods = [
-  { year:"1939", label:{zh:"德国闪击波兰，二战爆发",en:"Germany invades Poland — WWII begins"},
-    control:{ uk:"allies", ireland:"neutral", norway:"neutral", sweden:"neutral", finland:"neutral", denmark:"neutral",
-      france:"allies", benelux:"neutral", germany:"axis", switzerland:"neutral", austria:"axis", czechoslovakia:"occupied", poland:"occupied",
-      baltic:"neutral", ussr:"neutral", portugal:"neutral", spain:"neutral", italy:"axis",
-      hungary:"neutral", romania:"neutral", yugoslavia:"neutral", bulgaria:"neutral", albania:"occupied", greece:"neutral", turkey:"neutral" } },
-  { year:"1940", label:{zh:"法国沦陷，不列颠空战",en:"France falls; Battle of Britain"},
-    control:{ uk:"allies", ireland:"neutral", norway:"occupied", sweden:"neutral", finland:"neutral", denmark:"occupied",
-      france:"occupied", benelux:"occupied", germany:"axis", switzerland:"neutral", austria:"axis", czechoslovakia:"occupied", poland:"occupied",
-      baltic:"allies", ussr:"neutral", portugal:"neutral", spain:"neutral", italy:"axis",
-      hungary:"axis", romania:"axis", yugoslavia:"neutral", bulgaria:"neutral", albania:"occupied", greece:"allies", turkey:"neutral" } },
-  { year:"1941", label:{zh:"巴巴罗萨行动，苏德战争爆发",en:"Barbarossa — war in the East begins"},
-    control:{ uk:"allies", ireland:"neutral", norway:"occupied", sweden:"neutral", finland:"axis", denmark:"occupied",
-      france:"occupied", benelux:"occupied", germany:"axis", switzerland:"neutral", austria:"axis", czechoslovakia:"occupied", poland:"occupied",
-      baltic:"occupied", ussr:"allies", portugal:"neutral", spain:"neutral", italy:"axis",
-      hungary:"axis", romania:"axis", yugoslavia:"occupied", bulgaria:"axis", albania:"occupied", greece:"occupied", turkey:"neutral" } },
-  { year:"1942", label:{zh:"轴心国扩张达到顶峰",en:"Axis expansion reaches its peak"},
-    control:{ uk:"allies", ireland:"neutral", norway:"occupied", sweden:"neutral", finland:"axis", denmark:"occupied",
-      france:"occupied", benelux:"occupied", germany:"axis", switzerland:"neutral", austria:"axis", czechoslovakia:"occupied", poland:"occupied",
-      baltic:"occupied", ussr:"allies", portugal:"neutral", spain:"neutral", italy:"axis",
-      hungary:"axis", romania:"axis", yugoslavia:"occupied", bulgaria:"axis", albania:"occupied", greece:"occupied", turkey:"neutral" } },
-  { year:"1943", label:{zh:"斯大林格勒与库尔斯克，战局转折",en:"Stalingrad & Kursk — the tide turns"},
-    control:{ uk:"allies", ireland:"neutral", norway:"occupied", sweden:"neutral", finland:"axis", denmark:"occupied",
-      france:"occupied", benelux:"occupied", germany:"axis", switzerland:"neutral", austria:"axis", czechoslovakia:"occupied", poland:"occupied",
-      baltic:"occupied", ussr:"allies", portugal:"neutral", spain:"neutral", italy:"allies",
-      hungary:"axis", romania:"axis", yugoslavia:"allies", bulgaria:"axis", albania:"occupied", greece:"occupied", turkey:"neutral" } },
-  { year:"1944", label:{zh:"诺曼底登陆，欧洲解放",en:"D-Day — Europe liberated"},
-    control:{ uk:"allies", ireland:"neutral", norway:"occupied", sweden:"neutral", finland:"allies", denmark:"occupied",
-      france:"allies", benelux:"allies", germany:"axis", switzerland:"neutral", austria:"axis", czechoslovakia:"occupied", poland:"allies",
-      baltic:"allies", ussr:"allies", portugal:"neutral", spain:"neutral", italy:"allies",
-      hungary:"occupied", romania:"allies", yugoslavia:"allies", bulgaria:"allies", albania:"allies", greece:"allies", turkey:"neutral" } },
-  { year:"1945", label:{zh:"柏林战役，德国投降",en:"Battle of Berlin — Germany surrenders"},
-    control:{ uk:"allies", ireland:"neutral", norway:"allies", sweden:"neutral", finland:"allies", denmark:"allies",
-      france:"allies", benelux:"allies", germany:"occupied", switzerland:"neutral", austria:"occupied", czechoslovakia:"allies", poland:"allies",
-      baltic:"allies", ussr:"allies", portugal:"neutral", spain:"neutral", italy:"allies",
-      hungary:"allies", romania:"allies", yugoslavia:"allies", bulgaria:"allies", albania:"allies", greece:"allies", turkey:"neutral" } },
+// ================= 地图周期（基础状态 + 增量变化）=================
+const baseControl = {
+  uk:"allies", ireland:"neutral", norway:"neutral", sweden:"neutral", finland:"neutral", denmark:"neutral",
+  france:"allies", netherlands:"neutral", belgium:"neutral", luxembourg:"neutral", germany:"axis", switzerland:"neutral",
+  austria:"axis", czechoslovakia:"occupied", poland:"occupied",
+  estonia:"neutral", latvia:"neutral", lithuania:"neutral", ussr:"neutral", portugal:"neutral", spain:"neutral", italy:"axis",
+  hungary:"neutral", romania:"neutral", yugoslavia:"neutral", bulgaria:"neutral", albania:"occupied", greece:"neutral", turkey:"neutral"
+};
+
+const periodDefs = [
+  { t:"1939.09", label:{zh:"德国入侵波兰",en:"Germany invades Poland"},
+    desc:{zh:"1939年9月1日，德军以闪电战突袭波兰，英法随即对德宣战，欧洲二战爆发。波兰在一个月内沦陷，被德苏两国瓜分。",en:"On 1 September 1939 Germany attacked Poland; Britain and France declared war, beginning WWII in Europe. Poland fell within a month and was partitioned between Germany and the USSR."}, changes:{} },
+  { t:"1940.04", label:{zh:"入侵丹麦与挪威",en:"Invasion of Denmark & Norway"},
+    desc:{zh:"德军于4月占领丹麦与挪威，确保瑞典铁矿石运输与北欧战略地位。丹麦数小时投降，挪威抵抗至6月。",en:"Germany occupied Denmark and Norway in April to secure Swedish iron ore and naval bases. Denmark fell within hours; Norway held out until June."}, changes:{ denmark:"occupied", norway:"occupied" } },
+  { t:"1940.06", label:{zh:"法国投降",en:"Fall of France"},
+    desc:{zh:"德军经阿登森林突破，绕过马奇诺防线。6月22日法国签署停战协定，西欧大部沦陷，仅英国继续抵抗。",en:"German panzers broke through the Ardennes and outflanked the Maginot Line. France surrendered on 22 June, leaving Britain to fight on alone in the West."}, changes:{ france:"occupied", netherlands:"occupied", belgium:"occupied", luxembourg:"occupied" } },
+  { t:"1940.06", label:{zh:"苏联吞并波罗的海三国",en:"Soviet annexation of the Baltic"},
+    desc:{zh:"苏联在1940年6月吞并爱沙尼亚、拉脱维亚和立陶宛，扩大其在东欧的势力范围。",en:"The USSR annexed Estonia, Latvia and Lithuania in June 1940, expanding its sphere in Eastern Europe."}, changes:{ estonia:"allies", latvia:"allies", lithuania:"allies" } },
+  { t:"1940.10", label:{zh:"轴心南扩",en:"Axis expansion south"},
+    desc:{zh:"匈牙利与罗马尼亚加入轴心国，意大利入侵希腊受挫。轴心阵营在地中海与东南欧扩张。",en:"Hungary and Romania joined the Axis, while Italy's invasion of Greece stalled. The Axis expanded across the Mediterranean and the Balkans."}, changes:{ hungary:"axis", romania:"axis" } },
+  { t:"1941.04", label:{zh:"巴尔干战役",en:"Balkan campaign"},
+    desc:{zh:"德军入侵南斯拉夫与希腊，迅速占领巴尔干半岛。保加利亚也加入轴心。",en:"Germany invaded Yugoslavia and Greece, quickly overrunning the Balkans. Bulgaria also joined the Axis."}, changes:{ yugoslavia:"occupied", greece:"occupied", bulgaria:"axis" } },
+  { t:"1941.06", label:{zh:"巴巴罗萨行动",en:"Operation Barbarossa"},
+    desc:{zh:"6月22日，德国撕毁条约，以约300万兵力入侵苏联。波罗的海三国被德军占领，芬兰作为共战方参战。",en:"On 22 June Germany invaded the USSR with ~3 million men. The Baltic states were occupied, and Finland joined as a co-belligerent."}, changes:{ ussr:"allies", estonia:"occupied", latvia:"occupied", lithuania:"occupied", finland:"axis" } },
+  { t:"1941.12", label:{zh:"莫斯科战役",en:"Battle of Moscow"},
+    desc:{zh:"德军兵临莫斯科城下，但苏军趁严冬反攻，粉碎了德国速胜的幻想。",en:"German forces reached the gates of Moscow, but a Soviet winter counteroffensive shattered hopes of a quick victory."}, changes:{} },
+  { t:"1942.08", label:{zh:"轴心巅峰",en:"Axis high-water mark"},
+    desc:{zh:"轴心国扩张达到顶峰，德军深入苏联腹地，逼近斯大林格勒与高加索油田。",en:"The Axis reached its greatest extent, driving deep into the USSR toward Stalingrad and the Caucasus oilfields."}, changes:{} },
+  { t:"1943.02", label:{zh:"斯大林格勒战役",en:"Battle of Stalingrad"},
+    desc:{zh:"苏军合围并歼灭德军第6集团军，约30万人被俘或阵亡，成为东线转折点。",en:"The Red Army encircled and destroyed the German 6th Army (~300,000 men), the turning point of the Eastern Front."}, changes:{} },
+  { t:"1943.07", label:{zh:"库尔斯克与意大利投降",en:"Kursk & Italy's surrender"},
+    desc:{zh:"库尔斯克坦克战成为德国最后一次东线攻势。7月墨索里尼倒台，意大利于9月投降并倒戈。",en:"Kursk proved Germany's last Eastern offensive. Mussolini fell in July and Italy surrendered and switched sides in September."}, changes:{ italy:"allies" } },
+  { t:"1944.06", label:{zh:"诺曼底登陆",en:"D-Day: Normandy"},
+    desc:{zh:"6月6日，盟军在诺曼底实施史上最大规模两栖登陆，开辟西线第二战场，解放法国与比荷卢。",en:"On 6 June the Allies launched the largest amphibious landing in history at Normandy, opening a second front and liberating France and the Low Countries."}, changes:{ france:"allies", netherlands:"allies", belgium:"allies", luxembourg:"allies" } },
+  { t:"1944.08", label:{zh:"东南欧倒戈",en:"Southeast Europe defects"},
+    desc:{zh:"罗马尼亚、保加利亚先后倒向盟军，芬兰与苏联停战，匈牙利被德军占领。",en:"Romania and Bulgaria switched to the Allies, Finland made peace with the USSR, and Hungary was occupied by Germany."}, changes:{ romania:"allies", bulgaria:"allies", finland:"allies", hungary:"occupied" } },
+  { t:"1944.10", label:{zh:"希腊与波罗的海解放",en:"Greece & the Baltics liberated"},
+    desc:{zh:"希腊、阿尔巴尼亚与南斯拉夫相继解放，苏联夺回波罗的海三国，纳粹帝国开始瓦解。",en:"Greece, Albania and Yugoslavia were liberated, and the USSR retook the Baltic states as the Nazi empire crumbled."}, changes:{ greece:"allies", albania:"allies", yugoslavia:"allies", estonia:"allies", latvia:"allies", lithuania:"allies" } },
+  { t:"1945.01", label:{zh:"东线大攻势",en:"Vistula–Oder Offensive"},
+    desc:{zh:"苏军发起维斯瓦河-奥得河攻势，解放波兰，兵临柏林城下。",en:"The Vistula–Oder Offensive liberated Poland and brought the Red Army to the gates of Berlin."}, changes:{ poland:"allies" } },
+  { t:"1945.04", label:{zh:"柏林战役",en:"Battle of Berlin"},
+    desc:{zh:"苏军攻克柏林，希特勒自杀。捷克斯洛伐克、丹麦与挪威相继解放。",en:"The Red Army stormed Berlin and Hitler took his own life. Czechoslovakia, Denmark and Norway were liberated."}, changes:{ germany:"occupied", austria:"occupied", czechoslovakia:"allies", denmark:"allies", norway:"allies" } },
+  { t:"1945.05", label:{zh:"德国无条件投降",en:"Germany's surrender"},
+    desc:{zh:"5月8日，德国正式投降，欧洲战场结束。纳粹在欧洲的统治彻底终结。",en:"Germany surrendered on 8 May 1945, ending the war in Europe and Nazi rule once and for all."}, changes:{} },
+];
+
+const periods = [];
+periodDefs.forEach((p, i) => {
+  const prev = i === 0 ? baseControl : periods[i-1].control;
+  periods.push({ year:p.t, label:p.label, desc:p.desc, control:Object.assign({}, prev, p.changes) });
+});
+
+// ================= 城市与战役标记 =================
+const cities = [
+  { name:{zh:"伦敦",en:"London"}, x:190, y:100 },
+  { name:{zh:"巴黎",en:"Paris"}, x:272, y:245 },
+  { name:{zh:"柏林",en:"Berlin"}, x:392, y:185 },
+  { name:{zh:"华沙",en:"Warsaw"}, x:500, y:205 },
+  { name:{zh:"莫斯科",en:"Moscow"}, x:720, y:150 },
+  { name:{zh:"列宁格勒",en:"Leningrad"}, x:575, y:110 },
+  { name:{zh:"斯大林格勒",en:"Stalingrad"}, x:720, y:260 },
+  { name:{zh:"罗马",en:"Rome"}, x:388, y:360 },
+  { name:{zh:"维也纳",en:"Vienna"}, x:420, y:268 },
+];
+const battles = [
+  { name:{zh:"波兰战役",en:"Invasion of Poland"}, date:{zh:"1939.09",en:"Sep 1939"}, x:500, y:200, at:0 },
+  { name:{zh:"挪威战役",en:"Norwegian Campaign"}, date:{zh:"1940.04",en:"Apr 1940"}, x:345, y:90, at:1 },
+  { name:{zh:"敦刻尔克",en:"Dunkirk"}, date:{zh:"1940.05",en:"May 1940"}, x:282, y:175, at:2 },
+  { name:{zh:"不列颠空战",en:"Battle of Britain"}, date:{zh:"1940.07",en:"Jul 1940"}, x:195, y:120, at:3 },
+  { name:{zh:"列宁格勒围城",en:"Siege of Leningrad"}, date:{zh:"1941.09",en:"Sep 1941"}, x:588, y:104, at:6 },
+  { name:{zh:"莫斯科战役",en:"Battle of Moscow"}, date:{zh:"1941.12",en:"Dec 1941"}, x:732, y:145, at:7 },
+  { name:{zh:"斯大林格勒",en:"Stalingrad"}, date:{zh:"1942.08",en:"Aug 1942"}, x:732, y:268, at:8 },
+  { name:{zh:"库尔斯克",en:"Kursk"}, date:{zh:"1943.07",en:"Jul 1943"}, x:690, y:210, at:10 },
+  { name:{zh:"诺曼底登陆",en:"D-Day Normandy"}, date:{zh:"1944.06",en:"Jun 1944"}, x:258, y:225, at:11 },
+  { name:{zh:"柏林战役",en:"Battle of Berlin"}, date:{zh:"1945.04",en:"Apr 1945"}, x:380, y:178, at:15 },
+];
+const seaLabels = [
+  { zh:"大西洋", en:"Atlantic Ocean", x:70, y:230 },
+  { zh:"北海", en:"North Sea", x:252, y:128 },
+  { zh:"波罗的海", en:"Baltic Sea", x:490, y:140 },
+  { zh:"地中海", en:"Mediterranean", x:330, y:478 },
+  { zh:"黑海", en:"Black Sea", x:618, y:372 },
 ];
 
 // ================= 人物 =================
@@ -605,7 +660,14 @@ function renderChart() {
 
 // ================= 渲染：地图 =================
 let mapPeriod = 0;
-let mapPlaying = false, mapTimer = null;
+let mapPlaying = false, mapTimer = null, mapSpeed = 2500;
+
+function bindTip(el, htmlFn) {
+  const tip = document.getElementById("mapTip");
+  el.addEventListener("mouseenter", () => { tip.style.display="block"; tip.innerHTML = htmlFn(); });
+  el.addEventListener("mousemove", ev => { tip.style.left = ev.clientX+14+"px"; tip.style.top = ev.clientY-30+"px"; });
+  el.addEventListener("mouseleave", () => tip.style.display="none");
+}
 
 function renderMap() {
   const svg = document.getElementById("europeMap");
@@ -616,19 +678,48 @@ function renderMap() {
 
   document.getElementById("mapYear").textContent = p.year;
   document.getElementById("mapPhase").textContent = tt(p.label);
+  document.getElementById("mapDesc").textContent = tt(p.desc);
+  document.getElementById("mapCounter").textContent = t("stage").replace("{i}", mapPeriod+1).replace("{n}", periods.length);
+  document.getElementById("mapSlider").max = periods.length - 1;
   document.getElementById("mapSlider").value = mapPeriod;
 
+  // 海洋背景
+  svg.appendChild(add("rect", { x:0, y:0, width:900, height:560, fill:"#0e1b2b" }));
+  // 海域标签
+  seaLabels.forEach(s => {
+    const tx = add("text", { x:s.x, y:s.y, "text-anchor":"middle", fill:"#4a6b8a", "font-size":9, "font-style":"italic", opacity:0.75 });
+    tx.textContent = tt(s); svg.appendChild(tx);
+  });
+
+  // 国家
   let axisCount = 0;
   countries.forEach(c => {
     const state = p.control[c.id];
     if (state === "axis" || state === "occupied") axisCount++;
     const color = STATE_COLORS[state];
     c.shapes.forEach(pts => {
-      svg.appendChild(add("polygon", { points:pts, fill:color }));
+      const poly = add("polygon", { points:pts, fill:color });
+      bindTip(poly, () => `<b>${tt(c.name)}</b><br>${t("state"+capitalize(state))}`);
+      svg.appendChild(poly);
     });
-    const lbl = add("text", { x:c.lx, y:c.ly, "text-anchor":"middle", fill:"#0d1117", "font-size":10, "font-weight":700 });
-    lbl.textContent = c.label;
-    svg.appendChild(lbl);
+    const lbl = add("text", { x:c.lx, y:c.ly, "text-anchor":"middle", fill:"#0d1117", "font-size":9, "font-weight":700 });
+    lbl.textContent = c.label; svg.appendChild(lbl);
+  });
+
+  // 城市
+  cities.forEach(ct => {
+    svg.appendChild(add("circle", { cx:ct.x, cy:ct.y, r:3, fill:"#e6edf3", stroke:"#0d1117", "stroke-width":1 }));
+    const lbl = add("text", { x:ct.x+6, y:ct.y-4, fill:"#cbd5e1", "font-size":9 });
+    lbl.textContent = tt(ct.name); svg.appendChild(lbl);
+  });
+
+  // 战役（时间窗口内显示）
+  battles.forEach(b => {
+    if (mapPeriod < b.at || mapPeriod > b.at + 2) return;
+    const star = add("text", { x:b.x, y:b.y, "text-anchor":"middle", fill:"#f5c518", "font-size":14, "font-weight":700, class:"battle" });
+    star.textContent = "★";
+    bindTip(star, () => `<b>${tt(b.name)}</b><br>${tt(b.date)}`);
+    svg.appendChild(star);
   });
 
   document.getElementById("mapStats").textContent = t("axisCount").replace("{n}", axisCount);
@@ -637,48 +728,32 @@ function renderMap() {
     <span><span class="dot" style="background:${STATE_COLORS.axis}"></span>${t("stateAxis")}</span>
     <span><span class="dot" style="background:${STATE_COLORS.occupied}"></span>${t("stateOccupied")}</span>
     <span><span class="dot" style="background:${STATE_COLORS.allies}"></span>${t("stateAllies")}</span>
-    <span><span class="dot" style="background:${STATE_COLORS.neutral}"></span>${t("stateNeutral")}</span>`;
+    <span><span class="dot" style="background:${STATE_COLORS.neutral}"></span>${t("stateNeutral")}</span>
+    <span><span style="color:#f5c518;font-size:14px;line-height:1;">★</span>${t("legendBattle")}</span>
+    <span><span class="dot" style="background:#e6edf3"></span>${t("legendCity")}</span>`;
 }
 function capitalize(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
-
-// 修正：为每个 polygon 绑定正确的 country（意大利有多个 shape）
-function bindMapHover() {
-  const svg = document.getElementById("europeMap");
-  const tip = document.getElementById("mapTip");
-  const p = periods[mapPeriod];
-  const polys = svg.querySelectorAll("polygon");
-  let polyIdx = 0;
-  countries.forEach(c => {
-    c.shapes.forEach(() => {
-      const poly = polys[polyIdx++];
-      poly.addEventListener("mouseenter", () => {
-        tip.style.display = "block";
-        tip.innerHTML = `<b>${tt(c.name)}</b><br>${t("state"+capitalize(p.control[c.id]))}`;
-      });
-      poly.addEventListener("mousemove", ev => { tip.style.left = ev.clientX+14+"px"; tip.style.top = ev.clientY-30+"px"; });
-      poly.addEventListener("mouseleave", () => tip.style.display="none");
-    });
-  });
-}
 
 function setMapPeriod(i, keepPlaying) {
   mapPeriod = Math.max(0, Math.min(periods.length-1, i));
   renderMap();
-  bindMapHover();
   if (mapPlaying && mapPeriod >= periods.length-1) stopMapPlay();
   if (!keepPlaying) document.getElementById("mapPlay").innerHTML = "&#9654;";
 }
 
+function startMapTimer() {
+  clearInterval(mapTimer);
+  mapTimer = setInterval(() => {
+    if (mapPeriod >= periods.length-1) { stopMapPlay(); return; }
+    setMapPeriod(mapPeriod+1, true);
+  }, mapSpeed);
+}
 function startMapPlay() {
   mapPlaying = true;
   mapPeriod = 0;
   renderMap();
-  bindMapHover();
   document.getElementById("mapPlay").innerHTML = "&#10074;&#10074;";
-  mapTimer = setInterval(() => {
-    if (mapPeriod >= periods.length-1) { stopMapPlay(); return; }
-    setMapPeriod(mapPeriod+1, true);
-  }, 1200);
+  startMapTimer();
 }
 function stopMapPlay() {
   mapPlaying = false;
@@ -719,7 +794,7 @@ function timelinePlayToggle() {
     el.classList.add("playing");
     el.scrollIntoView({ behavior:"smooth", block:"center" });
     tlIdx++;
-  }, 1400);
+  }, 2800);
 }
 
 // ================= 应用语言 =================
@@ -730,10 +805,9 @@ function applyI18n() {
   renderFilters();
   renderChart();
   renderMap();
-  bindMapHover();
   renderFigures();
   document.getElementById("langSwitch").textContent = lang==="zh" ? "EN" : "中文";
-  if (tlPlaying) { timelinePlayToggle(); } // 重置播放按钮文本
+  if (tlPlaying) { timelinePlayToggle(); }
 }
 
 // ================= 初始化 =================
@@ -743,6 +817,10 @@ document.getElementById("mapPlay").addEventListener("click", () => mapPlaying ? 
 document.getElementById("mapPrev").addEventListener("click", () => setMapPeriod(mapPeriod-1));
 document.getElementById("mapNext").addEventListener("click", () => setMapPeriod(mapPeriod+1));
 document.getElementById("mapSlider").addEventListener("input", e => setMapPeriod(+e.target.value));
+document.getElementById("mapSpeed").addEventListener("change", e => {
+  mapSpeed = +e.target.value;
+  if (mapPlaying) startMapTimer();
+});
 document.getElementById("timelinePlay").addEventListener("click", timelinePlayToggle);
 
 applyI18n();
