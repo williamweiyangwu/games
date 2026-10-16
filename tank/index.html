@@ -993,13 +993,13 @@ function damage(t, dmg, from){
   if(!t.alive) return;
   if(from && !from.isHuman) dmg *= AI().dmgMul;
   t.hp -= dmg; t.hitFlash=0.12;
-  if(from && from.isHuman){ addMoney(from, Math.round(dmg*0.35)); }
+  if(from && from.isHuman){ addMoney(from, Math.round(dmg*0.8)); }
   if(t.hp<=0){
     t.die();
     if(from){
       const i = from.team===0?0:1;
       kills[i]++;
-      if(from.isHuman) addMoney(from, 130);
+      if(from.isHuman) addMoney(from, 260);
       netFeed(`${from.name} destroyed ${t.name}`, from.team===0?'#8fd0ff':'#ff9a8a');
       SFX.alarm();
     }
@@ -1018,7 +1018,7 @@ function damageHQ(hq, dmg, from){
   if(!hq.alive) return;
   if(from && !from.isHuman) dmg *= AI().dmgMul;
   hq.hp -= dmg * (1-(hq.armor||0)); hq.hitFlash=0.12;
-  if(from && from.isHuman){ addMoney(from, Math.round(dmg*0.4)); }
+  if(from && from.isHuman){ addMoney(from, Math.round(dmg*0.9)); }
   if(hq.hp<=0){
     hq.alive=false; hq.hp=0;
     boom(hq.x,6,hq.z, 7, 0xff7733);
@@ -1407,6 +1407,13 @@ function fxParticles(dt){
 }
 function update(dt){
   time+=dt;
+
+  // passive credit income (host-authoritative; guests get it via snapshot)
+  if(NET.mode !== 'guest'){
+    const inc = 5*dt;
+    if(player) money += inc;
+    for(const t of tanks){ if(t.isHuman && !t.isPlayer) t.money=(t.money||0)+inc; }
+  }
 
   // siege / tdm countdown
   if(TIMED(MODE) && !gameOver){
