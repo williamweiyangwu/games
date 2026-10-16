@@ -222,7 +222,7 @@
       <div id="craftout" class="islot out"></div>
     </div>
     <div id="invgrid"></div>
-    <div class="invfoot">click a stack to pick up &middot; click again to place / swap &middot; fill the 3&times;3 grid to craft &middot; <b>E</b> / <b>Esc</b> to close</div>
+    <div class="invfoot">LMB pick / swap &middot; RMB split half &middot; Q drop (Ctrl+Q all) &middot; craft in the 3&times;3 grid &middot; <b>E</b> / <b>Esc</b> close</div>
     <div id="cursorItem"></div>
   </div>
 </div>
@@ -1194,6 +1194,38 @@ function drawArm() {
   emitVerts(4, 1);
 }
 
+/* first-person held item, Java-style */
+function handSwing() {
+  const punch = swing > 0 ? Math.sin((1 - swing / 0.34) * Math.PI) * 0.5 : 0;
+  return Math.sin(pl.bob) * 0.3 + (mining ? Math.sin(mineT * 45) * 0.45 : 0) + punch;
+}
+function drawHeld3D() {
+  const id = heldId();
+  if (!id || id >= 100) return;
+  const sw = handSwing(), a = 2.36 + sw;
+  const hx = 0.58 + Math.cos(a) * 0.5, hy = -0.46 + Math.sin(a) * 0.5;
+  const bx = hx + 0.09, by = hy + 0.15, bz = 0.60, s = 0.14;
+  const wx = cam.x + rt[0] * bx + uv[0] * by + fw[0] * bz;
+  const wy = cam.y + rt[1] * bx + uv[1] * by + fw[1] * bz;
+  const wz = cam.z + rt[2] * bx + uv[2] * by + fw[2] * bz;
+  texBox(wx, wy, wz, s, BLK[id].t);
+}
+function drawHeld2D() {
+  const id = heldId();
+  if (!id || id < 100) return;
+  const sw = handSwing(), a = 2.36 + sw;
+  const hx = 0.58 + Math.cos(a) * 0.5, hy = -0.46 + Math.sin(a) * 0.5;
+  const bx = hx + 0.09, by = hy + 0.16, bz = 0.58;
+  const sx = SCX + bx * FOC / bz, sy = SCY - by * FOC / bz;
+  const size = 0.20 * FOC / bz;
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  ctx.translate(sx, sy);
+  ctx.rotate(-0.45 + (swing > 0 ? Math.sin((1 - swing / 0.34) * Math.PI) * 0.6 : 0));
+  ctx.drawImage(itemCanvas(id), -size / 2, -size / 2, size, size);
+  ctx.restore();
+}
+
 /* ----------------------------------- flat-shaded world boxes (player, animals) */
 function boxFaces(cx, cy, cz, sx, sy, sz, r, g, b) {
   const ddx = cx - cam.x, ddy = cy - cam.y, ddz = cz - cam.z;
@@ -1214,6 +1246,49 @@ function boxFaces(cx, cy, cz, sx, sy, sz, r, g, b) {
     matR = (r * sh) | 0; matG = (g * sh) | 0; matB = (b * sh) | 0;
     const m = clipQ();
     if (m >= 3) emitVerts(m, 1);
+  }
+}
+
+/* textured cube (top/side/bottom tiles) drawn into the world via the textured path */
+function texBox(cx, cy, cz, s, tiles) {
+  const SH = [0.8, 0.8, 0.8, 0.8, 1.0, 0.55];
+  for (let f = 0; f < 6; f++) {
+    const q = CQUAD[f];
+    let behind = false;
+    for (let k = 0; k < 4; k++) {
+      const c = CUBE[q[k]];
+      const rx = cx + c[0] * s - cam.x, ry = cy + c[1] * s - cam.y, rz = cz + c[2] * s - cam.z;
+      VX[k] = rx * rt[0] + ry * rt[1] + rz * rt[2];
+      VY[k] = rx * uv[0] + ry * uv[1] + rz * uv[2];
+      VZ[k] = rx * fw[0] + ry * fw[1] + rz * fw[2];
+      if (VZ[k] < NEAR) behind = true;
+    }
+    let m;
+    if (behind) {
+      m = 0;
+      for (let k = 0; k < 4; k++) {
+        const a = k, b = (k + 1) & 3;
+        const za = VZ[a], zb = VZ[b], ina = za >= NEAR, inb = zb >= NEAR;
+        const ua = (a === 1 || a === 2) ? 1 : 0, va = (a === 2 || a === 3) ? 1 : 0;
+        const ub = (b === 1 || b === 2) ? 1 : 0, vb = (b === 2 || b === 3) ? 1 : 0;
+        if (ina) { CPX[m] = VX[a]; CPY[m] = VY[a]; CPZ[m] = za; CAU[m] = ua; CAV[m] = va; CAS[m] = SH[f]; m++; }
+        if (ina !== inb) {
+          const t = (NEAR - za) / (zb - za);
+          CPX[m] = VX[a] + (VX[b] - VX[a]) * t; CPY[m] = VY[a] + (VY[b] - VY[a]) * t; CPZ[m] = NEAR;
+          CAU[m] = ua + (ub - ua) * t; CAV[m] = va + (vb - va) * t; CAS[m] = SH[f]; m++;
+        }
+      }
+    } else {
+      m = 4;
+      for (let k = 0; k < 4; k++) {
+        CPX[k] = VX[k]; CPY[k] = VY[k]; CPZ[k] = VZ[k];
+        CAU[k] = (k === 1 || k === 2) ? 1 : 0; CAV[k] = (k === 2 || k === 3) ? 1 : 0; CAS[k] = SH[f];
+      }
+    }
+    if (m < 3) continue;
+    tileCur = f === 4 ? tiles[0] : f === 5 ? tiles[2] : tiles[1];
+    uoCur = 0;
+    emitVerts(m, 0);
   }
 }
 
@@ -1355,7 +1430,7 @@ let hurtT = 0, regenT = 0, starveT = 0, drownT = 0, fallY = 0, dead = 0, attackT
 let INV = new Array(36).fill(null);
 let craftSlots = new Array(9).fill(null);
 let invOpen = 0, cursor = null, cursorX = 0, cursorY = 0;
-let hostiles = [], arrows = [], spawnPt = { x: 0, y: 0, z: 0 };
+let hostiles = [], arrows = [], drops = [], spawnPt = { x: 0, y: 0, z: 0 };
 
 const FSHADE = [1, 0.55, 0.78, 0.78, 0.7, 0.7];
 const MOBS = [
@@ -1394,7 +1469,7 @@ function toolSpeed(blk) {
   return 1;
 }
 function addItem(id, n) {
-  if (!id || n <= 0) return;
+  if (!id || n <= 0) return n;
   for (let i = 0; i < INV.length && n > 0; i++) {
     const s = INV[i];
     if (s && s.id === id && s.n < 64) { const t = Math.min(64 - s.n, n); s.n += t; n -= t; }
@@ -1402,6 +1477,15 @@ function addItem(id, n) {
   for (let i = 0; i < INV.length && n > 0; i++)
     if (!INV[i]) { const t = Math.min(64, n); INV[i] = { id, n: t }; n -= t; }
   if (invOpen) renderInv(); else refreshHotbar();
+  return n;
+}
+function invHasSpace(id) {
+  for (let i = 0; i < INV.length; i++) {
+    const s = INV[i];
+    if (!s) return true;
+    if (s.id === id && s.n < 64) return true;
+  }
+  return false;
 }
 function consumeSel() {
   if (mode !== 'survival') return;
@@ -1536,6 +1620,71 @@ function stepArrows(dt) {
     if (kill) arrows.splice(i, 1);
   }
 }
+/* ----------------------------------------------------- dropped items */
+function dropItem(id, n, x, y, z, vx, vy, vz) {
+  if (!id || n <= 0) return;
+  drops.push({ id, n, x, y, z, vx: vx || 0, vy: vy || 3, vz: vz || 0, age: 0, rest: 0 });
+}
+function stepDrops(dt) {
+  for (let i = drops.length - 1; i >= 0; i--) {
+    const d = drops[i];
+    d.age += dt;
+    if (d.age > 300) { drops.splice(i, 1); continue; }
+    d.vy -= 22 * dt; if (d.vy < -32) d.vy = -32;
+    d.x += d.vx * dt; d.y += d.vy * dt; d.z += d.vz * dt;
+    const gx = Math.floor(d.x), gy = Math.floor(d.y), gz = Math.floor(d.z);
+    if (solidAt(gx, gy, gz)) {
+      if (d.vy < 0) { d.y = gy + 1.02; d.vy = 0; }
+      d.vx *= 0.7; d.vz *= 0.7;
+      d.rest++;
+    } else d.rest = 0;
+    if (d.rest > 10) {
+      for (let j = drops.length - 1; j > i; j--) {
+        const o = drops[j];
+        if (o.id === d.id && o.rest > 10 && d.n + o.n <= 64) {
+          const dx = o.x - d.x, dy = o.y - d.y, dz = o.z - d.z;
+          if (dx * dx + dy * dy + dz * dz < 0.36) { d.n += o.n; drops.splice(j, 1); }
+        }
+      }
+    }
+    if (!dead && mode === 'survival') {
+      const dx = d.x - pl.x, dy = d.y - (pl.y + 0.6), dz = d.z - pl.z;
+      const dd = dx * dx + dy * dy + dz * dz;
+      if (dd < 1.44) {
+        if (invHasSpace(d.id)) { addItem(d.id, d.n); drops.splice(i, 1); sfx(560, 0.05, 'sine'); continue; }
+      } else if (dd < 16) {
+        const l = Math.sqrt(dd);
+        d.x -= dx / l * 3 * dt; d.z -= dz / l * 3 * dt;
+      }
+    }
+  }
+}
+const dropColCache = {};
+function dropCol(id) {
+  if (dropColCache[id]) return dropColCache[id];
+  let r = 180, g = 180, b = 180;
+  if (id < 100 && BLK[id] && BLK[id].t) {
+    const tile = BLK[id].t[1];
+    let sr = 0, sg = 0, sb = 0;
+    for (let i = 0; i < 256; i++) { const c = TEX[tile * 256 + i]; sr += c & 255; sg += (c >> 8) & 255; sb += (c >> 16) & 255; }
+    r = sr / 256 | 0; g = sg / 256 | 0; b = sb / 256 | 0;
+  } else if (ITEM[id]) {
+    const c = ITEM[id].col;
+    if (typeof c === 'string') { const n = parseInt(c.slice(1), 16); r = (n >> 16) & 255; g = (n >> 8) & 255; b = n & 255; }
+    else if (typeof c === 'number') { r = (c >> 16) & 255; g = (c >> 8) & 255; b = c & 255; }
+  }
+  return dropColCache[id] = [r, g, b];
+}
+function drawDrops() {
+  for (const d of drops) {
+    const dx = d.x - cam.x, dz = d.z - cam.z;
+    if (dx * dx + dz * dz > 2500) continue;
+    const bob = Math.sin(worldT * 2.5 + d.x * 0.7 + d.z * 0.5) * 0.05;
+    const c = dropCol(d.id);
+    boxFaces(d.x, d.y + 0.12 + bob, d.z, 0.24, 0.24, 0.12, c[0], c[1], c[2]);
+  }
+}
+
 function explode(x, y, z, power) {
   const R = Math.ceil(power), fx = Math.floor(x), fy = Math.floor(y), fz = Math.floor(z);
   for (let dy = -R; dy <= R; dy++) for (let dz = -R; dz <= R; dz++) for (let dx = -R; dx <= R; dx++) {
@@ -1919,6 +2068,24 @@ function slotSwap(arr, i) {
   else if (s.id === cursor.id) { const t = Math.min(64 - s.n, cursor.n); s.n += t; cursor.n -= t; if (cursor.n <= 0) cursor = null; }
   else { arr[i] = cursor; cursor = s; }
 }
+function slotSwapHalf(arr, i) {
+  const s = arr[i];
+  if (!cursor) {
+    if (s) { const half = Math.ceil(s.n / 2); cursor = { id: s.id, n: half }; s.n -= half; if (s.n <= 0) arr[i] = null; }
+  } else if (!s) { arr[i] = { id: cursor.id, n: 1 }; cursor.n--; if (cursor.n <= 0) cursor = null; }
+  else if (s.id === cursor.id) { if (s.n < 64) { s.n++; cursor.n--; if (cursor.n <= 0) cursor = null; } }
+  else { arr[i] = cursor; cursor = s; }
+}
+let hoverSlot = null;
+function dropHovered(all) {
+  if (!hoverSlot) return;
+  const arr = hoverSlot.arr, i = hoverSlot.i;
+  const s = arr[i]; if (!s) return;
+  const n = all ? s.n : 1;
+  dropItem(s.id, n, pl.x, pl.y + 0.4, pl.z, Math.sin(cam.yaw) * 2.4, 2.2, Math.cos(cam.yaw) * 2.4);
+  s.n -= n; if (s.n <= 0) arr[i] = null;
+  refreshHotbar(); renderInv(); saveDirty = 1;
+}
 invGrid.addEventListener('click', e => {
   const d = e.target.closest('.islot'); if (!d) return;
   slotSwap(INV, +d.getAttribute('data-i'));
@@ -1937,6 +2104,27 @@ craftOutEl.addEventListener('click', () => {
   consumeCraft();
   renderInv();
 });
+invGrid.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  const d = e.target.closest('.islot'); if (!d) return;
+  slotSwapHalf(INV, +d.getAttribute('data-i'));
+  refreshHotbar(); renderInv();
+});
+craftGridEl.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  const d = e.target.closest('.islot'); if (!d) return;
+  slotSwapHalf(craftSlots, +d.getAttribute('data-c'));
+  refreshHotbar(); renderInv();
+});
+invGrid.addEventListener('mouseover', e => {
+  const d = e.target.closest('.islot'); if (!d) return;
+  hoverSlot = { arr: INV, i: +d.getAttribute('data-i') };
+});
+craftGridEl.addEventListener('mouseover', e => {
+  const d = e.target.closest('.islot'); if (!d) return;
+  hoverSlot = { arr: craftSlots, i: +d.getAttribute('data-c') };
+});
+invEl.addEventListener('mouseleave', () => { hoverSlot = null; });
 document.getElementById('respawn').addEventListener('click', respawn);
 
 /* --------------------------------------------------------------- input */
@@ -1956,6 +2144,7 @@ addEventListener('keydown', e => {
   keys[k] = 1;
   if (k === 'KeyE') { if (invOpen) closeInv(); else if (running && !dead) openInv(); return; }
   if (k === 'Escape' && invOpen) { closeInv(); return; }
+  if (k === 'KeyQ' && invOpen) { dropHovered(e.ctrlKey); return; }
 if (!running) {
     if (k === 'Enter') {
       const ctn = document.getElementById('continue');
@@ -2125,10 +2314,12 @@ function render() {
   if (!under && !enclosed) drawClouds();
   drawParts();
   drawEntities();
+  drawDrops();
   if (thirdPerson) drawPlayer();
-  else drawArm();
+  else { drawArm(); drawHeld3D(); }
 
   ctx.putImageData(rimg, 0, 0);
+  if (!thirdPerson) drawHeld2D();
   msRender = performance.now() - t0;
 }
 
@@ -2222,7 +2413,7 @@ function loadWorld(o) {
   } else {
     mode = 'creative'; hp = MAXHP; food = MAXFOOD; INV = new Array(36).fill(null);
   }
-  hostiles = []; arrows = []; dead = 0; hurtT = 0; regenT = 0; starveT = 0; drownT = 0;
+  hostiles = []; arrows = []; drops = []; dead = 0; hurtT = 0; regenT = 0; starveT = 0; drownT = 0;
   craftSlots = new Array(9).fill(null);
   fallY = pl.y;
   pl.fly = (mode === 'creative' ? 1 : 0);
@@ -2313,7 +2504,7 @@ function newWorld(seed, m) {
   parts.length = 0;
   mode = (m === 'creative') ? 'creative' : 'survival';
   hp = MAXHP; food = MAXFOOD; INV = new Array(36).fill(null); craftSlots = new Array(9).fill(null);
-  hostiles = []; arrows = []; dead = 0; hurtT = 0; regenT = 0; starveT = 0; drownT = 0; fallY = 0;
+  hostiles = []; arrows = []; drops = []; dead = 0; hurtT = 0; regenT = 0; starveT = 0; drownT = 0; fallY = 0;
   hudMode = ''; refreshHotbar(); select(0); updateHUD();
   genQueue = chunks.slice();
   loadEl.style.display = 'grid';
@@ -2357,6 +2548,7 @@ function frame(now) {
   stepWater();
   stepHostiles(dt);
   stepArrows(dt);
+  stepDrops(dt);
   stepSurvival(dt);
   spawnHostiles(dt);
   updateHUD();
