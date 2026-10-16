@@ -932,7 +932,6 @@ function linkSector(a,b){
   /* a declared frontier that the outlines did not prove gets every-to-every */
   [].concat(NATIONS,REGIONS).forEach(function(n){
     (n.nb||[]).forEach(function(m){
-      if(m==='iceland') return;
       if(had[n.id+'>'+m]) return;
       (NAT_SECTORS[n.id]||[]).forEach(function(a){
         (NAT_SECTORS[m]||[]).forEach(function(b){ linkSector(NBY[a],NBY[b]); });
@@ -1484,7 +1483,7 @@ function warMap(){
       var t=S.prov[sn[i]];
       if(!t) continue;
       var b=t.owner;
-      if(a===b || a==='iceland' || b==='iceland') continue;
+      if(a===b) continue;
       WAR_MAP[warKey(a,b)]=true;
     }
   }
@@ -1492,17 +1491,16 @@ function warMap(){
 }
 function invalidateWars(){ WAR_MAP=null; }
 function atWar(a,b){
-  if(a===b || a==='iceland' || b==='iceland') return false;
+  if(a===b) return false;
   if(S.pact && S.pact.has(warKey(a,b))) return false;
   return S.wars.has(warKey(a,b)) || warMap()[warKey(a,b)]===true;
 }
 function declareWar(a,b){
-  if(a==='iceland' || b==='iceland') return;
   if(S.pact) S.pact.delete(warKey(a,b));
   S.wars.add(warKey(a,b));
   /* an attacked nation takes on its whole neighbourhood */
-  (NBY[a]?NBY[a].nb:[]).forEach(function(n){ if(n!==b && n!=='iceland') S.wars.add(warKey(a,n)); });
-  (NBY[b]?NBY[b].nb:[]).forEach(function(n){ if(n!==a && n!=='iceland') S.wars.add(warKey(b,n)); });
+  (NBY[a]?NBY[a].nb:[]).forEach(function(n){ if(n!==b) S.wars.add(warKey(a,n)); });
+  (NBY[b]?NBY[b].nb:[]).forEach(function(n){ if(n!==a) S.wars.add(warKey(b,n)); });
 }
 
 function newGame(player){
@@ -1937,7 +1935,7 @@ function known(id){
   return false;
 }
 function moveTo(dst){
-  if(dst==='iceland' || !S.prov[dst]) return flash('No such front.');
+  if(!S.prov[dst]) return flash('No such front.');
   if(!atWar(S.player,S.prov[dst].owner)) return flash('You are not at war with '+NBY[S.prov[dst].owner].name+'.');
   var ids=[],n=0;
   unitsOf(S.player).forEach(function(u){
@@ -2183,7 +2181,7 @@ function renderMini(id){
 function renderBorderGarrisons(id, me){
   var box=document.getElementById('bGar');
   if(!box) return;
-  var rows=(NBY[id].snb||[]).filter(function(nb){ return nb!=='iceland' && S.prov[nb]; });
+  var rows=(NBY[id].snb||[]).filter(function(nb){ return S.prov[nb]; });
   if(!rows.length){ box.innerHTML=''; return; }
 
   var h='<div class="bgHead">Units in neighbouring countries</div>';
@@ -2219,7 +2217,7 @@ function computeTargets(){
   var out={};
   from.forEach(function(f){
     (NBY[f].snb||[]).forEach(function(m){
-      if(m==='iceland' || !S.prov[m]) return;
+      if(!S.prov[m]) return;
       if(!atWar(S.player,S.prov[m].owner)) return;
       out[m]=1;
     });
@@ -2473,7 +2471,7 @@ function wireTop(){
       for(var k2 in S.prov){
         if(S.prov[k2].owner!==S.player) continue;
         var hot=(NBY[k2].snb||[]).some(function(m){
-          return S.prov[m] && m!=='iceland' && atWar(S.player,S.prov[m].owner); });
+          return S.prov[m] && atWar(S.player,S.prov[m].owner); });
         id=k2; if(hot) break;
       }
     }
@@ -2992,7 +2990,7 @@ function netApplyCmd(nat,msg){
   if(!NET.started) return;
   if(msg.k==='m' && msg.dst){
     var dst=msg.dst, ids=msg.ids||[], n=0;
-    if(dst==='iceland' || !S.prov[dst]) return;
+    if(!S.prov[dst]) return;
     if(!atWar(nat,S.prov[dst].owner)) return;
     for(var i=0;i<ids.length;i++){
       var u=byId(Number(ids[i]));
