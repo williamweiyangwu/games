@@ -1560,7 +1560,7 @@ function physics() {
   pl.vz += (mz * spd - pl.vz) * k;
   if (!fwd && !str && (pl.onGround || feet)) { pl.vx *= Math.max(0, 1 - 14 * dt); pl.vz *= Math.max(0, 1 - 14 * dt); }
 
-  if (pl.fly) {
+  if (pl.fly && mode !== 'survival') {
     pl.vy = ((keys['Space'] ? 1 : 0) - (keys['ControlLeft'] || keys['KeyC'] ? 1 : 0)) * spd;
   } else if (feet || dive > 0) {
     if (feet) dive = 0.3; else dive -= dt;       /* buoyancy lingers briefly after leaving water */
@@ -1820,7 +1820,7 @@ if (!running) {
   }
   if (k.startsWith('Digit')) { const n = +k.slice(5); if (n >= 1 && n <= 9) select(n - 1); }
   else if (k === 'Enter') { thirdPerson = !thirdPerson; toast(thirdPerson ? 'third person' : 'first person'); }
-  else if (k === 'KeyF') { pl.fly = pl.fly ? 0 : 1; pl.vy = 0; toast(pl.fly ? 'flight enabled' : 'flight disabled'); }
+  else if (k === 'KeyF') { if (mode === 'survival') { toast('flight is creative-only'); } else { pl.fly = pl.fly ? 0 : 1; pl.vy = 0; toast(pl.fly ? 'flight enabled' : 'flight disabled'); } }
   else if (k === 'F3') dbgEl.classList.toggle('on');
   else if (k === 'F2') toggleScale();
   else if (k === 'KeyT') { dayFrozen = !dayFrozen; toast(dayFrozen ? 'time frozen' : 'time running'); }
