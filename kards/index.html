@@ -13,6 +13,8 @@
     color: #e8e0c8;
     overflow: hidden;
     user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
   #fit { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; }
   #stage { transform-origin: center center; }
@@ -83,8 +85,10 @@
     position: relative; color: #26220f;
     box-shadow: 0 4px 8px rgba(0,0,0,.55);
     transition: transform .15s, box-shadow .15s, filter .15s;
+    touch-action: manipulation;
   }
   .card:hover { transform: translateY(-6px); }
+  .card:active { transform: translateY(-2px) scale(.97); }
   .card .cost {
     position: absolute; top: -4px; left: -4px;
     width: 22px; height: 22px; border-radius: 50%;
@@ -145,8 +149,10 @@
     font-family: inherit; font-size: 13px; letter-spacing: 2px;
     padding: 8px 24px; border-radius: 8px; border: 2px solid #c9b458;
     background: rgba(0,0,0,.4); color: #f0e6c8; cursor: pointer;
+    touch-action: manipulation;
   }
   .btn:hover { background: rgba(201,180,88,.25); }
+  .btn:active { transform: translateY(1px); }
   .btn:disabled { opacity: .4; cursor: not-allowed; }
 
   #modal {
@@ -239,13 +245,27 @@
   .drow .dbtn { padding: 2px 10px; font-size: 12px; }
   .dbtns { display: flex; gap: 8px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
   .dbtns .btn { padding: 6px 14px; font-size: 11px; }
+
+  /* effects */
+  #fit.shake { animation: k6shake .25s; }
+  @keyframes k6shake {
+    0%, 100% { transform: translate(0, 0); }
+    20% { transform: translate(-6px, 0); }
+    40% { transform: translate(6px, 0); }
+    60% { transform: translate(-4px, 0); }
+    80% { transform: translate(4px, 0); }
+  }
+  #modal.show .box { animation: k6pop .22s ease; }
+  @keyframes k6pop { from { transform: scale(.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  #log.flash { animation: k6fade .3s ease; }
+  @keyframes k6fade { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 </head>
 <body>
   <div id="fit">
     <div id="stage">
       <header>
-        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v12</span></h1>
+        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v13</span></h1>
         <div id="turnbar">Player 1's Turn</div>
       </header>
 
@@ -380,7 +400,9 @@ var DEFS = {
   sabotage:    { name: "Sabotage",    cost: 2, type: "order", art: "⌁", text: "1 to enemy HQ, draw a card" },
   landing:     { name: "Landing Craft", cost: 4, atk: 3, hp: 3, art: "⚓", text: "On play: draw a card" },
   stuka:       { name: "Stuka",         cost: 4, atk: 3, hp: 2, art: "✥", air: true, text: "On play: 2 to the enemy HQ" },
-  guards:      { name: "Guards",        cost: 2, atk: 2, hp: 4, art: "☗", text: "Sturdy line infantry" }
+  guards:      { name: "Guards",        cost: 2, atk: 2, hp: 4, art: "☗", text: "Sturdy line infantry" },
+  zero:        { name: "Zero",          cost: 2, atk: 3, hp: 1, art: "✩", air: true, text: "Air - ignores Guard" },
+  heavybomber: { name: "Heavy Bomber",  cost: 6, atk: 5, hp: 4, art: "✪", air: true, text: "Air - a massive bomber" }
 };
 
 var FACTIONS = {
@@ -395,9 +417,13 @@ var FACTIONS = {
   ussr:   { key: "ussr",   name: "USSR",   flag: "☭",  color: "#8c2f2f", sig: "guards",
             passive: { regen: 2 },
             bonus: "Motherland \u2014 your HQ recovers 2 at the start of your turn.",
-            desc: "The Soviet Union. Outlast the enemy with resilient lines." }
+            desc: "The Soviet Union. Outlast the enemy with resilient lines." },
+  japan:  { key: "japan",  name: "JAPAN",  flag: "☀",  color: "#8c6a2f", sig: "zero",
+            passive: { resBonus: 1 },
+            bonus: "War Economy \u2014 gain +1 extra resource each turn.",
+            desc: "Imperial Japan. Out-produce the enemy with cheap air power." }
 };
-var FACTION_KEYS = ["allies", "axis", "ussr"];
+var FACTION_KEYS = ["allies", "axis", "ussr", "japan"];
 var FACTION = "allies", FACTION2 = "axis";
 try { FACTION = localStorage.getItem("k6_fact") || "allies"; FACTION2 = localStorage.getItem("k6_fact2") || "axis"; } catch (e) {}
 function saveFaction() {
@@ -432,7 +458,7 @@ function freshPlayer(faction) {
   return { hq: 20, res: 0, hand: [], board: [], deck: [], turnNum: 0, faction: faction || "allies" };
 }
 
-var DECK_COMP = [ ["infantry",4], ["scout",2], ["medic",3], ["grenadier",2], ["fighter",2], ["sniper",2], ["artillery",2], ["tank",2], ["bunker",2], ["bomber",2], ["paratrooper",2], ["mortar",2], ["commander",1], ["veteran",1], ["produce",2], ["rally",2], ["explode",2], ["snipe",2], ["plan",2], ["bombard",2], ["airstrike",1], ["reinforce",2], ["conscription",1], ["barrage",1], ["sabotage",2] ];
+var DECK_COMP = [ ["infantry",4], ["scout",2], ["medic",3], ["grenadier",2], ["fighter",2], ["sniper",2], ["artillery",2], ["tank",2], ["bunker",2], ["bomber",2], ["paratrooper",2], ["mortar",2], ["commander",1], ["veteran",1], ["produce",2], ["rally",2], ["explode",2], ["snipe",2], ["plan",2], ["bombard",2], ["airstrike",1], ["reinforce",2], ["conscription",1], ["barrage",1], ["sabotage",2], ["heavybomber",1] ];
 
 function deckSize() {
   var n = 0;
@@ -467,6 +493,9 @@ function other(p) { return 1 - p; }
 function log(msg) {
   var el = document.getElementById("log");
   el.textContent = msg;
+  el.classList.remove("flash");
+  void el.offsetWidth;
+  el.classList.add("flash");
 }
 
 var LAST_MSG = "";
@@ -532,6 +561,14 @@ function flashFX() {
   setTimeout(function () { f.classList.remove("on"); }, 160);
 }
 
+function shakeFX() {
+  var f = document.getElementById("fit");
+  if (!f) return;
+  f.classList.remove("shake");
+  void f.offsetWidth;
+  f.classList.add("shake");
+}
+
 // ---------------- Turn flow ----------------
 function drawStarting(p) {
   var n = 4;
@@ -565,7 +602,7 @@ function beginTurn(p) {
   if (S.over) return;
   var pl = S.players[p];
   pl.turnNum++;
-  pl.res = Math.min(pl.turnNum, MAX_RES);
+  pl.res = Math.min(pl.turnNum + (passiveOf(pl).resBonus || 0), MAX_RES);
   var reg = passiveOf(pl).regen;
   if (reg) pl.hq += reg;
   pl.board.forEach(function (u) { u.canAttack = true; });
@@ -838,6 +875,7 @@ function aiAttackOne(ai) {
       S.players[0].hq -= u.atk;
       say("Your " + u.name + " strikes the enemy HQ for " + u.atk + "!");
       u.canAttack = false;
+      shakeFX();
     } else {
       u.canAttack = false;
     }
@@ -918,7 +956,7 @@ function startGame() {
 
 function lobbyStart() {
   if (!NET || NET.id !== 0 || !NET.foeName || NET.started) return;
-  mqPublish(mqTarget("lobby"), { t: "start", s: NET.sess, c: NET.code, p0: NET.meName, p1: NET.foeName }, true);
+  mqPublish(mqTarget("lobby"), { t: "start", s: NET.sess, c: NET.code, p0: NET.meName, p1: NET.foeName, f0: NET.f, f1: NET.foeF }, true);
   startGame();
 }
 
@@ -1010,6 +1048,7 @@ function buildPublic() {
     hand: S.pub.hand.slice(),
     deck: S.pub.deck.slice(),
     board: [boardArr(S.players[0]), boardArr(S.players[1])],
+    faction: [S.players[0].faction, S.players[1].faction],
     msg: LAST_MSG
   };
 }
@@ -1031,6 +1070,7 @@ function applyPublic(snap) {
     S.players[i].hq = snap.hq[i];
     S.players[i].res = snap.res[i];
     S.players[i].board = boardFromSnap(snap.board[i]);
+    if (snap.faction) S.players[i].faction = snap.faction[i];
   }
   S.pub.hand = snap.hand.slice();
   S.pub.deck = snap.deck.slice();
@@ -1056,7 +1096,9 @@ function onlineInit() {
   status("");
   S = { cur: NET.id, turn: NET.id, over: false, winner: 0, attackSel: null, readyOrder: null,
         started: true, overShown: false, pub: { hand: [0, 0], deck: [0, 0] } };
-  S.players = [freshPlayer(FACTION), freshPlayer(FACTION2)];
+  var myF = NET.f || FACTION, foeF = NET.foeF || FACTION2;
+  var pa = freshPlayer(myF), pb = freshPlayer(foeF);
+  S.players = (NET.id === 0) ? [pa, pb] : [pb, pa];
   S.players[0].deck = buildDeck(S.players[0].faction);
   S.players[1].deck = buildDeck(S.players[1].faction);
   drawStarting(S.players[0]);
@@ -1071,7 +1113,7 @@ function onlineBeginMyTurn() {
   var p = NET.id;
   var pl = S.players[p];
   pl.turnNum++;
-  pl.res = Math.min(pl.turnNum, MAX_RES);
+  pl.res = Math.min(pl.turnNum + (passiveOf(pl).resBonus || 0), MAX_RES);
   var reg = passiveOf(pl).regen;
   if (reg) pl.hq += reg;
   pl.board.forEach(function (u) { u.canAttack = true; });
@@ -1120,6 +1162,11 @@ function pName(pid) {
   return "Player " + pid;
 }
 
+function factionLabel(p) {
+  var f = FACTIONS[p.faction] || FACTIONS.allies;
+  return f.flag + " " + f.name;
+}
+
 function myTurn() {
   if (MODE === "online") return !!NET && S && S.started && !S.over && S.turn === NET.id;
   if (MODE === "ai") return !!S && !S.over && S.cur === 0;
@@ -1140,7 +1187,7 @@ function genSess() { return Math.random().toString(36).slice(2, 10); }
 function hostGame() {
   if (BROWSE) closeRooms();
   var name = (document.getElementById("nameIn").value || "").trim() || "Player#1";
-  NET = { code: genCode(), id: 0, sess: genSess(), ver: 0, meName: name, foeName: "", started: false };
+  NET = { code: genCode(), id: 0, sess: genSess(), ver: 0, meName: name, foeName: "", f: FACTION, foeF: "", started: false };
   S = { cur: NET.id, turn: NET.id, over: false, winner: 0, attackSel: null, readyOrder: null, started: false, overShown: false, pub: { hand: [0, 0], deck: [0, 0] } };
   S.players = [freshPlayer(), freshPlayer()];
   status("Connecting to relay...");
@@ -1152,7 +1199,7 @@ function joinGame() {
   var name = (document.getElementById("nameIn").value || "").trim() || "Player#2";
   var code = (document.getElementById("roomIn").value || "").trim().toUpperCase();
   if (!code) { status("Enter the room code."); return; }
-  NET = { code: code, id: 1, sess: genSess(), ver: 0, meName: name, foeName: "", started: false };
+  NET = { code: code, id: 1, sess: genSess(), ver: 0, meName: name, foeName: "", f: FACTION, foeF: "", started: false };
   S = { cur: NET.id, turn: NET.id, over: false, winner: 0, attackSel: null, readyOrder: null, started: false, overShown: false, pub: { hand: [0, 0], deck: [0, 0] } };
   S.players = [freshPlayer(), freshPlayer()];
   status("Connecting to relay...");
@@ -1315,10 +1362,10 @@ function mqReady() {
   mqSubscribe(mqTarget("lobby"));
   mqSubscribe(mqTarget("in" + NET.id));
   if (NET.id === 0) {
-    mqPublish(mqTarget("lobby"), { t: "h", s: NET.sess, c: NET.code, n: NET.meName }, true);
+    mqPublish(mqTarget("lobby"), { t: "h", s: NET.sess, c: NET.code, n: NET.meName, f: NET.f }, true);
     mqPublish("kards6/rooms/" + NET.code, { n: NET.meName, c: NET.code, ts: Date.now() }, true);
   } else {
-    mqPublish(mqTarget("lobby"), { t: "j", s: NET.sess, c: NET.code, n: NET.meName }, true);
+    mqPublish(mqTarget("lobby"), { t: "j", s: NET.sess, c: NET.code, n: NET.meName, f: NET.f }, true);
   }
   showLobby();
   if (NET.id === 0) status("Waiting for opponent... Room code: " + NET.code);
@@ -1332,22 +1379,25 @@ function mqOnMessage(topic, msg) {
     if (msg.t === "h" && NET.id === 1) {           // host hello (joiner sees it)
       if (msg.c === NET.code && msg.s !== NET.sess) {
         NET.sess = msg.s;                            // adopt the host's session
-        mqPublish(mqTarget("lobby"), { t: "j", s: NET.sess, c: NET.code, n: NET.meName }, true);
+        mqPublish(mqTarget("lobby"), { t: "j", s: NET.sess, c: NET.code, n: NET.meName, f: NET.f }, true);
       }
       if (msg.c === NET.code && !NET.started) {
         NET.foeName = msg.n;
+        NET.foeF = msg.f || NET.foeF;
         status("Room found. Waiting for the host to start...");
         lobbyRender();
       }
     } else if (msg.t === "j" && NET.id === 0) {    // join hello (host sees it)
       if (msg.c === NET.code && msg.s === NET.sess && !NET.started) {
         NET.foeName = msg.n;
+        NET.foeF = msg.f || NET.foeF;
         status("Opponent joined: " + msg.n);
         lobbyRender();
       }
     } else if (msg.t === "start") {
       if (msg.c === NET.code && msg.s === NET.sess) {
         NET.foeName = (NET.id === 0) ? msg.p1 : msg.p0;
+        NET.foeF = (NET.id === 0) ? (msg.f1 || NET.foeF) : (msg.f0 || NET.foeF);
         startGame();
       }
     }
@@ -1436,7 +1486,7 @@ function doAttack(uidx, kind, tidx) {
     foe.hq -= att.atk;
     say("Your " + att.name + " strikes the enemy HQ for " + att.atk + "!");
     att.canAttack = false;
-    sfx("hit"); flashFX();
+    sfx("hit"); flashFX(); shakeFX();
   } else {
     var targets2 = legalTargets(att);
     var def = foe.board[tidx];
@@ -1472,6 +1522,7 @@ function checkVictory() {
     if (MODE === "online" && NET) sfx((S.winner - 1) === NET.id ? "win" : "lose");
     else if (MODE === "ai") sfx(S.winner === 1 ? "win" : "lose");
     else sfx("win");
+    shakeFX();
     showModal("GAME OVER", pName(winner) + " has destroyed the enemy HQ!",
       (MODE === "online" ? "Rematch" : "New Game"),
       function () { hideModal(); if (MODE === "online") resetOnline(); else newGame(); });
@@ -1592,7 +1643,7 @@ function render() {
   var topHTML = '<div class="prow">' +
       '<div class="stackbox"><div class="stackcard"></div><span>DECK ' + S.pub.deck[foe] + '</span><span>RES ' + en.res + '</span></div>' +
       '<div class="hqbox"><div class="hqcard' + hqTgtCls + '"' + hqOnt + '>' +
-        '<div class="star">★★★★★</div>' +
+        '<div class="star">' + factionLabel(en) + '</div>' +
         '<div class="hpnum">' + en.hq + '</div>' +
         '<div class="hpbar-wrap"><div class="hpbar' + (en.hq <= 5 ? ' low' : '') + '" style="width:' + Math.min(100, Math.round(en.hq / 20 * 100)) + '%"></div></div>' +
       '</div></div>' +
@@ -1608,7 +1659,7 @@ function render() {
   var myHq = '<div class="prow">' +
       '<div class="stackbox"><div class="stackcard"></div><span>DECK ' + S.pub.deck[cur] + '</span><span>RES ' + my.res + '</span></div>' +
       '<div class="hqbox"><div class="hqcard">' +
-        '<div class="star">★★★★★</div>' +
+        '<div class="star">' + factionLabel(my) + '</div>' +
         '<div class="hpnum">' + my.hq + '</div>' +
         '<div class="hpbar-wrap"><div class="hpbar' + (my.hq <= 5 ? ' low' : '') + '" style="width:' + Math.min(100, Math.round(my.hq / 20 * 100)) + '%"></div></div>' +
       '</div></div>' +
@@ -1644,9 +1695,9 @@ document.getElementById("newBtn").onclick = function () { newGame(); };
 var TUT_STEPS = [
   { t: "1. THE GOAL", h: "<p>Each player commands an <b>HQ with 20 HP</b> \u2014 the enemy HQ is at the top, yours at the bottom.</p><p>Reduce the enemy HQ to <b>0 HP</b> and you win. If your HQ hits 0 first, you lose.</p>" },
   { t: "2. RESOURCES & TURNS", h: "<ul><li>Every turn you gain <b>+1 resource</b> (up to 12), so bigger cards unlock as the game goes on.</li><li>Cards you can afford <b>glow gold</b> \u2014 click one to play it. Cards you can't pay for look dark.</li><li><b>END TURN</b> passes play \u2014 in LOCAL the other player takes the screen, in VS AI the computer acts, in ONLINE you wait for your opponent.</li></ul>" },
-  { t: "3. NATIONS", h: "<p>Each nation has a <b>unique power</b> plus a signature card. Pick yours with the <b>NATION</b> button.</p><ul><li><b>ALLIES</b> \u2605 \u2014 <b>Logistics</b>: draw 1 extra card at the start. Signature: <b>Landing Craft</b>.</li><li><b>AXIS</b> \u271a \u2014 <b>Blitzkrieg</b>: your units can attack the turn they are played. Signature: <b>Stuka</b>.</li><li><b>USSR</b> \u262d \u2014 <b>Motherland</b>: your HQ recovers 2 HP each turn. Signature: <b>Guards</b>.</li></ul>" },
-  { t: "4. UNITS", h: "<p>Units fill your front row (max 4). Blue circle = cost, red = attack, green = HP. Hover a card to read its power.</p><ul><li><b>Infantry</b> (1) 2/2 \u2014 basic soldier.</li><li><b>Scout</b> (1) 1/2 \u2014 <b>Haste</b>: attacks the turn played.</li><li><b>Medic</b> (2) 1/3 \u2014 heals your HQ 3.</li><li><b>Grenadier</b> (2) 2/2 \u2014 1 damage to all enemies.</li><li><b>Guards</b> (2) 2/4 \u2014 sturdy line infantry.</li><li><b>Fighter</b> (2) 3/1 \u2014 <b>Air</b>.</li><li><b>Mortar</b> (2) 1/3 \u2014 1 damage to enemy HQ.</li><li><b>Sniper</b> (3) 4/2 \u2014 2 to the strongest enemy.</li><li><b>Artillery</b> (3) 2/3 \u2014 2 to a random enemy.</li><li><b>Paratrooper</b> (3) 3/2 \u2014 <b>Air</b>.</li><li><b>Tank</b> (4) 3/5 \u2014 <b>Guard</b>.</li><li><b>Bunker</b> (4) 1/7 \u2014 <b>Guard</b>.</li><li><b>Commander</b> (4) 3/4 \u2014 your other units +1 attack.</li><li><b>Landing Craft</b> (4) 3/3 \u2014 draw a card.</li><li><b>Stuka</b> (4) 3/2 \u2014 <b>Air</b>, 2 to enemy HQ.</li><li><b>Bomber</b> (5) 4/3 \u2014 <b>Air</b>.</li><li><b>Veteran</b> (5) 5/5 \u2014 battle-hardened.</li></ul>" },
-  { t: "5. ATTACKING", h: "<ul><li>Click your unit, then click an enemy unit or the enemy HQ.</li><li>Each unit attacks <b>once per turn</b>. When two units fight, <b>both</b> deal their attack to each other.</li><li><b>Guard</b> (Tank, Bunker) must be fought first \u2014 it shields the enemy HQ.</li><li><b>Air</b> (Fighter, Paratrooper, Stuka, Bomber) ignores Guard and can always hit the HQ.</li><li>A unit normally can't attack the turn it's played \u2014 except <b>Haste</b> (Scout, or any AXIS unit).</li></ul>" },
+  { t: "3. NATIONS", h: "<p>Each nation has a <b>unique power</b> plus a signature card. Pick yours with the <b>NATION</b> button.</p><ul><li><b>ALLIES</b> \u2605 \u2014 <b>Logistics</b>: draw 1 extra card at the start. Signature: <b>Landing Craft</b>.</li><li><b>AXIS</b> \u271a \u2014 <b>Blitzkrieg</b>: your units can attack the turn they are played. Signature: <b>Stuka</b>.</li><li><b>USSR</b> \u262d \u2014 <b>Motherland</b>: your HQ recovers 2 HP each turn. Signature: <b>Guards</b>.</li><li><b>JAPAN</b> \u2600 \u2014 <b>War Economy</b>: gain +1 extra resource each turn. Signature: <b>Zero</b>.</li></ul>" },
+  { t: "4. UNITS", h: "<p>Units fill your front row (max 4). Blue circle = cost, red = attack, green = HP. Hover a card to read its power.</p><ul><li><b>Infantry</b> (1) 2/2 \u2014 basic soldier.</li><li><b>Scout</b> (1) 1/2 \u2014 <b>Haste</b>: attacks the turn played.</li><li><b>Medic</b> (2) 1/3 \u2014 heals your HQ 3.</li><li><b>Grenadier</b> (2) 2/2 \u2014 1 damage to all enemies.</li><li><b>Guards</b> (2) 2/4 \u2014 sturdy line infantry.</li><li><b>Fighter</b> (2) 3/1 \u2014 <b>Air</b>.</li><li><b>Mortar</b> (2) 1/3 \u2014 1 damage to enemy HQ.</li><li><b>Sniper</b> (3) 4/2 \u2014 2 to the strongest enemy.</li><li><b>Artillery</b> (3) 2/3 \u2014 2 to a random enemy.</li><li><b>Paratrooper</b> (3) 3/2 \u2014 <b>Air</b>.</li><li><b>Tank</b> (4) 3/5 \u2014 <b>Guard</b>.</li><li><b>Bunker</b> (4) 1/7 \u2014 <b>Guard</b>.</li><li><b>Commander</b> (4) 3/4 \u2014 your other units +1 attack.</li><li><b>Landing Craft</b> (4) 3/3 \u2014 draw a card.</li><li><b>Stuka</b> (4) 3/2 \u2014 <b>Air</b>, 2 to enemy HQ.</li><li><b>Bomber</b> (5) 4/3 \u2014 <b>Air</b>.</li><li><b>Veteran</b> (5) 5/5 \u2014 battle-hardened.</li><li><b>Zero</b> (2) 3/1 \u2014 <b>Air</b> (Japan signature).</li><li><b>Heavy Bomber</b> (6) 5/4 \u2014 <b>Air</b>, massive.</li></ul>" },
+  { t: "5. ATTACKING", h: "<ul><li>Click your unit, then click an enemy unit or the enemy HQ.</li><li>Each unit attacks <b>once per turn</b>. When two units fight, <b>both</b> deal their attack to each other.</li><li><b>Guard</b> (Tank, Bunker) must be fought first \u2014 it shields the enemy HQ.</li><li><b>Air</b> (Fighter, Paratrooper, Stuka, Bomber, Zero, Heavy Bomber) ignores Guard and can always hit the HQ.</li><li>A unit normally can't attack the turn it's played \u2014 except <b>Haste</b> (Scout, or any AXIS unit).</li></ul>" },
   { t: "6. ORDERS", h: "<p>Orders are one-shot cards \u2014 they resolve, then vanish.</p><ul><li><b>Produce</b> (0) \u2014 +1 resource (free!).</li><li><b>Explode</b> (1) \u2014 1 damage to a unit (pick a target).</li><li><b>Rally</b> (1) \u2014 all your units can attack again.</li><li><b>Sabotage</b> (2) \u2014 1 to enemy HQ + draw a card.</li><li><b>Plan</b> (1) \u2014 draw a card.</li><li><b>Snipe</b> (2) \u2014 3 damage to a unit (pick a target).</li><li><b>Bombard</b> (2) \u2014 2 to enemy HQ.</li><li><b>Reinforce</b> (2) \u2014 heal your HQ 6.</li><li><b>Conscription</b> (3) \u2014 draw 2 cards.</li><li><b>Airstrike</b> (3) \u2014 2 to every enemy unit.</li><li><b>Barrage</b> (4) \u2014 3 to every enemy unit.</li></ul>" },
   { t: "7. DECK BUILDER", h: "<ul><li>Open <b>DECK</b> to customize your card counts with the <b>+</b> and <b>-</b> buttons.</li><li>Your deck must have at least <b>20 cards</b>.</li><li><b>USE DEFAULT</b> restores the standard deck, <b>SAVE</b> keeps your changes, <b>CLOSE</b> cancels.</li><li>A custom deck applies to the next LOCAL or VS AI game.</li></ul>" },
   { t: "8. PLAY & MENU", h: "<ul><li><b>LOCAL</b> \u2014 two players share one screen (hot-seat).</li><li><b>VS AI</b> \u2014 battle the computer single-player.</li><li><b>ONLINE</b> \u2014 HOST gives you a room code to share, or press <b>ROOMS</b> to join a waiting game.</li><li><b>NATION</b> \u2014 choose your nation. <b>DECK</b> \u2014 build your deck.</li><li><b>TUTORIAL</b> reopens this guide, <b>\u2715</b>/<b>CLOSE</b> shuts it, <b>SOUND</b> toggles audio.</li></ul><p>Good luck, Commander!</p>" }
