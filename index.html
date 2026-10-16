@@ -57,6 +57,8 @@
     background:linear-gradient(135deg,#ffd75e,#ff9d2e);color:#14161d;
     box-shadow:0 4px 12px rgba(255,157,46,.35);
   }
+  .card.disabled{cursor:not-allowed;opacity:.72;filter:saturate(.6)}
+  .card.disabled:hover{transform:none;border-color:var(--line);box-shadow:none}
   .thumb{
     height:150px;border-radius:10px;margin-bottom:18px;position:relative;overflow:hidden;
     display:flex;align-items:center;justify-content:center;
@@ -133,21 +135,21 @@
       <div class="meta">Racing <span class="arrow">&#8594;</span></div>
     </a>
 
-    <a class="card" href="ww2-europe/">
+    <div class="card disabled">
       <div class="thumb c6"><span class="glyph">&#9203;</span></div>
-      <span class="tag">HISTORY</span>
+      <span class="tag dev">DEVELOPING</span>
       <h2>WWII EUROPE</h2>
       <p>欧洲二战全过程 — interactive timeline, animated 1939–1945 map and key figures (中文 / EN).</p>
-      <div class="meta">Interactive history <span class="arrow">&#8594;</span></div>
-    </a>
+      <div class="meta">Coming soon</div>
+    </div>
 
-    <a class="card" href="sniper/">
+    <div class="card disabled">
       <div class="thumb c7"><span class="glyph">&#9673;</span></div>
       <span class="tag dev">DEVELOPING</span>
       <h2>SNIPER ELITE</h2>
       <p>3D sniper game — find the target, steady your aim and take the long shot.</p>
-      <div class="meta">Work in progress <span class="arrow">&#8594;</span></div>
-    </a>
+      <div class="meta">Coming soon</div>
+    </div>
   </div>
 
   <footer>
