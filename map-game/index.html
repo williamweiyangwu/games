@@ -560,7 +560,7 @@
 
 <div id="mModal" class="modal">
   <div class="mbox">
-    <div class="mhead"><b>&#128231; Diplomatic pouch</b><button class="btn" id="mModalClose">&#10005; Close</button></div>
+    <div class="mhead"><b>&#128231; Diplomatic pouch</b><button class="btn" id="mmReadAll">&#10003; Read all</button><button class="btn" id="mModalClose">&#10005; Close</button></div>
     <div class="mbody">
       <button class="btn" id="mmComposeBtn" style="width:100%">&#9998; Compose a note</button>
       <div id="mmCompose" style="display:none">
@@ -2366,7 +2366,16 @@ function animLoop(){
   if(FX.length) FX_T=requestAnimationFrame(animLoop);
 }
 
+function prunePick(){
+  if(!S || !S.pick || !S.pick.size) return;
+  var ids={};
+  for(var i=0;i<S.units.length;i++) ids[S.units[i].id]=1;
+  var dead=[];
+  S.pick.forEach(function(id){ if(!ids[id]) dead.push(id); });
+  for(var j=0;j<dead.length;j++) S.pick.delete(dead[j]);
+}
 function render(){
+  prunePick();
   computeTargets();
   /* --- map fills --- */
   for(var id in S.prov){
@@ -3874,6 +3883,11 @@ function updateMailBadge(){
   nb.style.display=un?'inline-flex':'none';
   nb.textContent=un;
 }
+document.getElementById('mmReadAll').onclick=function(){
+  var me=S.player;
+  (S.mail||[]).forEach(function(m){ if(m.to===me) m.read=true; });
+  render();
+};
 document.getElementById('bNews').onclick=openNewsModal;
 document.getElementById('bMail').onclick=openMailModal;
 document.getElementById('bHelp').onclick=openTutorial;
