@@ -1754,6 +1754,8 @@ function spawnPlayer() {
       const x = clamp(Math.round((W >> 1) + Math.cos(a) * r * 1.6), 2, W - 3);
       const z = clamp(Math.round((W >> 1) + Math.sin(a) * r * 1.6), 2, W - 3);
       const t = topAt(x, z);
+      const tb = get(x, t, z);
+      if (tb === LEAVES || tb === LOG || tb === WATER) continue;
       if (t > SEA + 1 && t > best) { best = t; sx = x; sz = z; }
     }
     if (best > SEA + 4) break;
