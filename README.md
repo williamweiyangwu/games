@@ -12,7 +12,6 @@ A single website that collects five browser games in one place.
 | Tank War — 2D arena | [`tank/`](tank/) | Ready |
 | Apex Racing — 3D race car | [`race-car/`](race-car/) | Ready |
 | WWII Europe — interactive history | [`ww2-europe/`](ww2-europe/) | Ready |
-| Sniper Elite — 3D sniper game | [`sniper/`](sniper/) | Developing |
 
 ## Run locally
 
