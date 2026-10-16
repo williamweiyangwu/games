@@ -202,7 +202,7 @@
 <div id="hud">
   <div id="cross"></div>
   <div id="name"></div>
-  <div id="hint">LMB attack / break &middot; RMB place / eat &middot; 1-9 / wheel select &middot; E inventory &middot; F fly &middot; F3 stats</div>
+  <div id="hint">LMB attack / break &middot; RMB place / eat &middot; 1-9 / wheel select &middot; E inventory &middot; Q drop &middot; F fly &middot; F3 stats</div>
   <div id="stats">
     <div id="hearts" class="bar2"></div>
     <div id="food" class="bar2"></div>
@@ -2100,6 +2100,14 @@ function dropHovered(all) {
   s.n -= n; if (s.n <= 0) arr[i] = null;
   refreshHotbar(); renderInv(); saveDirty = 1;
 }
+function dropHeld(all) {
+  if (mode !== 'survival') return;
+  const s = INV[sel]; if (!s) return;
+  const n = all ? s.n : 1;
+  dropItem(s.id, n, pl.x, pl.y + 0.4, pl.z, Math.sin(cam.yaw) * 2.4, 2.2, Math.cos(cam.yaw) * 2.4);
+  s.n -= n; if (s.n <= 0) INV[sel] = null;
+  refreshHotbar(); saveDirty = 1;
+}
 invGrid.addEventListener('click', e => {
   const d = e.target.closest('.islot'); if (!d) return;
   slotSwap(INV, +d.getAttribute('data-i'));
@@ -2158,7 +2166,7 @@ addEventListener('keydown', e => {
   keys[k] = 1;
   if (k === 'KeyE') { if (invOpen) closeInv(); else if (running && !dead) openInv(); return; }
   if (k === 'Escape' && invOpen) { closeInv(); return; }
-  if (k === 'KeyQ' && invOpen) { dropHovered(e.ctrlKey); return; }
+  if (k === 'KeyQ') { if (invOpen) dropHovered(e.ctrlKey); else if (running && mode === 'survival' && !dead) dropHeld(e.ctrlKey); return; }
 if (!running) {
     if (k === 'Enter') {
       const ctn = document.getElementById('continue');
