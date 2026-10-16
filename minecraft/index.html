@@ -1623,13 +1623,14 @@ function stepArrows(dt) {
 /* ----------------------------------------------------- dropped items */
 function dropItem(id, n, x, y, z, vx, vy, vz) {
   if (!id || n <= 0) return;
-  drops.push({ id, n, x, y, z, vx: vx || 0, vy: vy || 3, vz: vz || 0, age: 0, rest: 0 });
+  drops.push({ id, n, x, y, z, vx: vx || 0, vy: vy || 3, vz: vz || 0, age: 0, rest: 0, pick: 1.5 });
 }
 function stepDrops(dt) {
   for (let i = drops.length - 1; i >= 0; i--) {
     const d = drops[i];
     d.age += dt;
     if (d.age > 300) { drops.splice(i, 1); continue; }
+    if (d.pick > 0) d.pick -= dt;
     d.vy -= 22 * dt; if (d.vy < -32) d.vy = -32;
     d.x += d.vx * dt; d.y += d.vy * dt; d.z += d.vz * dt;
     const gx = Math.floor(d.x), gy = Math.floor(d.y), gz = Math.floor(d.z);
@@ -1647,7 +1648,7 @@ function stepDrops(dt) {
         }
       }
     }
-    if (!dead && mode === 'survival') {
+    if (!dead && mode === 'survival' && (d.pick || 0) <= 0) {
       const dx = d.x - pl.x, dy = d.y - (pl.y + 0.6), dz = d.z - pl.z;
       const dd = dx * dx + dy * dy + dz * dz;
       if (dd < 1.44) {
