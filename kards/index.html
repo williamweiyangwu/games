@@ -212,22 +212,54 @@
   .hqcard.shake { animation: hqshake .3s ease; }
   @keyframes pop { from { transform: scale(.6); opacity: .2; } to { transform: scale(1); opacity: 1; } }
   .card.pop { animation: pop .18s ease; }
+
+  #factionpick, #deckedit { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75); align-items: center; justify-content: center; z-index: 60; }
+  #factionpick.show, #deckedit.show { display: flex; }
+  .fbox, .dbox {
+    width: 500px; max-width: 92vw; max-height: 84vh; overflow: auto;
+    background: linear-gradient(160deg, #33371f, #1c2012);
+    border: 3px solid #c9b458; border-radius: 12px; padding: 20px 22px;
+  }
+  .fbox h2, .dbox h2 { font-size: 15px; letter-spacing: 3px; color: #c9b458; text-align: center; margin-bottom: 14px; }
+  .frow {
+    display: flex; gap: 12px; align-items: center; padding: 12px; margin-bottom: 8px;
+    border: 2px solid #4a5033; border-radius: 10px; cursor: pointer; background: rgba(0,0,0,.25);
+  }
+  .frow:hover { border-color: #c9b458; }
+  .frow.sel { border-color: #ffd95e; }
+  .frow .fflag { font-size: 30px; }
+  .frow .fname { font-size: 14px; letter-spacing: 2px; color: #f0e6c8; }
+  .frow .fdesc { font-size: 11px; color: #8a917c; margin-top: 2px; }
+  .frow .fbonus { font-size: 11px; color: #c9b458; margin-top: 4px; }
+  .dinfo { font-size: 12px; color: #c9b458; text-align: center; margin-bottom: 10px; }
+  .drow { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid #2c3322; font-size: 12px; color: #e6e9d5; }
+  .drow .dname { flex: 1; }
+  .drow .dtag { font-size: 9px; color: #8a917c; letter-spacing: 1px; }
+  .drow .dnum { width: 26px; text-align: center; color: #ffd95e; font-weight: bold; }
+  .drow .dbtn { padding: 2px 10px; font-size: 12px; }
+  .dbtns { display: flex; gap: 8px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+  .dbtns .btn { padding: 6px 14px; font-size: 11px; }
 </style>
 </head>
 <body>
   <div id="fit">
     <div id="stage">
       <header>
-        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v9</span></h1>
+        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v10</span></h1>
         <div id="turnbar">Player 1's Turn</div>
       </header>
 
       <div id="menu">
         <div class="mgroup">
           <button class="btn mmode active" id="modeLocal" onclick="setMode('local')">LOCAL</button>
+          <button class="btn mmode" id="modeAi" onclick="setMode('ai')">VS AI</button>
           <button class="btn mmode" id="modeOnline" onclick="setMode('online')">ONLINE</button>
           <button class="btn mmode" onclick="openTutorial()">TUTORIAL</button>
           <button class="btn mmode" id="soundBtn" onclick="toggleSound()">SOUND ON</button>
+        </div>
+        <div class="mgroup">
+          <button class="btn mmode" onclick="openFactionPick()">NATION</button>
+          <button class="btn mmode" onclick="openDeckEdit()">DECK</button>
         </div>
         <div id="onlinePanel">
           <input id="nameIn" maxlength="12" value="Player#1" onfocus="if(this.value==='Player#1'){this.value='';}" onblur="if(this.value===''){this.value='Player#1';}">
@@ -295,6 +327,27 @@
     </div>
   </div>
 
+  <div id="factionpick">
+    <div class="fbox">
+      <h2 id="fpTitle">CHOOSE YOUR NATION</h2>
+      <div id="fpRows"></div>
+      <div class="dbtns"><button class="btn" onclick="closeFactionPick()">CANCEL</button></div>
+    </div>
+  </div>
+
+  <div id="deckedit">
+    <div class="dbox">
+      <h2>DECK BUILDER</h2>
+      <div class="dinfo" id="deckInfo"></div>
+      <div id="deckRows"></div>
+      <div class="dbtns">
+        <button class="btn" onclick="deckUseDefault()">USE DEFAULT</button>
+        <button class="btn" onclick="deckSave()">SAVE DECK</button>
+        <button class="btn" onclick="closeDeckEdit()">CLOSE</button>
+      </div>
+    </div>
+  </div>
+
   <div id="flash"></div>
 
 <script>
@@ -324,8 +377,41 @@ var DEFS = {
   reinforce:   { name: "Reinforce",   cost: 2, type: "order", art: "❋", text: "Heal your HQ for 6" },
   conscription:{ name: "Conscription",cost: 3, type: "order", art: "☷", text: "Draw 2 cards" },
   barrage:     { name: "Barrage",     cost: 4, type: "order", art: "✷", text: "Deal 3 to all enemy units" },
-  sabotage:    { name: "Sabotage",    cost: 1, type: "order", art: "⌁", text: "1 to enemy HQ, draw a card" }
+  sabotage:    { name: "Sabotage",    cost: 1, type: "order", art: "⌁", text: "1 to enemy HQ, draw a card" },
+  landing:     { name: "Landing Craft", cost: 4, atk: 3, hp: 3, art: "⚓", text: "On play: draw a card" },
+  stuka:       { name: "Stuka",         cost: 4, atk: 3, hp: 2, art: "✥", air: true, text: "On play: 2 to the enemy HQ" },
+  guards:      { name: "Guards",        cost: 2, atk: 2, hp: 4, art: "☗", text: "Sturdy line infantry" }
 };
+
+var FACTIONS = {
+  allies: { key: "allies", name: "ALLIES", flag: "★",  color: "#2a4d8c", sig: "landing",
+            passive: { extraDraw: 1 },
+            bonus: "Logistics \u2014 draw 1 extra card at the start.",
+            desc: "USA, UK and friends. Flexible orders and strong air power." },
+  axis:   { key: "axis",   name: "AXIS",   flag: "✚",  color: "#5a5c6c", sig: "stuka",
+            passive: { haste: true },
+            bonus: "Blitzkrieg \u2014 your units can attack the turn they are played.",
+            desc: "Germany. Strike first: every unit you play can attack immediately." },
+  ussr:   { key: "ussr",   name: "USSR",   flag: "☭",  color: "#8c2f2f", sig: "guards",
+            passive: { regen: 2 },
+            bonus: "Motherland \u2014 your HQ recovers 2 at the start of your turn.",
+            desc: "The Soviet Union. Outlast the enemy with resilient lines." }
+};
+var FACTION_KEYS = ["allies", "axis", "ussr"];
+var FACTION = "allies", FACTION2 = "axis";
+try { FACTION = localStorage.getItem("k6_fact") || "allies"; FACTION2 = localStorage.getItem("k6_fact2") || "axis"; } catch (e) {}
+function saveFaction() {
+  try { localStorage.setItem("k6_fact", FACTION); localStorage.setItem("k6_fact2", FACTION2); } catch (e) {}
+}
+function passiveOf(p) { var f = FACTIONS[p.faction || "allies"]; return (f && f.passive) || {}; }
+
+var CUSTOM_DECK = null;
+try { var cd = localStorage.getItem("k6_deck"); if (cd) CUSTOM_DECK = JSON.parse(cd); } catch (e) {}
+function deckTotal() {
+  var n = 0;
+  Object.keys(CUSTOM_DECK || {}).forEach(function (k) { n += (CUSTOM_DECK[k] || 0); });
+  return n;
+}
 
 var MAX_HAND = 5;
 var MAX_BOARD = 4;
@@ -335,9 +421,15 @@ function orderNeedsTarget(key) { return key === "explode" || key === "snipe"; }
 
 // ---------------- Game state ----------------
 var S = null;
+var ACTOR = 0;
+var AI_TICK = 0;
+function aiFaction() {
+  var opts = FACTION_KEYS.filter(function (k) { return k !== FACTION; });
+  return opts[Math.floor(Math.random() * opts.length)];
+}
 
-function freshPlayer() {
-  return { hq: 20, res: 0, hand: [], board: [], deck: [], turnNum: 0 };
+function freshPlayer(faction) {
+  return { hq: 20, res: 0, hand: [], board: [], deck: [], turnNum: 0, faction: faction || "allies" };
 }
 
 var DECK_COMP = [ ["infantry",4], ["scout",2], ["medic",3], ["grenadier",2], ["fighter",2], ["sniper",2], ["artillery",2], ["tank",2], ["bunker",2], ["bomber",2], ["paratrooper",2], ["mortar",2], ["commander",1], ["veteran",1], ["produce",2], ["rally",2], ["explode",2], ["snipe",2], ["plan",2], ["bombard",2], ["airstrike",1], ["reinforce",2], ["conscription",1], ["barrage",1], ["sabotage",2] ];
@@ -348,9 +440,16 @@ function deckSize() {
   return n;
 }
 
-function buildDeck() {
+function buildDeck(faction) {
   var list = [];
-  DECK_COMP.forEach(function (c) { for (var i = 0; i < c[1]; i++) list.push(c[0]); });
+  if (deckTotal() >= 20) {
+    Object.keys(CUSTOM_DECK).forEach(function (k) {
+      for (var i = 0; i < (CUSTOM_DECK[k] || 0); i++) if (DEFS[k]) list.push(k);
+    });
+  } else {
+    DECK_COMP.forEach(function (c) { for (var i = 0; i < c[1]; i++) list.push(c[0]); });
+    if (faction && FACTIONS[faction] && FACTIONS[faction].sig) list.push(FACTIONS[faction].sig);
+  }
   for (var i = list.length - 1; i > 0; i--) {
     var j = Math.floor(Math.random() * (i + 1));
     var t = list[i]; list[i] = list[j]; list[j] = t;
@@ -371,7 +470,7 @@ function log(msg) {
 }
 
 var LAST_MSG = "";
-function say(msg) { LAST_MSG = msg; log(msg); }
+function say(msg) { if (MODE === "ai" && ACTOR === 1) msg = flipPOV(msg); LAST_MSG = msg; log(msg); }
 
 function flipPOV(s) {
   return s.replace(/Your |Enemy |the enemy HQ|your HQ/g, function (m) {
@@ -434,12 +533,22 @@ function flashFX() {
 }
 
 // ---------------- Turn flow ----------------
-function newGame() {
+function drawStarting(p) {
+  var n = 4;
+  if (passiveOf(p).extraDraw) n += passiveOf(p).extraDraw;
+  draw(p, n);
+}
+
+function newGame(f0, f1) {
+  AI_TICK++;
+  var fa = f0 || FACTION, fb = f1 || FACTION2;
+  if (MODE === "ai") fb = aiFaction();
+  FACTION = fa; FACTION2 = fb; saveFaction();
   S = { cur: 0, over: false, winner: 0, attackSel: null, readyOrder: null, overShown: false, pub: { hand: [0, 0], deck: [0, 0] } };
-  S.players = [freshPlayer(), freshPlayer()];
-  S.players[0].deck = buildDeck();
-  S.players[1].deck = buildDeck();
-  for (var i = 0; i < 2; i++) draw(S.players[i], 4);
+  S.players = [freshPlayer(fa), freshPlayer(fb)];
+  S.players[0].deck = buildDeck(fa);
+  S.players[1].deck = buildDeck(fb);
+  drawStarting(S.players[0]); drawStarting(S.players[1]);
   syncPub(0); syncPub(1);
   beginTurn(0);
 }
@@ -457,6 +566,8 @@ function beginTurn(p) {
   var pl = S.players[p];
   pl.turnNum++;
   pl.res = Math.min(pl.turnNum, MAX_RES);
+  var reg = passiveOf(pl).regen;
+  if (reg) pl.hq += reg;
   pl.board.forEach(function (u) { u.canAttack = true; });
   draw(pl, 1);
   S.cur = p;
@@ -467,6 +578,7 @@ function beginTurn(p) {
 function endTurn() {
   if (S.over) return;
   if (MODE === "online") { onlineEndTurn(); return; }
+  if (MODE === "ai") { aiEndTurn(); return; }
   S.readyOrder = null;
   var next = other(S.cur);
   S.cur = next;
@@ -480,6 +592,7 @@ function endTurn() {
 function play(hidx) {
   if (!canAct()) return;
   if (S.over) return;
+  ACTOR = S.cur;
   if (S.readyOrder !== null) {
     if (S.readyOrder.hidx === hidx) { S.readyOrder = null; render(); }
     else log("Finish targeting " + S.players[S.cur].hand[S.readyOrder.hidx].name + " first.");
@@ -520,6 +633,7 @@ function play(hidx) {
 function resolveOrderTarget(tidx) {
   if (!canAct()) return;
   if (S.readyOrder === null) return;
+  ACTOR = S.cur;
   var pl = S.players[S.cur];
   var inst = pl.hand[S.readyOrder.hidx];
   var foe = S.players[other(S.cur)];
@@ -627,11 +741,135 @@ function resolveBattlecry(inst, p) {
     var n = 0;
     me.board.forEach(function (u) { if (u !== inst) { u.atk += 1; n++; } });
     say(n > 0 ? "Commander rallies your units: +1 attack!" : "Commander takes the field.");
+  } else if (inst.key === "landing") {
+    draw(me, 1);
+    say("Landing Craft: drew a card!");
+  } else if (inst.key === "stuka") {
+    foe.hq -= 2;
+    say("Stuka dive-bombs the enemy HQ for 2!");
   }
+  if (passiveOf(me).haste) inst.canAttack = true;
 }
 
 function cleanBoard(p) {
   p.board = p.board.filter(function (u) { return u.hp > 0; });
+}
+
+// ---------------- AI OPPONENT ----------------
+var AI_DELAY = 520;
+
+function aiEndTurn() {
+  if (S.over) return;
+  S.readyOrder = null;
+  S.attackSel = null;
+  beginTurn(1);
+  setTurnBar("Computer");
+  render();
+  var t = AI_TICK;
+  setTimeout(function () { aiStep(t); }, 600);
+}
+
+function aiStep(t) {
+  if (t !== AI_TICK || MODE !== "ai" || S.over) return;
+  var ai = S.players[1];
+  if (aiPlayOne(ai)) { if (checkVictory()) return; render(); setTimeout(function () { aiStep(t); }, AI_DELAY); return; }
+  if (aiAttackOne(ai)) { if (checkVictory()) return; render(); setTimeout(function () { aiStep(t); }, AI_DELAY); return; }
+  aiFinish();
+}
+
+function aiPlayOne(ai) {
+  ACTOR = 1;
+  for (var i = 0; i < ai.hand.length; i++) {
+    var c = ai.hand[i];
+    if (c.type === "order") continue;
+    if (c.cost <= ai.res && ai.board.length < MAX_BOARD) {
+      ai.res -= c.cost;
+      ai.hand.splice(i, 1);
+      ai.board.push(c);
+      sfx("play");
+      resolveBattlecry(c, 1);
+      syncPub(1);
+      return true;
+    }
+  }
+  for (var j = 0; j < ai.hand.length; j++) {
+    var o = ai.hand[j];
+    if (o.type !== "order") continue;
+    if (o.cost > ai.res) continue;
+    if (orderNeedsTarget(o.key) && S.players[0].board.length === 0) continue;
+    ai.res -= o.cost;
+    ai.hand.splice(j, 1);
+    sfx("order");
+    if (orderNeedsTarget(o.key)) {
+      var foes = S.players[0].board;
+      var t = aiPickTarget(foes);
+      if (t) {
+        var dmg = (o.key === "snipe") ? 3 : 1;
+        t.hp -= dmg;
+        say(o.name + " hits " + t.name + " for " + dmg + "!");
+        cleanBoard(S.players[0]);
+      }
+    } else {
+      resolveOrder(o, 1);
+    }
+    syncPub(1);
+    return true;
+  }
+  return false;
+}
+
+function aiAttackOne(ai) {
+  ACTOR = 1;
+  for (var i = 0; i < ai.board.length; i++) {
+    var u = ai.board[i];
+    if (!u.canAttack) continue;
+    var tgt = legalTargets(u);
+    if (tgt.units.length > 0) {
+      var def = aiPickDef(tgt.units, u);
+      def.hp -= u.atk;
+      u.hp -= def.atk;
+      say("Your " + u.name + " fights the enemy " + def.name + ": deals " + u.atk + ", takes " + def.atk + ".");
+      if (def.hp <= 0) say("Enemy " + def.name + " is destroyed!");
+      if (u.hp <= 0) say("Your " + u.name + " is destroyed!");
+      u.canAttack = false;
+      cleanBoard(S.players[0]);
+      cleanBoard(ai);
+    } else if (tgt.hq) {
+      S.players[0].hq -= u.atk;
+      say("Your " + u.name + " strikes the enemy HQ for " + u.atk + "!");
+      u.canAttack = false;
+    } else {
+      u.canAttack = false;
+    }
+    sfx("attack"); sfx("hit"); flashFX();
+    syncPub(1);
+    return true;
+  }
+  return false;
+}
+
+function aiPickTarget(foes) {
+  var best = null;
+  for (var i = 0; i < foes.length; i++) {
+    if (!best || foes[i].atk > best.atk) best = foes[i];
+  }
+  return best;
+}
+
+function aiPickDef(units, u) {
+  var killable = units.filter(function (d) { return d.hp <= u.atk; });
+  var pool = killable.length ? killable : units;
+  var best = pool[0];
+  for (var i = 1; i < pool.length; i++) { if (pool[i].atk > best.atk) best = pool[i]; }
+  return best;
+}
+
+function aiFinish() {
+  if (S.over) return;
+  S.readyOrder = null;
+  S.attackSel = null;
+  S.cur = 0;
+  beginTurn(0);
 }
 
 // ================= ONLINE MODE =================
@@ -818,11 +1056,11 @@ function onlineInit() {
   status("");
   S = { cur: NET.id, turn: NET.id, over: false, winner: 0, attackSel: null, readyOrder: null,
         started: true, overShown: false, pub: { hand: [0, 0], deck: [0, 0] } };
-  S.players = [freshPlayer(), freshPlayer()];
-  S.players[0].deck = buildDeck();
-  S.players[1].deck = buildDeck();
-  draw(S.players[0], 4);
-  draw(S.players[1], 4);
+  S.players = [freshPlayer(FACTION), freshPlayer(FACTION2)];
+  S.players[0].deck = buildDeck(S.players[0].faction);
+  S.players[1].deck = buildDeck(S.players[1].faction);
+  drawStarting(S.players[0]);
+  drawStarting(S.players[1]);
   syncPub(0); syncPub(1);
   if (NET.id === 0) onlineBeginMyTurn();
   else { S.turn = 0; render(); }
@@ -834,6 +1072,8 @@ function onlineBeginMyTurn() {
   var pl = S.players[p];
   pl.turnNum++;
   pl.res = Math.min(pl.turnNum, MAX_RES);
+  var reg = passiveOf(pl).regen;
+  if (reg) pl.hq += reg;
   pl.board.forEach(function (u) { u.canAttack = true; });
   draw(pl, 1);
   S.turn = p;
@@ -876,12 +1116,14 @@ function pName(pid) {
   if (MODE === "online" && NET) {
     return pid === NET.id ? NET.meName : NET.foeName;
   }
+  if (MODE === "ai") return pid === 1 ? "You" : "Computer";
   return "Player " + pid;
 }
 
 function myTurn() {
-  if (MODE !== "online") return true;
-  return !!NET && S && S.started && !S.over && S.turn === NET.id;
+  if (MODE === "online") return !!NET && S && S.started && !S.over && S.turn === NET.id;
+  if (MODE === "ai") return !!S && !S.over && S.cur === 0;
+  return true;
 }
 
 function canAct() { return myTurn(); }
@@ -1128,10 +1370,11 @@ function setMode(m) {
   hideLobby();
   MODE = m;
   document.getElementById("modeLocal").classList.toggle("active", m === "local");
+  document.getElementById("modeAi").classList.toggle("active", m === "ai");
   document.getElementById("modeOnline").classList.toggle("active", m === "online");
   document.getElementById("onlinePanel").style.display = (m === "online") ? "flex" : "none";
   status("");
-  if (m === "local") {
+  if (m === "local" || m === "ai") {
     newGame();
   } else {
     render();
@@ -1180,6 +1423,7 @@ function doAttack(uidx, kind, tidx) {
   if (!canAct()) return;
   if (S.over) return;
   if (S.attackSel == null) return;
+  ACTOR = S.cur;
   var me = S.players[S.cur];
   var foe = S.players[other(S.cur)];
   var att = me.board[S.attackSel];
@@ -1226,6 +1470,7 @@ function checkVictory() {
     S.overShown = true;
     if (MODE === "online") publish();
     if (MODE === "online" && NET) sfx((S.winner - 1) === NET.id ? "win" : "lose");
+    else if (MODE === "ai") sfx(S.winner === 1 ? "win" : "lose");
     else sfx("win");
     showModal("GAME OVER", pName(winner) + " has destroyed the enemy HQ!",
       (MODE === "online" ? "Rematch" : "New Game"),
@@ -1327,7 +1572,7 @@ function hqTargetable() {
 
 function render() {
   if (!S) return;
-  var cur = (MODE === "online" && NET) ? NET.id : S.cur;
+  var cur = (MODE === "online" && NET) ? NET.id : (MODE === "ai" ? 0 : S.cur);
   var foe = other(cur);
   var my = S.players[cur], en = S.players[foe];
   var canTargetHq = hqTargetable();
@@ -1337,6 +1582,8 @@ function render() {
   if (MODE === "online" && NET) {
     if (!S.started) setTurnBar("Waiting for opponent");
     else setTurnBar(pName(S.turn) + (S.turn === NET.id ? "  (you)" : ""));
+  } else if (MODE === "ai") {
+    setTurnBar(S.cur === 0 ? "Player 1" : "Computer");
   } else {
     setTurnBar("Player " + (cur + 1));
   }
@@ -1371,9 +1618,11 @@ function render() {
   document.getElementById("panelBottom").innerHTML = myHq;
 
   var eBtn = document.getElementById("endBtn");
-  var offlineWait = (MODE === "online") && (!canAct() || !S.started);
+  var offlineWait = (MODE === "online") ? (!canAct() || !S.started) : (MODE === "ai" ? (S.cur !== 0) : false);
   eBtn.disabled = S.over || offlineWait;
-  eBtn.textContent = (MODE === "online" && !canAct() && S.started) ? "WAIT..." : "END TURN";
+  if (MODE === "online" && !canAct() && S.started) eBtn.textContent = "WAIT...";
+  else if (MODE === "ai" && S.cur !== 0) eBtn.textContent = "COMPUTER...";
+  else eBtn.textContent = "END TURN";
   document.getElementById("newBtn").disabled = (MODE === "online");
   fit();
 }
@@ -1399,7 +1648,7 @@ var TUT_STEPS = [
   { t: "4. UNITS & ATTACKS", h: "<ul><li>A unit <b>cannot attack the turn it is played</b> \u2014 unless it has <b>Haste</b> (Scout).</li><li>To attack: click your unit, then click an enemy unit or the enemy HQ.</li><li>Each unit attacks <b>once per turn</b>. When two units fight, both deal their attack to each other.</li><li><b>Rally</b> lets your whole row attack again in the same turn.</li></ul>" },
   { t: "5. GUARD & AIR", h: "<ul><li><b>Guard</b> (Tank, Bunker) must be fought first \u2014 it shields the enemy HQ and weaker units.</li><li><b>Air</b> (Fighter, Bomber) ignores Guard and can always strike the HQ.</li><li>Powers trigger when a unit is played: <b>Medic</b> heals your HQ 3, <b>Grenadier</b> hits all enemies 1, <b>Artillery</b> hits one at random for 2, <b>Sniper</b> hits the strongest enemy for 2.</li></ul>" },
   { t: "6. ORDERS", h: "<p>Orders are one-shot cards \u2014 they resolve, then vanish:</p><ul><li><b>Produce</b> (0) \u2014 gain 1 resource (free!).</li><li><b>Explode</b> (1) \u2014 deal 1 damage to a unit.</li><li><b>Rally</b> (1) \u2014 all your units can attack again.</li><li><b>Plan</b> (2) \u2014 draw a card.</li><li><b>Snipe</b> (2) \u2014 deal 3 damage to a unit.</li><li><b>Bombard</b> (2) \u2014 deal 2 straight to the enemy HQ.</li><li><b>Airstrike</b> (3) \u2014 deal 2 to every enemy unit.</li><li>Explode and Snipe need a target \u2014 click an enemy unit.</li></ul>" },
-  { t: "7. PLAY & MENU", h: "<ul><li><b>LOCAL</b> \u2014 two players share one screen (hot-seat).</li><li><b>ONLINE</b> \u2014 HOST gives you a room code to share, or press <b>ROOMS</b> to join a game that is waiting.</li><li>The <b>TUTORIAL</b> button reopens this guide anytime; the <b>\u2715</b> or <b>CLOSE</b> button shuts it.</li><li>Start a fresh match with <b>NEW GAME</b> (Local mode only).</li></ul><p>Good luck, Commander!</p>" }
+  { t: "7. PLAY & MENU", h: "<ul><li><b>LOCAL</b> \u2014 two players share one screen (hot-seat).</li><li><b>VS AI</b> \u2014 battle the computer in single-player.</li><li><b>ONLINE</b> \u2014 HOST gives you a room code to share, or press <b>ROOMS</b> to join a game that is waiting.</li><li><b>NATION</b> \u2014 pick your nation (each has a unique power) and <b>DECK</b> \u2014 fine-tune your card counts.</li><li><b>TUTORIAL</b> reopens this guide, <b>\u2715</b>/<b>CLOSE</b> shuts it, <b>SOUND</b> toggles audio.</li></ul><p>Good luck, Commander!</p>" }
 ];
 var TUT_PAGE = 0;
 
@@ -1436,6 +1685,80 @@ function maybeShowTutorial() {
   var seen = false;
   try { seen = localStorage.getItem("k6_tut_v2") === "1"; } catch (e) {}
   if (!seen) openTutorial();
+}
+
+// ---------------- Faction picker ----------------
+function openFactionPick() {
+  var rows = document.getElementById("fpRows");
+  rows.innerHTML = FACTION_KEYS.map(function (k) {
+    var f = FACTIONS[k];
+    return '<div class="frow' + (k === FACTION ? ' sel' : '') + '" onclick="pickFaction(\'' + k + '\')">' +
+      '<span class="fflag">' + f.flag + '</span>' +
+      '<div><div class="fname">' + f.name + '</div><div class="fdesc">' + f.desc + '</div><div class="fbonus">' + f.bonus + '</div></div>' +
+      '</div>';
+  }).join("");
+  document.getElementById("factionpick").classList.add("show");
+}
+
+function closeFactionPick() { document.getElementById("factionpick").classList.remove("show"); }
+
+function pickFaction(k) {
+  FACTION = k; saveFaction();
+  closeFactionPick();
+  if (MODE === "local" || MODE === "ai") newGame();
+}
+
+// ---------------- Deck builder ----------------
+var DECK_WORK = null;
+
+function deckDefaultCounts() {
+  var m = {};
+  DECK_COMP.forEach(function (c) { m[c[0]] = c[1]; });
+  return m;
+}
+
+function openDeckEdit() {
+  DECK_WORK = {};
+  var src = CUSTOM_DECK || deckDefaultCounts();
+  Object.keys(src).forEach(function (k) { DECK_WORK[k] = src[k]; });
+  renderDeckRows();
+  document.getElementById("deckedit").classList.add("show");
+}
+
+function closeDeckEdit() { DECK_WORK = null; document.getElementById("deckedit").classList.remove("show"); }
+
+function deckInc(k) { if (!DECK_WORK) return; DECK_WORK[k] = (DECK_WORK[k] || 0) + 1; renderDeckRows(); }
+function deckDec(k) { if (!DECK_WORK) return; if ((DECK_WORK[k] || 0) > 0) DECK_WORK[k]--; renderDeckRows(); }
+
+function deckUseDefault() { DECK_WORK = deckDefaultCounts(); renderDeckRows(); }
+
+function deckSave() {
+  CUSTOM_DECK = DECK_WORK; DECK_WORK = null;
+  try { localStorage.setItem("k6_deck", JSON.stringify(CUSTOM_DECK)); } catch (e) {}
+  document.getElementById("deckedit").classList.remove("show");
+  if (MODE === "local" || MODE === "ai") newGame();
+}
+
+function deckTotalWork() {
+  var n = 0;
+  if (DECK_WORK) Object.keys(DECK_WORK).forEach(function (k) { n += (DECK_WORK[k] || 0); });
+  return n;
+}
+
+function renderDeckRows() {
+  if (!DECK_WORK) return;
+  var keys = Object.keys(DEFS);
+  var html = "";
+  keys.forEach(function (k) {
+    var d = DEFS[k];
+    var n = DECK_WORK[k] || 0;
+    html += '<div class="drow"><span class="dname">' + d.name + '</span><span class="dtag">' + (d.type === "order" ? "ORDER" : "UNIT") + '</span>' +
+      '<button class="btn dbtn" onclick="deckDec(\'' + k + '\')">-</button><span class="dnum">' + n + '</span>' +
+      '<button class="btn dbtn" onclick="deckInc(\'' + k + '\')">+</button></div>';
+  });
+  document.getElementById("deckRows").innerHTML = html;
+  var t = deckTotalWork();
+  document.getElementById("deckInfo").textContent = "TOTAL: " + t + " cards" + (t >= 20 ? "" : "  (need at least 20)");
 }
 
 (function () { var b = document.getElementById("soundBtn"); if (b) b.textContent = "SOUND " + (SFX ? "ON" : "OFF"); })();
