@@ -52,8 +52,8 @@
   /* ---------- layout ---------- */
   #main{flex:1;display:flex;min-height:0}
   #mapwrap{flex:1;position:relative;overflow:auto;background:
-      radial-gradient(ellipse at 50% 40%,#16202e 0%,#0b0e14 75%)}
-  #map{display:block;width:100%;min-width:900px}
+      radial-gradient(ellipse at 50% 40%,#16202e 0%,#0b0e14 75%);touch-action:pan-x pan-y}
+  #map{display:block;width:100%;min-width:900px;touch-action:manipulation}
   #tip{
     position:absolute;pointer-events:none;display:none;z-index:5;
     background:#0b0e14ee;border:1px solid var(--line);border-radius:6px;padding:6px 8px;
@@ -392,10 +392,12 @@
   <button class="btn" data-sp="2">2&times;</button>
   <button class="btn" data-sp="3">3&times;</button>
 <button class="btn" id="bFocus">My front</button>
+  <button class="btn" id="bSound" title="Toggle sound">&#128266; Sound</button>
   <button class="btn" id="bHelp" title="How to play">&#10067; Help</button>
   <button class="btn" id="bNews">&#128240; News<span class="badge" id="nbNews"></span></button>
   <button class="btn" id="bMail">&#9993; Mail<span class="badge" id="nbMail"></span></button>
   <button class="btn" id="bNet">&#127760; Multi</button>
+  <button class="btn" id="bSave" title="Save this war">&#128190; Save</button>
   <button class="btn danger" id="bNew">New war</button>
 </div>
 
@@ -468,8 +470,14 @@
     <div id="pick"></div>
     <div id="goWrap">
       <div class="sub" id="goWho">Pick a nation above to begin</div>
+      <div class="sub" id="goDiffWrap">Difficulty:
+        <label class="chip"><input type="radio" name="diff" value="easy"> Easy</label>
+        <label class="chip"><input type="radio" name="diff" value="normal" checked> Normal</label>
+        <label class="chip"><input type="radio" name="diff" value="hard"> Hard</label>
+      </div>
       <button id="go" disabled>Start the war</button>
       <button class="b-online" id="bOnline">&#127760; Play online multiplayer</button>
+      <button class="btn" id="bContinue" style="display:none">&#128190; Continue saved war</button>
     </div>
   </div>
 </div>
@@ -647,6 +655,90 @@ window.onerror = function(m,s,l,c,e){
   b.textContent += 'ERROR: '+m+'  @line '+l+'\n';
   if(e&&e.stack) b.textContent += e.stack+'\n';
 };
+
+/* =======================================================================
+   0. SOUND  (fully synthesised - no audio files, single HTML)
+   ======================================================================= */
+var SND={ ctx:null, music:null, on:true, lastShot:0 };
+function sndInit(){
+  if(SND.ctx) return;
+  try{
+    var AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC) return;
+    SND.ctx=new AC();
+    SND.master=SND.ctx.createGain(); SND.master.gain.value=0.16;
+    SND.master.connect(SND.ctx.destination);
+  }catch(e){}
+}
+function sndToggle(){
+  sndInit();
+  SND.on=!SND.on;
+  if(!SND.on && SND.music){ try{SND.music.gain.setValueAtTime(0,SND.ctx.currentTime);}catch(e){} }
+  if(SND.on && SND.music){ try{SND.music.gain.setValueAtTime(0.5,SND.ctx.currentTime);}catch(e){} }
+}
+function sndTone(freq,dur,type,vol,slide){
+  if(!SND.on || !SND.ctx) return;
+  try{
+    var t=SND.ctx.currentTime;
+    var o=SND.ctx.createOscillator(), g=SND.ctx.createGain();
+    o.type=type||'sine'; o.frequency.setValueAtTime(freq,t);
+    if(slide) o.frequency.exponentialRampToValueAtTime(Math.max(1,slide),t+dur);
+    g.gain.setValueAtTime(vol||0.2,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(SND.master);
+    o.start(t); o.stop(t+dur);
+  }catch(e){}
+}
+function sndNoise(dur,vol,low){
+  if(!SND.on || !SND.ctx) return;
+  try{
+    var t=SND.ctx.currentTime, n=(SND.ctx.sampleRate*dur)|0;
+    var buf=SND.ctx.createBuffer(1,n,SND.ctx.sampleRate);
+    var d=buf.getChannelData(0);
+    for(var i=0;i<n;i++) d[i]=(Math.random()*2-1)*(1-i/n);
+    var src=SND.ctx.createBufferSource(); src.buffer=buf;
+    var f=SND.ctx.createBiquadFilter();
+    f.type='lowpass'; f.frequency.value=low||600;
+    var g=SND.ctx.createGain(); g.gain.setValueAtTime(vol||0.3,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    src.connect(f); f.connect(g); g.connect(SND.master);
+    src.start(t);
+  }catch(e){}
+}
+function sfx(name){
+  if(!SND.on) return;
+  switch(name){
+    case 'shot':   sndNoise(0.06,0.10,1800); sndTone(160,0.05,'square',0.04,90); break;
+    case 'battle': sndNoise(0.18,0.10,900); break;
+    case 'boom':   sndNoise(0.35,0.28,320); sndTone(70,0.35,'sine',0.22,30); break;
+    case 'capture':sndTone(523,0.12,'triangle',0.18); setTimeout(function(){sndTone(659,0.12,'triangle',0.18);},90);
+                   setTimeout(function(){sndTone(784,0.2,'triangle',0.2);},180); break;
+    case 'recruit':sndTone(440,0.08,'square',0.08); setTimeout(function(){sndTone(554,0.08,'square',0.08);},70); break;
+    case 'defeat': sndTone(330,0.25,'sawtooth',0.15,200); setTimeout(function(){sndTone(247,0.4,'sawtooth',0.15,140);},220); break;
+    case 'victory':sndTone(523,0.12,'triangle',0.18); setTimeout(function(){sndTone(659,0.12,'triangle',0.18);},110);
+                   setTimeout(function(){sndTone(784,0.12,'triangle',0.18);},220);
+                   setTimeout(function(){sndTone(1046,0.3,'triangle',0.22);},330); break;
+    case 'order':  sndTone(392,0.07,'square',0.07); break;
+  }
+}
+function sndStartMusic(){
+  sndInit();
+  if(SND.music || !SND.ctx) return;
+  try{
+    SND.music=SND.ctx.createGain(); SND.music.gain.value=SND.on?0.5:0;
+    SND.music.connect(SND.master);
+    var freqs=[110,164.8,146.8,98];   /* A - E - D - G, a low, quiet war-time drone */
+    freqs.forEach(function(f,i){
+      var o=SND.ctx.createOscillator(), g=SND.ctx.createGain();
+      o.type='sine'; o.frequency.value=f;
+      g.gain.value=0.05; o.connect(g); g.connect(SND.music);
+      var lfo=SND.ctx.createOscillator(); lfo.frequency.value=0.07+i*0.02;
+      var lg=SND.ctx.createGain(); lg.gain.value=0.03;
+      lfo.connect(lg); lg.connect(g.gain);
+      o.start(); lfo.start();
+    });
+  }catch(e){}
+}
 
 /* =======================================================================
    1. MAP GEOMETRY  (polygons in [longitude, latitude])
@@ -1050,12 +1142,12 @@ const NATION_STATS = {
     infantry:{atk:7,hp:60,def:1.95}, assault:{atk:13,hp:78}, artillery:{atk:15,hp:94,def:2.05},
     fighter:{atk:15,hp:68} }},
   portugal:{ gold:40, mine:3, start:1, cm:1.35, u:{
-    infantry:{atk:5,hp:56}, artillery:{atk:12,hp:88,def:1.85}, fighter:{atk:13,hp:64} }},
+    infantry:{atk:6,hp:56}, artillery:{atk:12,hp:88,def:1.85}, fighter:{atk:13,hp:64} }},
   ireland:{ gold:35, mine:3, start:1, cm:1.4, u:{
-    infantry:{atk:5,hp:56}, artillery:{atk:12,hp:88,def:1.85}, fighter:{atk:13,hp:64} }},
-  estonia:{ gold:30, mine:2, start:1, cm:1.4, u:{ infantry:{atk:5,hp:55}, fighter:{atk:13,hp:64} }},
+    infantry:{atk:5,hp:56,def:1.8}, artillery:{atk:12,hp:86,def:1.85}, fighter:{atk:13,hp:62} }},
+  estonia:{ gold:30, mine:2, start:1, cm:1.4, u:{ infantry:{atk:5,hp:55,def:1.75}, fighter:{atk:13,hp:64} }},
   latvia:{ gold:30, mine:2, start:1, cm:1.4, u:{ infantry:{atk:5,hp:55}, fighter:{atk:13,hp:64} }},
-  lithuania:{ gold:30, mine:2, start:1, cm:1.4, u:{ infantry:{atk:5,hp:55}, fighter:{atk:13,hp:64} }},
+  lithuania:{ gold:32, mine:2, start:1, cm:1.4, u:{ infantry:{atk:5,hp:56}, fighter:{atk:13,hp:64} }},
   albania:{ gold:25, mine:2, start:1, cm:1.5, u:{ infantry:{atk:4,hp:52}, fighter:{atk:12,hp:62} }}
 };
 
@@ -1394,7 +1486,7 @@ const NS = 'http://www.w3.org/2000/svg';
 function el(t,a){ var e=document.createElementNS(NS,t); for(var k in a) e.setAttribute(k,a[k]); return e; }
 
 const labEl={}, markEl={}, PP={};
-let landG, unitG;
+let landG, unitG, fxG;
 
 function buildMap(){
   var svg=document.getElementById('map');
@@ -1412,6 +1504,7 @@ function buildMap(){
   }
   landG=el('g',{}); g.appendChild(landG);
   unitG=el('g',{}); g.appendChild(unitG);
+  fxG=el('g',{}); g.appendChild(fxG);
 
   SECTORS.slice().sort(function(a,b){ return (a.nat==='ussr'?-1:0)-(b.nat==='ussr'?-1:0); })
   .forEach(function(sec){
@@ -1466,7 +1559,13 @@ const SPEED_MS={0.5:3000,1:1500,2:750,3:400};
 const START_MONEY=50;
 const MINE_GOLD=4;         /* gold a mine field pays out every day - the only income */
 const CAPITAL_DEF=1.45;   /* extra defence multiplier inside your own homeland */
-let S=null, timer=null, spd=1, chosen='germany';
+let S=null, timer=null, spd=1, chosen='germany', DIFF='normal';
+const DIFF_MODS={
+  easy  :{aggro:1.55, gold:0.7, recruit:0.7},
+  normal:{aggro:1.35, gold:1.0, recruit:1.0},
+  hard  :{aggro:1.15, gold:1.4, recruit:1.4}
+};
+function diffMod(){ return DIFF_MODS[DIFF]||DIFF_MODS.normal; }
 
 function warKey(a,b){ return a<b ? a+'>'+b : b+'>'+a; }
 /* --- live front map -------------------------------------------------
@@ -1695,6 +1794,9 @@ function tick(){
     var keys=Object.keys(groups);
     if(keys.length<2) continue;
     fighting.push(id2);
+    fxAdd('battle',id2);
+    /* battle sounds: a thud per contested province, throttled so it never spams */
+    if(SND.on && Date.now()-SND.lastShot>220){ SND.lastShot=Date.now(); sfx('battle'); }
     keys.forEach(function(side){
       var mine=groups[side];
       var foes=[];
@@ -1713,6 +1815,7 @@ function tick(){
   /* --- deaths --- */
   var dead=S.units.filter(function(u){ return u.hp<=0; });
   if(dead.length){
+    sfx('boom');
     dead.forEach(function(u){
       var i=S.units.indexOf(u); if(i>=0) S.units.splice(i,1);
       if(u.owner===S.player) log('Your '+U(u.owner,u.type).name.toLowerCase()+' was destroyed in '+NBY[u.loc].name+'.');
@@ -1747,6 +1850,8 @@ function tick(){
     wp.owner=nu;
     wp.mines=0; wp.mineBy=null; wp.pend=0;
     capEv.push({taker:nu, prov:win.id, old:old, d:S.day});
+    fxAdd('capture',win.id);
+    if(nu===S.player) sfx('capture');
     mailWarEvent(nu, old);
     invalidateWars();
     if(nu===S.player || old===S.player) declareWar(S.player, (nu===S.player?old:nu));
@@ -1784,10 +1889,12 @@ function tick(){
   });
 
   /* --- income: mine fields only --- */
+  var dm=diffMod();
   ALL.forEach(function(n){
     if(n.id==='iceland') return;
     if(landOf(n.id)===0 && unitsOf(n.id).length===0) return;
     var g=income(n.id);
+    if(n.id!==S.player) g=Math.round(g*dm.gold);   /* difficulty scales AI economy only */
     S.gold[n.id]=Math.max(-40,(S.gold[n.id]||0)+g);
     /* a nation that cannot pay its bills disbands its priciest unit */
     if(S.gold[n.id]<=-40 && unitsOf(n.id).length>1){
@@ -1818,6 +1925,7 @@ function checkEnd(){
 }
 function end(win,msg){
   S.over={win:win};
+  sfx(win?'victory':'defeat');
   var d=document.getElementById('end');
   d.style.display='flex';
   document.getElementById('endT').textContent=win?'VICTORIA':'DEFEAT';
@@ -1837,6 +1945,7 @@ function aiTurn(){
     S.aiT[n.id]--;
     if(S.aiT[n.id]>0) return;
     S.aiT[n.id]=4+(Math.random()*4|0);
+    var dm=diffMod();
 
     var terr=landOf(n.id), foes=0;
     for(var k in S.prov) if(S.prov[k].owner!==n.id) foes++;
@@ -1865,7 +1974,7 @@ function aiTurn(){
     }
 
     /* --- attack / defend --- */
-    var aggro=S.aggro[n.id]||1.35;
+    var aggro=(S.aggro[n.id]||1.35)*dm.aggro;
     var myUnits=unitsOf(n.id).length;
     if(myUnits>=3 && (S.gold[n.id]||0)>0){
     for(var id in S.prov){
@@ -1953,6 +2062,7 @@ function moveTo(dst){
   }
   if(NET && NET.mode===2) netPubRoom('cmd',JSON.stringify({p:NET.pid,k:'m',dst:dst,ids:ids}));
   if(NET && NET.mode===1) NET.dirty=true;
+  sfx('order');
   log('Orders sent: '+n+' unit'+(n>1?'s':'')+' to '+NBY[dst].name+'. Select another front to redirect them.');
   render();
 }
@@ -1964,6 +2074,7 @@ function recruit(type){
   if((S.gold[S.player]||0)<u.cost){ flash('Not enough gold for a '+u.name.toLowerCase()+' ('+u.cost+').'); return; }
   S.gold[S.player]-=u.cost;
   spawn(type,id,S.player);
+  sfx('recruit');
   if(SHOWCASE[type]) newsUnveil(S.player,type,id);
   S.pick.clear(); unitsAt(id).forEach(function(x){ S.pick.add(x.id); });
   if(NET && NET.mode===2) netPubRoom('cmd',JSON.stringify({p:NET.pid,k:'r',t:type,loc:id}));
@@ -2224,6 +2335,37 @@ function computeTargets(){
   });
   S.targets=Object.keys(out);
 }
+/* ---------- battle animations: explosion rings + capture flashes ---------- */
+var FX=[], FX_T=null;
+function fxAdd(type,id){
+  if(!markEl[id]) return;
+  var now=performance.now();
+  FX=FX.filter(function(f){ return now-f.t0<f.dur; });
+  FX.push({type:type, id:id, x:markEl[id].x, y:markEl[id].y, t0:now, dur: type==='capture'?1100:650});
+  if(FX.length>400) FX.splice(0,FX.length-400);
+  if(!FX_T) animLoop();
+}
+function animLoop(){
+  FX_T=null;
+  var now=performance.now();
+  FX=FX.filter(function(f){ return now-f.t0<f.dur; });
+  while(fxG.firstChild) fxG.removeChild(fxG.firstChild);
+  FX.forEach(function(f){
+    var p=(now-f.t0)/f.dur; if(p<0||p>=1) return;
+    var r=4+p*26, op=1-p;
+    if(f.type==='capture'){
+      var c=el('circle',{cx:f.x,cy:f.y,r:r.toFixed(1),fill:'none',stroke:'#ffd75a','stroke-width':(2.2*(1-p)+0.4).toFixed(2),opacity:op});
+      fxG.appendChild(c);
+    } else {
+      var ex=el('circle',{cx:f.x,cy:f.y,r:r.toFixed(1),fill:'#ff7a3a',opacity:(op*0.55).toFixed(3)});
+      fxG.appendChild(ex);
+      var inr=el('circle',{cx:f.x,cy:f.y,r:(r*0.5).toFixed(1),fill:'#ffe08a',opacity:(op*0.8).toFixed(3)});
+      fxG.appendChild(inr);
+    }
+  });
+  if(FX.length) FX_T=requestAnimationFrame(animLoop);
+}
+
 function render(){
   computeTargets();
   /* --- map fills --- */
@@ -2403,7 +2545,7 @@ function wireMap(){
     if(S.orderMode && S.pick.size>0 && S.targets.indexOf(id)>=0){ moveTo(id); return; }
     selectProv(id); render();
   });
-  svg.addEventListener('mousemove',function(ev){
+  function showTip(ev){
     var t=ev.target.closest ? ev.target.closest('[data-id]') : null;
     if(!t){ tip.style.display='none'; return; }
     var id=t.getAttribute('data-id'), p=S.prov[id], n=NBY[id];
@@ -2416,11 +2558,16 @@ function wireMap(){
     tip.innerHTML=s;
     tip.style.display='block';
     var r=document.getElementById('mapwrap').getBoundingClientRect();
-    var x=ev.clientX-r.left+14, y=ev.clientY-r.top+14;
+    var cx=(ev.clientX!==undefined)?ev.clientX:(ev.touches&&ev.touches[0]?ev.touches[0].clientX:0);
+    var cy=(ev.clientY!==undefined)?ev.clientY:(ev.touches&&ev.touches[0]?ev.touches[0].clientY:0);
+    var x=cx-r.left+14, y=cy-r.top+14;
     if(x+240>r.width) x=r.width-244;
     tip.style.left=x+'px'; tip.style.top=y+'px';
-  });
+  }
+  svg.addEventListener('mousemove',showTip);
+  svg.addEventListener('touchmove',showTip,{passive:true});
   svg.addEventListener('mouseleave',function(){ tip.style.display='none'; });
+  svg.addEventListener('touchend',function(ev){ setTimeout(function(){ tip.style.display='none'; },1200); });
 }
 
 /* =======================================================================
@@ -2461,6 +2608,7 @@ function wireTop(){
   document.getElementById('bNew').onclick=function(){
     if(confirm('Abandon this campaign and start over?')) location.reload();
   };
+  document.getElementById('bSave').onclick=function(){ if(S && !S.over) saveGame(); else flash('Nothing to save.'); };
   document.getElementById('bFocus').onclick=function(){
     var wrap=document.getElementById('mapwrap');
     var svgR=document.getElementById('map').getBoundingClientRect();
@@ -2532,6 +2680,7 @@ function buildPicker(){
 
 function startGame(){
   document.getElementById('start').style.display='none';
+  sndInit(); sndStartMusic();
   newGame(chosen);
   setSpeed(1);
   setTimeout(function(){
@@ -2545,6 +2694,21 @@ function startGame(){
   },80);
 }
 document.getElementById('go').onclick=startGame;
+/* continue a saved war */
+(function(){
+  var cb=document.getElementById('bContinue');
+  if(hasSave()) cb.style.display='inline-block';
+  cb.onclick=function(){ loadGame(); };
+})();
+/* difficulty selector */
+(function(){
+  var radios=document.querySelectorAll('input[name="diff"]');
+  function setDiff(){
+    for(var i=0;i<radios.length;i++) if(radios[i].checked) DIFF=radios[i].value;
+  }
+  for(var i=0;i<radios.length;i++) radios[i].onchange=setDiff;
+  setDiff();
+})();
 
 buildMap();
 wireMap();
@@ -2972,6 +3136,56 @@ function applyNetState(o){
   render();
   guestCheck();
 }
+
+/* ---------- save / load campaign (localStorage) ---------- */
+function saveGame(){
+  var wars=[]; S.wars.forEach(function(w){ wars.push(w); });
+  var prov={};
+  for(var k in S.prov){ var p=S.prov[k]; prov[k]={o:p.owner,m:p.mines,mb:p.mineBy,mt:p.mineT,pend:p.pend}; }
+  var units=S.units.map(function(u){
+    var o={id:u.id, type:u.type, loc:u.loc, owner:u.owner, hp:u.hp, mv:null, ar:u.air||null,
+           cf:u.cameFrom||null, as:u.assault?1:0, ao:u.attackOwner||null};
+    if(u.moving) o.mv=[u.moving.to, u.moving.t, u.moving.from, u.moving.assault?1:0];
+    return o;
+  });
+  var data={v:1, day:S.day, uid:S.uid, player:S.player, diff:DIFF, wars:wars, prov:prov, units:units,
+            gold:S.gold, aiT:S.aiT, aggro:S.aggro, mood:S.mood, log:S.log.slice(-40), news:S.news.slice(-30),
+            elim:Array.prototype.slice.call(S.elimSet||[]), cap:Array.prototype.slice.call(S.capSet||[]),
+            broke:Array.prototype.slice.call(S.brokeSet||[]),
+            mail:S.mail.slice(-60), pact:Array.prototype.slice.call(S.pact||[]),
+            mailSeq:S.mailSeq, nextDispatchDay:S.nextDispatchDay, nextMailDay:S.nextMailDay, over:S.over};
+  try{ localStorage.setItem('e1939_save', JSON.stringify(data)); flash('War saved.'); }
+  catch(e){ flash('Could not save (storage unavailable).'); }
+}
+function hasSave(){ try{ return !!localStorage.getItem('e1939_save'); }catch(e){ return false; } }
+function loadGame(){
+  var o; try{ o=JSON.parse(localStorage.getItem('e1939_save')||'null'); }catch(e){ o=null; }
+  if(!o || o.v!==1){ flash('No saved war found.'); return; }
+  if(NET && NET.mode!==0){ netClose(); }
+  DIFF=o.diff||'normal';
+  chosen=o.player;
+  S={ player:o.player, day:o.day, uid:o.uid, sel:firstSector(o.player), pick:new Set(), log:o.log||[],
+      over:o.over||null, wars:new Set(o.wars||[]), prov:{}, units:[], targets:[], aggro:o.aggro||{},
+      aiT:o.aiT||{}, orderMode:true, gold:o.gold||{}, news:o.news||[], elimSet:new Set(o.elim||[]),
+      capSet:new Set(o.cap||[]), brokeSet:new Set(o.broke||[]), mail:o.mail||[], pact:new Set(o.pact||[]),
+      mood:o.mood||{}, mailSeq:o.mailSeq||0, nextDispatchDay:o.nextDispatchDay||0, nextMailDay:o.nextMailDay||2 };
+  for(var k in o.prov){ var p=o.prov[k]; S.prov[k]={id:k, owner:p.o, units:[], mines:p.m, mineBy:p.mb, mineT:p.mt, pend:p.pend||0}; }
+  S.units=(o.units||[]).map(function(x){
+    var u={id:x.id, type:x.type, loc:x.loc, owner:x.owner, hp:x.hp, moving:null, air:null,
+           cameFrom:x.cf||null, assault:!!x.as, attackOwner:x.ao||null};
+    if(x.mv) u.moving={to:x.mv[0], t:x.mv[1], from:x.mv[2], assault:!!x.mv[3]};
+    if(x.ar) u.air=x.ar;
+    return u;
+  });
+  invalidateWars();
+  document.getElementById('start').style.display='none';
+  sndInit(); sndStartMusic();
+  setSpeed(1);
+  selectProv(firstSector(S.player));
+  render();
+  log('Campaign resumed - day '+S.day+'.');
+}
+
 function guestCheck(){
   if(NET.mode!==2 || NET.myNation==null) return;
   if(!NET.lastState) return;
@@ -3663,6 +3877,10 @@ function updateMailBadge(){
 document.getElementById('bNews').onclick=openNewsModal;
 document.getElementById('bMail').onclick=openMailModal;
 document.getElementById('bHelp').onclick=openTutorial;
+document.getElementById('bSound').onclick=function(){
+  sndInit(); sndToggle();
+  document.getElementById('bSound').innerHTML=SND.on?'&#128266; Sound':'&#128263; Sound';
+};
 document.getElementById('tutClose').onclick=closeTutorial;
 (function(){
   try{ if(localStorage.getItem('e1939_tut')!=='off') setTimeout(openTutorial,400); }catch(e){ setTimeout(openTutorial,400); }
