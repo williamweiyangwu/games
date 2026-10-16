@@ -245,7 +245,7 @@
   <div id="fit">
     <div id="stage">
       <header>
-        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v11</span></h1>
+        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v12</span></h1>
         <div id="turnbar">Player 1's Turn</div>
       </header>
 
@@ -366,7 +366,7 @@ var DEFS = {
   produce:   { name: "Produce",    cost: 0, type: "order", art: "◆", text: "Gain 1 resource" },
   rally:     { name: "Rally",      cost: 1, type: "order", art: "⚑", text: "All your units can attack again" },
   explode:   { name: "Explode",    cost: 1, type: "order", art: "✶", text: "Deal 1 damage to a unit" },
-  plan:      { name: "Plan",       cost: 2, type: "order", art: "✎", text: "Draw a card" },
+  plan:      { name: "Plan",       cost: 1, type: "order", art: "✎", text: "Draw a card" },
   snipe:     { name: "Snipe",      cost: 2, type: "order", art: "☠", text: "Deal 3 damage to a unit" },
   bombard:   { name: "Bombard",    cost: 2, type: "order", art: "◉", text: "Deal 2 damage to the enemy HQ" },
   airstrike: { name: "Airstrike",  cost: 3, type: "order", art: "☄", text: "Deal 2 damage to all enemy units" },
@@ -377,7 +377,7 @@ var DEFS = {
   reinforce:   { name: "Reinforce",   cost: 2, type: "order", art: "❋", text: "Heal your HQ for 6" },
   conscription:{ name: "Conscription",cost: 3, type: "order", art: "☷", text: "Draw 2 cards" },
   barrage:     { name: "Barrage",     cost: 4, type: "order", art: "✷", text: "Deal 3 to all enemy units" },
-  sabotage:    { name: "Sabotage",    cost: 1, type: "order", art: "⌁", text: "1 to enemy HQ, draw a card" },
+  sabotage:    { name: "Sabotage",    cost: 2, type: "order", art: "⌁", text: "1 to enemy HQ, draw a card" },
   landing:     { name: "Landing Craft", cost: 4, atk: 3, hp: 3, art: "⚓", text: "On play: draw a card" },
   stuka:       { name: "Stuka",         cost: 4, atk: 3, hp: 2, art: "✥", air: true, text: "On play: 2 to the enemy HQ" },
   guards:      { name: "Guards",        cost: 2, atk: 2, hp: 4, art: "☗", text: "Sturdy line infantry" }
@@ -1647,7 +1647,7 @@ var TUT_STEPS = [
   { t: "3. NATIONS", h: "<p>Each nation has a <b>unique power</b> plus a signature card. Pick yours with the <b>NATION</b> button.</p><ul><li><b>ALLIES</b> \u2605 \u2014 <b>Logistics</b>: draw 1 extra card at the start. Signature: <b>Landing Craft</b>.</li><li><b>AXIS</b> \u271a \u2014 <b>Blitzkrieg</b>: your units can attack the turn they are played. Signature: <b>Stuka</b>.</li><li><b>USSR</b> \u262d \u2014 <b>Motherland</b>: your HQ recovers 2 HP each turn. Signature: <b>Guards</b>.</li></ul>" },
   { t: "4. UNITS", h: "<p>Units fill your front row (max 4). Blue circle = cost, red = attack, green = HP. Hover a card to read its power.</p><ul><li><b>Infantry</b> (1) 2/2 \u2014 basic soldier.</li><li><b>Scout</b> (1) 1/2 \u2014 <b>Haste</b>: attacks the turn played.</li><li><b>Medic</b> (2) 1/3 \u2014 heals your HQ 3.</li><li><b>Grenadier</b> (2) 2/2 \u2014 1 damage to all enemies.</li><li><b>Guards</b> (2) 2/4 \u2014 sturdy line infantry.</li><li><b>Fighter</b> (2) 3/1 \u2014 <b>Air</b>.</li><li><b>Mortar</b> (2) 1/3 \u2014 1 damage to enemy HQ.</li><li><b>Sniper</b> (3) 4/2 \u2014 2 to the strongest enemy.</li><li><b>Artillery</b> (3) 2/3 \u2014 2 to a random enemy.</li><li><b>Paratrooper</b> (3) 3/2 \u2014 <b>Air</b>.</li><li><b>Tank</b> (4) 3/5 \u2014 <b>Guard</b>.</li><li><b>Bunker</b> (4) 1/7 \u2014 <b>Guard</b>.</li><li><b>Commander</b> (4) 3/4 \u2014 your other units +1 attack.</li><li><b>Landing Craft</b> (4) 3/3 \u2014 draw a card.</li><li><b>Stuka</b> (4) 3/2 \u2014 <b>Air</b>, 2 to enemy HQ.</li><li><b>Bomber</b> (5) 4/3 \u2014 <b>Air</b>.</li><li><b>Veteran</b> (5) 5/5 \u2014 battle-hardened.</li></ul>" },
   { t: "5. ATTACKING", h: "<ul><li>Click your unit, then click an enemy unit or the enemy HQ.</li><li>Each unit attacks <b>once per turn</b>. When two units fight, <b>both</b> deal their attack to each other.</li><li><b>Guard</b> (Tank, Bunker) must be fought first \u2014 it shields the enemy HQ.</li><li><b>Air</b> (Fighter, Paratrooper, Stuka, Bomber) ignores Guard and can always hit the HQ.</li><li>A unit normally can't attack the turn it's played \u2014 except <b>Haste</b> (Scout, or any AXIS unit).</li></ul>" },
-  { t: "6. ORDERS", h: "<p>Orders are one-shot cards \u2014 they resolve, then vanish.</p><ul><li><b>Produce</b> (0) \u2014 +1 resource (free!).</li><li><b>Explode</b> (1) \u2014 1 damage to a unit (pick a target).</li><li><b>Rally</b> (1) \u2014 all your units can attack again.</li><li><b>Sabotage</b> (1) \u2014 1 to enemy HQ + draw a card.</li><li><b>Plan</b> (2) \u2014 draw a card.</li><li><b>Snipe</b> (2) \u2014 3 damage to a unit (pick a target).</li><li><b>Bombard</b> (2) \u2014 2 to enemy HQ.</li><li><b>Reinforce</b> (2) \u2014 heal your HQ 6.</li><li><b>Conscription</b> (3) \u2014 draw 2 cards.</li><li><b>Airstrike</b> (3) \u2014 2 to every enemy unit.</li><li><b>Barrage</b> (4) \u2014 3 to every enemy unit.</li></ul>" },
+  { t: "6. ORDERS", h: "<p>Orders are one-shot cards \u2014 they resolve, then vanish.</p><ul><li><b>Produce</b> (0) \u2014 +1 resource (free!).</li><li><b>Explode</b> (1) \u2014 1 damage to a unit (pick a target).</li><li><b>Rally</b> (1) \u2014 all your units can attack again.</li><li><b>Sabotage</b> (2) \u2014 1 to enemy HQ + draw a card.</li><li><b>Plan</b> (1) \u2014 draw a card.</li><li><b>Snipe</b> (2) \u2014 3 damage to a unit (pick a target).</li><li><b>Bombard</b> (2) \u2014 2 to enemy HQ.</li><li><b>Reinforce</b> (2) \u2014 heal your HQ 6.</li><li><b>Conscription</b> (3) \u2014 draw 2 cards.</li><li><b>Airstrike</b> (3) \u2014 2 to every enemy unit.</li><li><b>Barrage</b> (4) \u2014 3 to every enemy unit.</li></ul>" },
   { t: "7. DECK BUILDER", h: "<ul><li>Open <b>DECK</b> to customize your card counts with the <b>+</b> and <b>-</b> buttons.</li><li>Your deck must have at least <b>20 cards</b>.</li><li><b>USE DEFAULT</b> restores the standard deck, <b>SAVE</b> keeps your changes, <b>CLOSE</b> cancels.</li><li>A custom deck applies to the next LOCAL or VS AI game.</li></ul>" },
   { t: "8. PLAY & MENU", h: "<ul><li><b>LOCAL</b> \u2014 two players share one screen (hot-seat).</li><li><b>VS AI</b> \u2014 battle the computer single-player.</li><li><b>ONLINE</b> \u2014 HOST gives you a room code to share, or press <b>ROOMS</b> to join a waiting game.</li><li><b>NATION</b> \u2014 choose your nation. <b>DECK</b> \u2014 build your deck.</li><li><b>TUTORIAL</b> reopens this guide, <b>\u2715</b>/<b>CLOSE</b> shuts it, <b>SOUND</b> toggles audio.</li></ul><p>Good luck, Commander!</p>" }
 ];
