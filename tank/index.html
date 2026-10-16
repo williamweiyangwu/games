@@ -513,7 +513,6 @@ addWall( ARENA+T/2,0, T, ARENA*2+T*2, 4.5, 0x2b3542);
 // base can actually be shot at from the south
 const cover = [
   [-20,-24,8,6,3.2],[20,-24,8,6,3.2],[-20,24,8,6,3.2],[20,24,8,6,3.2],
-  [0,-8,14,4,2.4],[0,8,14,4,2.4],
   [-34,0,5,10,3.0],[34,0,5,10,3.0],
   [-27,-40,6,5,2.6],[27,-40,6,5,2.6],[-27,40,6,5,2.6],[27,40,6,5,2.6],
   [-40,-12,4,4,2.2],[40,-12,4,4,2.2],[-40,12,4,4,2.2],[40,12,4,4,2.2]
@@ -521,7 +520,7 @@ const cover = [
 cover.forEach(([x,z,w,d,h])=> addWall(x,z,w,d,h,0x55604a));
 
 /* ============================================================
-   HQ
+   HQ — the cannon emplacement (炮台) IS the objective
 ============================================================ */
 function makeHQ(team){
   const dir = team===0 ? -1 : 1;
@@ -530,42 +529,23 @@ function makeHQ(team){
   const bodyMat = mat(team===0?0x1b3f70:0x6b1b1b, { r:0.5, m:0.35 });
   const trimMat = mat(team===0?0x6fb6ff:0xff8f7a, { r:0.35, m:0.5 });
 
-  // rectangular concrete apron the whole HQ sits on
+  // concrete platform the cannon emplacement stands on
   const PAD_H = 0.7;
-  const pad = new THREE.Mesh(new THREE.BoxGeometry(25, PAD_H, 18),
+  const pad = new THREE.Mesh(new THREE.BoxGeometry(13, PAD_H, 13),
     mat(0xc2c7ce, { map:concreteTex, r:0.9, m:0.02 }));
   pad.position.y = PAD_H/2; pad.receiveShadow = true; g.add(pad);
-  const padIn = new THREE.Mesh(new THREE.BoxGeometry(22.4, 0.16, 15.4),
+  const padIn = new THREE.Mesh(new THREE.BoxGeometry(11.2, 0.16, 11.2),
     mat(0x565c66, { r:0.85, m:0.05 }));
   padIn.position.y = PAD_H + 0.04; padIn.receiveShadow = true; g.add(padIn);
-  // corner marker posts
+  // hazard corner posts
   for(const sx of [-1,1]) for(const sz of [-1,1]){
     const p = new THREE.Mesh(new THREE.BoxGeometry(0.7,1.5,0.7), trimMat);
-    p.position.set(sx*11.6, PAD_H+0.75, sz*8.1); p.castShadow=true; g.add(p);
+    p.position.set(sx*5.6, PAD_H+0.75, sz*5.6); p.castShadow=true; g.add(p);
   }
   g.position.set(0, PAD_H, z);
-
-  const base = new THREE.Mesh(new THREE.BoxGeometry(18,4.2,12), bodyMat);
-  base.position.y = 2.1; base.castShadow=true; base.receiveShadow=true; g.add(base);
-  const tower = new THREE.Mesh(new THREE.BoxGeometry(6,6,6), bodyMat);
-  tower.position.y = 7.2; tower.castShadow=true; g.add(tower);
-  const roof = new THREE.Mesh(new THREE.BoxGeometry(7.6,0.7,7.6), trimMat);
-  roof.position.y = 10.5; g.add(roof);
-  const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.22,6,6),
-    mat(0xdddddd, { r:0.3, m:0.6 }));
-  mast.position.y = 13.5; g.add(mast);
-  const flag = new THREE.Mesh(new THREE.PlaneGeometry(4.4,2.6),
-    new THREE.MeshBasicMaterial({ color: team===0?0x6fb6ff:0xff6f5a, side:THREE.DoubleSide }));
-  flag.position.set(2.4,15.4,0); g.add(flag);
-  // sandbags
-  for(let i=0;i<7;i++){
-    const b = new THREE.Mesh(new THREE.BoxGeometry(2.4,1.1,1.6),
-      mat(0x7a6a4a, { r:0.95, m:0.02 }));
-    b.position.set(-9+i*3, 0.55, dir*8.2); b.castShadow=true; g.add(b);
-  }
   scene.add(g);
 
-  // turret
+  // the 炮台 (cannon) — this is the HQ
   const gun = new THREE.Group();
   const pedH = 4.2 + PAD_H;
   // rectangular pedestal carrying the cannon down to the ground
@@ -581,16 +561,41 @@ function makeHQ(team){
   const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.42,0.5,7,8),
     mat(0x22262c, { r:0.4, m:0.55 }));
   barrel.rotation.x = Math.PI/2; barrel.position.set(0,0.9,3.2); gun.add(barrel);
-  gun.position.set(0,4.2+PAD_H, z - dir*7.5); scene.add(gun);
+  gun.position.set(0,4.2+PAD_H, z); scene.add(gun);
 
-  const hq = { team, group:g, gun, x:0, z, w:9, d:6, armor:0,
+  const hq = { team, group:g, gun, x:0, z, w:6, d:6, armor:0,
            hp:HQ_HP, maxHp:HQ_HP, cd:1.6, angle: dir===-1?0:Math.PI, alive:true };
-  // solid footprint: the HQ block itself + the cannon mount out front
-  addSolid(0, z, 18, 12, hq);
-  addSolid(0, z - dir*7.5, 7.4, 7.4, hq);
+  // platform footprint blocks tanks (the cannon itself is the shell target)
+  addSolid(0, z, 13, 13, hq);
   return hq;
 }
 const HQS = [ makeHQ(0), makeHQ(1) ];
+
+/* ============================================================
+   CENTER — big building with the flag (neutral landmark)
+============================================================ */
+function makeCenterBuilding(){
+  const x=0, z=0;
+  // the main block is solid: it blocks tanks AND shells
+  addWall(x, z, 18, 18, 9, 0x3a4250);
+  const stone  = mat(0x39424e, { map:panelTex, rx:4, ry:2, r:0.85, m:0.15 });
+  const stone2 = mat(0x4a5462, { r:0.8, m:0.2 });
+  // stepped upper tower
+  const t1 = new THREE.Mesh(new THREE.BoxGeometry(12,5,12), stone);
+  t1.position.set(x, 11.5, z); t1.castShadow=true; t1.receiveShadow=true; scene.add(t1);
+  const t2 = new THREE.Mesh(new THREE.BoxGeometry(8,5,8), stone);
+  t2.position.set(x, 16.5, z); t2.castShadow=true; scene.add(t2);
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(9.4,0.8,9.4), stone2);
+  roof.position.set(x, 19.4, z); roof.castShadow=true; scene.add(roof);
+  // mast + flag
+  const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.24,0.24,7,8),
+    mat(0xdddddd, { r:0.3, m:0.6 }));
+  mast.position.set(x, 23.2, z); scene.add(mast);
+  const flag = new THREE.Mesh(new THREE.PlaneGeometry(6,3.6),
+    new THREE.MeshBasicMaterial({ color:0xffd76a, side:THREE.DoubleSide }));
+  flag.position.set(x+3.2, 25.5, z); scene.add(flag);
+}
+makeCenterBuilding();
 
 /* ============================================================
    PLAYER MARKER (floating chevron above your tank)
@@ -713,7 +718,7 @@ function resetHQS(){
     h.angle=(h.team===0?0:Math.PI);
     h.group.visible=true; h.gun.visible=true;
     h.gun.rotation.y=h.angle;
-    h.gun.position.set(0,4.2+0.7, h.z - (h.team===0?-1:1)*7.5);
+    h.gun.position.set(0,4.2+0.7, h.z);
   });
 }
 
@@ -1366,7 +1371,7 @@ function update(dt){
       }
     }
     h.gun.rotation.y = h.angle;
-    h.gun.position.z = h.z + (h.team===0?1:-1)*7.5;
+    h.gun.position.z = h.z;
   }
 
   stepBullets(dt);
@@ -1874,7 +1879,7 @@ function applySnap(sn, dt){
     h.alive=!!a[0]; h.hp=a[1]; h.group.visible=!!a[3]; h.gun.visible=!!a[3];
     h.angle=angLerp(h.angle, a[2], Math.min(1,dt*10));
     h.gun.rotation.y=h.angle;
-    h.gun.position.z = h.z + (h.team===0?1:-1)*7.5;
+    h.gun.position.z = h.z;
   });
   for(let i=0;i<tanks.length && i<sn.tk.length;i++){
     const t=tanks[i], a=sn.tk[i];
