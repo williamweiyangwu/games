@@ -122,7 +122,7 @@
 </div>
 <div id="standings" class="hidden"></div>
 <div id="banner" class="hidden"></div>
-  <div id="verTag">v2.4</div>
+  <div id="verTag">v2.5</div>
 
 <div id="menu" class="overlay">
   <h1 id="menuTitle">SUN CIRCUIT</h1>
@@ -132,6 +132,9 @@
   </div>
   <div class="pickRow">
     <div class="pickCol"><div class="pickLabel">CAR</div><div id="carPick" class="cards"></div></div>
+  </div>
+  <div class="pickRow">
+    <div class="pickCol"><div class="pickLabel">AI DIFFICULTY</div><div id="diffPick" class="cards"></div></div>
   </div>
   <div class="menuBtns">
     <button id="startBtn">START RACE</button>
@@ -845,6 +848,16 @@
     { name: 'CYAN',    color: 0x26c6da, accent: 0xffffff, accel: 1.06, top: 1.04, grip: 1.06, handling: 1.04, skill: 1.010, line: -1.0, style: 5, blurb: 'well rounded' }
   ];
 
+  /* AI difficulty. `scale` multiplies each AI's `skill` (straight-line pace)
+   * and its corner grip budget, so a harder race is faster everywhere.       */
+  var DIFFICULTY = [
+    { name: 'EASY',   scale: 0.88, blurb: 'relaxed pace' },
+    { name: 'NORMAL', scale: 1.00, blurb: 'even match' },
+    { name: 'HARD',   scale: 1.12, blurb: 'ruthless' }
+  ];
+  var aiDiff = 1;
+  var aiDiffScale = DIFFICULTY[1].scale;
+
   var cars = [];
   function makeCar(spec) {
     var c = {
@@ -853,7 +866,7 @@
       accel: spec.accel, top: spec.top, grip: spec.grip, handling: spec.handling,
       mesh: buildCar(spec.color, spec.accent, spec.style),
       x: 0, z: 0, yaw: 0, speed: 0, steer: 0,
-      vx: 0, vz: 0, boost: 0, boosting: false, drifting: false, contact: 0,
+      vx: 0, vz: 0, boost: 0, boosting: false, drifting: false, contact: 0, stuck: 0,
       lap: 0, s: 0, prevS: 0, lat: 0, i: -1, halfPassed: false,
       lapStart: 0, best: Infinity, finished: false, finishTime: 0,
       wheelSpin: 0, wobble: 0,
@@ -895,7 +908,7 @@
   window.addEventListener('keydown', function (e) {
     if (BLOCK[e.code]) e.preventDefault();
     keys[e.code] = true;
-    if (e.code === 'KeyC') camMode = (camMode + 1) % 4;
+    if (e.code === 'KeyC') camMode = (camMode + 1) % 2;
     if (e.code === 'KeyR') resetRace();
     if (e.code === 'KeyM') { audio.on = !audio.on; flash(audio.on ? 'SOUND ON' : 'SOUND OFF'); }
     if (e.code === 'Escape' && started && !raceOver) togglePause();
@@ -947,11 +960,20 @@
       d.addEventListener('click', function () { selectedCar = i; renderPickers(); updateMenuText(); });
       cp.appendChild(d);
     });
+    var dp = document.getElementById('diffPick');
+    dp.innerHTML = '';
+    DIFFICULTY.forEach(function (d, i) {
+      var el = document.createElement('div');
+      el.className = 'card' + (i === aiDiff ? ' sel' : '');
+      el.innerHTML = '<b>' + d.name + '</b><span>' + d.blurb + '</span>';
+      el.addEventListener('click', function () { aiDiff = i; aiDiffScale = d.scale; renderPickers(); updateMenuText(); });
+      dp.appendChild(el);
+    });
   }
   function updateMenuText() {
     document.getElementById('menuTitle').textContent = TRACKS[selectedTrack].name;
     document.getElementById('menuSub').textContent =
-      ROSTER[selectedCar].name + ' \u00b7 ' + TRACKS[selectedTrack].blurb + ' \u00b7 ' + (ROSTER.length - 1) + ' AI \u00b7 2 laps';
+      ROSTER[selectedCar].name + ' \u00b7 ' + TRACKS[selectedTrack].blurb + ' \u00b7 5 ' + DIFFICULTY[aiDiff].name + ' AI \u00b7 2 laps';
   }
 
   document.getElementById('startBtn').addEventListener('click', function () {
@@ -1047,7 +1069,12 @@
   /* ---------------------------------- AI ---------------------------- */
   function aiDrive(c, dt) {
     var lat = c.lat;
-    var latErr = (c.line + c.wobble) - lat;
+    // Adopt the racing line gradually: at a standing start the AI drives
+    // straight and only eases across to its line as speed builds. Without this
+    // the off-line cars cut across the whole grid at launch and pile into
+    // everyone, which is what left cars stranded on the start straight.
+    var lineBlend = Math.min(1, Math.abs(c.speed) / 14);
+    var latErr = (c.line * lineBlend + c.wobble) - lat;
 
     // proportional lane keeping; too much gain makes the car oscillate into
     // the barrier, so keep this gentle
@@ -1059,8 +1086,8 @@
     // slow down for whatever corner is coming up, not just the current one
     var look = 8 + c.speed * 1.5;
     var kappa = kappaAt(c.s) + kappaAt(c.s + look) + kappaAt(c.s + look * 2);
-    var vCorner = Math.sqrt(surface.aiGrip / Math.max(kappa / 3, 1e-5));
-    var target = Math.min(46 * c.skill, vCorner) * surface.aiSpeed;
+    var vCorner = Math.sqrt(surface.aiGrip * aiDiffScale / Math.max(kappa / 3, 1e-5));
+    var target = Math.min(46 * c.skill * aiDiffScale, vCorner) * surface.aiSpeed;
     if (Math.abs(latErr) > 2.5) target *= 0.9;
     if (Math.abs(err) > 0.25) target *= 0.93;
 
@@ -1092,9 +1119,12 @@
 
     /* There is no invisible rail any more, so a car that ends up wedged against
      * a tree or a grandstand has to be able to back out of it. Sit still for a
-     * while and the car reverses away while steering back towards the circuit. */
+     * while and the car reverses away while steering back towards the circuit.
+     * This also covers a car that somehow stalls ON the circuit (for example
+     * after a start-line shunt) -- but only when its path ahead is clear, so a
+     * car queued behind another one is left to follow instead of reversing.   */
     if (!c.finished) {
-      if (Math.abs(c.speed) < 1.6 && Math.abs(lat) > HALF_W - 3) c.stuck = (c.stuck || 0) + dt;
+      if (Math.abs(c.speed) < 1.6 && (Math.abs(lat) > HALF_W - 3 || gap > 4.5)) c.stuck = (c.stuck || 0) + dt;
       else c.stuck = 0;
       if (c.stuck > 1.2) {
         if (c.stuck < 2.6) {
@@ -1462,14 +1492,12 @@ var pr = projectTrack(c.x, c.z, c.i);
   function updateCamera(dt) {
     var f = yawToForward(player.yaw);
     var back, high, look;
-    if (camMode === 0) { back = 12.5; high = 5.4; look = 7; }
-    else if (camMode === 1) { back = 1.2; high = 2.5; look = 14; }
-    else if (camMode === 2) { back = 22; high = 9.5; look = 5; }
-    else { back = 16; high = 15; look = 0; }
+    if (camMode === 0) { back = 12.5; high = 5.4; look = 7; }        // third person
+    else { back = -0.4; high = 1.45; look = 30; }                    // first person
 
     var tx = player.x - f.x * back;
     var tz = player.z - f.z * back;
-    var lx = player.x + f.x * look, ly = 1.4, lz = player.z + f.z * look;
+    var lx = player.x + f.x * look, ly = camMode === 1 ? 1.3 : 1.4, lz = player.z + f.z * look;
 
     // blend from the grid shot into the chase cam as the lights go out
     if (countdown > 0) {
@@ -1480,7 +1508,7 @@ var pr = projectTrack(c.x, c.z, c.i);
       lx += (g.lx - lx) * u; ly += (g.ly - ly) * u; lz += (g.lz - lz) * u;
     }
 
-    var k = camMode === 3 ? 1 - Math.pow(0.001, dt) : 1 - Math.pow(0.0005, dt);
+    var k = camMode === 1 ? 1 - Math.pow(0.001, dt) : 1 - Math.pow(0.0005, dt);
     camPos.x += (tx - camPos.x) * k;
     camPos.y += (high - camPos.y) * k;
     camPos.z += (tz - camPos.z) * k;
