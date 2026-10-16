@@ -461,8 +461,8 @@
       while a major power fields up to <b>14</b>. The Soviet Union is split into three fronts &mdash;
       <b>South 4</b>, <b>Centre 4</b>, <b>North 5</b> &mdash; and a weak state buys only basic rifles, guns and
       fighters: no tanks, heavy armour or bomber fleets.<br>
-      Orders are raids: send your men at a front, they fight, and <b>the survivors march back home</b> to rearm.
-      Only <b>one territory on the whole map</b> changes hands each day.<br>
+      Send your men at a front and they <b>hold the ground until the country falls</b> &mdash; only then do the
+      survivors march back home to rearm. Only <b>one territory on the whole map</b> changes hands each day.<br>
       You win by holding <b>every</b> territory. You lose if you hold none.
     </p>
     <div id="pick"></div>
@@ -598,7 +598,7 @@
           <p>Click a territory you own to open it, pick a unit in the Shop. Then click
           <b>Battle</b>, tick your units, and click a flashing border to send them into a
           neighbouring country. <b>Select every unit on my fronts</b> grabs your whole line at once.
-          Survivors retire back to the ground they came from.</p>
+          They hold the ground until it falls, then the survivors retire home.</p>
         </div>
       </div>
       <div class="tutS">
@@ -1642,6 +1642,7 @@ function tick(){
       if(u.moving.t<=0){
         u.cameFrom=(u.moving.from!==undefined)?u.moving.from:u.loc;
         u.assault=!!u.moving.assault;
+        u.attackOwner=S.prov[u.moving.to].owner;   /* the enemy holding it when we arrived */
         u.loc=u.moving.to; u.moving=null;
         if(u.owner===S.player) log('Your '+U(u.owner,u.type).name.toLowerCase()+' reached '+NBY[u.loc].name+'.');
       }
@@ -1756,25 +1757,32 @@ function tick(){
   }
   if(capEv.length){ newsCaptures(capEv); capitulateCheck(); newsElim(); }
 
-  /* --- survivors fall back to the province they attacked from --- */
+  /* --- survivors fall back to the province they attacked from ---
+         only once the target has actually been conquered; until then they
+         hold the ground and keep fighting for it. --- */
   S.units.forEach(function(u){
-    if(u.assault && u.cameFrom && u.hp>0 && u.loc!==u.cameFrom && S.prov[u.cameFrom]){
-      var home=u.cameFrom;
-      /* if the enemy took it while we were away, fall back to a friendly neighbour */
-      if(S.prov[home].owner!==u.owner){
-        var alt=null, snb=(NBY[home].snb||[]);
-        for(var j=0;j<snb.length && !alt;j++){ if(S.prov[snb[j]] && S.prov[snb[j]].owner===u.owner) alt=snb[j]; }
-        if(!alt){
-          var mine=sectorsOf(u.owner);
-          for(var k=0;k<mine.length && !alt;k++){ if(S.prov[mine[k]] && S.prov[mine[k]].owner===u.owner) alt=mine[k]; }
-        }
-        if(!alt) alt=home;   /* nowhere friendly left - it fights where it stands */
-        home=alt;
+    if(!u.assault || !u.cameFrom || u.hp<=0) return;
+    if(u.loc===u.cameFrom){ u.assault=false; u.cameFrom=null; return; }
+    var here=S.prov[u.loc];
+    if(!here) return;
+    /* keep fighting only while the original enemy still holds the ground;
+       fall back once it is ours - or taken by someone else. */
+    if(here.owner===u.attackOwner) return;
+    var home=u.cameFrom;
+    /* if the enemy took our staging ground while we were away, fall back to a friendly neighbour */
+    if(S.prov[home] && S.prov[home].owner!==u.owner){
+      var alt=null, snb=(NBY[home].snb||[]);
+      for(var j=0;j<snb.length && !alt;j++){ if(S.prov[snb[j]] && S.prov[snb[j]].owner===u.owner) alt=snb[j]; }
+      if(!alt){
+        var mine=sectorsOf(u.owner);
+        for(var k=0;k<mine.length && !alt;k++){ if(S.prov[mine[k]] && S.prov[mine[k]].owner===u.owner) alt=mine[k]; }
       }
-      u.loc=home;
-      if(u.owner===S.player) log('Your '+U(u.owner,u.type).name.toLowerCase()+' fell back to '+NBY[home].name+'.');
+      if(!alt) alt=home;   /* nowhere friendly left - it fights where it stands */
+      home=alt;
     }
-    u.assault=false; u.cameFrom=null;
+    u.loc=home;
+    u.assault=false; u.cameFrom=null; u.attackOwner=null;
+    if(u.owner===S.player) log('Your '+U(u.owner,u.type).name.toLowerCase()+' fell back to '+NBY[home].name+'.');
   });
 
   /* --- income: mine fields only --- */
