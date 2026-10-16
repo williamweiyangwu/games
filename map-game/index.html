@@ -446,12 +446,12 @@
 
 <div id="start">
   <div id="startBox">
-    <h1>EUROPE 1939<small>Choose your nation &middot; 50 gold in the treasury &middot; Conquer the continent</small></h1>
+    <h1>EUROPE 1939<small>Choose your nation &middot; your own treasury and army &middot; Conquer the continent</small></h1>
     <p class="rules">
-      Nations that fought in the Second World War are on the map. You begin with <b>50 gold</b>, three riflemen
-      and two mine fields at home.<br>
-      There is <b>no daily income</b> &mdash; <b>mine fields are the only gold</b> in the game, 4 gold a day each.
-      Buy mine cars to lay more, and take countries to grow your yield.<br>
+      Nations that fought in the Second World War are on the map. Each begins with its own treasury,
+      riflemen and two mine fields at home &mdash; a major power far more than a micro-state.<br>
+      There is <b>no daily income</b> &mdash; <b>mine fields are the only gold</b> in the game, mined at each
+      nation's own rate. Buy mine cars to lay more, and take countries to grow your yield.<br>
       Click a country to open its sheet: a small map of the country with the units standing in it.
       Recruit in your own territory, then order units into a neighbouring country. Every front is a real front &mdash;
       the AI nations fight each other too, so a war can be won without fighting the whole continent.<br>
@@ -576,7 +576,7 @@
         <div>
           <h4>Pick a country</h4>
           <p>Aim of the war: hold <b>every</b> territory on the map. You start with
-          <b>50 gold</b>, three riflemen and two mine fields at home. The Soviet Union is split
+          <b>your nation's own treasury and riflemen</b> and two mine fields at home. The Soviet Union is split
           into three fronts of its own &mdash; South, Centre and North.</p>
         </div>
       </div>
@@ -967,6 +967,97 @@ const UNITS = {
   hnky     :{key:'hnky'     ,name:'Advanced aircraft',code:'ADV',cost:300,hp:80,atk:46,def:1.3,up:5,col:'#a06ad5',air:true,blurb:'Flies: an engineering wonder only a handful of nations can field.'}
 };
 
+/* ---------- per-nation combat doctrine ----------
+   Real, hand-set numbers - NOT multipliers. Every nation fields its own
+   atk / hp / def / cost / up so a major power and a micro-state are genuinely
+   different armies, sized to what they actually achieved in the war.
+   `gold` = starting treasury, `mine` = gold a mine field pays each day,
+   `start` = riflemen at the outbreak. Any unit field left out keeps the
+   chassis statistics in UNITS above.                                        */
+const NATION_STATS = {
+  /* ================= MAJOR POWERS ================= */
+  germany:{ gold:90, mine:5, start:4, u:{
+    infantry:{atk:10,hp:64,def:1.8}, motor:{atk:13,hp:90}, assault:{atk:16,hp:86},
+    antitank:{atk:22,hp:58}, flak:{atk:16,hp:62}, engineer:{atk:5,hp:62},
+    tank:{atk:31,hp:150,cost:115}, artillery:{atk:18,hp:100,def:2.1},
+    heavy:{cost:550,hp:420,atk:95,def:2.6,up:10},
+    fighter:{atk:19,hp:74}, dive:{atk:29,hp:68}, bomber:{atk:35,hp:74},
+    rocket:{atk:44,hp:64}, hnky:{atk:52,hp:84,def:1.4} }},
+  ussr:{ gold:70, mine:5, start:5, u:{
+    infantry:{atk:7,hp:62,cost:8}, motor:{atk:10,hp:90,cost:55}, assault:{atk:13,hp:86,cost:36},
+    antitank:{atk:16,hp:56}, tank:{atk:25,hp:145,cost:90}, artillery:{atk:16,hp:100},
+    heavy:{atk:38,hp:230,cost:200}, fighter:{atk:15,hp:72}, dive:{atk:23,hp:66},
+    bomber:{atk:30,hp:74}, rocket:{atk:40,hp:62} }},
+  uk:{ gold:85, mine:5, start:3, u:{
+    infantry:{atk:9,hp:62}, motor:{atk:12,hp:86}, assault:{atk:15,hp:82},
+    antitank:{atk:19,hp:58}, tank:{atk:27,hp:140}, artillery:{atk:17,hp:98,def:2.1},
+    heavy:{atk:42,hp:210}, fighter:{atk:21,hp:76}, dive:{atk:27,hp:66},
+    bomber:{atk:36,hp:78}, rocket:{atk:42,hp:64}, hnky:{atk:50,hp:84} }},
+  /* ================= GREAT POWERS ================= */
+  france:{ gold:70, mine:4, start:4, u:{
+    infantry:{atk:9,hp:62,def:1.75}, assault:{atk:15,hp:80}, antitank:{atk:20,hp:56},
+    tank:{atk:30,hp:155,def:1.5}, artillery:{atk:16,hp:98,def:2.1}, heavy:{atk:42,hp:210},
+    fighter:{atk:18,hp:72}, bomber:{atk:32,hp:74} }},
+  italy:{ gold:60, mine:4, start:3, u:{
+    infantry:{atk:7,hp:58}, motor:{atk:10,hp:82}, assault:{atk:12,hp:78},
+    tank:{atk:22,hp:120}, artillery:{atk:14,hp:92,def:1.95}, heavy:{atk:36,hp:195},
+    fighter:{atk:18,hp:72}, bomber:{atk:29,hp:70} }},
+  /* ================= REGIONAL POWERS ================= */
+  poland:{ gold:50, mine:4, start:3, u:{
+    infantry:{atk:8,hp:60}, antitank:{atk:19,hp:54}, tank:{atk:20,hp:110},
+    heavy:{atk:30,hp:175}, fighter:{atk:15,hp:68}, bomber:{atk:28,hp:70} }},
+  czechoslovakia:{ gold:60, mine:4, start:3, u:{
+    infantry:{atk:8,hp:62}, motor:{atk:12,hp:86}, antitank:{atk:19}, tank:{atk:25,hp:128},
+    artillery:{atk:16,hp:96}, heavy:{atk:38,hp:195}, fighter:{atk:16,hp:70} }},
+  finland:{ gold:45, mine:3, start:3, u:{
+    infantry:{atk:11,hp:64,def:1.9}, assault:{atk:15,hp:82}, antitank:{atk:19},
+    artillery:{atk:15,hp:94,def:2.2}, fighter:{atk:16,hp:70} }},
+  hungary:{ gold:50, mine:4, start:3, u:{
+    infantry:{atk:7,hp:60}, motor:{atk:10,hp:84}, tank:{atk:22,hp:120},
+    heavy:{atk:35,hp:190}, fighter:{atk:16,hp:70}, bomber:{atk:29,hp:70} }},
+  romania:{ gold:55, mine:5, start:3, u:{
+    infantry:{atk:7,hp:58}, tank:{atk:20,hp:115}, heavy:{atk:33,hp:185},
+    fighter:{atk:16,hp:70}, bomber:{atk:28,hp:70} }},
+  yugoslavia:{ gold:50, mine:3, start:3, u:{
+    infantry:{atk:8,hp:60}, antitank:{atk:18}, tank:{atk:20,hp:110}, fighter:{atk:15,hp:68} }},
+  bulgaria:{ gold:45, mine:3, start:2, u:{
+    infantry:{atk:6,hp:58}, tank:{atk:20,hp:112}, heavy:{atk:34,hp:185}, fighter:{atk:16,hp:70} }},
+  greece:{ gold:45, mine:3, start:3, u:{
+    infantry:{atk:8,hp:60,def:1.8}, assault:{atk:13,hp:80}, artillery:{atk:15,def:2.0},
+    fighter:{atk:15,hp:68} }},
+  turkey:{ gold:45, mine:3, start:3, u:{
+    infantry:{atk:6,hp:58}, tank:{atk:20,hp:118}, fighter:{atk:16,hp:70} }},
+  /* ============ MINOR / NEUTRAL STATES ============ */
+  spain:{ gold:45, mine:3, start:2, u:{
+    infantry:{atk:6,hp:58}, motor:{atk:9,hp:80}, assault:{atk:11,hp:74},
+    artillery:{atk:13,hp:90,def:1.9}, tank:{atk:19,hp:110}, fighter:{atk:14,hp:66}, bomber:{atk:26,hp:68} }},
+  sweden:{ gold:65, mine:4, start:3, u:{
+    infantry:{atk:8,hp:62}, motor:{atk:12,hp:86}, assault:{atk:14,hp:80},
+    artillery:{atk:16,hp:96,def:2.0}, tank:{atk:24,hp:126}, fighter:{atk:17,hp:72}, bomber:{atk:30,hp:72} }},
+  netherlands:{ gold:55, mine:4, start:2, u:{
+    infantry:{atk:6,hp:56}, motor:{atk:9,hp:80}, assault:{atk:11,hp:74},
+    artillery:{atk:13,hp:90,def:1.9}, fighter:{atk:14,hp:66}, bomber:{atk:26,hp:68} }},
+  belgium:{ gold:55, mine:4, start:2, u:{
+    infantry:{atk:6,hp:58}, motor:{atk:9,hp:80}, assault:{atk:11,hp:74},
+    artillery:{atk:13,hp:90,def:1.9}, fighter:{atk:14,hp:66}, bomber:{atk:26,hp:68} }},
+  norway:{ gold:45, mine:3, start:2, u:{
+    infantry:{atk:6,hp:58}, assault:{atk:11,hp:74}, artillery:{atk:13,hp:90,def:1.9},
+    fighter:{atk:14,hp:66}, bomber:{atk:26,hp:68} }},
+  denmark:{ gold:40, mine:3, start:1, u:{
+    infantry:{atk:5,hp:55}, artillery:{atk:12,hp:88,def:1.85}, fighter:{atk:13,hp:64} }},
+  switzerland:{ gold:60, mine:4, start:2, u:{
+    infantry:{atk:7,hp:60,def:1.95}, assault:{atk:13,hp:78}, artillery:{atk:15,hp:94,def:2.05},
+    fighter:{atk:15,hp:68} }},
+  portugal:{ gold:40, mine:3, start:1, u:{
+    infantry:{atk:5,hp:56}, artillery:{atk:12,hp:88,def:1.85}, fighter:{atk:13,hp:64} }},
+  ireland:{ gold:35, mine:3, start:1, u:{
+    infantry:{atk:5,hp:56}, artillery:{atk:12,hp:88,def:1.85}, fighter:{atk:13,hp:64} }},
+  estonia:{ gold:35, mine:3, start:1, u:{ infantry:{atk:5,hp:55}, fighter:{atk:13,hp:64} }},
+  latvia:{ gold:35, mine:3, start:1, u:{ infantry:{atk:5,hp:55}, fighter:{atk:13,hp:64} }},
+  lithuania:{ gold:35, mine:3, start:1, u:{ infantry:{atk:5,hp:55}, fighter:{atk:13,hp:64} }},
+  albania:{ gold:30, mine:2, start:1, u:{ infantry:{atk:4,hp:52}, fighter:{atk:12,hp:62} }}
+};
+
 /* ---------- each nation's own weapons ----------
    format  chassis:DisplayName|blurb
    the chassis supplies the statistics, the entry supplies the historical name.
@@ -1224,13 +1315,53 @@ const ARSENAL = {
     'rocket:Junkers Ju 87|German dive bombers never overflew Turkey in anger.',
     'hnky:Supermarine Spitfire|Spitfires were delivered in 1941 and did real work over the Straits.']}
 };
+/* historical names per nation+chassis, harvested from ARSENAL */
+var NAT_NAME={};
+(function(){
+  for(var nat in ARSENAL){
+    NAT_NAME[nat]={};
+    ['army','air'].forEach(function(k){
+      ARSENAL[nat][k].forEach(function(s){
+        var i=s.indexOf(':'), j=s.indexOf('|');
+        NAT_NAME[nat][s.slice(0,i)]=s.slice(i+1,j);
+      });
+    });
+  }
+})();
+
+/* THE single source of truth for what a nation's unit actually is.
+   Merges the chassis in UNITS with the nation's own numbers and name. */
+var STAT_CACHE={};
+function U(owner,key){
+  var base=UNITS[key];
+  if(!base) return base;
+  var ck=owner+'>'+key;
+  var c=STAT_CACHE[ck];
+  if(c) return c;
+  var p=NATION_STATS[owner], ov=p&&p.u&&p.u[key];
+  var o;
+  if(ov){
+    o={}; for(var k in base) o[k]=base[k];
+    for(var k2 in ov) o[k2]=ov[k2];
+  } else {
+    o={}; for(var k3 in base) o[k3]=base[k3];
+  }
+  var nm=NAT_NAME[owner]&&NAT_NAME[owner][key];
+  if(nm) o.name=nm;
+  STAT_CACHE[ck]=o;
+  return o;
+}
+function startGold(c){ var p=NATION_STATS[c]; return (p&&p.gold!=null)?p.gold:START_MONEY; }
+function startUnits(c){ var p=NATION_STATS[c]; return (p&&p.start!=null)?p.start:3; }
+function mineGold(c){ var p=NATION_STATS[c]; return (p&&p.mine!=null)?p.mine:MINE_GOLD; }
+
 function arsenal(nat,kind){
   var a=ARSENAL[nat];
   if(!a || !a[kind] || !a[kind].length) return null;
   return a[kind].map(function(s){
     var i=s.indexOf(':'), j=s.indexOf('|');
     var key=s.slice(0,i), name=s.slice(i+1,j), blurb=s.slice(j+1);
-    var t=UNITS[key]||UNITS[kind==='army'?'infantry':'fighter'];
+    var t=U(nat,key)||UNITS[kind==='army'?'infantry':'fighter'];
     return {type:key,name:name,blurb:blurb,col:t.col,code:t.code,cost:t.cost,hp:t.hp,
             atk:t.atk,def:t.def,up:t.up,mines:!!t.mines,air:!!t.air};
   });
@@ -1379,7 +1510,7 @@ function newGame(player){
                      mines:(home&&first)?2:0, mineBy:(home&&first)?sec.nat:null, mineT:5, pend:0 };
   });
   ALL.forEach(function(n){
-    S.gold[n.id]=(n.id==='iceland')?0:START_MONEY;
+    S.gold[n.id]=(n.id==='iceland')?0:startGold(n.id);
     S.aiT[n.id]=(n.id==='iceland')?99:(4+(Math.random()*4|0));
     S.aggro[n.id]=0.9+Math.random()*0.45;
     S.mood[n.id]=0;
@@ -1392,11 +1523,11 @@ function newGame(player){
       S.wars.add(warKey(n.id,m));
     });
   });
-  /* three riflemen per land nation so no front starts naked - spread over its pieces */
+  /* a starting force per land nation so no front starts naked - spread over its pieces */
   ALL.forEach(function(n){
     if(n.id==='iceland') return;
     var secs=sectorsOf(n.id);
-    for(var i=0;i<3;i++){
+    for(var i=0;i<startUnits(n.id);i++){
       var sid=secs[i%secs.length];
       spawn('infantry', sid, S.prov[sid].owner);
     }
@@ -1404,7 +1535,7 @@ function newGame(player){
   S.pick.clear();
   invalidateWars();
   selectProv(firstSector(player));
-  log('War breaks out. 50 gold in the treasury, three riflemen and two mine fields at home.');
+  log('War breaks out. '+startGold(player)+' gold in the treasury, '+startUnits(player)+' riflemen and two mine fields at home.');
   log('Click a territory to inspect it, recruit, and give orders.');
   render();
 }
@@ -1412,16 +1543,16 @@ function newGame(player){
 /* ---------- helpers ---------- */
 function spawn(type,loc,owner){
   var u={ id:++S.uid, type:type, loc:loc, owner:owner,
-          hp:UNITS[type].hp, moving:null, air:null };
+          hp:U(owner,type).hp, moving:null, air:null };
   S.units.push(u);
   return u;
 }
 function unitsAt(id){ return S.units.filter(function(u){ return u.loc===id && u.hp>0; }); }
 function landOf(c){ var n=0; for(var k in S.prov) if(S.prov[k].owner===c) n++; return n; }
 function unitsOf(c){ return S.units.filter(function(u){ return u.owner===c && u.hp>0; }); }
-function upkeep(c){ return unitsOf(c).reduce(function(s,u){ return s+UNITS[u.type].up; },0); }
+function upkeep(c){ return unitsOf(c).reduce(function(s,u){ return s+U(u.owner,u.type).up; },0); }
 function mineCount(c){ var t=0; for(var id in S.prov) if(S.prov[id].owner===c) t+=S.prov[id].mines; return t; }
-function income(c){ return mineCount(c)*MINE_GOLD - upkeep(c); }
+function income(c){ return mineCount(c)*mineGold(c) - upkeep(c); }
 
 /* ---- garrison capacity: big nations field bigger armies ---- */
 var SIZE_AREA={};
@@ -1448,7 +1579,7 @@ function capacity(c){
   return Math.max(6, Math.min(18, Math.round(7 + 1.6*Math.log(a/1500)/Math.log(2))));
 }
 function power(u,loc){
-  var t=UNITS[u.type], m=(S.prov[loc].owner===u.owner)?t.def:1;
+  var t=U(u.owner,u.type), m=(S.prov[loc].owner===u.owner)?t.def:1;
   if(m>1 && natOf(loc)===u.owner) m*=CAPITAL_DEF;   /* homeland fighting is fiercer */
   return t.atk*m*(0.55+0.45*u.hp/t.hp);
 }
@@ -1492,7 +1623,7 @@ function tick(){
         u.cameFrom=(u.moving.from!==undefined)?u.moving.from:u.loc;
         u.assault=!!u.moving.assault;
         u.loc=u.moving.to; u.moving=null;
-        if(u.owner===S.player) log('Your '+UNITS[u.type].name.toLowerCase()+' reached '+NBY[u.loc].name+'.');
+        if(u.owner===S.player) log('Your '+U(u.owner,u.type).name.toLowerCase()+' reached '+NBY[u.loc].name+'.');
       }
     }
   });
@@ -1506,7 +1637,7 @@ function tick(){
     var tgt=unitsAt(u.air).filter(function(x){ return x.owner!==u.owner; });
     if(tgt.length){
       tgt.sort(function(a,b){ return a.hp-b.hp; });
-      tgt[0].hp -= UNITS[u.type].atk*0.75;
+      tgt[0].hp -= U(u.owner,u.type).atk*0.75;
       if(u.owner===S.player) log('Bombers hit the enemy in '+NBY[u.air].name+'.');
     }
   });
@@ -1523,13 +1654,13 @@ function tick(){
     }
     /* mine cars keep laying */
     unitsAt(id).forEach(function(u){
-      if(UNITS[u.type].mines && p.mines<3){
+      if(U(u.owner,u.type).mines && p.mines<3){
         p.mineT--;
         if(p.mineT<=0){
           if(p.mineBy!==u.owner){ p.mineBy=u.owner; p.mines=0; }
           p.mines++; p.mineT=5;
           if(u.owner===S.player && p.mines===1)
-            log('Mine car laid the first mine field in '+NBY[p.id].name+' (+'+MINE_GOLD+' gold a day).');
+            log('Mine car laid the first mine field in '+NBY[p.id].name+' (+'+mineGold(u.owner)+' gold a day).');
         }
       }
     });
@@ -1565,7 +1696,7 @@ function tick(){
   if(dead.length){
     dead.forEach(function(u){
       var i=S.units.indexOf(u); if(i>=0) S.units.splice(i,1);
-      if(u.owner===S.player) log('Your '+UNITS[u.type].name.toLowerCase()+' was destroyed in '+NBY[u.loc].name+'.');
+      if(u.owner===S.player) log('Your '+U(u.owner,u.type).name.toLowerCase()+' was destroyed in '+NBY[u.loc].name+'.');
     });
   }
 
@@ -1621,7 +1752,7 @@ function tick(){
         home=alt;
       }
       u.loc=home;
-      if(u.owner===S.player) log('Your '+UNITS[u.type].name.toLowerCase()+' fell back to '+NBY[home].name+'.');
+      if(u.owner===S.player) log('Your '+U(u.owner,u.type).name.toLowerCase()+' fell back to '+NBY[home].name+'.');
     }
     u.assault=false; u.cameFrom=null;
   });
@@ -1635,12 +1766,12 @@ function tick(){
     /* a nation that cannot pay its bills disbands its priciest unit */
     if(S.gold[n.id]<=-40 && unitsOf(n.id).length>1){
       var costy=unitsOf(n.id).sort(function(a,b){
-        return (UNITS[b.type].up*10+UNITS[b.type].cost)-(UNITS[a.type].up*10+UNITS[a.type].cost);
+        return (U(b.owner,b.type).up*10+U(b.owner,b.type).cost)-(U(a.owner,a.type).up*10+U(a.owner,a.type).cost);
       })[0];
       var ix=S.units.indexOf(costy);
       if(ix>=0) S.units.splice(ix,1);
       if(costy.owner===S.player)
-        log('Treasury empty - your '+UNITS[costy.type].name.toLowerCase()+' was disbanded to pay the bills.');
+        log('Treasury empty - your '+U(costy.owner,costy.type).name.toLowerCase()+' was disbanded to pay the bills.');
     }
     if(S.gold[n.id]<=-40 && !S.brokeSet.has(n.id)){ S.brokeSet.add(n.id); newsCollapse(n.id); }
   });
@@ -1689,7 +1820,7 @@ function aiTurn(){
     if(gold>=10){
       var choice=null;
       var ar=shopList('army',n.id), air=shopList('air',n.id);
-      var cars=unitsOf(n.id).filter(function(u){ return UNITS[u.type].mines; }).length;
+      var cars=unitsOf(n.id).filter(function(u){ return U(u.owner,u.type).mines; }).length;
       var mineU=ar.filter(function(u){return u.mines;})[0]||ar[0];
       var artU =ar.filter(function(u){return u.def>=1.9;})[0]||ar[0];
       var tankU=ar.filter(function(u){return u.atk>=20&&u.def<1.9;})[0]||ar[ar.length-2]||ar[0];
@@ -1700,9 +1831,9 @@ function aiTurn(){
       else if(gold>=tankU.cost && (threat || Math.random()<0.35)) choice=tankU.type;
       else choice=ar[0].type;
       var spot=pickRecruit(n.id);
-      if(spot && UNITS[choice].cost<=gold && unitsAt(spot).length<capacity(spot)){
+      if(spot && U(n.id,choice).cost<=gold && unitsAt(spot).length<capacity(spot)){
           spawn(choice,spot,n.id);
-          S.gold[n.id]-=UNITS[choice].cost;
+          S.gold[n.id]-=U(n.id,choice).cost;
           if(SHOWCASE[choice]) newsUnveil(n.id,choice,spot);
       }
     }
@@ -1732,7 +1863,7 @@ function aiTurn(){
         if(stack.length-sent<=1 && sent>0) break;
         var w=power(u,id);
         if(sent>=force && sent>0) break;
-        if(UNITS[u.type].air && Math.random()<0.6) continue;
+        if(U(u.owner,u.type).air && Math.random()<0.6) continue;
         u.moving={to:best,t:1,from:id,assault:true}; sent+=w;
       }
       break;   /* one offensive action per turn */
@@ -1785,7 +1916,7 @@ function moveTo(dst){
     if(!S.pick.has(u.id)) return;                                 /* only selected units */
     if((NBY[u.loc].snb||[]).indexOf(dst)<0) return;                 /* must border the target */
     ids.push(u.id);
-    if(UNITS[u.type].air && S.prov[dst].owner!==S.player) u.air=dst;
+    if(U(u.owner,u.type).air && S.prov[dst].owner!==S.player) u.air=dst;
     else u.moving={to:dst,t:1,from:u.loc,assault:(S.prov[dst].owner!==S.player)};
     n++;
   });
@@ -1801,7 +1932,7 @@ function moveTo(dst){
 }
 function recruit(type){
   var id=S.sel;
-  var u=UNITS[type];
+  var u=U(S.player,type);
   if(!S.prov[id] || S.prov[id].owner!==S.player){ flash('Select one of your own territories to recruit.'); return; }
   if(unitsAt(id).length>=capacity(id)){ flash('Garrison is full ('+capacity(id)+' units).'); return; }
   if((S.gold[S.player]||0)<u.cost){ flash('Not enough gold for a '+u.name.toLowerCase()+' ('+u.cost+').'); return; }
@@ -1855,7 +1986,7 @@ function shopList(kind,nat){
   if(src) return src;
   return FALLBACK[kind].map(function(s){
     var i=s.indexOf(':'), j=s.indexOf('|');
-    var key=s.slice(0,i), t=UNITS[key];
+    var key=s.slice(0,i), t=U(nat,key);
     return {type:key,name:s.slice(i+1,j),blurb:s.slice(j+1),col:t.col,code:t.code,cost:t.cost,
             hp:t.hp,atk:t.atk,def:t.def,up:t.up,mines:!!t.mines,air:!!t.air};
   });
@@ -1893,7 +2024,7 @@ function paintShop(el, provId){
   var here=unitsAt(provId).length;
   var cap=capacity(provId||S.player);
   Array.prototype.forEach.call(el.querySelectorAll('.unit'),function(e){
-    var t=UNITS[e.getAttribute('data-t')];
+    var t=U(S.player,e.getAttribute('data-t'));
     e.disabled=!mine || gold<t.cost || here>=cap;
   });
   var cnt=document.getElementById('shopCount');
@@ -1986,7 +2117,7 @@ function renderMini(id){
   var see=(p.owner===S.player)||known(id);
   us.forEach(function(u,i){
     if(!see) return;
-    var t=UNITS[u.type];
+    var t=U(u.owner,u.type);
     var gx=m.x+((i%cols)-((cols-1)/2))*(sz*2.5);
     var gy=m.y+(Math.floor(i/cols)-((rows-1)/2))*(sz*2.5);
     var g=el('g',{class:'mu'});
@@ -2012,7 +2143,7 @@ function renderMini(id){
   /* captions: mine yield, and what cannot be seen */
   var cap=el('text',{class:'cap',x:(vx+vw*0.03).toFixed(1),y:(vy+vh*0.09).toFixed(1)});
   cap.textContent=(see? '' : 'no intelligence \路 ')+
-    (p.mines>0&&see? p.mines+' mine field'+(p.mines>1?'s':'')+' \路 +'+(p.mines*MINE_GOLD)+' gold/day'
+    (p.mines>0&&see? p.mines+' mine field'+(p.mines>1?'s':'')+' \路 +'+(p.mines*mineGold(p.owner))+' gold/day'
                    : (p.owner===S.player? 'no mines \路 no income' : ''));
   svg.appendChild(cap);
   if(us.length && !see){
@@ -2123,7 +2254,7 @@ function renderPanel(){
   document.getElementById('sLand').textContent=landOf(me);
   document.getElementById('sUnits').textContent=unitsOf(me).length;
   document.getElementById('sPow').textContent=Math.round(unitsOf(me).reduce(function(s,u){
-    return s+UNITS[u.type].atk; },0));
+    return s+U(u.owner,u.type).atk; },0));
   var d=new Date(1939,8,1+S.day);
   var mon=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
   document.getElementById('sDate').textContent=d.getDate()+' '+mon+' '+d.getFullYear();
@@ -2141,7 +2272,7 @@ function renderPanel(){
       (p.mines?' <span style="color:#9aa4b8">(+'+minePower(id)+' mines)</span>':'')
     : '<span style="color:#8d99b0">no intelligence</span>';
   document.getElementById('pMines').innerHTML=see
-    ? (p.mines? p.mines+' <span style="color:#57b567">+'+p.mines*MINE_GOLD+'/day</span>' : '0')
+    ? (p.mines? p.mines+' <span style="color:#57b567">+'+p.mines*mineGold(p.owner)+'/day</span>' : '0')
     : '?';
   renderMini(id);
   renderBorderGarrisons(id, me);
@@ -2161,7 +2292,7 @@ function renderPanel(){
   if(listing && listing.length){
     var h='';
     listing.forEach(function(u){
-      var t=UNITS[u.type];
+      var t=U(u.owner,u.type);
       h+='<div class="u'+(S.pick.has(u.id)?' pick':'')+'" data-u="'+u.id+'">'+
          '<span class="code" style="background:'+t.col+'">'+t.code+'</span>'+
          '<span class="bar"><i style="width:'+Math.max(0,Math.round(100*u.hp/t.hp))+'%;background:'+
@@ -2212,7 +2343,7 @@ function renderPanel(){
 
   /* ranks */
   var arr=ALL.filter(function(x){ return x.id!=='iceland'; }).map(function(x){
-    return {n:x,p:unitsOf(x.id).reduce(function(s,u){ return s+UNITS[u.type].atk; },0),
+    return {n:x,p:unitsOf(x.id).reduce(function(s,u){ return s+U(u.owner,u.type).atk; },0),
             l:landOf(x.id),g:S.gold[x.id]||0};
   });
   arr.sort(function(a,b){ return (b.p+b.l*12)-(a.p+a.l*12); });
@@ -2368,7 +2499,9 @@ function buildPicker(){
       var nn=NBY[chosen];
       document.getElementById('goWho').innerHTML=
         'You will play <b>'+nn.flag+' '+nn.name+'</b> &middot; '+nn.nb.length+
-        ' front'+(nn.nb.length>1?'s':'')+' &middot; 50 gold, 3 riflemen, 2 mine fields';
+        ' front'+(nn.nb.length>1?'s':'')+' &middot; '+startGold(chosen)+' gold, '+
+        startUnits(chosen)+' rifleman'+(startUnits(chosen)>1?'s':'')+
+        ', '+mineGold(chosen)+' gold a mine/day';
     };
   });
 }
@@ -2839,13 +2972,13 @@ function netApplyCmd(nat,msg){
       var u=byId(Number(ids[i]));
       if(!u || u.owner!==nat || u.hp<=0) continue;
       if((NBY[u.loc].snb||[]).indexOf(dst)<0) continue;
-      if(UNITS[u.type].air && S.prov[dst].owner!==nat) u.air=dst;
+      if(U(u.owner,u.type).air && S.prov[dst].owner!==nat) u.air=dst;
       else u.moving={to:dst,t:1,from:u.loc,assault:(S.prov[dst].owner!==nat)};
       n++;
     }
     if(n) NET.dirty=true;
   } else if(msg.k==='r' && msg.t && msg.loc){
-    var uu=UNITS[msg.t]; if(!uu) return;
+    var uu=U(nat,msg.t); if(!uu) return;
     if(!S.prov[msg.loc] || S.prov[msg.loc].owner!==nat) return;
     if(unitsAt(msg.loc).length>=capacity(msg.loc)) return;
     if((S.gold[nat]||0)<uu.cost) return;
@@ -2956,7 +3089,7 @@ function unitFancy(nid,type){
   var a=arsenal(nid,'army')||[], b=arsenal(nid,'air')||[], e=null,i;
   for(i=0;i<a.length;i++) if(a[i].type===type) e=a[i];
   if(!e) for(i=0;i<b.length;i++) if(b[i].type===type) e=b[i];
-  return e? e.name : UNITS[type].name;
+  return e? e.name : U(nid,type).name;
 }
 /* how newsworthy a machine is - the heaviest thing on the field leads the story */
 var RENOWN={'hnky':6,'heavy':6,'rocket':5,'bomber':5,'dive':4,'tank':4,'fighter':3,'artillery':3,'assault':3,
@@ -2995,7 +3128,7 @@ function newsCaptures(evs){
     var verb=pick(['occupied','overran','swept across','seized']);
     var body='On '+dayFull(first.d)+', the army of <b>'+tn+'</b> '+verb+' <b>'+list+'</b>. ';
     if(ln){
-      var t=UNITS[lead.type];
+      var t=U(lead.owner,lead.type);
       if(t.air) body+='Squadrons of the <b>'+ln+'</b> burned the roads ahead of the columns. ';
       else if(t.atk>=20) body+='The assault was led by the <b>'+ln+'</b>; nothing in the garrison was heavy enough to stop it. ';
       else if(t.def>=1.7) body+='Under the covering fire of the <b>'+ln+'</b>, the infantry moved up at first light. ';
@@ -3019,7 +3152,7 @@ function newsUnveil(nid,type,loc){
   if(!newsCanvas()) return;
   var tn=Nname(nid);
   var ln=unitFancy(nid,type);
-  var t=UNITS[type];
+  var t=U(nid,type);
   var detail=t.air
     ? pick(['Design bureaux across the continent have been told to answer it before the snow clears.',
             'The airfields that can fly it count their mechanics carefully; there will be no spares.'])
