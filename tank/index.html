@@ -50,6 +50,9 @@
   #shopBtn { position:fixed; z-index:55; right:10px; top:10px; width:44px; height:34px;
     font-weight:bold; font-size:12px; letter-spacing:1px; cursor:pointer; background:#0a1120cc;
     border:2px solid #3b6a2b; color:#b6ff8a; border-radius:4px; display:none; }
+  #boostBtn { position:fixed; z-index:55; left:10px; top:78px; width:64px; height:36px;
+    font-weight:bold; font-size:12px; letter-spacing:1px; cursor:pointer; background:#0a1120cc;
+    border:2px solid #8fd0ff; color:#8fd0ff; border-radius:4px; display:none; }
   #touch { position:fixed; left:0; right:0; bottom:0; height:52%; z-index:54; display:none; touch-action:none; }
   #touch.on { display:block; }
   .joy { position:fixed; left:0; top:0; width:116px; height:116px; margin:-58px 0 0 -58px;
@@ -189,11 +192,12 @@
 <div class="hud" id="hint">
   WASD / ARROWS — move<br>
   MOUSE — aim &nbsp;|&nbsp; CLICK / SPACE — fire<br>
-  B — shop &nbsp;|&nbsp; 1-5 — quick buy
+  B — shop &nbsp;|&nbsp; 1-6 — quick buy
 </div>
 <div class="hud" id="cash">$0</div>
 <button id="mute" title="toggle sound">🔊</button>
 <button id="shopBtn" title="open armory">SHOP</button>
+<button id="boostBtn" title="hold to boost">BOOST</button>
 <div class="hud" id="netbadge" style="display:none"></div>
 <div class="hud" id="left"></div>
 <div class="hud" id="right"></div>
@@ -235,7 +239,7 @@
     <button class="nbtn" id="mOnline" style="border-color:#c9a3ff;box-shadow:0 0 18px #a855f755">ONLINE — PLAY WITH FRIENDS</button>
   </div>
   <div style="text-align:center;margin-top:16px;font-size:11px;color:#7d90ad">
-    WASD move &nbsp;•&nbsp; MOUSE aim &nbsp;•&nbsp; CLICK fire &nbsp;•&nbsp; B shop &nbsp;•&nbsp; 1-5 quick buy</div>
+    WASD move &nbsp;•&nbsp; MOUSE aim &nbsp;•&nbsp; CLICK fire &nbsp;•&nbsp; B shop &nbsp;•&nbsp; 1-6 quick buy</div>
 </div></div>
 
 <div id="online"><div class="panel">
@@ -336,13 +340,13 @@ import * as THREE from 'three';
 
 /* ---- tuning constants (declared up front: makeHQ() runs below) ---- */
 const SIEGE_TIME = 180;      // 3:00 for siege / tdm
-const HQ_HP      = 2000;     // HQ hp in siege and skirmish
+const HQ_HP      = 2600;     // HQ hp in siege and skirmish
 
 // AI difficulty — only affects bots, never the player
 const DIFFS = {
-  easy:   { label:'EASY',   spread:0.135, cdMul:1.55, dmgMul:0.62, retargetMul:1.6, aimTol:0.50 },
+  easy:   { label:'EASY',   spread:0.140, cdMul:1.55, dmgMul:0.55, retargetMul:1.6, aimTol:0.50 },
   normal: { label:'NORMAL', spread:0.055, cdMul:1.00, dmgMul:1.00, retargetMul:1.0, aimTol:0.22 },
-  hard:   { label:'HARD',   spread:0.020, cdMul:0.62, dmgMul:1.38, retargetMul:0.55, aimTol:0.10 },
+  hard:   { label:'HARD',   spread:0.018, cdMul:0.62, dmgMul:1.22, retargetMul:0.55, aimTol:0.11 },
 };
 let aiLevel = 'normal';
 const AI = () => DIFFS[aiLevel] || DIFFS.normal;
@@ -648,16 +652,17 @@ const marker = new THREE.Group();
 const CLASSES = {
   scout:   { name:'SCOUT',    cost:0,    hp:110, speed:15.5, dmg:13, rate:0.24, range:52, radius:1.5, turn:7, bs:110, splash:0 },
   medium:  { name:'MEDIUM',   cost:600,  hp:190, speed:12.0, dmg:22, rate:0.42, range:62, radius:1.75,turn:5, bs:120, splash:0 },
-  heavy:   { name:'HEAVY',    cost:1400, hp:340, speed:8.6,  dmg:42, rate:0.80, range:60, radius:2.15,turn:3.2,bs:105, splash:0 },
-  arty:    { name:'ARTILLERY',cost:2000, hp:160, speed:8.2,  dmg:70, rate:1.75, range:120,radius:1.85,turn:2.6,bs:80,  splash:10 },
-  sniper:  { name:'SNIPER',   cost:1600, hp:130, speed:11.0, dmg:88, rate:1.25, range:135,radius:1.6, turn:4,  bs:190, splash:0 },
+  flame:   { name:'FLAME',    cost:1100, hp:160, speed:13.5, dmg:9,  rate:0.09, range:42, radius:1.6, turn:6, bs:80,  splash:0, spread:0.08, bcol:0xff8a3a },
+  heavy:   { name:'HEAVY',    cost:1400, hp:340, speed:9.0,  dmg:42, rate:0.80, range:60, radius:2.15,turn:3.2,bs:105, splash:0 },
+  arty:    { name:'ARTILLERY',cost:1800, hp:160, speed:8.2,  dmg:70, rate:1.75, range:120,radius:1.85,turn:2.6,bs:80,  splash:10 },
+  sniper:  { name:'SNIPER',   cost:1600, hp:130, speed:11.0, dmg:80, rate:1.25, range:125,radius:1.6, turn:4,  bs:190, splash:0 },
 };
-const ORDER = ['scout','medium','heavy','arty','sniper'];
+const ORDER = ['scout','medium','flame','heavy','arty','sniper'];
 const TEAMS = [
   { color:0x3b82f6, trim:0x9fd4ff, names:['YOU','B-2','B-3','B-4','B-5'], spawn:[[-11,-25],[-5,-27],[0,-25],[5,-27],[11,-25]] },
   { color:0xef4444, trim:0xffb0a0, names:['R-1','R-2','R-3','R-4','R-5'], spawn:[[11,25],[5,27],[0,25],[-5,27],[-11,25]] },
 ];
-const BOT_LOADOUT = ['medium','heavy','scout','arty','sniper'];
+const BOT_LOADOUT = ['medium','flame','heavy','scout','arty','sniper'];
 
 /* ============================================================
    TANK
@@ -685,7 +690,8 @@ function buildTankMesh(team, key){
   const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.6,0.5,8), trim);
   cup.position.y=1.0; turret.add(cup);
   const barrelLen = r*3.1;
-  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.17,0.22,barrelLen,8), dark);
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.17,0.22,barrelLen,8),
+    c.bcol ? mat(c.bcol, { r:0.45, m:0.5 }) : dark);
   barrel.rotation.x = Math.PI/2; barrel.position.set(0,0.55,barrelLen/2); turret.add(barrel);
   const muzzle = new THREE.Mesh(new THREE.BoxGeometry(0.42,0.42,0.6), trim);
   muzzle.position.set(0,0.55,barrelLen); turret.add(muzzle);
@@ -707,6 +713,7 @@ class Tank {
     this.setClass(key);
     this.cd=0; this.alive=true; this.respawnT=0;
     this.bodyAng=0; this.turAng=0; this.aim=0; this.wheel=0;
+    this.boostT=0; this.boostCd=0; this.wantBoost=false;
     this.target=null; this.retarget=0; this.strafe=Math.random()<.5?1:-1;
     this.spawnPos = TEAMS[team].spawn[slot];
   }
@@ -761,7 +768,7 @@ function setup(mode, roster, localId){
 
   if(roster){
     // online: humans occupy roster seats (with a free class pick); the rest are bots
-    const botKey = (t,s)=>BOT_LOADOUT[(s+t*2)%5];
+    const botKey = (t,s)=>BOT_LOADOUT[(s+t*2)%BOT_LOADOUT.length];
     for(let t=0;t<2;t++) for(let s=0;s<5;s++){
       const m = roster.find(x=>x.team===t && x.slot===s);
       const isP = !!(m && m.id===localId);
@@ -780,10 +787,10 @@ function setup(mode, roster, localId){
     }
   } else if(mode==='tdm'){
     for(let t=0;t<2;t++) for(let s=0;s<5;s++)
-      tanks.push(new Tank(t,s, t===0&&s===0?'scout':BOT_LOADOUT[(s+t*2)%5], t===0&&s===0));
+      tanks.push(new Tank(t,s, t===0&&s===0?'scout':BOT_LOADOUT[(s+t*2)%BOT_LOADOUT.length], t===0&&s===0));
   } else {
     for(let t=0;t<2;t++) for(let s=0;s<5;s++)
-      tanks.push(new Tank(t,s, t===0&&s===0?'scout':BOT_LOADOUT[(s+t*2)%5], t===0&&s===0));
+      tanks.push(new Tank(t,s, t===0&&s===0?'scout':BOT_LOADOUT[(s+t*2)%BOT_LOADOUT.length], t===0&&s===0));
   }
 
   if(mode==='siege'){
@@ -1037,12 +1044,12 @@ function fire(t){
   const mx=t.x + Math.sin(ang)*c.radius*3.2;
   const mz=t.z + Math.cos(ang)*c.radius*3.2;
   const my=1.95;
-  const spread = t.isPlayer ? 0.012 : AI().spread;
+  const spread = t.isPlayer ? (c.spread||0.012) : AI().spread;
   const a = ang + (Math.random()-0.5)*spread*2;
   bullets.push({ id: NET.bulletId++, x:mx, y:my, z:mz,
     vx:Math.sin(a)*c.bs, vz:Math.cos(a)*c.bs, vy:0,
     dmg:c.dmg, splash:c.splash, team:t.team, owner:t,
-    life:c.range/c.bs+0.6, col: t.team===0?0xffe27a:0xff9a7a });
+    life:c.range/c.bs+0.6, col: c.bcol || (t.team===0?0xffe27a:0xff9a7a) });
   t.cd = c.rate * (t.isPlayer ? 1 : AI().cdMul);
   t.mesh.flame.material.opacity = 0.95;
   tracer(mx,my,mz, mx+Math.sin(a)*3, my, mz+Math.cos(a)*3, 0xfff3b0);
@@ -1213,7 +1220,7 @@ addEventListener('keydown', e=>{
   keys[k]=true;
   if(k==='b'){ toggleShop(); }
   if(k==='escape'){ document.getElementById('shop').classList.remove('on'); }
-  if(k>='1'&&k<='5'){ buy(ORDER[+k-1]); }
+  if(k>='1'&&k<='6'){ buy(ORDER[+k-1]); }
   if(k===' '){ if(player) player.wantFire=true; e.preventDefault(); }
   if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)) e.preventDefault();
 });
@@ -1227,7 +1234,7 @@ addEventListener('mouseup',   e=>{ if(e.button===0){ firing=false; if(player) pl
 renderer.domElement.addEventListener('contextmenu', e=>e.preventDefault());
 
 /* ---- touch controls (twin stick) ---- */
-const touch = { active:false, left:{x:0,z:0}, right:{x:0,z:0} };
+const touch = { active:false, left:{x:0,z:0}, right:{x:0,z:0}, boost:false };
 function initTouch(){
   const isTouch = window.matchMedia && matchMedia('(pointer: coarse)').matches;
   if(!isTouch) return;
@@ -1240,6 +1247,12 @@ function initTouch(){
   const sb = document.getElementById('shopBtn');
   sb.style.display = 'block';
   sb.onclick = ()=>toggleShop();
+  const bb = document.getElementById('boostBtn');
+  bb.style.display = 'block';
+  bb.addEventListener('pointerdown', e=>{ e.preventDefault(); touch.boost = true; });
+  bb.addEventListener('pointerup', ()=> touch.boost = false);
+  bb.addEventListener('pointercancel', ()=> touch.boost = false);
+  bb.addEventListener('pointerleave', ()=> touch.boost = false);
   const MAX = 46;
   const sticks = {};
   function place(e, side){
@@ -1372,6 +1385,7 @@ function readLocalInput(){
       player.aim = Math.atan2(touch.right.x, touch.right.z);
       player.wantFire = true;
     }
+    player.wantBoost = !!touch.boost;
     return;
   }
   let ax=0, az=0;
@@ -1383,6 +1397,7 @@ function readLocalInput(){
   if(p){ player.aim = Math.atan2(p.x-player.x, p.z-player.z); }
   const l=Math.hypot(ax,az);
   player.moveX = l? ax/l : 0; player.moveZ = l? az/l : 0;
+  player.wantBoost = !!(keys['shift']||keys['q']);
 }
 function fxParticles(dt){
   for(let i=parts.length-1;i>=0;i--){
@@ -1444,17 +1459,25 @@ function update(dt){
     }
     if(t.isRemote){
       const inp=NET.inputs[t.netId];
-      if(inp){ t.moveX=inp.mx; t.moveZ=inp.mz; t.aim=inp.aim; if(inp.fire) t.wantFire=true; }
+      if(inp){ t.moveX=inp.mx; t.moveZ=inp.mz; t.aim=inp.aim; if(inp.fire) t.wantFire=true; if(inp.boost) t.wantBoost=true; }
       else { t.moveX=0; t.moveZ=0; }
     } else if(!t.isPlayer) aiUpdate(t, dt);
 
     t.cd-=dt; t.hitFlash=Math.max(0,(t.hitFlash||0)-dt);
+    t.boostCd-=dt; t.boostT-=dt;
+    // trigger a speed burst on demand (Shift / Q / BOOST), then cooldown
+    if(t.wantBoost && t.boostCd<=0 && t.boostT<=0){
+      t.boostT=1.1; t.boostCd=4.5;
+      if(t.isPlayer) SFX.buy();
+    }
+    t.wantBoost=false;
+    const spdMul = t.boostT>0 ? 1.6 : 1;
     t.turAng = angLerp(t.turAng, t.aim, Math.min(1, dt*t.c.turn));
     if(Math.hypot(t.moveX,t.moveZ)>0.05){
       const want=Math.atan2(t.moveX,t.moveZ);
       t.bodyAng=angLerp(t.bodyAng,want,Math.min(1,dt*4.5));
     }
-    t.x+=t.moveX*t.c.speed*dt; t.z+=t.moveZ*t.c.speed*dt;
+    t.x+=t.moveX*t.c.speed*spdMul*dt; t.z+=t.moveZ*t.c.speed*spdMul*dt;
     collideWalls(t,t.c.radius); clampArena(t,t.c.radius);
 
     if(t.wantFire && t.cd<=0) fire(t);
@@ -1599,7 +1622,7 @@ function startGame(mode){
   el('hint').innerHTML = touch.active
     ? 'AI — <b style="color:#8fd0ff">'+AI().label+'</b><br>LEFT STICK — move<br>RIGHT STICK — aim &amp; fire<br>SHOP — upgrade tank'
     : 'AI — <b style="color:#8fd0ff">'+AI().label+'</b><br>'
-      + 'WASD / ARROWS — move<br>MOUSE — aim &nbsp;|&nbsp; CLICK / SPACE — fire<br>B — shop &nbsp;|&nbsp; 1-5 — quick buy';
+      + 'WASD / ARROWS — move<br>MOUSE — aim &nbsp;|&nbsp; CLICK / SPACE — fire<br>B — shop &nbsp;|&nbsp; 1-6 — quick buy';
 }
 el('mDef').onclick = ()=>startGame('siege');
 el('mTdm').onclick = ()=>startGame('tdm');
@@ -1840,7 +1863,7 @@ function hostOnData(c,m){
     const mem=NET.roster.find(x=>x.id===c.peer); if(!mem) return;
     if(ORDER.includes(m.key)){ mem.key=m.key; netBroadcast({t:'roster', roster:NET.roster, mode:NET.selMode, ai:NET.selAi}); netRenderSeats(); }
   } else if(m.t==='in'){
-    NET.inputs[c.peer]={ mx:m.mx||0, mz:m.mz||0, aim:m.aim||0, fire:m.fire?1:0 };
+    NET.inputs[c.peer]={ mx:m.mx||0, mz:m.mz||0, aim:m.aim||0, fire:m.fire?1:0, boost:m.boost?1:0 };
   } else if(m.t==='buy'){
     const mem=NET.roster.find(x=>x.id===c.peer); if(!mem) return;
     const t=tankAt(mem.team,mem.slot); if(t) buyFor(t, m.key);
@@ -1963,7 +1986,7 @@ function netBeginPlay(mode, roster, localId){
   NET.snap=null; NET.evSeen=0; NET.events=[]; NET.nextEv=1; NET.bulletId=1; NET.snapT=0; NET.pingT=0; NET.inAt=0;
   money=0;
   el('hint').innerHTML = 'AI — <b style="color:#8fd0ff">'+AI().label+'</b> · ROOM '+NET.code+'<br>'
-    + 'WASD / ARROWS — move<br>MOUSE — aim &nbsp;|&nbsp; CLICK / SPACE — fire<br>B — shop &nbsp;|&nbsp; 1-5 — quick buy';
+    + 'WASD / ARROWS — move<br>MOUSE — aim &nbsp;|&nbsp; CLICK / SPACE — fire<br>B — shop &nbsp;|&nbsp; 1-6 — quick buy';
   showBadge(true);
   netSetMsg('lobbyMsg','');
 }
@@ -2065,8 +2088,11 @@ function netGuestUpdate(dt){
   if(player){
     readLocalInput();
     if(player.alive){
-      player.x += player.moveX*player.c.speed*dt;
-      player.z += player.moveZ*player.c.speed*dt;
+      player.boostCd-=dt; player.boostT-=dt;
+      if(player.wantBoost && player.boostCd<=0 && player.boostT<=0){ player.boostT=1.1; player.boostCd=4.5; }
+      const spdMul = player.boostT>0 ? 1.6 : 1;
+      player.x += player.moveX*player.c.speed*spdMul*dt;
+      player.z += player.moveZ*player.c.speed*spdMul*dt;
       collideWalls(player, player.c.radius); clampArena(player, player.c.radius);
       if(Math.hypot(player.moveX,player.moveZ)>0.05){
         const want=Math.atan2(player.moveX,player.moveZ);
@@ -2098,7 +2124,7 @@ function netGuestUpdate(dt){
   NET.inAt-=dt;
   if(NET.inAt<=0 && NET.hostConn && NET.state==='playing'){
     NET.inAt=1/30;
-    try{ NET.hostConn.send({t:'in', mx:player?player.moveX:0, mz:player?player.moveZ:0, aim:player?player.aim:0, fire:(player&&player.wantFire)?1:0}); }catch(e){}
+    try{ NET.hostConn.send({t:'in', mx:player?player.moveX:0, mz:player?player.moveZ:0, aim:player?player.aim:0, fire:(player&&player.wantFire)?1:0, boost:(player&&player.wantBoost)?1:0}); }catch(e){}
   }
   NET.pingT-=dt;
   if(NET.pingT<=0 && NET.hostConn){ NET.pingT=1.5; try{ NET.hostConn.send({t:'ping', ts:performance.now()}); }catch(e){} }
