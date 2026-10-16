@@ -11,6 +11,7 @@ A single website that collects five browser games in one place.
 | Blockcraft — voxel sandbox | [`minecraft/`](minecraft/) | Ready |
 | Tank War — 2D arena | [`tank/`](tank/) | Ready |
 | Apex Racing — 3D race car | [`race-car/`](race-car/) | Ready |
+| WWII Europe — interactive history | [`ww2-europe/`](ww2-europe/) | Ready |
 
 ## Run locally
 
