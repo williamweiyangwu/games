@@ -99,7 +99,7 @@
   .card .hp { position: absolute; right: -4px; bottom: -4px; width: 22px; height: 22px; border-radius: 50%; background: #25742c; border: 2px solid #fff; color: #fff; font-size: 13px; line-height: 18px; text-align: center; }
   .card .cname {
     position: absolute; top: 7px; left: 20px; right: 4px;
-    font-size: 10px; text-align: center; white-space: nowrap; overflow: hidden;
+    font-size: 10px; text-align: center; white-space: normal; line-height: 1.05; overflow: hidden;
   }
   .card .art { position: absolute; top: 28px; left: 6px; right: 6px; height: 68px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 34px; color: #3d3a2a; background: rgba(60,80,60,.28); }
   .card.guard .art::after, .card.air .art::after { content: ""; display: none; }
@@ -265,7 +265,7 @@
   <div id="fit">
     <div id="stage">
       <header>
-        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v13</span></h1>
+        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v14</span></h1>
         <div id="turnbar">Player 1's Turn</div>
       </header>
 
@@ -1545,6 +1545,12 @@ function showModal(title, text, btn, fn) {
 function hideModal() { document.getElementById("modal").classList.remove("show"); }
 
 // ---------------- Rendering ----------------
+function cnameStyle(name) {
+  var l = name.length;
+  var fs = l >= 13 ? 7 : (l >= 11 ? 8 : (l >= 9 ? 9 : 10));
+  return ' style="font-size:' + fs + 'px"';
+}
+
 function handHTML(pl, isActive, cnt) {
   var html = "";
   var n = isActive ? pl.hand.length : (cnt || 0);
@@ -1556,7 +1562,7 @@ function handHTML(pl, isActive, cnt) {
       var playable = interactive && inst.cost <= pl.res && (inst.type === "order" ? (!orderNeedsTarget(inst.key) || foeUnits > 0) : pl.board.length < MAX_BOARD);
       html += '<div class="cardwrap"><div class="card ' + (playable ? "playable" : "unplayable") + (inst.type === "order" ? " order" : "") + '" title="' + DEFS[inst.key].text + '" onclick="play(' + i + ')">' +
         '<div class="cost">' + inst.cost + '</div>' +
-        '<div class="cname">' + inst.name + '</div>' +
+        '<div class="cname"' + cnameStyle(inst.name) + '>' + inst.name + '</div>' +
         '<div class="art">' + DEFS[inst.key].art + '</div>' +
         (inst.type === "order"
           ? '<div class="otext">' + DEFS[inst.key].text + '</div>'
