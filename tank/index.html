@@ -1424,11 +1424,21 @@ function fxParticles(dt){
 }
 function update(dt){
   time+=dt;
-  // passive credit income (host-authoritative; guests get it via snapshot)
+  // passive credit income (host-authoritative; guests get it via snapshot).
+  // Accrued as whole credits so the running total never shows fractional dust.
   if(NET.mode !== 'guest'){
-    const inc = 5*dt;
-    if(player) money += inc;
-    for(const t of tanks){ if(t.isHuman && !t.isPlayer) t.money=(t.money||0)+inc; }
+    if(player){
+      player.incAcc = (player.incAcc||0) + 5*dt;
+      const g = Math.floor(player.incAcc);
+      if(g>0){ money += g; player.incAcc -= g; }
+    }
+    for(const t of tanks){
+      if(t.isHuman && !t.isPlayer){
+        t.incAcc = (t.incAcc||0) + 5*dt;
+        const g = Math.floor(t.incAcc);
+        if(g>0){ t.money=(t.money||0)+g; t.incAcc-=g; }
+      }
+    }
   }
   // siege / tdm countdown
   if(TIMED(MODE) && !gameOver){
@@ -1652,7 +1662,7 @@ function drawMinimap(){
 }
 function hud(){
   if(!player) return;
-  el('cash').textContent='$'+money;
+  el('cash').textContent='$'+Math.floor(money);
   if(MODE==='tdm'){
     el('score').innerHTML =
       (kills[0]>=kills[1]?'<span style="color:#6fd0ff">BLUE':'<span style="color:#6a7f9e">BLUE')+' '+kills[0]
