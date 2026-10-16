@@ -245,10 +245,10 @@
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x8fb6dc);
-    scene.fog = new THREE.Fog(0x9dbfe0, 150, 680);
+    scene.fog = new THREE.Fog(0x9dbfe0, 120, 480);
 
     const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 3000);
-    camera.position.set(0, EYE, 55);
+    camera.position.set(0, EYE, 40);
     camera.rotation.order = 'YXZ';
     scene.add(camera);
 
@@ -283,7 +283,7 @@
     };
 
     // Playable bounds
-    const BOUNDS = { minX: -160, maxX: 160, minZ: -600, maxZ: 60 };
+    const BOUNDS = { minX: -110, maxX: 110, minZ: -340, maxZ: 40 };
 
     const solidObjects = [];      // blocks bullets + LOS
     const playerColliders = [];   // blocks player movement (solid + boundary walls)
@@ -343,15 +343,15 @@
     }
 
     // ---------------- Terrain ----------------
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1500), MAT.ground);
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(700, 900), MAT.ground);
     ground.rotation.x = -Math.PI / 2;
-    ground.position.set(0, 0, -350);
+    ground.position.set(0, 0, -150);
     ground.receiveShadow = true;
     scene.add(ground);
 
-    const road = new THREE.Mesh(new THREE.PlaneGeometry(26, 1500), MAT.dirt);
+    const road = new THREE.Mesh(new THREE.PlaneGeometry(26, 900), MAT.dirt);
     road.rotation.x = -Math.PI / 2;
-    road.position.set(0, 0.02, -350);
+    road.position.set(0, 0.02, -150);
     road.receiveShadow = true;
     scene.add(road);
 
@@ -362,9 +362,9 @@
       r.receiveShadow = true;
       scene.add(r);
     }
-    addCrossRoad(0, -180, 300);
-    addCrossRoad(-60, -420, 260);
-    addCrossRoad(70, -320, 200);
+    addCrossRoad(0, -150, 240);
+    addCrossRoad(-45, -260, 220);
+    addCrossRoad(55, -210, 180);
 
     function addHill(x, z, r, h) {
       const hill = new THREE.Mesh(new THREE.SphereGeometry(r, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), MAT.hill);
@@ -372,11 +372,12 @@
       hill.position.set(x, 0, z);
       hill.receiveShadow = true;
       scene.add(hill);
+      solid(x - r, 0, z - r, x + r, h, z + r);
     }
-    addHill(-150, -220, 55, 22);
-    addHill(145, -380, 70, 28);
-    addHill(-135, -470, 60, 24);
-    addHill(160, -150, 45, 18);
+    addHill(-105, -160, 40, 16);
+    addHill(100, -250, 50, 20);
+    addHill(-95, -300, 42, 17);
+    addHill(110, -110, 32, 13);
 
     function addCrater(x, z, r) {
       const c = new THREE.Mesh(new THREE.CircleGeometry(r, 16), MAT.crater);
@@ -385,7 +386,7 @@
       c.receiveShadow = true;
       scene.add(c);
     }
-    for (let i = 0; i < 16; i++) addCrater((Math.random() - 0.5) * 300, -60 - Math.random() * 520, 2 + Math.random() * 5);
+    for (let i = 0; i < 14; i++) addCrater((Math.random() - 0.5) * 220, -50 - Math.random() * 300, 2 + Math.random() * 5);
 
     function addTree(x, z) {
       const g = new THREE.Group();
@@ -398,8 +399,8 @@
       scene.add(g);
     }
     for (let i = 0; i < 100; i++) {
-      const x = (Math.random() - 0.5) * 320;
-      const z = -40 - Math.random() * 560;
+      const x = (Math.random() - 0.5) * 240;
+      const z = -35 - Math.random() * 320;
       if (Math.abs(x) < 18) continue;
       addTree(x, z);
     }
@@ -438,20 +439,20 @@
         }
       }
     }
-    addHouse(-55, -250, 10, 8, 4.5, false);
-    addHouse(-30, -280, 9, 7, 4, false);
-    addHouse(-70, -310, 8, 8, 4.5, false);
-    addHouse(40, -260, 11, 8, 5, false);
-    addHouse(20, -320, 9, 7, 4, false);
-    addHouse(65, -300, 8, 8, 4.5, false);
-    addHouse(-10, -230, 7, 6, 3.6, false);
-    addHouse(-90, -480, 10, 9, 6, true);
-    addHouse(-65, -510, 9, 7, 5, true);
-    addHouse(80, -470, 12, 9, 7, true);
-    addHouse(105, -505, 9, 8, 6, true);
-    addHouse(0, -540, 11, 9, 8, true);
-    addHouse(-140, -540, 10, 8, 6, true);
-    addHouse(0, -120, 12, 9, 5, true);
+    addHouse(-55, -190, 9, 7, 4, false);
+    addHouse(-30, -210, 8, 6, 3.5, false);
+    addHouse(-65, -230, 7, 7, 4, false);
+    addHouse(40, -195, 10, 7, 4.5, false);
+    addHouse(20, -240, 8, 6, 3.5, false);
+    addHouse(60, -220, 7, 7, 4, false);
+    addHouse(-10, -170, 6, 5, 3.2, false);
+    addHouse(-80, -300, 9, 8, 5, true);
+    addHouse(-55, -320, 8, 6, 4.5, true);
+    addHouse(70, -295, 10, 8, 6, true);
+    addHouse(90, -315, 8, 7, 5, true);
+    addHouse(0, -335, 9, 8, 7, true);
+    addHouse(-115, -335, 9, 7, 5, true);
+    addHouse(0, -100, 11, 8, 4.5, true);
 
     // ---------------- Watchtowers ----------------
     const towers = [];
@@ -475,11 +476,11 @@
       scene.add(g);
       towers.push({ x, z, y: h });
     }
-    addTower(-60, -90, 9);
-    addTower(75, -170, 9);
-    addTower(-120, -300, 12);
-    addTower(35, -430, 12);
-    addTower(130, -250, 10);
+    addTower(-45, -75, 8);
+    addTower(55, -130, 8);
+    addTower(-95, -200, 10);
+    addTower(25, -270, 10);
+    addTower(95, -180, 9);
 
     // ---------------- Sandbags / crates / barrels ----------------
     function addSandbags(x, z, r, n) {
@@ -490,21 +491,21 @@
       }
       g.position.set(x, 0, z); g.rotation.y = r; scene.add(g);
     }
-    for (let i = 0; i < 16; i++) addSandbags((Math.random() - 0.5) * 260, -90 - Math.random() * 470, Math.random() * Math.PI, 3 + Math.floor(Math.random() * 4));
+    for (let i = 0; i < 14; i++) addSandbags((Math.random() - 0.5) * 200, -70 - Math.random() * 260, Math.random() * Math.PI, 3 + Math.floor(Math.random() * 4));
 
     function addCrate(x, z, s) {
       const c = new THREE.Mesh(new THREE.BoxGeometry(s, s, s), MAT.wood);
       c.position.set(x, s / 2, z); c.castShadow = true; c.receiveShadow = true; scene.add(c);
       solid(x - s / 2, 0, z - s / 2, x + s / 2, s, z + s / 2);
     }
-    for (let i = 0; i < 34; i++) addCrate((Math.random() - 0.5) * 260, -80 - Math.random() * 500, 0.8 + Math.random() * 1.4);
+    for (let i = 0; i < 28; i++) addCrate((Math.random() - 0.5) * 200, -60 - Math.random() * 280, 0.8 + Math.random() * 1.4);
 
     function addBarrel(x, z) {
       const b = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 1.1, 12), MAT.metal);
       b.position.set(x, 0.55, z); b.castShadow = true; scene.add(b);
       solid(x - 0.45, 0, z - 0.45, x + 0.45, 1.1, z + 0.45);
     }
-    for (let i = 0; i < 18; i++) addBarrel((Math.random() - 0.5) * 240, -100 - Math.random() * 450);
+    for (let i = 0; i < 16; i++) addBarrel((Math.random() - 0.5) * 180, -70 - Math.random() * 260);
 
     function addStoneWall(x, z, len, rot) {
       const g = new THREE.Group();
@@ -513,9 +514,9 @@
       g.position.set(x, 0, z); g.rotation.y = rot; scene.add(g);
       solid(x - len / 2, 0, z - 0.3, x + len / 2, 1.4, z + 0.3);
     }
-    addStoneWall(-25, -180, 18, 0);
-    addStoneWall(-90, -350, 24, 0.4);
-    addStoneWall(50, -470, 20, -0.5);
+    addStoneWall(-20, -140, 16, 0);
+    addStoneWall(-70, -230, 20, 0.4);
+    addStoneWall(40, -290, 16, -0.5);
 
     function addBarbedWire(x, z, len, rot) {
       const g = new THREE.Group();
@@ -525,8 +526,8 @@
       }
       g.position.set(x, 0, z); g.rotation.y = rot; scene.add(g);
     }
-    addBarbedWire(-50, -140, 24, 0);
-    addBarbedWire(55, -360, 30, 0.6);
+    addBarbedWire(-40, -110, 20, 0);
+    addBarbedWire(45, -240, 24, 0.6);
 
     // ---------------- Mountains (solid, on the perimeter) ----------------
     function addMountain(x, z, h, r) {
@@ -535,13 +536,13 @@
       // solid at the base (blocks player + bullets up to reasonable height)
       solid(x - r, 0, z - r, x + r, h, z + r);
     }
-    addMountain(0, -760, 300, 340);
-    addMountain(-420, -720, 260, 300);
-    addMountain(420, -730, 250, 290);
-    addMountain(-260, -690, 220, 260);
-    addMountain(260, -700, 230, 260);
-    addMountain(-640, -660, 240, 280);
-    addMountain(640, -660, 230, 270);
+    addMountain(0, -450, 220, 240);
+    addMountain(-260, -430, 190, 210);
+    addMountain(260, -440, 180, 200);
+    addMountain(-160, -410, 170, 180);
+    addMountain(160, -420, 180, 180);
+    addMountain(-380, -400, 190, 200);
+    addMountain(380, -400, 180, 190);
 
     // ---------------- Boundary walls (player only, invisible) ----------------
     function addBoundaryWall(x, z, w, d) {
@@ -596,7 +597,7 @@
 
     // player
     const player = {
-      x: 0, z: 55, feetY: 0, vy: 0, grounded: true,
+      x: 0, z: 40, feetY: 0, vy: 0, grounded: true,
       strength: 100, sprinting: false, dead: false, respawnTimer: 0,
       kills: 0
     };
@@ -839,16 +840,16 @@
       const d = DIFF[difficulty];
       const weaponKeys = ['rifle', 'smg', 'pistol', 'sniper'];
       if (mode === 'mission') {
-        commander = new Enemy(0, 0, -300, { commander: true, stationary: true, health: 500, color: 0x3a3a3a });
+        commander = new Enemy(0, 0, -200, { commander: true, stationary: true, health: 500, color: 0x3a3a3a });
         enemies.push(commander);
         for (let i = 0; i < d.commanderGuards; i++) {
           const ang = Math.random() * Math.PI * 2;
-          const rad = 12 + Math.random() * 30;
-          enemies.push(new Enemy(0 + Math.cos(ang) * rad, 0, -300 + Math.sin(ang) * rad, { weapon: weaponKeys[Math.floor(Math.random() * weaponKeys.length)] }));
+          const rad = 10 + Math.random() * 18;
+          enemies.push(new Enemy(0 + Math.cos(ang) * rad, 0, -200 + Math.sin(ang) * rad, { weapon: weaponKeys[Math.floor(Math.random() * weaponKeys.length)] }));
         }
       } else {
         for (let i = 0; i < d.enemyCount; i++) {
-          enemies.push(new Enemy((Math.random() - 0.5) * 300, 0, -80 - Math.random() * 480, { weapon: weaponKeys[Math.floor(Math.random() * weaponKeys.length)] }));
+          enemies.push(new Enemy((Math.random() - 0.5) * 200, 0, -70 - Math.random() * 260, { weapon: weaponKeys[Math.floor(Math.random() * weaponKeys.length)] }));
         }
       }
       for (const t of towers) enemies.push(new Enemy(t.x, t.y, t.z, { stationary: true, weapon: 'sniper' }));
@@ -864,7 +865,7 @@
       player.dead = false;
       player.strength = 100;
       player.x = (Math.random() - 0.5) * 40;
-      player.z = 50;
+        player.z = 40;
       player.feetY = 0; player.vy = 0; player.grounded = true;
       camera.position.set(player.x, EYE, player.z);
       hideCenterMsg();
@@ -1145,8 +1146,8 @@
       teamKills = 0; enemyKills = 0; player.kills = 0; player.strength = 100;
       matchTime = 300; gameOver = false; gameResult = '';
       commander = null;
-      player.dead = false; player.x = 0; player.z = 55; player.feetY = 0; player.vy = 0; player.grounded = true;
-      camera.position.set(0, EYE, 55);
+      player.dead = false; player.x = 0; player.z = 40; player.feetY = 0; player.vy = 0; player.grounded = true;
+    camera.position.set(0, EYE, 40);
       spawnTeammates();
       spawnWave();
       hideCenterMsg();
@@ -1299,7 +1300,7 @@
           const target = DIFF[difficulty].enemyCount + towers.length;
           if (enemies.length < target) {
             const weaponKeys = ['rifle', 'smg', 'pistol', 'sniper'];
-            enemies.push(new Enemy((Math.random() - 0.5) * 300, 0, -80 - Math.random() * 480, { weapon: weaponKeys[Math.floor(Math.random() * 4)] }));
+            enemies.push(new Enemy((Math.random() - 0.5) * 200, 0, -70 - Math.random() * 260, { weapon: weaponKeys[Math.floor(Math.random() * 4)] }));
           }
         }
 
