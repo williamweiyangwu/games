@@ -122,7 +122,7 @@
 </div>
 <div id="standings" class="hidden"></div>
 <div id="banner" class="hidden"></div>
-  <div id="verTag">v2.3</div>
+  <div id="verTag">v2.4</div>
 
 <div id="menu" class="overlay">
   <h1 id="menuTitle">SUN CIRCUIT</h1>
@@ -142,7 +142,7 @@
     <b>A</b><b>D</b>/<b>←</b><b>→</b> steer<br>
     <b>SPACE</b> nitro boost &nbsp;·&nbsp; <b>SHIFT</b> handbrake (drift) &nbsp;·&nbsp; 
     <b>C</b> camera &nbsp;·&nbsp; <b>R</b> restart &nbsp;·&nbsp; <b>M</b> sound &nbsp;·&nbsp; <b>ESC</b> pause<br>
-    Drift to fill the NITRO meter, then burn it with <b>SPACE</b>.
+    NITRO trickles up 3%/s while cruising - hold <b>SHIFT</b> to drift and fill it faster, then burn it with <b>SPACE</b>.
   </div>
 </div>
 
@@ -1311,9 +1311,12 @@ var pr = projectTrack(c.x, c.z, c.i);
     var rgt = { x: -fwd.z, z: fwd.x };
     c.speed = c.vx * fwd.x + c.vz * fwd.z;
     var slip = Math.abs(c.vx * rgt.x + c.vz * rgt.z);
-    c.drifting = !c.finished && slip > 2.2 && Math.abs(c.speed) > 5;
-    if (c.drifting) c.boost = Math.min(1, c.boost + 0.16 * dt);   // fills slowly
-    if (c.boosting) c.boost = Math.max(0, c.boost - 0.2 * dt);    // burns slowly, lasts longer
+    // A drift is only counted on the handbrake (SHIFT). Hard cornering on its
+    // own no longer fills the meter -- so turning is just turning.
+    c.drifting = !c.finished && input.handbrake && Math.abs(c.speed) > 4 && slip > 1.5;
+    if (c.drifting) c.boost = Math.min(1, c.boost + 0.16 * dt);          // drifting fills fast
+    else if (!c.boosting) c.boost = Math.min(1, c.boost + 0.03 * dt);    // +3%/s while not drifting
+    if (c.boosting) c.boost = Math.max(0, c.boost - 0.2 * dt);           // burns slowly, lasts longer
 
     c.wheelSpin += c.speed * dt * 3;
 
