@@ -122,7 +122,7 @@
 </div>
 <div id="standings" class="hidden"></div>
 <div id="banner" class="hidden"></div>
-  <div id="verTag">v2.6</div>
+  <div id="verTag">v2.7</div>
 
 <div id="menu" class="overlay">
   <h1 id="menuTitle">SUN CIRCUIT</h1>
@@ -820,21 +820,26 @@
     fin.position.set(0, 1.22 + 0.07 * (style % 2), -1.95); g.add(fin);
     var splitter = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.12, 0.5), dark);
     splitter.position.set(0, 0.36, 2.6); g.add(splitter);
-    // Cockpit interior. Hidden from outside by the opaque glass, and the glass
-    // box itself is back-face culled from inside, so in first person the driver
-    // sits in the cabin looking out over this dashboard and wheel at the road.
-    var dash = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.16, 0.5), dark);
-    dash.name = 'dash';
-    dash.position.set(0, 0.88, 0.55); g.add(dash);
-    var wheel = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.045, 8, 18), dark);
+    // Cockpit interior (F1-style driver view). Hidden from outside by the
+    // opaque glass; from inside the glass is back-face culled, so in first
+    // person the driver sits in the cabin and sees the steering wheel, the two
+    // A-pillars framing the windscreen, and the nose/hood over the road.
+    var wheel = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.045, 10, 20), dark);
     wheel.name = 'wheel';
-    wheel.position.set(0, 0.95, 0.25);
-    wheel.rotation.x = -0.25;
+    wheel.position.set(0, 0.66, 0.12);
+    wheel.rotation.x = -0.42;
     g.add(wheel);
-    var hub = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.06, 10), dark);
-    hub.position.set(0, 0.95, 0.25);
-    hub.rotation.x = Math.PI / 2;
+    var hub = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.05, 12), dark);
+    hub.position.set(0, 0.66, 0.12);
+    hub.rotation.x = -0.42;
     g.add(hub);
+    var pillarGeo = new THREE.BoxGeometry(0.09, 0.34, 0.07);
+    [-0.36, 0.36].forEach(function (px) {
+      var p = new THREE.Mesh(pillarGeo, dark);
+      p.name = 'pillar';
+      p.position.set(px, 1.1, 0.14);
+      g.add(p);
+    });
     var wg = new THREE.CylinderGeometry(0.42, 0.42, 0.32, 14);
     var wm = new THREE.MeshLambertMaterial({ color: 0x121316 });
     [[-1.02, 1.55], [1.02, 1.55], [-1.02, -1.5], [1.02, -1.5]].forEach(function (p) {
@@ -887,6 +892,7 @@
       wheelSpin: 0, wobble: 0,
       remote: false, hidden: false, id: null
     };
+    c.wheel = c.mesh.getObjectByName('wheel');
     scene.add(c.mesh);
     cars.push(c);
     return c;
@@ -1395,6 +1401,7 @@ var pr = projectTrack(c.x, c.z, c.i);
   function syncMesh(c) {
     c.mesh.position.set(c.x, 0, c.z);
     c.mesh.rotation.y = c.yaw;
+    if (c.wheel) c.wheel.rotation.z = -c.steer * 2.1;   // turn the wheel with the steering
   }
 
   /* ---------------------------------- car-to-car contact ------------- *
@@ -1508,11 +1515,17 @@ var pr = projectTrack(c.x, c.z, c.i);
     var f = yawToForward(player.yaw);
     var back, high, look;
     if (camMode === 0) { back = 12.5; high = 5.4; look = 7; }        // third person
-    else { back = 0.05; high = 1.05; look = 30; }                    // first person (driver's eye in the cockpit)
+    else { back = 0.22; high = 1.0; look = 30; }                     // first person (driver's eye in the cockpit)
+
+    // The steering wheel sits ~0.3m from the driver's eyes, so the first-person
+    // camera needs a much tighter near plane than the chase cam (which would
+    // otherwise z-fight the distant track).
+    var near = camMode === 1 ? 0.05 : 0.5;
+    if (camera.near !== near) { camera.near = near; camera.updateProjectionMatrix(); }
 
     var tx = player.x - f.x * back;
     var tz = player.z - f.z * back;
-    var lx = player.x + f.x * look, ly = camMode === 1 ? 1.0 : 1.4, lz = player.z + f.z * look;
+    var lx = player.x + f.x * look, ly = camMode === 1 ? 0.85 : 1.4, lz = player.z + f.z * look;
 
     // blend from the grid shot into the chase cam as the lights go out
     if (countdown > 0) {
