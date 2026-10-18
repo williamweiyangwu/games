@@ -141,7 +141,7 @@ b{font-weight:700}
 .rr{display:flex;align-items:center;gap:6px;height:16px}
 .rr-name{font-size:10px;color:#c3cddc;width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rr-bar{flex:1;height:5px;background:rgba(255,255,255,.1);overflow:hidden;border-radius:1px}
-.rr-fill{height:100%;width:100%;transition:width .12s;background:#4d8dff}
+.rr-fill{display:block;height:100%;width:100%;transition:width .12s;background:#4d8dff}
 #rosterRed .rr-fill{background:linear-gradient(90deg,#c22,#ff5a5a)}
 #rosterBlue .rr-fill{background:linear-gradient(90deg,#2b5fd0,#6aa0ff)}
 .rr-hp{font-size:9px;color:#8b97ab;width:22px;text-align:right;font-variant-numeric:tabular-nums}
