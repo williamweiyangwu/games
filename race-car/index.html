@@ -122,7 +122,7 @@
 </div>
 <div id="standings" class="hidden"></div>
 <div id="banner" class="hidden"></div>
-  <div id="verTag">v2.12</div>
+  <div id="verTag">v2.13</div>
 
 <div id="menu" class="overlay">
   <h1 id="menuTitle">SUN CIRCUIT</h1>
@@ -357,9 +357,9 @@
         standA: 0x7d858d, standB: 0x6d757d, roof: 0x454c54
       },
       ctrl: [
-        [60, 200], [170, 160], [220, 80], [210, -20], [130, -90], [160, -180],
-        [60, -220], [-60, -190], [-40, -90], [-140, -70], [-185, -125],
-        [-215, -130], [-225, -50], [-175, 50], [-150, 160]
+        [60, 200], [160, 170], [210, 100], [215, 0], [150, -80], [170, -170],
+        [70, -212], [-55, -190], [-155, -135], [-235, -60], [-265, 30],
+        [-238, 118], [-172, 165], [-95, 192], [-18, 208]
       ]
     }
   ];
@@ -683,11 +683,18 @@
   // true when every sample of a footprint stays clear of the racing surface
   function footprintClear(x, z, yaw, hw, hd, clearance) {
     var cy = Math.cos(yaw), sy = Math.sin(yaw);
-    var pts = [[0, 0], [hw, 0], [-hw, 0], [0, hd], [0, -hd]];
-    for (var i = 0; i < pts.length; i++) {
-      var wx = x + pts[i][0] * cy + pts[i][1] * sy;
-      var wz = z - pts[i][0] * sy + pts[i][1] * cy;
-      if (!clearOfTrack(wx, wz, clearance)) return false;
+    // Sampling a grid over the whole footprint, not just the centre and the four
+    // axis midpoints: those alone missed the corners, so a grandstand on the
+    // inside of a corner would pass the test while one corner still jutted out
+    // over the road and stopped cars dead.
+    var G = 4;
+    for (var a = 0; a <= G; a++) {
+      for (var b = 0; b <= G; b++) {
+        var lx = -hw + 2 * hw * a / G, lz = -hd + 2 * hd * b / G;
+        var wx = x + lx * cy + lz * sy;
+        var wz = z - lx * sy + lz * cy;
+        if (!clearOfTrack(wx, wz, clearance)) return false;
+      }
     }
     return true;
   }
@@ -953,15 +960,21 @@
     { name: 'CYAN',    color: 0x26c6da, accent: 0xffffff, accel: 1.06, top: 1.04, grip: 1.06, handling: 1.04, skill: 1.010, line: -1.0, style: 5, blurb: 'well rounded' }
   ];
 
-  /* AI difficulty. `scale` multiplies each AI's `skill` (straight-line pace)
-   * and its corner grip budget, so a harder race is faster everywhere.       */
+  /* AI difficulty. `scale` multiplies the whole speed target (pace everywhere),
+   * `grip` multiplies the corner grip budget the AI plans with, `phys` raises
+   * the AI cars' real grip and top speed so the raised targets are reachable,
+   * and `brake` is the safety margin before a corner: hard AI brakes later.   */
   var DIFFICULTY = [
-    { name: 'EASY',   scale: 0.76, blurb: 'relaxed pace' },
-    { name: 'NORMAL', scale: 0.90, blurb: 'even match' },
-    { name: 'HARD',   scale: 1.00, blurb: 'ruthless' }
+    { name: 'EASY',   scale: 0.80, grip: 0.82, phys: 0.94, brake: 50, blurb: 'relaxed pace' },
+    { name: 'NORMAL', scale: 0.92, grip: 1.00, phys: 1.00, brake: 34, blurb: 'even match' },
+    { name: 'HARD',   scale: 1.08, grip: 1.32, phys: 1.20, brake: 22, blurb: 'ruthless' },
+    { name: 'EXPERT', scale: 1.18, grip: 1.60, phys: 1.42, brake: 14, blurb: 'merciless' }
   ];
   var aiDiff = 1;
   var aiDiffScale = DIFFICULTY[1].scale;
+  var aiDiffGrip = DIFFICULTY[1].grip;
+  var aiDiffPhys = DIFFICULTY[1].phys;
+  var aiDiffBrake = DIFFICULTY[1].brake;
 
   var cars = [];
   function makeCar(spec) {
@@ -1074,7 +1087,7 @@
       var el = document.createElement('div');
       el.className = 'card' + (i === aiDiff ? ' sel' : '');
       el.innerHTML = '<b>' + d.name + '</b><span>' + d.blurb + '</span>';
-      el.addEventListener('click', function () { aiDiff = i; aiDiffScale = d.scale; renderPickers(); updateMenuText(); });
+      el.addEventListener('click', function () { aiDiff = i; aiDiffScale = d.scale; aiDiffGrip = d.grip; aiDiffPhys = d.phys; aiDiffBrake = d.brake; renderPickers(); updateMenuText(); });
       dp.appendChild(el);
     });
   }
@@ -1201,12 +1214,12 @@
     // are entered at a speed the tyres can actually hold. Difficulty then caps
     // the whole profile, so a harder race is genuinely faster everywhere.
     var vTop = 64 * c.skill;
-    var gripBudget = surface.aiGrip;
+    var gripBudget = surface.aiGrip * aiDiffGrip;
     var target = vTop;
     var kk0 = kappaAt(c.s);
     var vc0 = Math.sqrt(gripBudget / Math.max(kk0 / 3, 1e-5));
     if (vc0 < target) target = vc0;
-    var brakeDist = c.speed * c.speed / (2 * 26) + 34;
+    var brakeDist = c.speed * c.speed / (2 * 26) + aiDiffBrake;
     var nSteps = Math.min(48, Math.ceil(brakeDist / 6));
     for (var look = 1; look <= nSteps; look++) {
       var dAhead = look * 6;
@@ -1344,6 +1357,10 @@
     var accel = BASE_ACCEL * surf.accel * c.accel;
     var top = TOP * surf.top * c.top;
     var gripRate = surf.grip * c.grip;         // sideways grip, per second
+    // Harder difficulties give the AI cars a little more real grip and top
+    // speed, so the raised targets are actually reachable rather than just
+    // asking the tyres for something they cannot deliver.
+    if (c !== player) { gripRate *= aiDiffPhys; top *= aiDiffPhys; }
     c.boosting = !c.finished && !!input.boost && c.boost > 0.02;
     if (input.handbrake) gripRate *= 0.16;     // handbrake breaks lateral grip -> the tail slides (drift)
 
