@@ -1831,6 +1831,33 @@ function createChests() {
   }
 }
 
+/* Keep bodies from occupying the same space. Bots yield most of the overlap to
+   the player, so walking into a teammate nudges them aside instead of clipping. */
+function separateActors() {
+  const list = allActors();
+  const R = CFG.player.radius * 2;
+  for (let i = 0; i < list.length; i++) {
+    const a = list[i];
+    if (!a.alive) continue;
+    for (let j = i + 1; j < list.length; j++) {
+      const b = list[j];
+      if (!b.alive) continue;
+      if (Math.abs(a.pos.y - b.pos.y) > 1.7) continue;
+      let dx = b.pos.x - a.pos.x, dz = b.pos.z - a.pos.z;
+      let d = Math.hypot(dx, dz);
+      if (d >= R) continue;
+      if (d < 1e-4) { dx = 1; dz = 0; d = 1; }
+      const wa = a.isPlayer ? 0.3 : 1, wb = b.isPlayer ? 0.3 : 1;
+      const share = (R - d) / (wa + wb);
+      dx /= d; dz /= d;
+      a.pos.x -= dx * share * wa; a.pos.z -= dz * share * wa;
+      b.pos.x += dx * share * wb; b.pos.z += dz * share * wb;
+      resolveHorizontal(a);
+      resolveHorizontal(b);
+    }
+  }
+}
+
 function updateChests(dt) {
   const p = G.player;
   let near = null;
@@ -3158,6 +3185,7 @@ function update(dt) {
       b.hitFlash -= dt;
     }
   }
+  separateActors();
   updateChests(dt);
   updateFlags(dt);
   updateEffects(dt);
