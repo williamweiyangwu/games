@@ -1,1442 +1,212 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>House Siege 3D — 5v5 Tactical Shooter</title>
-<style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  html,body { width:100%; height:100%; overflow:hidden; background:#000; font-family:'Segoe UI',Arial,sans-serif; user-select:none; }
-  #game-canvas { display:block; }
-
-  .overlay { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:50; color:#fff; }
-  #menu { background:radial-gradient(ellipse at center, #1a2a4a 0%, #0a0f1e 100%); }
-  #menu h1 { font-size:52px; letter-spacing:4px; margin-bottom:6px; text-shadow:0 0 24px #4af; }
-  #menu h1 span.r { color:#ff5555; } #menu h1 span.b { color:#55aaff; }
-  #menu .sub { color:#8899bb; margin-bottom:28px; letter-spacing:2px; }
-  .menu-section { margin-bottom:22px; text-align:center; }
-  .menu-section h3 { font-size:14px; color:#8899bb; letter-spacing:3px; margin-bottom:10px; }
-  .btn-row { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
-  .mbtn { padding:12px 26px; font-size:15px; border:2px solid #335; background:#111827; color:#cde; cursor:pointer; border-radius:8px; transition:all .15s; letter-spacing:1px; }
-  .mbtn:hover { border-color:#55aaff; transform:translateY(-2px); }
-  .mbtn.sel { border-color:#ffcc33; background:#2a2410; color:#ffcc33; box-shadow:0 0 14px rgba(255,204,51,.35); }
-  .mbtn.primary { background:#1a5c2a; border-color:#2a8c3a; font-size:18px; padding:14px 46px; }
-  .mbtn.primary:hover { background:#227a38; }
-
-  #tutorial { background:rgba(5,8,16,.97); display:none; z-index:60; }
-  #tutorial .card { max-width:680px; width:92%; background:#0e1524; border:1px solid #335; border-radius:14px; padding:28px 34px; max-height:88vh; overflow-y:auto; }
-  #tutorial h2 { color:#ffcc33; letter-spacing:3px; margin-bottom:16px; }
-  #tutorial h4 { color:#55aaff; margin:14px 0 6px; }
-  #tutorial p, #tutorial li { color:#b8c4d8; font-size:14px; line-height:1.65; }
-  #tutorial ul { padding-left:20px; }
-  #tutorial kbd { background:#222c40; border:1px solid #445; border-radius:4px; padding:1px 7px; font-family:monospace; color:#ffcc33; }
-  #tutorial .close-row { text-align:center; margin-top:20px; }
-
-  #hud { position:fixed; inset:0; pointer-events:none; z-index:20; display:none; }
-  #crosshair { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:22px; height:22px; }
-  #crosshair::before, #crosshair::after { content:''; position:absolute; background:#fff; box-shadow:0 0 3px #000; }
-  #crosshair::before { left:50%; top:0; width:2px; height:100%; transform:translateX(-50%); clip-path:polygon(0 0,100% 0,100% 38%,0 38%,0 62%,100% 62%,100% 100%,0 100%); }
-  #crosshair::after { top:50%; left:0; height:2px; width:100%; transform:translateY(-50%); clip-path:polygon(0 0,38% 0,38% 100%,0 100%,62% 0,100% 0,100% 100%,62% 100%); }
-  #hitmarker { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) rotate(45deg); width:26px; height:26px; opacity:0; }
-  #hitmarker::before, #hitmarker::after { content:''; position:absolute; background:#ff4444; }
-  #hitmarker::before { left:50%; top:0; width:3px; height:100%; transform:translateX(-50%); }
-  #hitmarker::after { top:50%; left:0; height:3px; width:100%; transform:translateY(-50%); }
-  .panel { position:absolute; background:rgba(8,12,22,.72); border:1px solid rgba(90,120,180,.35); border-radius:10px; color:#dfe8f5; }
-  #hp-panel { left:20px; bottom:20px; padding:12px 18px; width:250px; }
-  #hp-bar-outer { height:16px; background:#220a0a; border:1px solid #553; border-radius:8px; overflow:hidden; margin-top:6px; }
-  #hp-bar-inner { height:100%; width:100%; background:linear-gradient(90deg,#2ecc40,#7CFC00); transition:width .2s; }
-  #weapon-panel { right:20px; bottom:20px; padding:12px 18px; text-align:right; min-width:190px; }
-  #weapon-name { font-size:16px; color:#ffcc33; letter-spacing:1px; }
-  #ammo { font-size:26px; font-weight:bold; }
-  #ammo .reserve { font-size:15px; color:#889; }
-  #slots { font-size:11px; color:#789; margin-top:4px; letter-spacing:1px; }
-  #score-panel { left:50%; top:14px; transform:translateX(-50%); padding:8px 30px; display:flex; gap:26px; align-items:center; font-size:18px; }
-  #score-blue { color:#55aaff; font-weight:bold; font-size:24px; }
-  #score-red { color:#ff5555; font-weight:bold; font-size:24px; }
-  #timer { color:#ffcc33; font-weight:bold; font-size:22px; min-width:74px; text-align:center; }
-  #flag-status { font-size:11px; color:#9ab; text-align:center; letter-spacing:1px; }
-  #killfeed { right:18px; top:18px; padding:10px 14px; font-size:12.5px; max-width:320px; }
-  #killfeed div { margin:3px 0; opacity:.95; }
-  #respawn-overlay { position:fixed; inset:0; display:none; align-items:center; justify-content:center; flex-direction:column; background:rgba(60,0,0,.45); z-index:40; color:#fff; }
-  #respawn-overlay h2 { font-size:42px; color:#ff6666; text-shadow:0 0 20px #f00; }
-  #respawn-overlay p { font-size:20px; margin-top:10px; }
-  #pickup-tip { position:absolute; left:50%; bottom:22%; transform:translateX(-50%); color:#ffcc33; font-size:16px; text-shadow:0 0 6px #000; display:none; }
-  #damage-vignette { position:fixed; inset:0; pointer-events:none; z-index:30; box-shadow:inset 0 0 120px rgba(255,0,0,0); transition:box-shadow .12s; }
-  #msg-feed { position:absolute; left:50%; top:22%; transform:translateX(-50%); color:#fff; font-size:22px; text-shadow:0 0 8px #000; text-align:center; }
-  #gameover { background:rgba(4,6,12,.95); display:none; z-index:70; }
-  #gameover h1 { font-size:56px; letter-spacing:6px; margin-bottom:8px; }
-  #gameover .score-line { font-size:22px; color:#bcd; margin-bottom:26px; }
-  #pause-menu { background:rgba(4,6,12,.85); display:none; z-index:65; }
-  #pause-menu h2 { font-size:36px; margin-bottom:24px; letter-spacing:4px; }
-  #fps-tag { position:absolute; left:8px; top:8px; color:#567; font-size:11px; z-index:25; }
-</style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>WHITE HOUSE 5v5 — 3D Tactical Shooter</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230a0d13'/%3E%3Cpath d='M16 5l9 6v10l-9 6-9-6V11z' fill='none' stroke='%23ff4a4a' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23ffc44d'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-<canvas id="game-canvas"></canvas>
-
-<div id="menu" class="overlay">
-  <h1><span class="b">HOUSE</span> <span class="r">SIEGE</span> <span style="color:#fff">3D</span></h1>
-  <div class="sub">5v5 &mdash; TEAM DEATHMATCH &amp; CAPTURE THE FLAG</div>
-  <div class="menu-section">
-    <h3>GAME MODE</h3>
-    <div class="btn-row">
-      <button class="mbtn sel" id="btn-tdm">TEAM DEATHMATCH</button>
-      <button class="mbtn" id="btn-ctf">CAPTURE THE FLAG</button>
-    </div>
-  </div>
-  <div class="menu-section">
-    <h3>AI DIFFICULTY</h3>
-    <div class="btn-row" id="diff-row">
-      <button class="mbtn" data-d="easy">EASY</button>
-      <button class="mbtn sel" data-d="normal">NORMAL</button>
-      <button class="mbtn" data-d="hard">HARD</button>
-      <button class="mbtn" data-d="legend">LEGEND</button>
-    </div>
-  </div>
-  <div class="menu-section btn-row">
-    <button class="mbtn" id="btn-tutorial">HOW TO PLAY / TUTORIAL</button>
-  </div>
-  <div class="menu-section">
-    <button class="mbtn primary" id="btn-start">DEPLOY</button>
+<!-- ================= LOADING ================= -->
+<div id="loading">
+  <div class="load-wrap">
+    <div class="load-logo">WHITE&nbsp;HOUSE<span>5v5</span></div>
+    <div class="load-sub">TACTICAL ARENA · THREE.JS</div>
+    <div class="load-bar"><div class="load-fill" id="loadFill"></div></div>
+    <div class="load-text" id="loadText">Booting engine…</div>
   </div>
 </div>
 
-<div id="tutorial" class="overlay">
-  <div class="card">
-    <h2>FIELD MANUAL</h2>
-    <h4>OBJECTIVE</h4>
-    <ul>
-      <li><b style="color:#55aaff">Team Deathmatch:</b> You are on the <b>BLUE</b> team. Out-kill the RED team before the 5-minute timer ends. 3 second respawn.</li>
-      <li><b style="color:#55aaff">Capture the Flag:</b> Steal the RED flag and bring it to YOUR HQ pad. Each return scores a point. Most points in 5 minutes wins.</li>
-    </ul>
-    <h4>CONTROLS</h4>
-    <ul>
-      <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> — Move &nbsp; <kbd>Mouse</kbd> — Aim &nbsp; <kbd>Left Click</kbd> — Attack</li>
-      <li><kbd>1</kbd>–<kbd>6</kbd> — Switch weapon &nbsp; <kbd>R</kbd> — Reload &nbsp; <kbd>E</kbd> — Open chest / interact</li>
-      <li><kbd>Shift</kbd> — Sprint &nbsp; <kbd>Space</kbd> — Jump &nbsp; <kbd>ESC</kbd> — Pause</li>
-    </ul>
-    <h4>LOADOUT &amp; CHESTS</h4>
-    <p>You start with only a <b>KNIFE</b> and a <b>PISTOL</b>. Weapon crates glow around the house — walk up and press <kbd>E</kbd> to grab a random weapon (Assault Rifle, Shotgun, Sniper, Rocket Launcher) with ammo. Crates restock after 20 seconds.</p>
-    <h4>AI DIFFICULTY</h4>
-    <ul>
-      <li><b>EASY</b> — Slow reaction, poor accuracy, 80 HP.</li>
-      <li><b>NORMAL</b> — Average soldier, 100 HP.</li>
-      <li><b>HARD</b> — Fast reactions, good accuracy, 120 HP.</li>
-      <li><b>LEGEND</b> — Near-perfect aim, deadly fast, 140 HP.</li>
-    </ul>
-    <h4>HEALTH BARS</h4>
-    <p>Bars above heads: <span style="color:#7CFC00">GREEN</span> = teammate, <span style="color:#ff4444">RED</span> = enemy. Your own HP is bottom-left.</p>
-    <div class="close-row"><button class="mbtn primary" id="btn-tutorial-close">GOT IT</button></div>
+<!-- ================= MAIN MENU ================= -->
+<div id="menu" class="screen">
+  <div class="menu-bg"></div>
+  <div class="menu-inner">
+    <div class="brand">
+      <div class="brand-kicker">RED TEAM vs BLUE TEAM</div>
+      <h1>WHITE<span>HOUSE</span></h1>
+      <div class="brand-sub">5 v 5 · TWO-STOREY ARENA · CHEST WEAPONS</div>
+    </div>
+
+    <div class="menu-grid">
+      <div class="mode-card" data-mode="tdm">
+        <div class="mc-top"><span class="mc-tag red">DEATHMATCH</span><span class="mc-time">5:00</span></div>
+        <h3>Team Deathmatch</h3>
+        <p>Kill the enemy team. Most kills when the clock hits zero wins. 3 second respawn.</p>
+        <div class="mc-go">DEPLOY →</div>
+      </div>
+      <div class="mode-card" data-mode="flag">
+        <div class="mc-top"><span class="mc-tag blue">CAPTURE THE FLAG</span><span class="mc-time">5:00</span></div>
+        <h3>Flag Raid</h3>
+        <p>Steal the enemy flag and carry it to your HQ. Most captures wins. 3 second respawn.</p>
+        <div class="mc-go">DEPLOY →</div>
+      </div>
+      <div class="mode-card tut" data-mode="tutorial">
+        <div class="mc-top"><span class="mc-tag gold">TRAINING</span><span class="mc-time">SAFE</span></div>
+        <h3>Tutorial</h3>
+        <p>Learn movement, shooting, chests and the objective — with live targets.</p>
+        <div class="mc-go">START →</div>
+      </div>
+    </div>
+
+    <div class="menu-bottom">
+      <div class="diff-block">
+        <div class="diff-label">AI DIFFICULTY</div>
+        <div class="diff-row" id="diffRow">
+          <button data-diff="easy">EASY</button>
+          <button data-diff="normal" class="on">NORMAL</button>
+          <button data-diff="hard">HARD</button>
+          <button data-diff="legend">LEGEND</button>
+        </div>
+        <div class="diff-desc" id="diffDesc">Balanced bots. They miss sometimes and react in a third of a second.</div>
+      </div>
+      <div class="menu-btns">
+        <button class="btn ghost" id="btnHowTo">HOW TO PLAY</button>
+        <div class="sens">
+          <label>SENSITIVITY <span id="sensVal">1.0</span></label>
+          <input type="range" id="sens" min="0.3" max="2.5" step="0.05" value="1">
+        </div>
+      </div>
+    </div>
+    <div class="foot-note">Desktop only · click the arena to capture the mouse · ESC to pause</div>
   </div>
 </div>
 
+<!-- ================= HUD ================= -->
 <div id="hud">
-  <div id="crosshair"></div>
-  <div id="hitmarker"></div>
-  <div id="hp-panel" class="panel">
-    <div style="font-size:12px;letter-spacing:2px;color:#8ab;">INTEGRITY</div>
-    <div id="hp-bar-outer"><div id="hp-bar-inner"></div></div>
-    <div id="hp-num" style="font-size:22px;font-weight:bold;">100</div>
+  <div id="nameplates"></div>
+
+  <!-- top bar -->
+  <div class="topbar">
+    <div class="teamscore red"><span class="ts-name">RED</span><span class="ts-num" id="scoreRed">0</span></div>
+    <div class="clockbox">
+      <div class="clock" id="clock">5:00</div>
+      <div class="mode-name" id="modeName">TEAM DEATHMATCH</div>
+    </div>
+    <div class="teamscore blue"><span class="ts-num" id="scoreBlue">0</span><span class="ts-name">BLUE</span></div>
   </div>
-  <div id="weapon-panel" class="panel">
-    <div id="weapon-name">PISTOL</div>
-    <div id="ammo">12 <span class="reserve">/ 48</span></div>
-    <div id="slots">[1] KNIFE &nbsp; [2] PISTOL</div>
+
+  <!-- roster -->
+  <div id="roster">
+    <div class="roster-team">
+      <div class="rt-head red">RED <span id="redAlive">5/5</span></div>
+      <div id="rosterRed"></div>
+    </div>
+    <div class="roster-team">
+      <div class="rt-head blue">BLUE <span id="blueAlive">5/5</span></div>
+      <div id="rosterBlue"></div>
+    </div>
   </div>
-  <div id="score-panel" class="panel">
-    <span id="score-blue">0</span>
-    <span id="timer">5:00</span>
-    <span id="score-red">0</span>
-    <div id="flag-status"></div>
+
+  <!-- minimap -->
+  <div id="mapBox"><canvas id="minimap" width="176" height="176"></canvas><div class="map-label">TACTICAL MAP</div></div>
+
+  <!-- kill feed -->
+  <div id="feed"></div>
+
+  <!-- objective banner -->
+  <div id="objBanner"></div>
+
+  <!-- crosshair -->
+  <div id="crosshair">
+    <div class="ch t"></div><div class="ch b"></div><div class="ch l"></div><div class="ch r"></div><div class="ch dot"></div>
   </div>
-  <div id="killfeed" class="panel"></div>
-  <div id="pickup-tip"></div>
-  <div id="msg-feed"></div>
+  <div id="hitmarker">✕</div>
+  <div id="dmgvig"></div>
+  <div id="scope">
+    <div class="sc-ring"></div>
+    <div class="sc-h"></div><div class="sc-v"></div>
+    <div class="sc-mil"></div>
+  </div>
+
+  <!-- bottom left: health -->
+  <div class="vitals">
+    <div class="v-label">HEALTH</div>
+    <div class="hp-row">
+      <div class="hp-bar"><div class="hp-fill" id="hpFill"></div></div>
+      <div class="hp-num" id="hpNum">100</div>
+    </div>
+    <div class="v-sub" id="vSub">KNIFE · PISTOL</div>
+  </div>
+
+  <!-- bottom right: weapon -->
+  <div class="gunbox">
+    <div class="g-name" id="gName">M9 PISTOL</div>
+    <div class="g-ammo"><span id="gMag">12</span><i>/</i><span id="gRes">96</span></div>
+    <div class="g-hint" id="gHint">R RELOAD</div>
+  </div>
+
+  <!-- chest prompt -->
+  <div id="prompt"><b>E</b> OPEN CRATE</div>
+
+  <!-- flag carrier -->
+  <div id="carryBanner">YOU CARRY THE ENEMY FLAG — RETURN TO BASE</div>
+
+  <!-- respawn -->
+  <div id="respawn">
+    <div class="rs-title">ELIMINATED</div>
+    <div class="rs-sub">Respawning in <span id="rsNum">3</span></div>
+  </div>
+
+  <!-- tutorial checklist -->
+  <div id="tutTasks">
+    <div class="tt-head">TRAINING OBJECTIVES</div>
+    <div id="ttList"></div>
+  </div>
 </div>
-<div id="damage-vignette"></div>
-<div id="fps-tag"></div>
 
-<div id="respawn-overlay">
-  <h2>YOU WERE ELIMINATED</h2>
-  <p id="respawn-count">Respawning in 3...</p>
-</div>
-
-<div id="pause-menu" class="overlay">
-  <h2>PAUSED</h2>
-  <div class="btn-row" style="flex-direction:column;align-items:center;gap:14px;">
-    <button class="mbtn" id="btn-resume" style="width:220px;">RESUME</button>
-    <button class="mbtn" id="btn-quit" style="width:220px;">QUIT TO MENU</button>
+<!-- ================= PAUSE ================= -->
+<div id="pause" class="screen">
+  <div class="panel">
+    <h2>PAUSED</h2>
+    <div class="pause-score" id="pauseScore"></div>
+    <div class="keylist">
+      <div><b>W A S D</b> Move</div><div><b>MOUSE</b> Look / Aim</div>
+      <div><b>LEFT CLICK</b> Fire</div><div><b>R</b> Reload</div>
+      <div><b>E</b> Open crate</div><div><b>SHIFT</b> Sprint</div>
+      <div><b>SPACE</b> Jump</div><div><b>1 2 3</b> Weapons</div>
+      <div><b>Q</b> Quick swap</div><div><b>TAB</b> Scoreboard</div>
+    </div>
+    <div class="panel-btns">
+      <button class="btn" id="btnResume">RESUME</button>
+      <button class="btn ghost" id="btnRestart">RESTART</button>
+      <button class="btn ghost" id="btnQuit">QUIT TO MENU</button>
+    </div>
   </div>
 </div>
 
-<div id="gameover" class="overlay">
-  <h1 id="gameover-title">VICTORY</h1>
-  <div class="score-line" id="gameover-score"></div>
-  <div class="btn-row">
-    <button class="mbtn primary" id="btn-again">PLAY AGAIN</button>
-    <button class="mbtn" id="btn-menu">MAIN MENU</button>
+<!-- ================= END ================= -->
+<div id="end" class="screen">
+  <div class="panel wide">
+    <div class="end-kicker" id="endKicker">MATCH COMPLETE</div>
+    <h2 id="endTitle">RED TEAM WINS</h2>
+    <div class="end-score" id="endScore">75 — 61</div>
+    <div class="end-stats" id="endStats"></div>
+    <div class="panel-btns">
+      <button class="btn" id="btnAgain">PLAY AGAIN</button>
+      <button class="btn ghost" id="btnMenu">MAIN MENU</button>
+    </div>
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script>
-(function(){
-'use strict';
-
-const MENU = document.getElementById('menu');
-const TUTORIAL = document.getElementById('tutorial');
-const HUD = document.getElementById('hud');
-const GAMEOVER = document.getElementById('gameover');
-const PAUSEMENU = document.getElementById('pause-menu');
-const RESPAWN = document.getElementById('respawn-overlay');
-const canvas = document.getElementById('game-canvas');
-
-let gameMode = 'tdm';
-let difficulty = 'normal';
-let gameState = 'menu';
-let gameTime = 300;
-let scores = { blue: 0, red: 0 };
-let lastTime = performance.now();
-let fireCooldown = 0, reloadTimer = 0, respawnTimer = 0, chestRespawnGlobal = 0;
-let killfeedEntries = [];
-
-const DIFF = {
-  easy:   { hp: 80,  react: 0.75, spread: 0.14, dmgMul: 0.7,  speed: 3.0, burstGap: 0.55 },
-  normal: { hp: 100, react: 0.45, spread: 0.08, dmgMul: 0.85, speed: 3.6, burstGap: 0.35 },
-  hard:   { hp: 120, react: 0.25, spread: 0.045,dmgMul: 1.0,  speed: 4.1, burstGap: 0.22 },
-  legend: { hp: 140, react: 0.12, spread: 0.02, dmgMul: 1.2,  speed: 4.6, burstGap: 0.14 }
-};
-
-const WEAPONS = {
-  knife:    { name:'KNIFE',    slot:1, damage:55, headMul:1.0, rate:0.45, melee:true,  range:3.2, auto:false, mag:Infinity, reload:0,    spread:0,    pellets:1 },
-  pistol:   { name:'PISTOL',   slot:2, damage:26, headMul:2.0, rate:0.28, melee:false, range:120, auto:false, mag:12, reload:1.1, spread:0.02, pellets:1 },
-  rifle:    { name:'ASSAULT RIFLE', slot:3, damage:22, headMul:1.8, rate:0.105, melee:false, range:140, auto:true, mag:30, reload:1.6, spread:0.035, pellets:1 },
-  shotgun:  { name:'SHOTGUN',  slot:4, damage:13, headMul:1.2, rate:0.85, melee:false, range:40, auto:false, mag:6, reload:2.2, spread:0.09, pellets:8 },
-  sniper:   { name:'SNIPER',   slot:5, damage:95, headMul:2.2, rate:1.4, melee:false, range:220, auto:false, mag:5, reload:2.4, spread:0.002, pellets:1 },
-  rocket:   { name:'ROCKET LAUNCHER', slot:6, damage:120, headMul:1.0, rate:1.6, melee:false, range:160, auto:false, mag:3, reload:2.8, spread:0.01, pellets:1, explosive:true }
-};
-const CHEST_POOL = ['rifle','shotgun','sniper','rocket'];
-
-let scene, camera, renderer, clock;
-let solids = [], colliders = [], chests = [], tracers = [], rockets = [], particles = [];
-let flags = {};
-let player = null;
-let keys = {};
-let yaw = 0, pitch = 0;
-let mouseDown = false;
-let hitT = 0;
-let bots = [];
-
-function makeCanvasTex(w,h,draw){
-  const c = document.createElement('canvas'); c.width=w; c.height=h;
-  draw(c.getContext('2d'), w, h);
-  const t = new THREE.CanvasTexture(c);
-  return { tex:t, canvas:c };
-}
-
-function addSolid(x,y,z,w,h,d,mat,opts){
-  opts = opts||{};
-  const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), mat);
-  m.position.set(x,y,z);
-  scene.add(m);
-  if(!opts.noCollide){
-    colliders.push({ minX:x-w/2, maxX:x+w/2, minY:y-h/2, maxY:y+h/2, minZ:z-d/2, maxZ:z+d/2, mesh:m, solid:true });
-  }
-  return m;
-}
-
-function buildWorld(){
-  scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x87b5d6);
-  scene.fog = new THREE.Fog(0x87b5d6, 60, 160);
-
-  camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 400);
-  renderer = new THREE.WebGLRenderer({ canvas:canvas, antialias:true });
-  renderer.setSize(innerWidth, innerHeight);
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
-  const hemi = new THREE.HemisphereLight(0xcfe8ff, 0x54604a, 0.75);
-  scene.add(hemi);
-  const sun = new THREE.DirectionalLight(0xfff2dd, 0.95);
-  sun.position.set(40, 60, 25);
-  sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
-  sun.shadow.camera.left = -55; sun.shadow.camera.right = 55;
-  sun.shadow.camera.top = 55; sun.shadow.camera.bottom = -55;
-  sun.shadow.camera.far = 160;
-  scene.add(sun);
-
-  const groundMat = new THREE.MeshLambertMaterial({ color:0x6f8f5a });
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(180,180), groundMat);
-  ground.rotation.x = -Math.PI/2;
-  ground.receiveShadow = true;
-  scene.add(ground);
-  colliders.push({ minX:-90, maxX:90, minY:-1, maxY:0, minZ:-90, maxZ:90, ground:true });
-
-  const pathMat = new THREE.MeshLambertMaterial({ color:0x9a8f7a });
-  for(let i=0;i<6;i++){
-    const p = new THREE.Mesh(new THREE.BoxGeometry(4,0.08,14), pathMat);
-    p.position.set(-14 + i*5.6, 0.05, 0);
-    scene.add(p);
-  }
-
-  buildHouse();
-  buildPerimeter();
-  buildHQ('blue', -34, 0x2266ff);
-  buildHQ('red', 34, 0xff3333);
-  buildChests();
-  spawnFlags();
-}
-
-function wallMat(c){ return new THREE.MeshLambertMaterial({ color:c }); }
-
-function buildHouse(){
-  const W = 0xf2f2ee, T = 0xe4e0d8;
-  const wm = wallMat(W), im = wallMat(T);
-  const HW = 18, HD = 13, H = 3.4, T2 = 0.45, y1 = H/2, y2 = H + T2/2, y3 = H + H/2;
-
-  addSolid(-HW/2+T2/2, y1, 0, T2, H, HD, wm);
-  addSolid(HW/2-T2/2, y1, 0, T2, H, HD, wm);
-  addSolid(0, y1, -HD/2+T2/2, HW, H, T2, wm);
-  addSolid(-5, y1, HD/2-T2/2, HW/2-2, H, T2, wm);
-  addSolid(7.5, y1, HD/2-T2/2, HW/2-5, H, T2, wm);
-  addSolid(-8, y1, 0, T2, H, 7, im);
-  addSolid(6, y1, -3.5, T2, H, 5.5, im);
-  addSolid(1, y1, 3.5, 8, H, T2, im);
-
-  const floorMat = new THREE.MeshLambertMaterial({ color:0xd8d4cc });
-  addSolid(-16.0, y2, 0, 3.05, T2, 12.1, floorMat);
-  addSolid(0, y2, 0, 23, T2, 12.1, floorMat);
-  addSolid(16.0, y2, 0, 3.05, T2, 12.1, floorMat);
-  addSolid(0, y2, -4.02, 23, T2, 4.05, floorMat);
-  addSolid(0, y2, 5.52, 23, T2, 1.05, floorMat);
-
-  addSolid(-HW/2+T2/2, y3, 0, T2, H, HD, wm);
-  addSolid(HW/2-T2/2, y3, 0, T2, H, HD, wm);
-  addSolid(0, y3, -HD/2+T2/2, HW, H, T2, wm);
-  addSolid(-6, y3, HD/2-T2/2, HW/2-4, H, T2, wm);
-  addSolid(8, y3, HD/2-T2/2, HW/2-6, H, T2, wm);
-  addSolid(-4, y3, 0, T2, H, 8, im);
-  addSolid(8, y3, -1, T2, H, 6, im);
-
-  const railMat = new THREE.MeshLambertMaterial({ color:0xbdb8ae });
-  addSolid(-HW/2+T2/2, H+1.05, 0, 0.25, 1.0, HD, railMat, {noCollide:false});
-  addSolid(HW/2-T2/2, H+1.05, 0, 0.25, 1.0, HD, railMat, {noCollide:false});
-  addSolid(0, H+1.05, -HD/2+T2/2, HW, 1.0, 0.25, railMat, {noCollide:false});
-
-  addSolid(-13, y2, -4.875, 2.975, T2, 2.35, floorMat);
-  addSolid(-13, y2, 4.175, 2.975, T2, 3.75, floorMat);
-  addSolid(13, y2, -4.175, 2.975, T2, 3.75, floorMat);
-  addSolid(13, y2, 4.875, 2.975, T2, 2.35, floorMat);
-
-  buildStairs(-13, 2.6, -1, H);
-  buildStairs(13, -2.6, 1, H);
-}
-
-function buildStairs(x, z, dir, height){
-  const steps = 12, rise = height/steps, run = 0.55, width = 2.9;
-  for(let i=0;i<steps;i++){
-    const h = rise*(i+1);
-    const zz = z + dir*(i*run + run/2);
-    addSolid(x, h/2, zz, width, h, run, new THREE.MeshLambertMaterial({color:0xcfcabf}), {noCollide:false});
-  }
-}
-
-function buildPerimeter(){
-  const pm = new THREE.MeshLambertMaterial({ color:0x8a8478 });
-  const H = 4, L = 88, T = 0.6;
-  addSolid(0, H/2, -L/2, L+2, H, T, pm);
-  addSolid(0, H/2, L/2, L+2, H, T, pm);
-  addSolid(-L/2, H/2, 0, T, H, L+2, pm);
-  addSolid(L/2, H/2, 0, T, H, L+2, pm);
-}
-
-function buildHQ(team, x, color){
-  const padMat = new THREE.MeshLambertMaterial({ color:color, transparent:true, opacity:0.55 });
-  const pad = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 0.15, 28), padMat);
-  pad.position.set(x, 0.08, 0);
-  scene.add(pad);
-
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,7,8), new THREE.MeshLambertMaterial({color:0xdddddd}));
-  pole.position.set(x, 3.5, 0);
-  scene.add(pole);
-
-  const cloth = new THREE.Mesh(new THREE.PlaneGeometry(2.4,1.5), new THREE.MeshLambertMaterial({color:color, side:THREE.DoubleSide}));
-  cloth.position.set(x + (team==='blue'?1.25:-1.25), 6.0, 0);
-  scene.add(cloth);
-
-  const glow = new THREE.PointLight(color, 0.7, 18);
-  glow.position.set(x, 4, 0);
-  scene.add(glow);
-}
-
-function spawnFlags(){
-  flags = {
-    blue: { team:'blue', state:'home', carrier:null, pos:new THREE.Vector3(-34,0,0), returnTimer:0 },
-    red:  { team:'red',  state:'home', carrier:null, pos:new THREE.Vector3(34,0,0),  returnTimer:0 };
-  };
-}
-
-function updateFlagMeshes(){
-  ['blue','red'].forEach(t => {
-    const f = flags[t];
-    if(!f.mesh){
-      const c = t==='blue'?0x2266ff:0xff3333;
-      const grp = new THREE.Group();
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,4.5,8), new THREE.MeshLambertMaterial({color:0xeeeeee}));
-      pole.position.y = 2.25;
-      grp.add(pole);
-      const cloth = new THREE.Mesh(new THREE.PlaneGeometry(1.7,1.1), new THREE.MeshLambertMaterial({color:c, side:THREE.DoubleSide}));
-      cloth.position.set(0.9, 3.9, 0);
-      grp.add(cloth);
-      f.mesh = grp;
-      scene.add(grp);
-    }
-    let base = f.pos;
-    if(f.state==='carried' && f.carrier){
-      base = f.carrier.pos.clone(); base.y += 2.2;
-    }
-    f.mesh.position.copy(base);
-    f.mesh.visible = f.state !== 'hidden';
-  });
-}
-
-function buildChests(){
-  const spots = [
-    [-15, -10.5],[0, -10.5],[15, -10.5],
-    [-15, 10.5],[0, 10.5],[15, 10.5],
-    [-11, 16.5],[11, 16.5]
-  ];
-  const boxMat = new THREE.MeshLambertMaterial({ color:0x7a4a1e });
-  const trimMat = new THREE.MeshLambertMaterial({ color:0xffcc33, emissive:0x664400 });
-  spots.forEach((s,i) => {
-    const grp = new THREE.Group();
-    const box = new THREE.Mesh(new THREE.BoxGeometry(1.3,0.75,0.9), boxMat);
-    box.position.y = 0.42;
-    grp.add(box);
-    const lid = new THREE.Mesh(new THREE.BoxGeometry(1.36,0.14,0.96), trimMat);
-    lid.position.y = 0.85;
-    grp.add(lid);
-    const light = new THREE.PointLight(0xffcc33, 0.5, 6);
-    light.position.y = 1.4;
-    grp.add(light);
-    grp.position.set(s[0], 0, s[1]);
-    scene.add(grp);
-    chests.push({ pos:new THREE.Vector3(s[0],0,s[1]), group:grp, active:true, timer:0, baseY:0 });
-  });
-}
-
-function makeNameTag(name, team){
-  const c = document.createElement('canvas'); c.width=256; c.height=64;
-  const g = c.getContext('2d');
-  g.fillStyle = 'rgba(0,0,0,0.45)';
-  g.fillRect(0,8,256,44);
-  g.font = 'bold 30px Arial';
-  g.textAlign = 'center';
-  g.fillStyle = team==='blue' ? '#55aaff' : '#ff5555';
-  g.fillText(name, 128, 42);
-  const tex = new THREE.CanvasTexture(c);
-  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, depthTest:false }));
-  sp.scale.set(2.2, 0.55, 1);
-  return sp;
-}
-
-function makeHpBar(team){
-  const grp = new THREE.Group();
-  const bg = new THREE.Sprite(new THREE.SpriteMaterial({ color:0x111111, transparent:true, opacity:0.7, depthTest:false }));
-  bg.scale.set(1.2, 0.14, 1);
-  grp.add(bg);
-  const fg = new THREE.Sprite(new THREE.SpriteMaterial({ color: team==='blue'?0x44ff66:0xff4444, depthTest:false }));
-  fg.scale.set(1.16, 0.1, 1);
-  grp.add(fg);
-  grp.userData.fg = fg;
-  return grp;
-}
-
-function makeHumanoid(team, name){
-  const grp = new THREE.Group();
-  const col = team==='blue' ? 0x2244cc : 0xcc2222;
-  const dark = team==='blue' ? 0x1a2a66 : 0x661a1a;
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.7,0.85,0.45), new THREE.MeshLambertMaterial({color:col}));
-  body.position.y = 1.05; body.castShadow = true;
-  grp.add(body);
-  const head = new THREE.Mesh(new THREE.BoxGeometry(0.42,0.42,0.42), new THREE.MeshLambertMaterial({color:0xd9a066}));
-  head.position.y = 1.72; head.castShadow = true;
-  grp.add(head);
-  const helm = new THREE.Mesh(new THREE.BoxGeometry(0.5,0.22,0.5), new THREE.MeshLambertMaterial({color:dark}));
-  helm.position.y = 1.94;
-  grp.add(helm);
-  const legL = new THREE.Mesh(new THREE.BoxGeometry(0.26,0.6,0.3), new THREE.MeshLambertMaterial({color:dark}));
-  legL.position.set(-0.17,0.3,0); legL.castShadow = true;
-  grp.add(legL);
-  const legR = legL.clone(); legR.position.x = 0.17;
-  grp.add(legR);
-  const gun = new THREE.Mesh(new THREE.BoxGeometry(0.12,0.12,0.75), new THREE.MeshLambertMaterial({color:0x222831}));
-  gun.position.set(0.42,1.15,0.3);
-  grp.add(gun);
-  const tag = makeNameTag(name, team);
-  tag.position.y = 2.35;
-  grp.add(tag);
-  const hpBar = makeHpBar(team);
-  hpBar.position.y = 2.1;
-  grp.add(hpBar);
-  grp.userData = { head, legL, legR, hpBar, body, gun };
-  return grp;
-}
-
-function spawnPos(team, idx){
-  const baseX = team==='blue' ? -30 : 30;
-  const angle = (idx / 4) * Math.PI * 0.5 - Math.PI*0.25;
-  return new THREE.Vector3(baseX, 0, Math.sin(angle)*8 + (team==='blue'?-3:3));
-}
-
-function createBots(){
-  const d = DIFF[difficulty];
-  const names = ['Viper','Ghost','Rex','Nova','Blitz','Onyx','Hawk','Jolt','Frost','Ace'];
-  const all = [];
-  for(let i=0;i<4;i++) all.push({ team:'blue', name:'B-'+names[i] });
-  for(let i=0;i<5;i++) all.push({ team:'red', name:'R-'+names[i+4] });
-  all.forEach((cfg, i) => {
-    const mesh = makeHumanoid(cfg.team, cfg.name);
-    scene.add(mesh);
-    const bot = {
-      isBot:true, team:cfg.team, name:cfg.name, mesh:mesh,
-      pos:spawnPos(cfg.team, i).clone(),
-      vel:new THREE.Vector3(),
-      hp:d.hp, maxHp:d.hp, alive:true, respawnT:0,
-      weapons:{ knife:{ammo:Infinity}, pistol:{ammo:Infinity, mag:12, reserve:48} },
-      cur:'pistol',
-      fireT:Math.random()*1, reactT:0, target:null,
-      strafeDir: Math.random()<0.5?1:-1, strafeT: Math.random()*2,
-      wanderT:0, wanderDir:new THREE.Vector3(),
-      speed:d.speed*(0.9+Math.random()*0.2),
-      damageMul:d.dmgMul, spread:d.spread, react:d.react, burstGap:d.burstGap,
-      kills:0, deaths:0, walkPhase:Math.random()*6,
-      slotKey:{ knife:1, pistol:2 }
-    };
-    mesh.position.copy(bot.pos);
-    bots.push(bot);
-  });
-}
-
-function createPlayer(){
-  const mesh = makeHumanoid('blue', 'YOU');
-  scene.add(mesh);
-  player = {
-    isBot:false, team:'blue', name:'YOU', mesh:mesh,
-    pos:spawnPos('blue', 0).clone(),
-    vel:new THREE.Vector3(), onGround:true,
-    hp:100, maxHp:100, alive:true, respawnT:0,
-    weapons:{
-      knife:{ mag:Infinity, ammo:Infinity, reserve:Infinity },
-      pistol:{ mag:12, ammo:12, reserve:60 }
-    },
-    cur:'pistol',
-    kills:0, deaths:0, walkPhase:0
-  };
-}
-
-function equipSlot(ent, slotName){
-  if(!ent.weapons[slotName]) return false;
-  ent.cur = slotName;
-  return true;
-}
-
-function giveWeapon(ent, wkey){
-  if(ent.weapons[wkey]){
-    const w = WEAPONS[wkey];
-    if(ent.weapons[wkey].mag < w.mag){
-      ent.weapons[wkey].mag = w.mag;
-      ent.weapons[wkey].reserve = w.mag*3;
-    }
-    return 'restock';
-  }
-  const w = WEAPONS[wkey];
-  ent.weapons[wkey] = { mag: w.mag, reserve: w.mag*3 };
-  return 'new';
-}
-
-function rayAABB(origin, dir, box){
-  let tmin = 0, tmax = Infinity;
-  const axes = [['x','minX','maxX'],['y','minY','maxY'],['z','minZ','maxZ']];
-  for(const [ax,mn,mx] of axes){
-    const o = origin[ax], d = dir[ax];
-    if(Math.abs(d) < 1e-9){
-      if(o < box[mn] || o > box[mx]) return -1;
-    } else {
-      let t1 = (box[mn]-o)/d, t2 = (box[mx]-o)/d;
-      if(t1>t2){ const tt=t1; t1=t2; t2=tt; }
-      tmin = Math.max(tmin,t1);
-      tmax = Math.min(tmax,t2);
-      if(tmin>tmax) return -1;
-    }
-  }
-  return tmin;
-}
-
-function rayWallDist(origin, dir, maxDist){
-  let best = maxDist;
-  for(const c of colliders){
-    const t = rayAABB(origin, dir, c);
-    if(t >= 0 && t < best) best = t;
-  }
-  return best;
-}
-
-function hasLOS(a, b){
-  const dir = b.clone().sub(a);
-  const dist = dir.length();
-  if(dist < 0.001) return true;
-  dir.divideScalar(dist);
-  return rayWallDist(a, dir, dist) >= dist - 0.3;
-}
-
-function groundHeightAt(x, z, refY){
-  let best = 0;
-  for(const c of colliders){
-    if(x >= c.minX-0.28 && x <= c.maxX+0.28 && z >= c.minZ-0.28 && z <= c.maxZ+0.28){
-      if(c.maxY <= refY + 0.55 && c.maxY > best) best = c.maxY;
-    }
-  }
-  return best;
-}
-
-function collideMove(ent, nx, nz, radius){
-  const y0 = ent.pos.y, y1 = ent.pos.y + 1.8;
-  for(const c of colliders){
-    if(c.maxY - c.minY < 0.01) continue;
-    if(y0 + 0.55 >= c.maxY) continue;
-    if(y1 <= c.minY) continue;
-    if(nx + radius > c.minX && nx - radius < c.maxX && ent.pos.z + radius > c.minZ && ent.pos.z - radius < c.maxZ){
-      const pushL = (nx - c.maxX), pushR = (c.minX - nx);
-      nx += Math.abs(pushL) < Math.abs(pushR) ? pushL : pushR;
-    }
-    if(nz + radius > c.minZ && nz - radius < c.maxZ && ent.pos.x + radius > c.minX && ent.pos.x - radius < c.maxX){
-      const pushB = (nz - c.maxZ), pushF = (c.minZ - nz);
-      nz += Math.abs(pushB) < Math.abs(pushF) ? pushB : pushF;
-    }
-  }
-  return { x: nx, z: nz };
-}
-
-function moveEntity(ent, dt, speedMul){
-  const sp = (ent.isBot ? ent.speed : (keys['shift']?7.2:4.6)) * (speedMul||1);
-  let mx=0, mz=0;
-  if(ent.isBot){
-    mx = ent.moveDir.x; mz = ent.moveDir.z;
-  } else {
-    if(keys['w']) mz -= 1;
-    if(keys['s']) mz += 1;
-    if(keys['a']) mx -= 1;
-    if(keys['d']) mx += 1;
-    const len = Math.hypot(mx,mz);
-    if(len>0){ mx/=len; mz/=len; }
-    const sin = Math.sin(yaw), cos = Math.cos(yaw);
-    const wx = mx*cos + mz*sin;
-    const wz = -mx*sin + mz*cos;
-    mx = wx; mz = wz;
-  }
-  const moving = (Math.abs(mx)>0.01||Math.abs(mz)>0.01);
-  if(moving){
-    let nx = ent.pos.x + mx*sp*dt;
-    let nz = ent.pos.z + mz*sp*dt;
-    const solved = collideMove(ent, nx, nz, 0.42);
-    ent.pos.x = Math.max(-42, Math.min(42, solved.x));
-    ent.pos.z = Math.max(-42, Math.min(42, solved.z));
-    ent.walkPhase = (ent.walkPhase||0) + dt*sp*1.6;
-  } else {
-    ent.walkPhase = (ent.walkPhase||0)*0.9;
-  }
-
-  const gh = groundHeightAt(ent.pos.x, ent.pos.z, ent.pos.y + 0.55);
-  const gravity = 18;
-  ent.vel.y -= gravity*dt;
-  let ny = ent.pos.y + ent.vel.y*dt;
-  if(ny <= gh){
-    ny = gh;
-    ent.vel.y = 0;
-    ent.onGround = true;
-  } else {
-    ent.onGround = false;
-  }
-  ent.pos.y = ny;
-  ent.groundY = gh;
-  return moving;
-}
-
-function spawnTracer(a, b, color){
-  const geo = new THREE.BufferGeometry().setFromPoints([a, b]);
-  const mat = new THREE.LineBasicMaterial({ color: color, transparent:true, opacity:0.85 });
-  const line = new THREE.Line(geo, mat);
-  scene.add(line);
-  tracers.push({ mesh:line, life:0.07 });
-}
-
-function spawnImpact(p, color){
-  const m = new THREE.Mesh(new THREE.SphereGeometry(0.09,6,6), new THREE.MeshBasicMaterial({color:color}));
-  m.position.copy(p);
-  scene.add(m);
-  particles.push({ mesh:m, life:0.25, vel:new THREE.Vector3((Math.random()-0.5)*2, Math.random()*3, (Math.random()-0.5)*2) });
-}
-
-function spawnExplosion(p){
-  for(let i=0;i<14;i++){
-    const m = new THREE.Mesh(new THREE.SphereGeometry(0.16,6,6), new THREE.MeshBasicMaterial({color: i%2?0xff7722:0xffcc33}));
-    m.position.copy(p);
-    scene.add(m);
-    particles.push({ mesh:m, life:0.5, vel:new THREE.Vector3((Math.random()-0.5)*8, Math.random()*7, (Math.random()-0.5)*8) });
-  }
-  const light = new THREE.PointLight(0xff8833, 3, 14);
-  light.position.copy(p);
-  scene.add(light);
-  particles.push({ mesh:light, life:0.3, light:true });
-}
-
-function allCombatants(){
-  const arr = bots.filter(b=>b.alive);
-  if(player && player.alive) arr.push(player);
-  return arr;
-}
-
-function damageEnt(target, dmg, attacker, headshot){
-  if(!target.alive) return;
-  target.hp -= dmg;
-  if(target === player){
-    const v = document.getElementById('damage-vignette');
-    v.style.boxShadow = 'inset 0 0 140px rgba(255,0,0,.55)';
-    setTimeout(()=> v.style.boxShadow = 'inset 0 0 120px rgba(255,0,0,0)', 140);
-  }
-  if(target.hp <= 0){
-    target.hp = 0;
-    target.alive = false;
-    target.respawnT = 3;
-    target.deaths++;
-    target.mesh.visible = false;
-    dropFlagIfCarrying(target);
-    if(attacker && attacker.team !== target.team){
-      attacker.kills++;
-    }
-    addKillfeed(attacker, target);
-    if(gameMode==='tdm'){
-      if(target.team==='red') scores.blue++;
-      else scores.red++;
-      updateScoreHUD();
-    }
-    if(target === player){
-      RESPAWN.style.display = 'flex';
-    }
-  }
-}
-
-function dropFlagIfCarrying(ent){
-  ['blue','red'].forEach(t => {
-    const f = flags[t];
-    if(f.carrier === ent){
-      f.carrier = null;
-      f.state = 'dropped';
-      f.pos.copy(ent.pos);
-      f.returnTimer = 6;
-      showMsg(ent.name + ' dropped the ' + t.toUpperCase() + ' flag!');
-    }
-  });
-}
-
-function fireWeapon(ent){
-  const wkey = ent.cur;
-  const w = WEAPONS[wkey];
-  const wstate = ent.weapons[wkey];
-  if(fireCooldown > 0 && !ent.isBot) return;
-  if(ent.isBot && ent.fireT > 0) return;
-  if(wstate.mag <= 0){
-    if(!ent.isBot) startReload(ent);
-    else { wstate.mag = w.mag; }
-    return;
-  }
-
-  const origin = ent.pos.clone(); origin.y += 1.6;
-  let dir;
-  if(ent.isBot){
-    if(!ent.target || !ent.target.alive) return;
-    const tp = ent.target.pos.clone(); tp.y += 1.35;
-    dir = tp.sub(origin).normalize();
-  } else {
-    dir = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);
-  }
-
-  if(wkey === 'knife'){
-    const reach = rayWallDist(origin, dir, w.range);
-    let hitEnt = null, bestD = reach;
-    for(const t of allCombatants()){
-      if(t.team === ent.team) continue;
-      const center = t.pos.clone(); center.y += 1.0;
-      const toC = center.clone().sub(origin);
-      const proj = toC.dot(dir);
-      if(proj < 0 || proj > bestD) continue;
-      const closest = origin.clone().add(dir.clone().multiplyScalar(proj));
-      if(closest.distanceTo(center) < 0.85){ hitEnt = t; bestD = proj; }
-    }
-    if(hitEnt){
-      damageEnt(hitEnt, w.damage, ent, false);
-      spawnTracer(origin.clone().add(dir.clone().multiplyScalar(Math.min(bestD,w.range))), origin.clone().add(dir.clone().multiplyScalar(Math.min(bestD,w.range))), ent.team==='blue'?0x88ccff:0xff8866);
-    }
-    if(!ent.isBot) fireCooldown = w.rate; else ent.fireT = w.rate;
-    return;
-  }
-
-  wstate.mag--;
-
-  for(let p=0;p<w.pellets;p++){
-    const d = dir.clone();
-    d.x += (Math.random()-0.5)*2*w.spread;
-    d.y += (Math.random()-0.5)*2*w.spread;
-    d.z += (Math.random()-0.5)*2*w.spread;
-    d.normalize();
-
-    const wallD = rayWallDist(origin, d, w.range);
-    let hitEnt = null, bestT = wallD, isHead = false;
-    for(const t of allCombatants()){
-      if(t.team === ent.team) continue;
-      for(const hy of [1.0, 1.72]){
-        const center = t.pos.clone(); center.y += hy;
-        const toC = center.clone().sub(origin);
-        const proj = toC.dot(d);
-        if(proj < 0 || proj > bestT) continue;
-        const closest = origin.clone().add(d.clone().multiplyScalar(proj));
-        const rad = hy === 1.72 ? 0.32 : 0.62;
-        if(closest.distanceTo(center) < rad){ hitEnt = t; bestT = proj; isHead = hy===1.72; }
-      }
-    }
-
-    const end = origin.clone().add(d.clone().multiplyScalar(bestT));
-
-    if(w.explosive){
-      const rocket = new THREE.Mesh(new THREE.SphereGeometry(0.14,8,8), new THREE.MeshBasicMaterial({color:0xffaa33}));
-      rocket.position.copy(origin);
-      scene.add(rocket);
-      rockets.push({ mesh:rocket, dir:d, speed:26, owner:ent, dmg:w.damage, life:3 });
-      continue;
-    }
-
-    if(hitEnt){
-      const dmg = w.damage * (isHead ? w.headMul : 1) * (ent.isBot ? ent.damageMul : 1);
-      damageEnt(hitEnt, dmg, ent, isHead);
-      if(hitEnt === player || ent === player) flashHitmarker();
-      spawnImpact(end, 0xff3333);
-      spawnTracer(origin, end, ent.team==='blue'?0x99ddff:0xff9966);
-    } else {
-      spawnImpact(end, 0xffee88);
-      spawnTracer(origin, end, ent.team==='blue'?0x99ddff:0xff9966);
-    }
-  }
-
-  if(!ent.isBot) fireCooldown = w.rate; else ent.fireT = w.rate * (0.9 + Math.random()*0.3);
-  if(!ent.isBot && wstate.mag === 0) startReload(ent);
-}
-
-function startReload(ent){
-  const w = WEAPONS[ent.cur];
-  if(w.reload === 0) return;
-  if(ent.reloadT > 0) return;
-  const ws = ent.weapons[ent.cur];
-  if(ws.reserve <= 0 || ws.mag >= w.mag) return;
-  ent.reloadT = w.reload;
-}
-
-function updateReload(ent, dt){
-  if(ent.reloadT > 0){
-    ent.reloadT -= dt;
-    if(ent.reloadT <= 0){
-      const w = WEAPONS[ent.cur];
-      const ws = ent.weapons[ent.cur];
-      const need = w.mag - ws.mag;
-      const take = Math.min(need, ws.reserve);
-      ws.mag += take;
-      ws.reserve -= take;
-    }
-  }
-}
-
-function flashHitmarker(){
-  const h = document.getElementById('hitmarker');
-  h.style.opacity = '1';
-  h.style.transform = 'translate(-50%,-50%) rotate(45deg) scale(1.25)';
-  hitT = 0.12;
-}
-
-function addKillfeed(attacker, target){
-  const feed = document.getElementById('killfeed');
-  const div = document.createElement('div');
-  const an = attacker ? attacker.name : 'WORLD';
-  const ac = attacker ? (attacker.team==='blue'?'#55aaff':'#ff5555') : '#aaa';
-  const tc = target.team==='blue' ? '#55aaff' : '#ff5555';
-  div.innerHTML = '<span style="color:'+ac+'">'+an+'</span> <span style="color:#ffcc33">&#9656;</span> <span style="color:'+tc+'">'+target.name+'</span>';
-  feed.prepend(div);
-  while(feed.children.length > 6) feed.removeChild(feed.lastChild);
-}
-
-function showMsg(text){
-  const m = document.getElementById('msg-feed');
-  m.innerHTML = text;
-  m.style.opacity = '1';
-  m.style.transition = 'none';
-  requestAnimationFrame(()=>{
-    m.style.transition = 'opacity 2.2s';
-    m.style.opacity = '0';
-  });
-}
-
-function botThink(bot, dt){
-  if(!bot.alive) return;
-  const enemies = allCombatants().filter(e => e.team !== bot.team);
-  let target = null, bestScore = Infinity;
-  const eye = bot.pos.clone(); eye.y += 1.6;
-  for(const e of enemies){
-    const dist = bot.pos.distanceTo(e.pos);
-    let score = dist;
-    if(e === player && player.alive) score *= 0.85;
-    if(hasLOS(eye, (()=>{const v=e.pos.clone(); v.y+=1.4; return v;})())) score *= 0.6;
-    if(score < bestScore){ bestScore = score; target = e; }
-  }
-
-  bot.reactT -= dt;
-  bot.fireT -= dt;
-  bot.strafeT -= dt;
-  bot.wanderT -= dt;
-
-  if(target && (!bot.target || bot.reactT <= 0)){
-    if(bot.target !== target) bot.reactT = bot.react * (0.6 + Math.random()*0.8);
-    bot.target = target;
-  } else if(target && bot.target !== target && Math.random() < 0.3){
-    bot.target = target;
-  }
-
-  const moveDir = bot.moveDir = bot.moveDir || new THREE.Vector3();
-
-  if(bot.target && bot.target.alive){
-    const tp = bot.target.pos;
-    const toT = new THREE.Vector3(tp.x-bot.pos.x, 0, tp.z-bot.pos.z);
-    const dist = toT.length();
-    toT.normalize();
-
-    const eye2 = bot.pos.clone(); eye2.y += 1.6;
-    const tCenter = tp.clone(); tCenter.y += 1.3;
-    const visible = hasLOS(eye2, tCenter);
-
-    if(!visible){
-      moveDir.copy(toT);
-    } else if(dist > 26){
-      moveDir.copy(toT);
-    } else if(dist < 7){
-      moveDir.copy(toT).multiplyScalar(-0.7);
-      if(bot.strafeT <= 0){ bot.strafeDir *= -1; bot.strafeT = 0.6 + Math.random()*1.2; }
-      moveDir.x += -toT.z * bot.strafeDir * 0.8;
-      moveDir.z += toT.x * bot.strafeDir * 0.8;
-    } else {
-      if(bot.strafeT <= 0){ bot.strafeDir *= -1; bot.strafeT = 0.5 + Math.random()*1.0; }
-      moveDir.set(-toT.z * bot.strafeDir, 0, toT.x * bot.strafeDir);
-      moveDir.add(toT.clone().multiplyScalar(0.35));
-    }
-    moveDir.normalize();
-
-    const face = Math.atan2(tp.x - bot.pos.x, tp.z - bot.pos.z);
-    bot.mesh.rotation.y += (angDiff(face, bot.mesh.rotation.y)) * Math.min(1, dt*8);
-
-    if(visible && dist < 70 && bot.reactT <= 0 && bot.fireT <= 0){
-      fireWeapon(bot);
-      bot.fireT = bot.burstGap * (0.7 + Math.random()*0.7);
-    }
-  } else {
-    if(bot.wanderT <= 0){
-      bot.wanderT = 2 + Math.random()*3;
-      const a = Math.random()*Math.PI*2;
-      bot.wanderDir.set(Math.sin(a), 0, Math.cos(a));
-    }
-    moveDir.copy(bot.wanderDir);
-    bot.mesh.rotation.y += (Math.atan2(moveDir.x, moveDir.z) - bot.mesh.rotation.y) * Math.min(1, dt*4);
-  }
-
-  if(gameMode==='ctf'){
-    const myFlag = flags[bot.team];
-    const enemyFlag = flags[bot.team==='blue'?'red':'blue'];
-    {
-      if(!myFlag.carrier && myFlag.state === 'home' && enemyFlag.state !== 'carried' && Math.random() < 0.005){
-        moveDir.set(myFlag.pos.x - bot.pos.x, 0, myFlag.pos.z - bot.pos.z).normalize();
-      }
-      if(enemyFlag.state === 'home' && !enemyFlag.carrier){
-        const d = bot.pos.distanceTo(enemyFlag.pos);
-        if(d < 3 && Math.random() < 0.1){
-          pickFlag(bot, enemyFlag);
-        }
-        if(Math.random() < 0.02 && (!bot.target || bot.pos.distanceTo(bot.target.pos) > 30)){
-          moveDir.set(enemyFlag.pos.x - bot.pos.x, 0, enemyFlag.pos.z - bot.pos.z).normalize();
-        }
-      }
-      if(enemyFlag.carrier === bot){
-        const hq = bot.team==='blue' ? flags.blue.pos : flags.red.pos;
-        moveDir.set(hq.x - bot.pos.x, 0, hq.z - bot.pos.z).normalize();
-        const dh = Math.hypot(hq.x-bot.pos.x, hq.z-bot.pos.z);
-        if(dh < 4) scoreFlag(bot.team);
-      }
-    }
-  }
-}
-
-function angDiff(a, b){
-  let d = a - b;
-  while(d > Math.PI) d -= Math.PI*2;
-  while(d < -Math.PI) d += Math.PI*2;
-  return d;
-}
-
-function pickFlag(ent, flag){
-  flag.state = 'carried';
-  flag.carrier = ent;
-  showMsg(ent.name + ' took the ' + flag.team.toUpperCase() + ' flag!');
-  updateFlagHUD();
-}
-
-function returnFlag(flag){
-  flag.state = 'home';
-  flag.carrier = null;
-  flag.returnTimer = 0;
-  showMsg(flag.team.toUpperCase() + ' flag returned!');
-  updateFlagHUD();
-}
-
-function scoreFlag(team){
-  if(team==='blue') scores.blue++;
-  else scores.red++;
-  const f = flags[team==='blue'?'red':'blue'];
-  f.state = 'home';
-  f.carrier = null;
-  f.pos.copy(team==='blue' ? new THREE.Vector3(34,0,0) : new THREE.Vector3(-34,0,0));
-  showMsg(team.toUpperCase() + ' SCORES! Flag captured!');
-  updateScoreHUD();
-  updateFlagHUD();
-}
-
-function updateFlagHUD(){
-  const el = document.getElementById('flag-status');
-  if(gameMode !== 'ctf'){ el.textContent = ''; return; }
-  const b = flags.blue, r = flags.red;
-  el.textContent = (b.state==='carried'?'BLUE FLAG TAKEN! ':'') + (r.state==='carried'?'RED FLAG TAKEN! ':'');
-}
-
-function updateScoreHUD(){
-  document.getElementById('score-blue').textContent = scores.blue;
-  document.getElementById('score-red').textContent = scores.red;
-}
-
-function updateTimerHUD(){
-  const t = Math.max(0, Math.ceil(gameTime));
-  const m = Math.floor(t/60), s = (t%60).toString().padStart(2,'0');
-  document.getElementById('timer').textContent = m + ':' + s;
-}
-
-function updateWeaponHUD(){
-  const w = WEAPONS[player.cur];
-  const ws = player.weapons[player.cur];
-  document.getElementById('weapon-name').textContent = w.name + (player.reloadT>0 ? ' [RELOADING]' : '');
-  document.getElementById('ammo').innerHTML = (w.melee ? '&#8734;' : ws.mag) + ' <span class="reserve">' + (w.melee ? '' : '/ ' + ws.reserve) + '</span>';
-  let slots = [];
-  const order = ['knife','pistol','rifle','shotgun','sniper','rocket'];
-  order.forEach(k => { if(player.weapons[k]) slots.push('[' + WEAPONS[k].slot + '] ' + WEAPONS[k].name); });
-  document.getElementById('slots').textContent = slots.join('  ');
-}
-
-function updateHpHUD(){
-  const pct = Math.max(0, player.hp/player.maxHp*100);
-  document.getElementById('hp-bar-inner').style.width = pct + '%';
-  document.getElementById('hp-num').textContent = Math.ceil(Math.max(0,player.hp));
-  document.getElementById('hp-bar-inner').style.background = pct > 50 ? 'linear-gradient(90deg,#2ecc40,#7CFC00)' : pct > 25 ? 'linear-gradient(90deg,#cc9922,#ffcc33)' : 'linear-gradient(90deg,#cc2222,#ff4444)';
-}
-
-function nearestChest(){
-  let best = null, bd = 3.0;
-  for(const c of chests){
-    if(!c.active) continue;
-    const d = Math.hypot(c.pos.x-player.pos.x, c.pos.z-player.pos.z);
-    if(d < bd){ bd = d; best = c; }
-  }
-  return best;
-}
-
-function openChest(c){
-  const wkey = CHEST_POOL[Math.floor(Math.random()*CHEST_POOL.length)];
-  const res = giveWeapon(player, wkey);
-  if(res === 'new') showMsg('Picked up ' + WEAPONS[wkey].name + '!');
-  else showMsg('Restocked ' + WEAPONS[wkey].name + ' ammo!');
-  c.active = false;
-  c.timer = 20;
-  c.group.visible = false;
-}
-
-function handleInteract(){
-  if(gameMode === 'ctf' && player.alive){
-    const enemyFlag = flags.red;
-    if(enemyFlag.state === 'home' && !enemyFlag.carrier && Math.hypot(enemyFlag.pos.x-player.pos.x, enemyFlag.pos.z-player.pos.z) < 3){
-      pickFlag(player, enemyFlag);
-      return;
-    }
-    if(enemyFlag.state === 'dropped' && Math.hypot(enemyFlag.pos.x-player.pos.x, enemyFlag.pos.z-player.pos.z) < 3){
-      pickFlag(player, enemyFlag);
-      return;
-    }
-    if(enemyFlag.carrier === player){
-      if(Math.hypot(flags.blue.pos.x-player.pos.x, flags.blue.pos.z-player.pos.z) < 4) scoreFlag('blue');
-      return;
-    }
-    const myFlag = flags.blue;
-    if(myFlag.state === 'dropped' && Math.hypot(myFlag.pos.x-player.pos.x, myFlag.pos.z-player.pos.z) < 3){
-      returnFlag(myFlag);
-      return;
-    }
-  }
-  if(!player.alive) return;
-  const c = nearestChest();
-  if(c) openChest(c);
-}
-
-function endGame(){
-  gameState = 'over';
-  document.exitPointerLock && document.exitPointerLock();
-  const title = document.getElementById('gameover-title');
-  let result;
-  if(scores.blue > scores.red) result = 'VICTORY';
-  else if(scores.blue < scores.red) result = 'DEFEAT';
-  else result = 'DRAW';
-  title.textContent = result;
-  title.style.color = result==='VICTORY' ? '#44ff66' : result==='DEFEAT' ? '#ff5555' : '#ffcc33';
-  document.getElementById('gameover-score').textContent = 'BLUE ' + scores.blue + '  —  ' + scores.red + ' RED   |   Your kills: ' + player.kills + ' / Deaths: ' + player.deaths;
-  GAMEOVER.style.display = 'flex';
-  HUD.style.display = 'none';
-}
-
-function resetGame(){
-  gameTime = 300;
-  scores = { blue:0, red:0 };
-  killfeedEntries = [];
-  document.getElementById('killfeed').innerHTML = '';
-  tracers.forEach(t => scene.remove(t.mesh));
-  rockets.forEach(r => scene.remove(r.mesh));
-  particles.forEach(p => scene.remove(p.mesh));
-  tracers = []; rockets = []; particles = [];
-  bots.forEach(b => scene.remove(b.mesh));
-  bots = [];
-  if(player && player.mesh) scene.remove(player.mesh);
-  chests.forEach(c => { c.active = true; c.timer = 0; c.group.visible = true; });
-  ['blue','red'].forEach(t => { if(flags[t] && flags[t].mesh) scene.remove(flags[t].mesh); });
-  spawnFlags();
-  updateFlagMeshes();
-  updateFlagHUD();
-  createBots();
-  createPlayer();
-  camera.position.set(player.pos.x, player.pos.y+1.6, player.pos.z);
-  updateScoreHUD();
-  updateTimerHUD();
-  updateHpHUD();
-  updateWeaponHUD();
-  RESPAWN.style.display = 'none';
-  yaw = -Math.PI/2;
-  pitch = 0;
-}
-
-function startGame(){
-  resetGame();
-  MENU.style.display = 'none';
-  TUTORIAL.style.display = 'none';
-  GAMEOVER.style.display = 'none';
-  HUD.style.display = 'block';
-  gameState = 'playing';
-  canvas.requestPointerLock && canvas.requestPointerLock();
-  showMsg(gameMode==='tdm' ? 'Eliminate the RED team!' : 'Steal the RED flag!');
-}
-
-function animate(){
-  requestAnimationFrame(animate);
-  const now = performance.now();
-  let dt = Math.min(0.05, (now - lastTime)/1000);
-  lastTime = now;
-
-  if(gameState === 'playing'){
-    if(player.alive){
-      moveEntity(player, dt, 1);
-      if(keys[' '] && player.onGround){ player.vel.y = 6.5; player.onGround = false; }
-      updateReload(player, dt);
-
-      if(reloadTimer > 0) reloadTimer -= dt;
-
-      if(mouseDown && WEAPONS[player.cur].auto) fireWeapon(player);
-      if(fireCooldown > 0) fireCooldown -= dt;
-      if(hitT > 0){ hitT -= dt; if(hitT <= 0) document.getElementById('hitmarker').style.opacity = '0'; }
-
-      camera.position.set(player.pos.x, player.pos.y + 1.62, player.pos.z);
-      camera.rotation.order = 'YXZ';
-      camera.rotation.y = yaw;
-      camera.rotation.x = pitch;
-      player.mesh.position.copy(player.pos);
-      player.mesh.rotation.y = yaw + Math.PI;
-      animateLimbs(player, dt);
-
-      const chest = nearestChest();
-      const tip = document.getElementById('pickup-tip');
-      if(gameMode === 'ctf' && player.alive && flags.red.state === 'home' && Math.hypot(flags.red.pos.x-player.pos.x, flags.red.pos.z-player.pos.z) < 3){
-        tip.textContent = 'Press E to take the RED flag';
-        tip.style.display = 'block';
-      } else if(chest){
-        tip.textContent = 'Press E to open supply crate';
-        tip.style.display = 'block';
-      } else if(gameMode==='ctf' && flags.blue.state==='dropped' && Math.hypot(flags.blue.pos.x-player.pos.x, flags.blue.pos.z-player.pos.z) < 3){
-        tip.textContent = 'Press E to return your flag';
-        tip.style.display = 'block';
-      } else {
-        tip.style.display = 'none';
-      }
-    } else {
-      respawnTimer -= dt;
-      player.respawnT -= dt;
-      document.getElementById('respawn-count').textContent = 'Respawning in ' + Math.max(0,Math.ceil(player.respawnT)) + '...';
-      if(player.respawnT <= 0){
-        player.alive = true;
-        player.hp = player.maxHp;
-        player.pos.copy(spawnPos('blue', 0));
-        player.weapons = {
-          knife:{ mag:Infinity, ammo:Infinity, reserve:Infinity },
-          pistol:{ mag:12, ammo:12, reserve:60 }
-        };
-        player.cur = 'pistol';
-        player.mesh.visible = true;
-        RESPAWN.style.display = 'none';
-        updateHpHUD();
-        updateWeaponHUD();
-      }
-    }
-
-    for(const bot of bots){
-      if(bot.alive){
-        botThink(bot, dt);
-        moveEntity(bot, dt, 1);
-        updateReload(bot, dt);
-        bot.mesh.position.copy(bot.pos);
-        animateLimbs(bot, dt);
-        updateHpBar(bot);
-      } else {
-        bot.respawnT -= dt;
-        if(bot.respawnT <= 0){
-          bot.alive = true;
-          bot.hp = bot.maxHp;
-          bot.pos.copy(spawnPos(bot.team, bots.indexOf(bot)));
-          bot.target = null;
-          bot.weapons.pistol.mag = 12;
-          bot.weapons.pistol.reserve = Math.max(24, bot.weapons.pistol.reserve);
-          bot.cur = 'knife' in bot.weapons ? 'pistol' : bot.cur;
-          bot.mesh.visible = true;
-        }
-      }
-    }
-
-    if(gameMode === 'ctf'){
-      ['blue','red'].forEach(t => {
-        const f = flags[t];
-        if(f.state === 'dropped' && !f.carrier){
-          f.returnTimer -= dt;
-          if(f.returnTimer <= 0) returnFlag(f);
-        }
-        const carrier = f.carrier;
-        if(carrier && !carrier.alive) dropFlagIfCarrying(carrier);
-      });
-      updateFlagMeshes();
-    }
-
-    for(const c of chests){
-      if(!c.active){
-        c.timer -= dt;
-        if(c.timer <= 0){ c.active = true; c.group.visible = true; }
-      } else {
-        c.group.rotation.y += dt*0.8;
-        c.group.position.y = Math.sin(now*0.002 + c.pos.x)*0.08;
-      }
-    }
-
-    for(let i=tracers.length-1; i>=0; i--){
-      tracers[i].life -= dt;
-      if(tracers[i].life <= 0){ scene.remove(tracers[i].mesh); tracers.splice(i,1); }
-    }
-    for(let i=particles.length-1; i>=0; i--){
-      const p = particles[i];
-      p.life -= dt;
-      if(p.light){ p.mesh.intensity *= 0.85; }
-      else {
-        p.vel.y -= 12*dt;
-        p.mesh.position.add(p.vel.clone().multiplyScalar(dt));
-      }
-      if(p.life <= 0){ scene.remove(p.mesh); particles.splice(i,1); }
-    }
-    for(let i=rockets.length-1; i>=0; i--){
-      const r = rockets[i];
-      const step = r.speed*dt;
-      const origin = r.mesh.position.clone();
-      const dir = r.dir.clone();
-      const wallD = rayWallDist(origin, dir, step);
-      r.mesh.position.add(dir.clone().multiplyScalar(step));
-      let exploded = false;
-      if(wallD < step){
-        spawnExplosion(r.mesh.position.clone());
-        explodeDamage(r.mesh.position.clone(), 5.5, r.owner, r.dmg);
-        exploded = true;
-      } else {
-        for(const e of allCombatants()){
-          if(e.team === r.owner.team) continue;
-          if(r.mesh.position.distanceTo((()=>{const v=e.pos.clone(); v.y+=1.0; return v;})()) < 1.0){
-            spawnExplosion(r.mesh.position.clone());
-            explodeDamage(r.mesh.position.clone(), 5.5, r.owner, r.dmg);
-            exploded = true;
-            break;
-          }
-        }
-      }
-      r.life -= dt;
-      if(exploded || r.life <= 0){
-        if(!exploded){ spawnExplosion(r.mesh.position.clone()); explodeDamage(r.mesh.position.clone(), 5.5, r.owner, r.dmg); }
-        scene.remove(r.mesh);
-        rockets.splice(i,1);
-      }
-    }
-
-    gameTime -= dt;
-    updateTimerHUD();
-    if(gameTime <= 0){ updateFlagMeshes(); endGame(); }
-  }
-
-  renderer.render(scene, camera);
-}
-
-function explodeDamage(pos, radius, owner, dmg){
-  allCombatants().forEach(e => {
-    const c = e.pos.clone(); c.y += 1.0;
-    const d = c.distanceTo(pos);
-    if(d < radius){
-      const fall = 1 - d/radius;
-      damageEnt(e, dmg * fall, owner, false);
-      if(e === player) flashHitmarker();
-    }
-  });
-}
-
-function updateHpBar(ent){
-  const fg = ent.mesh.userData.hpBar.userData.fg;
-  const pct = Math.max(0, ent.hp/ent.maxHp);
-  fg.scale.x = 1.16 * pct;
-  fg.position.x = -(1.16 - fg.scale.x)/2;
-}
-
-function animateLimbs(ent, dt){
-  const u = ent.mesh.userData;
-  if(!u.legL) return;
-  const sw = Math.sin(ent.walkPhase)*0.55;
-  u.legL.rotation.x = sw;
-  u.legR.rotation.x = -sw;
-  if(ent.mesh.userData.gun) ent.mesh.userData.gun.rotation.x = 0;
-}
-
-buildWorld();
-animate();
-
-document.getElementById('btn-tdm').addEventListener('click', ()=>{
-  gameMode = 'tdm';
-  document.getElementById('btn-tdm').classList.add('sel');
-  document.getElementById('btn-ctf').classList.remove('sel');
-});
-document.getElementById('btn-ctf').addEventListener('click', ()=>{
-  gameMode = 'ctf';
-  document.getElementById('btn-ctf').classList.add('sel');
-  document.getElementById('btn-tdm').classList.remove('sel');
-});
-document.getElementById('diff-row').addEventListener('click', e=>{
-  if(e.target.dataset && e.target.dataset.d){
-    difficulty = e.target.dataset.d;
-    document.querySelectorAll('#diff-row .mbtn').forEach(b => b.classList.toggle('sel', b === e.target));
-  }
-});
-document.getElementById('btn-tutorial').addEventListener('click', ()=>{ TUTORIAL.style.display = 'flex'; });
-document.getElementById('btn-tutorial-close').addEventListener('click', ()=>{ TUTORIAL.style.display = 'none'; });
-document.getElementById('btn-start').addEventListener('click', startGame);
-document.getElementById('btn-again').addEventListener('click', startGame);
-document.getElementById('btn-menu').addEventListener('click', ()=>{
-  GAMEOVER.style.display = 'none';
-  HUD.style.display = 'none';
-  MENU.style.display = 'flex';
-  gameState = 'menu';
-});
-document.getElementById('btn-resume').addEventListener('click', ()=>{
-  PAUSEMENU.style.display = 'none';
-  gameState = 'playing';
-  canvas.requestPointerLock && canvas.requestPointerLock();
-});
-document.getElementById('btn-quit').addEventListener('click', ()=>{
-  PAUSEMENU.style.display = 'none';
-  HUD.style.display = 'none';
-  MENU.style.display = 'flex';
-  gameState = 'menu';
-  document.exitPointerLock && document.exitPointerLock();
-});
-
-document.addEventListener('keydown', e=>{
-  keys[e.key.toLowerCase()] = true;
-  if(gameState !== 'playing') return;
-  const k = e.key.toLowerCase();
-  if(k === 'e') handleInteract();
-  if(k === 'r') startReload(player);
-  const slotMap = { '1':'knife','2':'pistol','3':'rifle','4':'shotgun','5':'sniper','6':'rocket' };
-  if(slotMap[k] && player.weapons[slotMap[k]]){
-    equipSlot(player, slotMap[k]);
-    updateWeaponHUD();
-  }
-});
-document.addEventListener('keyup', e=>{ keys[e.key.toLowerCase()] = false; });
-
-document.addEventListener('mousemove', e=>{
-  if(gameState !== 'playing' || document.pointerLockElement !== canvas) return;
-  yaw -= e.movementX * 0.0022;
-  pitch -= e.movementY * 0.0022;
-  pitch = Math.max(-1.45, Math.min(1.45, pitch));
-});
-
-document.addEventListener('mousedown', e=>{
-  if(gameState !== 'playing' || document.pointerLockElement !== canvas) return;
-  if(e.button === 0){
-    mouseDown = true;
-    if(player.alive){
-      fireWeapon(player);
-    }
-  }
-});
-document.addEventListener('mouseup', e=>{ if(e.button===0) mouseDown = false; });
-
-document.addEventListener('pointerlockchange', ()=>{
-  if(document.pointerLockElement !== canvas && gameState === 'playing'){
-    gameState = 'paused';
-    PAUSEMENU.style.display = 'flex';
-  }
-});
-
-canvas.addEventListener('click', ()=>{
-  if(gameState === 'playing' && document.pointerLockElement !== canvas){
-    canvas.requestPointerLock && canvas.requestPointerLock();
-  }
-});
-
-window.addEventListener('resize', ()=>{
-  camera.aspect = innerWidth/innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
-});
-
-document.addEventListener('contextmenu', e => e.preventDefault());
-
-})();
-</script>
+<!-- ================= TUTORIAL / HOW TO PLAY ================= -->
+<div id="howto" class="screen">
+  <div class="panel wide howto">
+    <div class="ht-head">
+      <h2>FIELD MANUAL</h2>
+      <div class="ht-pages" id="htDots"></div>
+    </div>
+    <div class="ht-body" id="htBody"></div>
+    <div class="panel-btns">
+      <button class="btn ghost" id="htPrev">← BACK</button>
+      <button class="btn" id="htNext">NEXT →</button>
+      <button class="btn ghost" id="htClose">CLOSE</button>
+    </div>
+  </div>
+</div>
+
+<script src="lib/three.min.js"></script>
+<script src="js/game.js"></script>
 </body>
 </html>
