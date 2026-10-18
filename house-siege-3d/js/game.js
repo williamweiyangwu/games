@@ -3226,6 +3226,7 @@ const HT_PAGES = [
       <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td><td>Move</td></tr>
       <tr><td><kbd>MOUSE</kbd></td><td>Look / aim</td></tr>
       <tr><td><kbd>LEFT CLICK</kbd></td><td>Fire (hold for automatic weapons)</td></tr>
+      <tr><td><kbd>RIGHT CLICK</kbd></td><td>Aim down sights — tighter spread, zoom, slower turn</td></tr>
       <tr><td><kbd>R</kbd></td><td>Reload</td></tr>
       <tr><td><kbd>E</kbd></td><td>Open a weapon crate</td></tr>
       <tr><td><kbd>SHIFT</kbd></td><td>Sprint (forward)</td></tr>
