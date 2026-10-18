@@ -613,7 +613,7 @@ for (const f of FACE) {
 const STRIDE = 30, C_TILE = 27, C_UO = 28;
 
 /* ------------------------------------------------------------- world */
-const W = 96, H = 40, SEA = 13, CH = 16, CW = W / CH, CD = W / CH;
+const W = 128, H = 40, SEA = 13, CH = 16, CW = W / CH, CD = W / CH;
 const world = new Uint8Array(W * H * W);
 const topY = new Int16Array(W * W);
 let seedOff = 0;
@@ -1468,6 +1468,13 @@ function toolSpeed(blk) {
   if (t.k === 'shovel' && (blk === GRASS || blk === DIRT || blk === SAND || blk === GRAVEL)) return t.s;
   return 1;
 }
+function mineable(blk) {
+  if (mode === 'creative') return true;
+  if (blk === STONE || blk === COBBLE || blk === BRICK) {
+    const t = heldTool(); return !!(t && t.k === 'pick');
+  }
+  return true;
+}
 function addItem(id, n) {
   if (!id || n <= 0) return n;
   for (let i = 0; i < INV.length && n > 0; i++) {
@@ -1649,13 +1656,10 @@ function stepDrops(dt) {
       }
     }
     if (!dead && mode === 'survival' && (d.pick || 0) <= 0) {
-      const dx = d.x - pl.x, dy = d.y - (pl.y + 0.6), dz = d.z - pl.z;
-      const dd = dx * dx + dy * dy + dz * dz;
-      if (dd < 1.44) {
-        if (invHasSpace(d.id)) { addItem(d.id, d.n); drops.splice(i, 1); sfx(560, 0.05, 'sine'); continue; }
-      } else if (dd < 16) {
-        const l = Math.sqrt(dd);
-        d.x -= dx / l * 3 * dt; d.z -= dz / l * 3 * dt;
+      const dx = d.x - pl.x, dz = d.z - pl.z;
+      const hd = dx * dx + dz * dz;
+      if (hd < 0.36 && Math.abs(d.y - pl.y) < 1.7 && invHasSpace(d.id)) {
+        addItem(d.id, d.n); drops.splice(i, 1); sfx(560, 0.05, 'sine'); continue;
       }
     }
   }
@@ -1762,7 +1766,7 @@ function spawnPlayer() {
     if (best > SEA + 4) break;
   }
   pl.x = sx + 0.5; pl.z = sz + 0.5; pl.y = topAt(sx, sz) + 1.05;
-  pl.vx = pl.vy = pl.vz = 0; pl.fly = (mode === 'creative' ? 1 : 0);
+  pl.vx = pl.vy = pl.vz = 0; pl.fly = 0;
   cam.yaw = (hash2(sx, sz) - 0.5) * 6.2; cam.pitch = -0.1;
   spawnPt = { x: pl.x, y: pl.y, z: pl.z };
   fallY = pl.y;
@@ -2191,7 +2195,12 @@ if (!running) {
 addEventListener('keyup', e => { keys[e.code] = 0; });
 addEventListener('blur', () => { keys = Object.create(null); });
 
-let mining = 0, mineT = 0, swing = 0;
+let mining = 0, mineT = 0, swing = 0, pickHintT = 0;
+function pickHint() {
+  if (pickHintT > 0) return;
+  pickHintT = 1.6;
+  toast('needs a pickaxe');
+}
 addEventListener('mousedown', e => {
   if (!running || invOpen) return;
   if (e.button === 0) {
@@ -2378,17 +2387,34 @@ function storageKB() {
     return Math.round(b / 1024);
   } catch (e) { return 0; }
 }
+function rleEncode(arr) {
+  let out = '';
+  for (let i = 0, n = arr.length; i < n;) {
+    const v = arr[i];
+    let j = i + 1;
+    while (j < n && arr[j] === v && j - i < 255) j++;
+    out += String.fromCharCode(j - i, v);
+    i = j;
+  }
+  return out;
+}
+function rleDecode(str, arr) {
+  let k = 0; const n = arr.length;
+  for (let i = 0; i + 1 < str.length && k < n; i += 2) {
+    const c = str.charCodeAt(i), v = str.charCodeAt(i + 1) & 255, e = Math.min(k + c, n);
+    while (k < e) arr[k++] = v;
+  }
+  while (k < n) arr[k++] = 0;
+  return arr;
+}
 function saveWorld() {
   try {
-    let s = '';
-    for (let i = 0; i < world.length; i += 8192)
-      s += String.fromCharCode.apply(null, world.subarray(i, i + 8192));
     const payload = {
-      v: 2, seed: worldSeed, dayT,
+      v: 3, W, H, seed: worldSeed, dayT,
       px: pl.x, py: pl.y, pz: pl.z, yaw: cam.yaw, pitch: cam.pitch, sel,
       m: mode, hp, food, inv: INV.map(s => s ? [s.id, s.n] : 0),
       sp: [spawnPt.x, spawnPt.y, spawnPt.z],
-      at: Date.now(), w: btoa(s)
+      at: Date.now(), w: btoa(rleEncode(world))
     };
     if (!currentId) {
       const list = listSaves();
@@ -2414,7 +2440,14 @@ function loadWorld(o) {
   flowL.fill(0); wq.length = 0;
   try {
     const bin = atob(o.w);
-    for (let i = 0; i < world.length; i++) world[i] = bin.charCodeAt(i);
+    if (o.v >= 3) rleDecode(bin, world);
+    else {
+      /* legacy 96-wide save: regrow the larger world from the seed, then overlay the saved region */
+      generate(worldSeed);
+      const OLDW = 96;
+      for (let y = 0; y < H; y++) for (let z = 0; z < OLDW && z < W; z++) for (let x = 0; x < OLDW && x < W; x++)
+        world[(y * W + z) * W + x] = bin.charCodeAt((y * OLDW + z) * OLDW + x) || 0;
+    }
   } catch (e) {
     for (let i = 0; i < world.length; i++) world[i] = 0;
   }
@@ -2425,7 +2458,7 @@ function loadWorld(o) {
   }
   pl.x = o.px; pl.y = o.py; pl.z = o.pz; pl.vx = pl.vy = pl.vz = 0; pl.fly = 0;
   cam.yaw = o.yaw || 0; cam.pitch = clamp(o.pitch !== undefined ? o.pitch : -0.1, -1.5533, 1.5533);
-  if (o.v === 2) {
+  if (o.v >= 2) {
     mode = (o.m === 'creative' || o.m === 'survival') ? o.m : 'survival';
     hp = (typeof o.hp === 'number') ? o.hp : MAXHP;
     food = (typeof o.food === 'number') ? o.food : MAXFOOD;
@@ -2441,7 +2474,7 @@ function loadWorld(o) {
   hostiles = []; arrows = []; drops = []; dead = 0; hurtT = 0; regenT = 0; starveT = 0; drownT = 0;
   craftSlots = new Array(9).fill(null);
   fallY = pl.y;
-  pl.fly = (mode === 'creative' ? 1 : 0);
+  pl.fly = 0;
   hudMode = ''; refreshHotbar(); select(o.sel || 0); updateHUD();
   buildClouds();
   spawnAnimals();
@@ -2452,7 +2485,7 @@ function loadWorld(o) {
 function loadWorldById(id) {
   try {
     const p = JSON.parse(localStorage.getItem('blockcraft_w_' + id));
-    if (!p || (p.v !== 1 && p.v !== 2) || typeof p.w !== 'string') return false;
+    if (!p || (p.v !== 1 && p.v !== 2 && p.v !== 3) || typeof p.w !== 'string') return false;
     loadWorld(p);
     currentId = id;
     try { localStorage.setItem(CURRENT_KEY, id); } catch (e) {}
@@ -2561,6 +2594,7 @@ function frame(now) {
     hit = raycast(6.5);
     if (mining && hit) {
       if (hit.id === BEDROCK) mineT = 0;
+      else if (!mineable(hit.id)) { mineT = 0; pickHint(); }
       else {
         mineT += dt * (mode === 'creative' ? 5.9 : toolSpeed(hit.id)) / hardnessOf(hit.id);
         if (mineT >= 1) { mineT = 0; edit(hit, true); }
@@ -2578,6 +2612,7 @@ function frame(now) {
   spawnHostiles(dt);
   updateHUD();
   if (swing > 0) swing -= dt;
+  if (pickHintT > 0) pickHintT -= dt;
   if (!dayFrozen) dayT = (dayT + dt / 620) % 1;
   if (savingEnabled && saveDirty) {
     saveTimer -= dt;
