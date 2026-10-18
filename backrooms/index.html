@@ -548,7 +548,7 @@ function texExitSign(){
 const scene=new THREE.Scene();
 const FOG=0x080704;
 scene.background=new THREE.Color(FOG);
-scene.fog=new THREE.FogExp2(FOG,0.062);
+scene.fog=new THREE.FogExp2(FOG,0.05);
 
 const camera=new THREE.PerspectiveCamera(74,innerWidth/innerHeight,.05,120);
 camera.rotation.order='YXZ';
@@ -962,7 +962,30 @@ function updateWeaponVis(){
 /* ══════════════════════════════════════════════════════════════
    MONSTERS
    ══════════════════════════════════════════════════════════════ */
-const skinMat=()=>new THREE.MeshStandardMaterial({color:0x09090b,roughness:.96,metalness:.02});
+
+let _glowTex=null;
+function glowTexture(){
+  if(_glowTex)return _glowTex;
+  const S=128,[c,g]=cnv(S,S);
+  const gr=g.createRadialGradient(S/2,S/2,0,S/2,S/2,S/2);
+  gr.addColorStop(0,'rgba(255,255,255,1)');
+  gr.addColorStop(.22,'rgba(255,255,255,.8)');
+  gr.addColorStop(.5,'rgba(255,255,255,.3)');
+  gr.addColorStop(1,'rgba(255,255,255,0)');
+  g.fillStyle=gr;g.fillRect(0,0,S,S);
+  _glowTex=new THREE.CanvasTexture(c);
+  _glowTex.colorSpace=THREE.SRGBColorSpace;
+  return _glowTex;
+}
+// constant on-screen-size glow: eyes stay legible through the fog at any range
+function eyeGlow(color,size){
+  const m=new THREE.SpriteMaterial({map:glowTexture(),color,fog:false,
+    transparent:true,depthWrite:false,blending:THREE.AdditiveBlending});
+  const sp=new THREE.Sprite(m);
+  sp.scale.set(size,size,1);
+  return sp;
+}
+const skinMat=()=>new THREE.MeshStandardMaterial({color:0x15151c,roughness:.92,metalness:.02,emissive:0x0b0b10,emissiveIntensity:.55});
 
 function buildSmiler(){
   const g=new THREE.Group();
@@ -974,13 +997,15 @@ function buildSmiler(){
   const head=new THREE.Mesh(new THREE.SphereGeometry(.26,16,12),sk);
   head.position.y=2.12;head.scale.set(.88,1.15,.85);g.add(head);
 
-  const eyeMat=new THREE.MeshBasicMaterial({color:0xfffdf0});
+  const eyeMat=new THREE.MeshBasicMaterial({color:0xfff7d8,fog:false});
   for(const sx of[-1,1]){
-    const e=new THREE.Mesh(new THREE.SphereGeometry(.045,10,8),eyeMat);
+    const e=new THREE.Mesh(new THREE.SphereGeometry(.055,10,8),eyeMat);
     e.position.set(sx*.105,2.21,.205);g.add(e);
+    const glow=eyeGlow(0xffe0a8,.05);
+    glow.position.copy(e.position);g.add(glow);
   }
   // grin
-  const teethMat=new THREE.MeshBasicMaterial({color:0xf5efd8});
+  const teethMat=new THREE.MeshBasicMaterial({color:0xfff8e0,fog:false});
   for(let i=0;i<11;i++){
     const t=i/10;
     const x=(t-.5)*.40;
@@ -1014,10 +1039,12 @@ function buildHound(){
   head.position.set(0,.68,.85);g.add(head);
   const jaw=new THREE.Mesh(new THREE.BoxGeometry(.3,.12,.4),sk);
   jaw.position.set(0,.55,.9);g.add(jaw);
-  const eyeMat=new THREE.MeshBasicMaterial({color:0xffe9c0});
+  const eyeMat=new THREE.MeshBasicMaterial({color:0xff7a50,fog:false});
   for(const sx of[-1,1]){
     const e=new THREE.Mesh(new THREE.SphereGeometry(.035,8,6),eyeMat);
     e.position.set(sx*.11,.73,1.05);g.add(e);
+    const glow=eyeGlow(0xff8a55,.05);
+    glow.position.copy(e.position);g.add(glow);
   }
   const legs=[];
   for(const sx of[-1,1])for(const sz of[-1,1]){
@@ -1112,8 +1139,8 @@ class Monster{
         this.repathT=.35;
         this.repath();
       }
-      // direct lunge when close & visible
-      if(distP<3.4&&this.seenT>0){
+      // direct lunge when close & visible — but never press into the player's body
+      if(distP<3.4&&distP>1.15&&this.seenT>0){
         this.moveToward(player.pos.x,player.pos.z,dt,spd);
       }else if(this.path.length){
         while(this.pathI<this.path.length){
@@ -1139,11 +1166,26 @@ class Monster{
     }else{
       this.wanderT-=dt;
       if(this.wanderT<=0||!this.path.length){
-        this.wanderT=rand(2.5,6);
+        this.wanderT=rand(2.0,4.5);
         const[ci,cj]=this.cell();
         const nb=neighbors(ci,cj);
         if(nb.length){
-          const t=pick(nb);
+          let t=null;
+          // Stalk: while far away and unaware, drift down the maze toward the player.
+          if(distP>15&&this.seenT<=0&&Math.random()<.8){
+            const bd=bfs(ci,cj).dist;
+            const[pi,pj]=cellOf(player.pos.x,player.pos.z);
+            const pd=(pi>=0&&pj>=0&&pi<GX&&pj<GZ)?bd[pi+pj*GX]:-1;
+            if(pd>0){
+              let best=null,bestD=1e9;
+              for(const c of nb){
+                const dd=bd[c[0]+c[1]*GX];
+                if(dd>=0&&dd<bestD){bestD=dd;best=c;}
+              }
+              t=best;
+            }
+          }
+          if(!t)t=pick(nb);
           this.path=[ [ci,cj],t ];
           this.pathI=1;
         }
@@ -1160,6 +1202,15 @@ class Monster{
     if(distP<1.55&&this.attackCd<=0&&this.seenT>.2){
       this.attackCd=1.15;
       damagePlayer(this.dmg,this);
+    }
+
+    // separation — a monster must never end up inside the player's head
+    const pdx=this.pos.x-player.pos.x,pdz=this.pos.z-player.pos.z;
+    const pD=Math.hypot(pdx,pdz);
+    if(pD<1.15&&pD>.001){
+      const push=(1.15-pD);
+      this.pos.x+=pdx/pD*push;
+      this.pos.z+=pdz/pD*push;
     }
 
     // separation
@@ -1338,16 +1389,32 @@ function populate(){
 
 function spawnMonsters(n){
   const{dist}=bfs(spawnCell[0],spawnCell[1]);
-  const spots=[];
+  // Bands are measured in maze steps (1 step = CELL units of walking).
+  // The first two are deliberately close so the player meets something early.
+  const near=[],mid=[],far=[];
   for(let i=0;i<GX;i++)for(let j=0;j<GZ;j++){
     const d=dist[i+j*GX];
-    if(d>9)spots.push([i,j,d]);
+    if(d<0)continue;
+    if(d>=4&&d<=7)near.push([i,j,d]);
+    else if(d>=6&&d<=11)mid.push([i,j,d]);
+    else if(d>13)far.push([i,j,d]);
   }
+  const bag=[];
   for(let k=0;k<n;k++){
-    let s=spots.length?pick(spots):[GX-2,GZ-2,10];
+    let pool;
+    if(k===0)pool=near.length?near:mid;
+    else if(k===1)pool=mid.length?mid:near;
+    else pool=far.length?far:mid;
+    if(!pool||!pool.length)pool=far.length?far:near;
+    let s=pool.length?pick(pool):[GX-2,GZ-2,10];
+    bag.push(s);
     const kind=k===0?'smiler':(Math.random()<.45?'smiler':'hound');
-    monsters.push(new Monster(kind,s[0],s[1]));
+    const mon=new Monster(kind,s[0],s[1]);
+    // the nearest one is already on your trail from the start
+    if(k===0)mon.alert=6;
+    monsters.push(mon);
   }
+  return bag;
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1557,7 +1624,7 @@ function attack(){
   for(const m of monsters){
     if(m.dead)continue;
     const d=Math.hypot(m.pos.x-player.pos.x,m.pos.z-player.pos.z);
-    if(d<34)m.alert=Math.max(m.alert,4.5);
+    if(d<46)m.alert=Math.max(m.alert,5.5);
   }
 }
 
@@ -1728,7 +1795,7 @@ function updateHallu(dt){
    ══════════════════════════════════════════════════════════════ */
 const clock=new THREE.Clock();
 let state='menu';
-let elapsed=0;
+let elapsed=0,playT=0,hunterActive=false,nextHunt=20,lastTickW=performance.now();
 
 const SCREENS={menu:'#title',playing:null,paused:'#pause',dead:'#death',won:'#win'};
 function setState(s){
@@ -1971,15 +2038,17 @@ function updateDanger(dt){
   for(const m of monsters){
     if(m.dead)continue;
     const d=Math.hypot(m.pos.x-player.pos.x,m.pos.z-player.pos.z);
-    if(d<14)near=Math.max(near,1-d/14);
+    if(d<27)near=Math.max(near,1-d/27);
   }
-  el.danger.style.opacity=(near*.85).toFixed(2);
-  el.vig.style.opacity=(.75+near*.25).toFixed(2);
-  const rate=near>.2?.45:.95;
+  // squared curve: barely-there at 27m, oppressive up close
+  const pulse=near*near;
+  el.danger.style.opacity=(pulse*.9).toFixed(2);
+  el.vig.style.opacity=(.75+pulse*.25).toFixed(2);
+  const rate=near>.35?.45:.95;
   heartT-=dt;
-  if(heartT<=0&&(near>.15||player.hp<40)){
+  if(heartT<=0&&(near>.12||player.hp<40)){
     heartT=rate;
-    AU.heartbeat(.12+near*.28);
+    AU.heartbeat(.1+pulse*.3);
   }
 }
 
@@ -1990,6 +2059,9 @@ function tick(){
   elapsed+=dt;
 
   if(state==='playing'){
+    const nowW=performance.now();
+    playT+=Math.min(2,(nowW-lastTickW)/1000);
+    lastTickW=nowW;
     updatePlayer(dt);
     for(const m of monsters)m.update(dt);
     updateItems(dt);
@@ -2003,6 +2075,26 @@ function tick(){
     eventT-=dt;
     if(eventT<=0){eventT=rand(13,26);randomEvent();}
 
+    // hunt pressure: the maze is never empty — something always comes for you.
+    // First hunt at 20s, then again every 25s so there are no quiet stretches.
+    if(!hunterActive&&playT>nextHunt){
+      let best=null,bd=1e9;
+      for(const m of monsters){
+        if(m.dead)continue;
+        const d=Math.hypot(m.pos.x-player.pos.x,m.pos.z-player.pos.z);
+        if(d<bd){bd=d;best=m;}
+      }
+      if(best){
+        best.alert=1e9;hunterActive=true;nextHunt=playT+25;
+        AU.growl(clamp((best.pos.x-player.pos.x)*.08,-1,1),.55,best.kind==='smiler'?.8:1.15);
+      }
+    }
+    // a hunt ends when the monster dies or the player breaks line of sight for a while
+    if(hunterActive){
+      const h=monsters.find(m=>!m.dead&&m.alert>=1e8);
+      if(!h)hunterActive=false;
+    }
+
     // muzzle flash decay
     if(muzzleFlashT>0){
       muzzleFlashT-=dt;
@@ -2010,11 +2102,10 @@ function tick(){
     }
     // monsters respawn to keep pressure
     const alive=monsters.filter(m=>!m.dead).length;
-    if(alive<3&&Math.random()<dt*.06){
-      const{dist}=bfs(spawnCell[0],spawnCell[1]);
+    if(alive<5&&Math.random()<dt*.22){
       let c=null,tries=0;
       do{c={i:randInt(0,GX-1),j:randInt(0,GZ-1)};tries++;}
-      while(tries<50&&Math.hypot(cx(c.i)-player.pos.x,cz(c.j)-player.pos.z)<16);
+      while(tries<60&&Math.hypot(cx(c.i)-player.pos.x,cz(c.j)-player.pos.z)<15);
       monsters.push(new Monster(Math.random()<.5?'smiler':'hound',c.i,c.j));
     }
   }else if(state==='menu'){
@@ -2074,6 +2165,7 @@ function boot(){
   }
   player.yaw=bestYaw;
 
+  playT=0;hunterActive=false;nextHunt=20;lastTickW=performance.now();
   populate();
   spawnMonsters(5);
 
@@ -2095,7 +2187,7 @@ boot();
 
 // debug hook (harmless)
 window.__BR={player,get monsters(){return monsters;},get state(){return state;},startGame,
-  get items(){return items;},get exit(){return exitInfo;},spawnHallu,
+  get items(){return items;},get exit(){return exitInfo;},spawnHallu,get playT(){return playT;},get hunter(){return hunterActive;},los,solidAt,camera,scene,
   get info(){return{calls:renderer.info.render.calls,tris:renderer.info.render.triangles,geo:renderer.info.memory.geometries,tex:renderer.info.memory.textures};}};
 </script>
 </body>
