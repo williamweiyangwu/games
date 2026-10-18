@@ -1,6 +1,6 @@
 # Arcade
 
-A single website that collects eight browser games in one place.
+A single website that collects nine browser games in one place.
 
 ## Games
 
@@ -13,6 +13,7 @@ A single website that collects eight browser games in one place.
 | Apex Racing — 3D race car | [`race-car/`](race-car/) | Ready |
 | WWII Europe — interactive history | [`ww2-europe/`](ww2-europe/) | Ready |
 | The Backrooms — 3D survival horror | [`backrooms/`](backrooms/) | Ready |
+| Age of Discovery — 3D sailing adventure | [`age-of-discovery/`](age-of-discovery/) | Ready |
 
 ## Run locally
 
