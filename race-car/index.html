@@ -122,7 +122,7 @@
 </div>
 <div id="standings" class="hidden"></div>
 <div id="banner" class="hidden"></div>
-  <div id="verTag">v2.11</div>
+  <div id="verTag">v2.12</div>
 
 <div id="menu" class="overlay">
   <h1 id="menuTitle">SUN CIRCUIT</h1>
@@ -358,8 +358,8 @@
       },
       ctrl: [
         [60, 200], [170, 160], [220, 80], [210, -20], [130, -90], [160, -180],
-        [60, -220], [-60, -190], [-40, -90], [-140, -70], [-200, -140],
-        [-220, -40], [-170, 50], [-150, 160]
+        [60, -220], [-60, -190], [-40, -90], [-140, -70], [-185, -125],
+        [-215, -130], [-225, -50], [-175, 50], [-150, 160]
       ]
     }
   ];
@@ -956,9 +956,9 @@
   /* AI difficulty. `scale` multiplies each AI's `skill` (straight-line pace)
    * and its corner grip budget, so a harder race is faster everywhere.       */
   var DIFFICULTY = [
-    { name: 'EASY',   scale: 0.88, blurb: 'relaxed pace' },
-    { name: 'NORMAL', scale: 1.00, blurb: 'even match' },
-    { name: 'HARD',   scale: 1.12, blurb: 'ruthless' }
+    { name: 'EASY',   scale: 0.76, blurb: 'relaxed pace' },
+    { name: 'NORMAL', scale: 0.90, blurb: 'even match' },
+    { name: 'HARD',   scale: 1.00, blurb: 'ruthless' }
   ];
   var aiDiff = 1;
   var aiDiffScale = DIFFICULTY[1].scale;
@@ -1184,20 +1184,38 @@
     // the off-line cars cut across the whole grid at launch and pile into
     // everyone, which is what left cars stranded on the start straight.
     var lineBlend = Math.min(1, Math.abs(c.speed) / 14);
-    var latErr = (c.line * lineBlend + c.wobble) - lat;
+    var lineLat = c.line * lineBlend + c.wobble;
+    var latErr = lineLat - lat;
 
-    // proportional lane keeping; too much gain makes the car oscillate into
-    // the barrier, so keep this gentle
-    var phi = Math.max(-0.55, Math.min(0.55, -latErr * 0.038));
-    var desired = yawAt(c.s) + phi;
+    // Pure pursuit: aim the nose at a point a little way ahead on the racing
+    // line. This tracks corners far better than reacting to the current lateral
+    // error alone, so the AI can carry real speed through them without crashing.
+    var preview = 6 + c.speed * 0.6;
+    var aim = offsetPos(c.s + preview, lineLat);
+    var desired = Math.atan2(aim.x - c.x, aim.z - c.z);
     var err = wrapPi(desired - c.yaw);
-    var steerCmd = Math.max(-1, Math.min(1, err * 2.2));   // grow yaw to close the error
+    var steerCmd = Math.max(-1, Math.min(1, err * 5.0));
 
-    // slow down for whatever corner is coming up, not just the current one
-    var look = 8 + c.speed * 1.5;
-    var kappa = kappaAt(c.s) + kappaAt(c.s + look) + kappaAt(c.s + look * 2);
-    var vCorner = Math.sqrt(surface.aiGrip * aiDiffScale / Math.max(kappa / 3, 1e-5));
-    var target = Math.min(46 * c.skill * aiDiffScale, vCorner) * surface.aiSpeed;
+    // Speed profile: sample the road finely out to the braking distance and slow
+    // only when physics demands it, so straights are taken flat out and corners
+    // are entered at a speed the tyres can actually hold. Difficulty then caps
+    // the whole profile, so a harder race is genuinely faster everywhere.
+    var vTop = 64 * c.skill;
+    var gripBudget = surface.aiGrip;
+    var target = vTop;
+    var kk0 = kappaAt(c.s);
+    var vc0 = Math.sqrt(gripBudget / Math.max(kk0 / 3, 1e-5));
+    if (vc0 < target) target = vc0;
+    var brakeDist = c.speed * c.speed / (2 * 26) + 34;
+    var nSteps = Math.min(48, Math.ceil(brakeDist / 6));
+    for (var look = 1; look <= nSteps; look++) {
+      var dAhead = look * 6;
+      var kk = kappaAt(c.s + dAhead);
+      var vc = Math.sqrt(gripBudget / Math.max(kk / 3, 1e-5));
+      var allowed = Math.sqrt(vc * vc + 2 * 26 * dAhead);
+      if (allowed < target) target = allowed;
+    }
+    target *= surface.aiSpeed * aiDiffScale;
     if (Math.abs(latErr) > 2.5) target *= 0.9;
     if (Math.abs(err) > 0.25) target *= 0.93;
 
@@ -1234,11 +1252,11 @@
      * after a start-line shunt) -- but only when its path ahead is clear, so a
      * car queued behind another one is left to follow instead of reversing.   */
     if (!c.finished) {
-      if (Math.abs(c.speed) < 1.6 && (Math.abs(lat) > HALF_W - 3 || gap > 4.5)) c.stuck = (c.stuck || 0) + dt;
+      if (Math.abs(c.speed) < 1.8) c.stuck = (c.stuck || 0) + dt;
       else c.stuck = 0;
-      if (c.stuck > 1.2) {
-        if (c.stuck < 2.6) {
-          throttle = 0; brake = 1;                       // reverse out
+      if (c.stuck > 1.2 && (gap > 3.0 || c.stuck > 2.4)) {
+        if (c.stuck < 3.6) {
+          throttle = 0; brake = 1;                       // reverse out of the wedge
           steerCmd = -steerCmd;
         } else {
           c.stuck = 0;                                    // then drive on again
