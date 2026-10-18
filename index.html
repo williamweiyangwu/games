@@ -21,7 +21,6 @@
     -webkit-font-smoothing:antialiased;
   }
   .wrap{max-width:1060px;margin:0 auto;padding:64px 24px 80px}
-
   header{text-align:center;margin-bottom:48px}
   .logo{
     display:inline-flex;align-items:center;gap:10px;font-weight:800;
@@ -33,7 +32,6 @@
     display:inline-block;box-shadow:0 6px 18px rgba(255,157,46,.4);
   }
   header p{color:var(--dim);margin:12px 0 0;letter-spacing:.4px}
-
   .grid{
     display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
     gap:22px;
@@ -72,7 +70,6 @@
   .c4{background:linear-gradient(135deg,#152a3d,#0d141d)} .c4 span{color:#7ec8f0}
   .c5{background:linear-gradient(135deg,#3a1f22,#180f12)} .c5 span{color:#ff9d9d}
   .c6{background:linear-gradient(135deg,#2b2433,#181220)} .c6 span{color:#d8b6ff}
-
   .card h2{margin:0;font-size:20px;letter-spacing:1px}
   .card p{margin:8px 0 0;color:var(--dim);font-size:13.5px;min-height:38px}
   .card .meta{
@@ -81,7 +78,6 @@
   }
   .card .arrow{margin-left:auto;font-weight:800;color:#6d7ba0;transition:transform .16s}
   a.card:hover .arrow{transform:translateX(4px)}
-
   footer{text-align:center;color:#5b667c;font-size:12.5px;margin-top:56px;letter-spacing:.4px}
   footer a{color:#8b96ad}
 </style>
@@ -90,10 +86,18 @@
 <div class="wrap">
   <header>
     <div class="logo"><i></i>ARCADE</div>
-    <p>Six games — jump right in and start playing.</p>
+    <p>Seven games — jump right in and start playing.</p>
   </header>
 
   <div class="grid">
+    <a class="card" href="house-siege-3d/">
+      <div class="thumb c5"><span class="glyph">&#9670;</span></div>
+      <span class="tag">5v5 SHOOTER</span>
+      <h2>HOUSE SIEGE 3D</h2>
+      <p>3D 5v5 gunfight in a two-level house. Team deathmatch and capture the flag against AI with 4 difficulty levels.</p>
+      <div class="meta">5v5 online-style <span class="arrow">&#8594;</span></div>
+    </a>
+
     <a class="card" href="kards/">
       <div class="thumb c1"><span class="glyph">&#9824;</span></div>
       <span class="tag">CARD GAME</span>
