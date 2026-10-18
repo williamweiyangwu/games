@@ -626,9 +626,9 @@ const oceanMat = new THREE.ShaderMaterial({
 
     void main() {
       vec3 pos = position;
-      float wave1 = sin(pos.x * 0.02 + time * 0.8) * cos(pos.y * 0.02 + time * 0.6) * 0.9;
-      float wave2 = sin(pos.x * 0.05 + time * 1.2) * cos(pos.y * 0.04 + time * 0.9) * 0.45;
-      float wave3 = sin(pos.x * 0.1 + time * 1.5) * 0.2;
+      float wave1 = sin(pos.x * 0.02 + time * 0.8) * cos(pos.y * 0.02 + time * 0.6) * 0.70;
+      float wave2 = sin(pos.x * 0.05 + time * 1.2) * cos(pos.y * 0.04 + time * 0.9) * 0.35;
+      float wave3 = sin(pos.x * 0.1 + time * 1.5) * 0.15;
       pos.z = wave1 + wave2 + wave3;
       vWaveHeight = pos.z;
       vec4 worldPos = modelMatrix * vec4(pos, 1.0);
@@ -658,7 +658,7 @@ const oceanMat = new THREE.ShaderMaterial({
 
     void main() {
       vec2 p = vWorldPos.xz;
-      float depth = clamp((vWaveHeight + 1.55) / 3.1, 0.0, 1.0);
+      float depth = clamp((vWaveHeight + 1.2) / 2.4, 0.0, 1.0);
       vec3 color = mix(deepColor, oceanColor, depth);
 
       vec3 normal = waterNormal(p, time);
@@ -677,7 +677,7 @@ const oceanMat = new THREE.ShaderMaterial({
       color += vec3(1.0, 0.95, 0.82) * glint * 0.18;
 
       // Foam on wave crests
-      float foam = smoothstep(1.15, 1.5, vWaveHeight) * 0.6;
+      float foam = smoothstep(0.85, 1.15, vWaveHeight) * 0.6;
       color = mix(color, foamColor, foam);
 
       // Distance haze blends into the horizon
@@ -698,9 +698,9 @@ scene.add(ocean);
 // objects sit exactly on the moving surface.
 function waveHeightAt(x, z, t) {
   const py = -z;   // plane local Y maps to world -Z
-  const w1 = Math.sin(x * 0.02 + t * 0.8) * Math.cos(py * 0.02 + t * 0.6) * 0.9;
-  const w2 = Math.sin(x * 0.05 + t * 1.2) * Math.cos(py * 0.04 + t * 0.9) * 0.45;
-  const w3 = Math.sin(x * 0.1 + t * 1.5) * 0.2;
+  const w1 = Math.sin(x * 0.02 + t * 0.8) * Math.cos(py * 0.02 + t * 0.6) * 0.70;
+  const w2 = Math.sin(x * 0.05 + t * 1.2) * Math.cos(py * 0.04 + t * 0.9) * 0.35;
+  const w3 = Math.sin(x * 0.1 + t * 1.5) * 0.15;
   return w1 + w2 + w3;
 }
 
@@ -1080,100 +1080,264 @@ function makePalm(x, y, z, scale, seed) {
   return g;
 }
 
+// Deterministic PRNG so an island looks the same on every reload
+function makeRng(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Terrain palette
+const TERRAIN_COLORS = {
+  wetSand:  new THREE.Color(0xd8c79b),
+  sand:     new THREE.Color(0xefdfb4),
+  grass:    new THREE.Color(0x82b055),
+  grassDk:  new THREE.Color(0x5d8740),
+  rock:     new THREE.Color(0x9a8c73),
+  rockDk:   new THREE.Color(0x7a6d5b),
+};
+
+const TERRAIN_MAT = new THREE.MeshStandardMaterial({
+  vertexColors: true, flatShading: true, roughness: 0.96, metalness: 0.0,
+  side: THREE.DoubleSide,   // no see-through when the camera is low
+});
+
+// Build one irregular island.
+// The coastline is a sum of harmonics plus an elongation term, and the height
+// field adds ridges and valleys that fade out at the shore.
+function buildIsland(def, seed) {
+  const rng = makeRng(seed);
+  const isHome = def.type === 'home';
+  const baseR = isHome ? 30 : 21 + rng() * 11;
+
+  // Coastline harmonics (lobes, bays, peninsulas)
+  const harmonics = [];
+  for (let i = 0; i < 5; i++) {
+    harmonics.push({
+      freq: 2 + i * 2 + Math.floor(rng() * 2),
+      amp: (0.17 / (i * 0.85 + 1)) * (0.55 + rng()),
+      phase: rng() * Math.PI * 2,
+    });
+  }
+  const elongAmp = 0.06 + rng() * 0.16;
+  const elongAngle = rng() * Math.PI * 2;
+
+  // Ridge / valley harmonics for the height field
+  const ridge1 = { f: 3 + Math.floor(rng() * 3), p: rng() * 6.283 };
+  const ridge2 = { f: 6 + Math.floor(rng() * 4), p: rng() * 6.283 };
+  const valley = { f: 2 + Math.floor(rng() * 2), p: rng() * 6.283 };
+
+  const peak = baseR * (0.42 + rng() * 0.38);
+
+  function radiusAt(theta) {
+    let r = 1;
+    for (const h of harmonics) r += h.amp * Math.sin(h.freq * theta + h.phase);
+    r += elongAmp * Math.cos(2 * (theta - elongAngle));
+    return baseR * Math.max(0.5, r);
+  }
+
+  // Un-ramped height field: a rounded hill with angular ridges
+  function rawHeight(theta, t) {
+    const dome = Math.pow(Math.max(0, 1 - Math.pow(t, 2.2)), 1.25);
+    const fade = Math.pow(Math.max(0, 1 - t), 0.8);
+    const ridges =
+      Math.sin(theta * ridge1.f + ridge1.p) * 0.18 +
+      Math.sin(theta * ridge2.f + ridge2.p) * 0.09 -
+      Math.sin(theta * valley.f + valley.p) * 0.13;
+    return peak * dome * (1 + ridges * fade);
+  }
+
+  // The outer band ramps down through the waterline at a steady slope, so the
+  // beach meets the sea cleanly instead of forming a flat shelf.
+  const SHORE_T0 = 0.80;
+  const SHORE_T1 = 1.06;
+  const SHORE_DEPTH = 1.7;
+
+  function heightAtTheta(theta, t) {
+    if (t <= SHORE_T0) return rawHeight(theta, t);
+
+    const hEdge = rawHeight(theta, SHORE_T0);
+    if (t <= SHORE_T1) {
+      const k = (t - SHORE_T0) / (SHORE_T1 - SHORE_T0);
+      return hEdge * (1 - k) - k * SHORE_DEPTH;
+    }
+    return -SHORE_DEPTH - (t - SHORE_T1) * 14;   // steep drop to the sea floor
+  }
+
+  function heightAt(x, z) {
+    const theta = Math.atan2(z, x);
+    const r = Math.hypot(x, z);
+    const R = radiusAt(theta);
+    return heightAtTheta(theta, r / R);
+  }
+
+  // ---- Build the radial mesh ----
+  const NA = 88;      // angular segments
+  const NR = 17;      // radial rings
+  const T_MAX = 1.38; // extends well below the waterline
+
+  const positions = [];
+  // apex
+  positions.push(0, heightAtTheta(0, 0), 0);
+
+  for (let i = 1; i <= NR; i++) {
+    const t = (i / NR) * T_MAX;
+    for (let j = 0; j < NA; j++) {
+      const theta = (j / NA) * Math.PI * 2;
+      const R = radiusAt(theta);
+      const r = t * R;
+      positions.push(Math.cos(theta) * r, heightAtTheta(theta, t), Math.sin(theta) * r);
+    }
+  }
+
+  const indices = [];
+  // fan from apex to first ring
+  for (let j = 0; j < NA; j++) {
+    const j2 = (j + 1) % NA;
+    indices.push(0, 1 + j, 1 + j2);
+  }
+  // quads between rings
+  for (let i = 0; i < NR - 1; i++) {
+    const ringA = 1 + i * NA;
+    const ringB = 1 + (i + 1) * NA;
+    for (let j = 0; j < NA; j++) {
+      const j2 = (j + 1) % NA;
+      const a = ringA + j, b = ringA + j2;
+      const c = ringB + j, d = ringB + j2;
+      indices.push(a, c, b, b, c, d);
+    }
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setIndex(indices);
+
+  // Split into faces so each facet gets a single flat colour
+  const flat = geo.toNonIndexed();
+  geo.dispose();
+
+  const pos = flat.attributes.position;
+  const colors = new Float32Array(pos.count * 3);
+  const va = new THREE.Vector3(), vb = new THREE.Vector3(), vc = new THREE.Vector3();
+  const e1 = new THREE.Vector3(), e2 = new THREE.Vector3(), nrm = new THREE.Vector3();
+  const col = new THREE.Color();
+
+  for (let i = 0; i < pos.count; i += 3) {
+    va.fromBufferAttribute(pos, i);
+    vb.fromBufferAttribute(pos, i + 1);
+    vc.fromBufferAttribute(pos, i + 2);
+    e1.subVectors(vb, va);
+    e2.subVectors(vc, va);
+    nrm.crossVectors(e1, e2).normalize();
+
+    const h = (va.y + vb.y + vc.y) / 3;
+    const cx = (va.x + vb.x + vc.x) / 3;
+    const cz = (va.z + vb.z + vc.z) / 3;
+    const steep = Math.abs(nrm.y) < 0.55;   // cliff face
+
+    if (h < 0.2)              col.copy(TERRAIN_COLORS.wetSand);
+    else if (h < 1.1)         col.copy(TERRAIN_COLORS.sand);
+    else if (steep)          col.copy(TERRAIN_COLORS.rock);
+    else if (h > peak * 0.80) col.copy(TERRAIN_COLORS.rockDk);
+    else if (h > peak * 0.42) col.copy(TERRAIN_COLORS.grassDk);
+    else                      col.copy(TERRAIN_COLORS.grass);
+
+    // subtle per-face variation so large areas are not perfectly flat
+    const v = 0.93 + (Math.abs(Math.sin(cx * 12.9898 + cz * 78.233) * 43758.5453) % 1) * 0.14;
+    col.multiplyScalar(v);
+
+    colors[i * 3] = col.r; colors[i * 3 + 1] = col.g; colors[i * 3 + 2] = col.b;
+    colors[(i + 1) * 3] = col.r; colors[(i + 1) * 3 + 1] = col.g; colors[(i + 1) * 3 + 2] = col.b;
+    colors[(i + 2) * 3] = col.r; colors[(i + 2) * 3 + 1] = col.g; colors[(i + 2) * 3 + 2] = col.b;
+  }
+
+  flat.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  flat.computeVertexNormals();
+
+  const mesh = new THREE.Mesh(flat, TERRAIN_MAT);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+
+  // Widest possible coastline - used for the approach trigger and the glow ring
+  let maxR = 0;
+  for (let a = 0; a < 360; a++) maxR = Math.max(maxR, radiusAt(a * Math.PI / 180));
+
+  return { mesh, heightAt, radiusAt, peak, baseR, maxR, rng };
+}
+
 function buildPorts() {
   PORT_DEFS.forEach((def, i) => {
     const group = new THREE.Group();
     group.position.set(def.x, 0, def.z);
 
-    const islandRadius = def.type === "home" ? 24 : 17 + Math.random() * 9;
+    const island = buildIsland(def, 1337 + i * 7919);
     const isHome = def.type === "home";
+    const islandRadius = island.maxR;
+    const rng = island.rng;
 
-    // ---- Beach ring (widest, lowest) ----
-    const beach = new THREE.Mesh(
-      new THREE.CylinderGeometry(islandRadius, islandRadius * 1.03, 0.7, 28),
-      ISLAND_MATS.sand
-    );
-    beach.position.y = 0.1;
-    beach.receiveShadow = true;
-    group.add(beach);
+    group.add(island.mesh);
 
-    // ---- Rocky base ----
-    const base = new THREE.Mesh(
-      new THREE.CylinderGeometry(islandRadius * 0.93, islandRadius * 1.0, 2.6, 22),
-      ISLAND_MATS.rock
-    );
-    base.position.y = 1.3;
-    base.castShadow = true;
-    base.receiveShadow = true;
-    group.add(base);
-
-    // ---- Grass plateau ----
-    const grassH = 1.0;
-    const grass = new THREE.Mesh(
-      new THREE.CylinderGeometry(islandRadius * 0.86, islandRadius * 0.9, grassH, 22),
-      ISLAND_MATS.grass
-    );
-    grass.position.y = 2.6 + grassH / 2;
-    grass.receiveShadow = true;
-    group.add(grass);
-    const groundY = 2.6 + grassH;
-
-    // ---- Central hill ----
-    const hillCount = isHome ? 1 : 1 + Math.floor(Math.random() * 2);
-    for (let h = 0; h < hillCount; h++) {
-      const hr = islandRadius * (0.42 - h * 0.12);
-      const hh = islandRadius * (0.5 - h * 0.15);
-      const hill = new THREE.Mesh(new THREE.ConeGeometry(hr, hh, 7, 1), ISLAND_MATS.hill);
-      hill.position.set(
-        (Math.random() - 0.5) * islandRadius * 0.2,
-        groundY + hh / 2 - 0.3,
-        (Math.random() - 0.5) * islandRadius * 0.2
-      );
-      hill.rotation.y = Math.random() * Math.PI;
-      hill.castShadow = true;
-      hill.receiveShadow = true;
-      group.add(hill);
+    // helper: a point on the island at angle a, at fraction t of the local radius
+    function pointAt(a, t) {
+      const R = island.radiusAt(a);
+      const x = Math.cos(a) * R * t;
+      const z = Math.sin(a) * R * t;
+      return { x, z, y: island.heightAt(x, z) };
     }
 
-    // ---- Palm trees along the shore ----
-    const palmCount = isHome ? 4 : 5 + Math.floor(Math.random() * 4);
+    // ---- Palm trees, on the flatter ground near the shore ----
+    const palmCount = isHome ? 5 : 7 + Math.floor(rng() * 6);
     for (let p = 0; p < palmCount; p++) {
-      const a = (p / palmCount) * Math.PI * 2 + Math.random() * 0.5;
-      const rr = islandRadius * (0.6 + Math.random() * 0.22);
-      group.add(makePalm(Math.cos(a) * rr, groundY - 0.2, Math.sin(a) * rr,
-                         0.8 + Math.random() * 0.5, Math.random() * 6));
+      const a = (p / palmCount) * Math.PI * 2 + rng() * 0.8;
+      const t = 0.66 + rng() * 0.24;
+      const pt = pointAt(a, t);
+      if (pt.y < 0.9 || pt.y > island.peak * 0.7) continue;
+      group.add(makePalm(pt.x, pt.y - 0.15, pt.z, 0.75 + rng() * 0.55, rng() * 6));
     }
 
-    // ---- Port buildings ----
-    const numBuildings = isHome ? 7 : 2 + Math.floor(Math.random() * 3);
+    // ---- Village, clustered on one flank like a real harbour town ----
+    const numBuildings = isHome ? 9 : 3 + Math.floor(rng() * 4);
+    const townAngle = rng() * Math.PI * 2;
     for (let b = 0; b < numBuildings; b++) {
-      const angle = (b / numBuildings) * Math.PI * 2 + 0.4;
-      const dist = islandRadius * (isHome ? 0.55 : 0.6);
-      const bw = 1.4 + Math.random() * 0.8;
-      const bh = 1.4 + Math.random() * 1.4;
-      const bd = 1.4 + Math.random() * 0.8;
+      const spread = isHome ? 0.55 : 0.42;
+      const angle = townAngle + (rng() - 0.5) * spread;
+      const t = 0.52 + rng() * 0.26;
+      const pt = pointAt(angle, t);
+      if (pt.y < 0.6) continue;
+
+      const bw = 1.3 + rng() * 0.9;
+      const bh = 1.3 + rng() * 1.5;
+      const bd = 1.3 + rng() * 0.9;
 
       const building = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), ISLAND_MATS.wall);
-      building.position.set(Math.cos(angle) * dist, groundY + bh / 2, Math.sin(angle) * dist);
-      building.rotation.y = -angle;
+      building.position.set(pt.x, pt.y + bh / 2 - 0.1, pt.z);
+      building.rotation.y = -angle + (rng() - 0.5) * 0.5;
       building.castShadow = true;
       building.receiveShadow = true;
       group.add(building);
 
-      const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.max(bw, bd) * 0.78, 0.9, 4), ISLAND_MATS.roof);
-      roof.position.set(Math.cos(angle) * dist, groundY + bh + 0.45, Math.sin(angle) * dist);
-      roof.rotation.y = -angle + Math.PI / 4;
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.max(bw, bd) * 0.8, 0.9, 4), ISLAND_MATS.roof);
+      roof.position.set(pt.x, pt.y + bh + 0.35, pt.z);
+      roof.rotation.y = building.rotation.y + Math.PI / 4;
       roof.castShadow = true;
       group.add(roof);
     }
 
     // ---- Lighthouse on the home island ----
     if (isHome) {
+      const la = townAngle + 2.2;
+      const pt = pointAt(la, 0.62);
+      const baseY = Math.max(pt.y, 1.5);
+
       const tower = new THREE.Mesh(
         new THREE.CylinderGeometry(0.5, 0.9, 6, 10),
         new THREE.MeshStandardMaterial({ color: 0xf0eee6, roughness: 0.8 })
       );
-      tower.position.set(-islandRadius * 0.42, groundY + 3, islandRadius * 0.3);
+      tower.position.set(pt.x, baseY + 3, pt.z);
       tower.castShadow = true;
       group.add(tower);
 
@@ -1181,26 +1345,27 @@ function buildPorts() {
         new THREE.SphereGeometry(0.55, 10, 8),
         new THREE.MeshBasicMaterial({ color: 0xffdd88 })
       );
-      lamp.position.set(-islandRadius * 0.42, groundY + 6.4, islandRadius * 0.3);
+      lamp.position.set(pt.x, baseY + 6.4, pt.z);
       group.add(lamp);
 
       const cap = new THREE.Mesh(new THREE.ConeGeometry(0.75, 0.8, 10), ISLAND_MATS.roof);
-      cap.position.set(-islandRadius * 0.42, groundY + 7.1, islandRadius * 0.3);
+      cap.position.set(pt.x, baseY + 7.1, pt.z);
       group.add(cap);
     }
 
     // ---- Port marker (glowing pillar for undiscovered) ----
     if (!def.discovered) {
-      const markerGeo = new THREE.CylinderGeometry(0.35, 0.35, 22, 8);
+      const markerTop = island.peak + 16;
+      const markerGeo = new THREE.CylinderGeometry(0.35, 0.35, markerTop, 8);
       const markerMat = new THREE.MeshBasicMaterial({
         color: def.color, transparent: true, opacity: 0.45,
       });
       const marker = new THREE.Mesh(markerGeo, markerMat);
-      marker.position.y = 11;
+      marker.position.y = markerTop / 2;
       group.add(marker);
 
-      // Glow ring on the water
-      const ringGeo = new THREE.RingGeometry(islandRadius + 3, islandRadius + 6, 40);
+      // Glow ring on the water, following the widest coastline
+      const ringGeo = new THREE.RingGeometry(islandRadius + 4, islandRadius + 7, 48);
       const ringMat = new THREE.MeshBasicMaterial({
         color: def.color, transparent: true, opacity: 0.28, side: THREE.DoubleSide,
         depthWrite: false,
@@ -1218,6 +1383,8 @@ function buildPorts() {
     group.userData.discovered = def.discovered;
     group.userData.inRange = false;
     group.userData.islandRadius = islandRadius;
+    group.userData.peak = island.peak;
+    group.userData.coastRadius = island.radiusAt;   // for land collision
     scene.add(group);
     PORTS.push(group);
   });
@@ -1728,6 +1895,22 @@ function animate() {
     shipGroup.position.z += Math.cos(Ship.heading) * Ship.speed;
     shipGroup.rotation.y = Ship.heading;
 
+    // Keep the hull off the shoreline (the coast is irregular, so test per island)
+    for (const port of PORTS) {
+      const dx = shipGroup.position.x - port.position.x;
+      const dz = shipGroup.position.z - port.position.z;
+      const d = Math.hypot(dx, dz);
+      if (d > port.userData.islandRadius + 6) continue;
+      const coast = port.userData.coastRadius(Math.atan2(dz, dx)) + 2.5;
+      if (d < coast) {
+        const nx = d > 0.001 ? dx / d : 1;
+        const nz = d > 0.001 ? dz / d : 0;
+        shipGroup.position.x = port.position.x + nx * coast;
+        shipGroup.position.z = port.position.z + nz * coast;
+        if (Ship.speed > 0) Ship.speed = 0;
+      }
+    }
+
     // Constrain to sea
     const limit = SEA_SIZE * 0.85;
     shipGroup.position.x = Math.max(-limit, Math.min(limit, shipGroup.position.x));
@@ -1905,14 +2088,15 @@ function startGame() {
     // Re-add markers if needed
     if (!PORT_DEFS[i].discovered && !port.userData.marker) {
       const def = PORT_DEFS[i];
-      const markerGeo = new THREE.CylinderGeometry(0.35, 0.35, 22, 8);
+      const markerTop = (port.userData.peak || 10) + 16;
+      const markerGeo = new THREE.CylinderGeometry(0.35, 0.35, markerTop, 8);
       const markerMat = new THREE.MeshBasicMaterial({ color: def.color, transparent: true, opacity: 0.45 });
       const marker = new THREE.Mesh(markerGeo, markerMat);
-      marker.position.y = 11;
+      marker.position.y = markerTop / 2;
       port.add(marker);
       port.userData.marker = marker;
 
-      const ringGeo = new THREE.RingGeometry(port.userData.islandRadius + 3, port.userData.islandRadius + 6, 40);
+      const ringGeo = new THREE.RingGeometry(port.userData.islandRadius + 4, port.userData.islandRadius + 7, 48);
       const ringMat = new THREE.MeshBasicMaterial({ color: def.color, transparent: true, opacity: 0.28, side: THREE.DoubleSide, depthWrite: false });
       const ring = new THREE.Mesh(ringGeo, ringMat);
       ring.rotation.x = -Math.PI / 2;
