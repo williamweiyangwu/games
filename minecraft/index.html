@@ -646,6 +646,20 @@ function topAt(x, z) {
   while (y > 0 && !world[(y * W + z) * W + x]) y--;
   return y;
 }
+/* topmost sunlight-blocking (opaque) block in a column; -1 if none */
+function topOpaque(x, z) {
+  if (x < 0 || z < 0 || x >= W || z >= W) return H;
+  for (let y = H - 1; y >= 0; y--) if (BLK[world[(y * W + z) * W + x]].opaque === 1) return y;
+  return -1;
+}
+/* underground darkness test: only sunlight-blocking blocks count (leaves/glass do not) */
+function isEnclosed(acx, acz, eyeY) {
+  for (let y = Math.floor(eyeY); y < H; y++) if (opaqueAt(acx, y, acz)) return true;
+  const up = eyeY + 1;
+  if (topOpaque(clamp(acx - 1, 0, W - 1), acz) > up && topOpaque(clamp(acx + 1, 0, W - 1), acz) > up &&
+      topOpaque(acx, clamp(acz - 1, 0, W - 1)) > up && topOpaque(acx, clamp(acz + 1, 0, W - 1)) > up) return true;
+  return false;
+}
 
 /* ---------------------------------------------------- liquid water */
 const flowL = new Uint8Array(W * H * W);             /* 0 = source / still, 1..7 = spread distance */
@@ -2298,17 +2312,7 @@ function render() {
   SCX = RW / 2; SCY = RH / 2;
   const acx = clamp(Math.floor(pl.x), 0, W - 1), acz = clamp(Math.floor(pl.z), 0, W - 1);
   const eyeY = pl.y + EYE;
-  enclosed = false;
-  for (let y = Math.floor(eyeY); y < H; y++) {
-    const eb = get(acx, y, acz);
-    if (eb && eb !== WATER) { enclosed = true; break; }
-  }
-  if (!enclosed) {
-    const up = eyeY + 1;
-    if (topAt(clamp(acx - 1, 0, W - 1), acz) > up && topAt(clamp(acx + 1, 0, W - 1), acz) > up &&
-        topAt(acx, clamp(acz - 1, 0, W - 1)) > up && topAt(acx, clamp(acz + 1, 0, W - 1)) > up)
-      enclosed = true;
-  }
+  enclosed = isEnclosed(acx, acz, eyeY);
   drawSky();
 
   const fNear = enclosed ? 3 : under ? 2 : 45, fFar = enclosed ? 30 : under ? 19 : 150;
