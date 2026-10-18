@@ -122,7 +122,7 @@
 </div>
 <div id="standings" class="hidden"></div>
 <div id="banner" class="hidden"></div>
-  <div id="verTag">v2.13</div>
+  <div id="verTag">v2.14</div>
 
 <div id="menu" class="overlay">
   <h1 id="menuTitle">SUN CIRCUIT</h1>
@@ -1163,6 +1163,7 @@
       c.lapStart = 0;
       c.wobble = 0;
       c.halfPassed = false;
+      c.stuck = 0;
       c.i = -1;
       var pr = projectTrack(c.x, c.z, -1);
       c.s = pr.s; c.prevS = pr.s; c.lat = pr.lat; c.i = pr.i;
@@ -1514,7 +1515,9 @@ var pr = projectTrack(c.x, c.z, c.i);
       c.halfPassed = false;
     } else if (delta > LEN * 0.5) {
       c.halfPassed = false;
-      c.lap--; c.lapStart = clock;
+      // Reverse over the line: give the lap back, but never below zero or the
+      // HUD starts showing "0/2" and progress() drops the car down the board.
+      c.lap = Math.max(0, c.lap - 1); c.lapStart = clock;
     }
     c.prevS = c.s;
     syncMesh(c);
@@ -2252,7 +2255,7 @@ var pr = projectTrack(c.x, c.z, c.i);
         c.speed = 0; c.steer = 0; c.lap = 0;
         c.vx = 0; c.vz = 0; c.boost = 0; c.boosting = false; c.drifting = false; c.contact = 0;
         c.best = Infinity; c.finished = false; c.finishTime = 0; c.lapStart = 0;
-        c.wobble = 0; c.halfPassed = false; c.i = -1;
+        c.wobble = 0; c.halfPassed = false; c.stuck = 0; c.i = -1;
         var pr = projectTrack(c.x, c.z, -1);
         c.s = pr.s; c.prevS = pr.s; c.lat = pr.lat; c.i = pr.i;
         syncMesh(c);
