@@ -7,7 +7,7 @@ A single website that collects five browser games in one place.
 | Game | Folder | Status |
 | --- | --- | --- |
 | KARDS — WWII card game | [`kards/`](kards/) | Ready |
-| Europe 1939 — map game | [`map-game/`](map-game/) | Ready |
+| Map Game — WWII Europe & China provinces | [`map-game/`](map-game/) | Ready |
 | Blockcraft — voxel sandbox | [`minecraft/`](minecraft/) | Ready |
 | Tank War — 2D arena | [`tank/`](tank/) | Ready |
 | Apex Racing — 3D race car | [`race-car/`](race-car/) | Ready |
