@@ -617,13 +617,13 @@ const figures = [
 
 const figurePhoto = [
   "Bundesarchiv_Bild_183-S33882,_Adolf_Hitler_retouched.jpg",
-  "JStalin_Secretary_general_CCCP_1942_flipped.jpg",
+  "Stalin_1945.jpg",
   "Sir_Winston_Churchill_-_19086236948.jpg",
   "President_Roosevelt_-_Pach_Bros.jpg",
   "Mussolini_biografia.jpg",
-  "Charles_de_Gaulle_1943.jpg",
+  "Charles_de_Gaulle_-_photo_Henri_Manuel.jpg",
   "Erwin_Rommel.jpg",
-  "Zhukov_1944.jpg",
+  "Georgy_Zhukov.jpg",
   "Dwight_D._Eisenhower,_official_photo_portrait,_May_29,_1959.jpg"
 ];
 function portraitUrl(filename, size) {
@@ -872,7 +872,7 @@ function stopMapPlay() {
 function renderFigures() {
   document.getElementById("figuresList").innerHTML = figures.map((f, i) => `
     <div class="figure" data-idx="${i}" style="cursor:pointer;">
-      <div class="avatar ${f.side}"><span>${f.initial}</span><img class="portrait" src="${portraitUrl(figurePhoto[i], 200)}" alt="${tt(f.name)}" loading="lazy" onerror="this.style.display='none'"></div>
+      <div class="avatar ${f.side}"><span>${f.initial}</span><img class="portrait" src="${portraitUrl(figurePhoto[i], 200)}" alt="${tt(f.name)}" loading="lazy" onload="this.style.display='block'" onerror="this.style.display='none'"></div>
       <div class="name">${tt(f.name)}</div>
       <div class="en-name">${lang==="zh"?f.name.en:f.name.zh}</div>
       <div class="role">${tt(f.role)}</div>
@@ -888,7 +888,7 @@ function openFigure(i) {
   const f = figures[i];
   const av = document.getElementById("modalAvatar");
   av.className = "modal-avatar " + f.side;
-  av.innerHTML = `<span>${f.initial}</span><img class="portrait" src="${portraitUrl(figurePhoto[i], 500)}" alt="" onerror="this.style.display='none'">`;
+  av.innerHTML = `<span>${f.initial}</span><img class="portrait" src="${portraitUrl(figurePhoto[i], 500)}" alt="" onload="this.style.display='block'" onerror="this.style.display='none'">`;
   document.getElementById("modalName").textContent = tt(f.name);
   document.getElementById("modalRole").textContent = tt(f.role);
   document.getElementById("modalLife").textContent = t("life") + (lang==="zh"?"：":": ") + tt(f.born) + " – " + tt(f.died);
