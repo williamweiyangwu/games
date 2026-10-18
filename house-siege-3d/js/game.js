@@ -15,7 +15,7 @@ if (!window.THREE) {
    CONFIG
    ------------------------------------------------------------ */
 const CFG = {
-  mapHalf: 38,
+  mapHalf: 36,
   gravity: 26,
   player: { radius: 0.42, height: 1.8, eye: 1.62, walk: 5.0, sprint: 7.0, jump: 7.4, accel: 62, friction: 12 },
   matchTime: 300,          // 5 minutes
@@ -23,14 +23,17 @@ const CFG = {
   killLimit: 9999,
   flagLimit: 9999,
   chestRespawn: 26,
-  botsPerTeam: 4           // + the human = 5v5
+  botsPerTeam: 4,          // + the human = 5v5
+  playerHp: 140,           // you are tougher than a bot
+  regenDelay: 4.5,         // seconds without damage before health regenerates
+  regenRate: 18            // hp per second
 };
 
 const DIFF = {
-  easy:   { key:'easy',   label:'EASY',   hp:100, dmg:0.55, react:0.62, err:0.085, range:24, speed:3.4, reload:2.8, burst:0.65, jumpiness:0.3 },
-  normal: { key:'normal', label:'NORMAL', hp:100, dmg:0.85, react:0.38, err:0.050, range:32, speed:4.0, reload:2.3, burst:0.40, jumpiness:0.6 },
-  hard:   { key:'hard',   label:'HARD',   hp:110, dmg:1.05, react:0.21, err:0.028, range:42, speed:4.6, reload:1.9, burst:0.24, jumpiness:0.8 },
-  legend: { key:'legend', label:'LEGEND', hp:125, dmg:1.25, react:0.11, err:0.014, range:56, speed:5.0, reload:1.6, burst:0.13, jumpiness:1.0 }
+  easy:   { key:'easy',   label:'EASY',   hp:90,  dmg:0.42, react:0.90, err:0.115, range:18, speed:3.2, reload:3.2, burst:0.85, jumpiness:0.25 },
+  normal: { key:'normal', label:'NORMAL', hp:100, dmg:0.62, react:0.58, err:0.078, range:26, speed:3.8, reload:2.6, burst:0.58, jumpiness:0.50 },
+  hard:   { key:'hard',   label:'HARD',   hp:110, dmg:0.84, react:0.34, err:0.046, range:36, speed:4.4, reload:2.1, burst:0.36, jumpiness:0.75 },
+  legend: { key:'legend', label:'LEGEND', hp:125, dmg:1.05, react:0.17, err:0.024, range:50, speed:4.9, reload:1.8, burst:0.20, jumpiness:1.0 }
 };
 
 const WEAPONS = {
@@ -146,7 +149,7 @@ function initThree() {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputEncoding = THREE.sRGBEncoding;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 0.78;
+  renderer.toneMappingExposure = 0.68;
   document.body.insertBefore(renderer.domElement, document.body.firstChild);
   renderer.domElement.id = 'view';
 
@@ -191,10 +194,10 @@ function initThree() {
   G.sky = sky;
 
   /* ---- lighting ---- */
-  const hemi = new THREE.HemisphereLight(0xbcd7f0, 0x46442f, 0.24);
+  const hemi = new THREE.HemisphereLight(0xbcd7f0, 0x4b4a36, 0.34);
   scene.add(hemi);
 
-  const sun = new THREE.DirectionalLight(0xfff2da, 1.4);
+  const sun = new THREE.DirectionalLight(0xfff2da, 1.02);
   sun.position.copy(SUN_DIR).multiplyScalar(90);
   sun.castShadow = true;
   sun.shadow.mapSize.set(1536, 1536);
@@ -436,7 +439,7 @@ function initMaterials() {
   MAT.floor2   = new THREE.MeshStandardMaterial({ map: texPlanks('#8a6240', '#5d3f24'), roughness: 0.74, metalness: 0.04 });
   MAT.tile     = new THREE.MeshStandardMaterial({ map: texTiles('#d9d4c8', '#a9a49a', 4), roughness: 0.55, metalness: 0.06 });
   MAT.ground   = new THREE.MeshStandardMaterial({ map: texGrass(), roughness: 0.99, metalness: 0 });
-  MAT.rail     = new THREE.MeshStandardMaterial({ color: 0x2f3339, roughness: 0.45, metalness: 0.65 });
+  MAT.rail     = new THREE.MeshStandardMaterial({ color: 0x565d66, roughness: 0.42, metalness: 0.6 });
   MAT.wood     = new THREE.MeshStandardMaterial({ map: texPlanks('#7d5230', '#4c2f19', 1), roughness: 0.8, metalness: 0.03 });
   MAT.woodDark = new THREE.MeshStandardMaterial({ color: 0x4a2f1c, roughness: 0.86, metalness: 0.03 });
   MAT.gold     = new THREE.MeshStandardMaterial({ color: 0xd9a441, roughness: 0.3, metalness: 0.9 });
@@ -463,6 +466,13 @@ function initMaterials() {
   MAT.shutter  = new THREE.MeshStandardMaterial({ color: 0x4c5a55, roughness: 0.78, metalness: 0.06 });
   MAT.concrete = new THREE.MeshStandardMaterial({ color: 0x8e8b83, roughness: 0.95, metalness: 0.02, map: texTiles('#9b978e', '#7d7a71', 3) });
   MAT.pad      = new THREE.MeshStandardMaterial({ color: 0x93918a, roughness: 0.93, metalness: 0.03, map: texTiles('#9c9a92', '#86847c', 4) });
+
+  /* --- white maze --- */
+  MAT.mazeWall = new THREE.MeshStandardMaterial({ map: texPlaster('#e7e4dc', '#c6c1b5'), roughness: 0.94, metalness: 0.02 });
+  MAT.mazeCap  = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.55, metalness: 0.04 });
+  MAT.mazeFloor= new THREE.MeshStandardMaterial({ map: texTiles('#e6e4dd', '#c3c0b6', 6), roughness: 0.62, metalness: 0.05 });
+  MAT.deck     = new THREE.MeshStandardMaterial({ map: texTiles('#b9bcc0', '#8f9296', 5), roughness: 0.5, metalness: 0.35 });
+  MAT.deckEdge = new THREE.MeshStandardMaterial({ color: 0x6e7278, roughness: 0.42, metalness: 0.6 });
 }
 
 /* rescale box UVs so textures keep a constant texel density */
@@ -548,166 +558,297 @@ function splitSegments(a, b, gaps) {
   return out;
 }
 
+/* ------------------------------------------------------------
+   WORLD — an enclosed white maze. Level 1 is the labyrinth,
+   level 2 is a catwalk platform running right around the edge.
+   ------------------------------------------------------------ */
+const MAP = {
+  B: 36,             // outer wall centreline
+  outerT: 0.7,       // outer wall thickness
+  platY: 4.2,        // catwalk deck height
+  mazeHalf: 29.5,    // maze extends +-this
+  N: 13,             // maze cells per side
+  wallH: 3.0,        // maze wall height
+  wallT: 0.42,       // maze wall thickness
+  railH: 1.15        // catwalk railing height
+};
+MAP.cs = (MAP.mazeHalf * 2) / MAP.N;
+MAP.g0 = -MAP.mazeHalf;
+
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function cellCenter(i, j) {
+  return { x: MAP.g0 + (i + 0.5) * MAP.cs, z: MAP.g0 + (j + 0.5) * MAP.cs };
+}
+
+/* Perfect maze from a randomised depth-first search, then a share of the walls
+   knocked back out so there are loops — a pure tree maze makes every fight a
+   cornering, which is miserable in a shooter. */
+function genMaze(N, rnd) {
+  const cells = [];
+  for (let j = 0; j < N; j++) {
+    const row = [];
+    for (let i = 0; i < N; i++) row.push({ N: true, E: true, S: true, W: true, vis: false, carve: false });
+    cells.push(row);
+  }
+  const stack = [[0, 0]];
+  cells[0][0].vis = true;
+  while (stack.length) {
+    const i = stack[stack.length - 1][0], j = stack[stack.length - 1][1];
+    const nb = [];
+    if (j > 0 && !cells[j - 1][i].vis) nb.push([i, j - 1, 'N', 'S']);
+    if (i < N - 1 && !cells[j][i + 1].vis) nb.push([i + 1, j, 'E', 'W']);
+    if (j < N - 1 && !cells[j + 1][i].vis) nb.push([i, j + 1, 'S', 'N']);
+    if (i > 0 && !cells[j][i - 1].vis) nb.push([i - 1, j, 'W', 'E']);
+    if (!nb.length) { stack.pop(); continue; }
+    const p = nb[(rnd() * nb.length) | 0];
+    cells[j][i][p[2]] = false;
+    cells[p[1]][p[0]][p[3]] = false;
+    cells[p[1]][p[0]].vis = true;
+    stack.push([p[0], p[1]]);
+  }
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    if (i < N - 1 && cells[j][i].E && rnd() < 0.20) { cells[j][i].E = false; cells[j][i + 1].W = false; }
+    if (j < N - 1 && cells[j][i].S && rnd() < 0.20) { cells[j][i].S = false; cells[j + 1][i].N = false; }
+  }
+  return cells;
+}
+
 function buildWorld() {
-  const H = 4;              // storey height
-  const HALF_X = 16, HALF_Z = 12;
+  const N = MAP.N, cs = MAP.cs, g0 = MAP.g0, MH = MAP.mazeHalf, PY = MAP.platY;
+  const B = MAP.B, OT = MAP.outerT;
+  const outer = B + OT / 2;                 // outer face of the perimeter
+  const deckC = (MH + outer) / 2;           // catwalk centreline
+  const deckW = outer - MH;                 // catwalk width
 
   /* --- ground --- */
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(420, 420), MAT.ground);
   ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -0.06;          // sit under the maze slab, no z-fighting
   ground.receiveShadow = true;
   scene.add(ground);
 
-  /* perimeter boundary */
-  const B = CFG.mapHalf;
-  wallX(B, -B, B, 0, 3.2, [], 0.6, MAT.wallIn);
-  wallX(-B, -B, B, 0, 3.2, [], 0.6, MAT.wallIn);
-  wallZ(B, -B, B, 0, 3.2, [], 0.6, MAT.wallIn);
-  wallZ(-B, -B, B, 0, 3.2, [], 0.6, MAT.wallIn);
+  /* --- maze floor --- */
+  addBox(0, -0.08, 0, MH * 2 + 0.5, 0.16, MH * 2 + 0.5, MAT.mazeFloor, { name: 'mazefloor' });
 
-  /* --- house ground floor slab --- */
-  addBox(0, -0.06, 0, 34, 0.2, 26, MAT.floor, { name: 'floor' });
+  /* --- maze layout --- */
+  const cells = genMaze(N, mulberry32(20261018));
+  G.maze = cells;
 
-  /* --- ground floor outer walls (thickness .4) --- */
-  wallX(12, -HALF_X, HALF_X, 0, H, [[-1.6, 1.6]], 0.4, MAT.wall);     // south + main door
-  wallX(-12, -HALF_X, HALF_X, 0, H, [[-3.0, 1.0]], 0.4, MAT.wall);    // north + door
-  wallZ(-HALF_X, -HALF_Z, HALF_Z, 0, H, [[-4, 2]], 0.4, MAT.wall);    // west + door
-  wallZ(HALF_X, -HALF_Z, HALF_Z, 0, H, [[4, 8]], 0.4, MAT.wall);      // east + door
+  const openCell = (i, j) => {
+    if (i < 0 || j < 0 || i >= N || j >= N) return;
+    const c = cells[j][i];
+    c.carve = true;
+    if (c.W && i > 0) { c.W = false; cells[j][i - 1].E = false; }
+    if (c.E && i < N - 1) { c.E = false; cells[j][i + 1].W = false; }
+    if (c.N && j > 0) { c.N = false; cells[j - 1][i].S = false; }
+    if (c.S && j < N - 1) { c.S = false; cells[j + 1][i].N = false; }
+  };
 
-  /* --- ground floor interior --- */
-  wallZ(-6, -12, -2, 0, H, [[-8.4, -5.6]], 0.3, MAT.wallIn);
-  wallX(-4, -16, -6, 0, H, [[-12.4, -9.6]], 0.3, MAT.wallIn);
-  wallZ(0, -12, -6, 0, H, [[-9.4, -7.4]], 0.3, MAT.wallIn);
-  wallX(2, -16, -2, 0, H, [[-6.4, -3.4]], 0.3, MAT.wallIn);
-  wallZ(4, 2, 12, 0, H, [[5.2, 8.2]], 0.3, MAT.wallIn);
-  wallX(6, 4, 16, 0, H, [[8.2, 11.2]], 0.3, MAT.wallIn);
-  // pillars in the main hall
-  addBox(-2.6, 2, -1.2, 0.55, 4, 0.55, MAT.wallIn);
-  addBox(2.6, 2, 3.4, 0.55, 4, 0.55, MAT.wallIn);
+  /* a two-cell well in the middle of each side, where the stairs go up */
+  const RW = cs * 0.46;          // stair half width
+  const RUN = 9.0;               // stair run
+  const well = (minX, maxX, minZ, maxZ) => {
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const x0 = g0 + i * cs, x1 = x0 + cs, z0 = g0 + j * cs, z1 = z0 + cs;
+      if (x1 > minX && x0 < maxX && z1 > minZ && z0 < maxZ) openCell(i, j);
+    }
+  };
+  well(-RW, RW, MH - RUN, MH);
+  well(-RW, RW, -MH, -MH + RUN);
+  well(MH - RUN, MH, -RW, RW);
+  well(-MH, -MH + RUN, -RW, RW);
 
-  /* --- second floor slab (hole for the stairwell x 6..12, z -9..0) --- */
-  addBox(-5, 4.0, 0, 22, 0.22, 24, MAT.floor2);         // x -16..6
-  addBox(11, 4.0, 6, 10, 0.22, 12, MAT.floor2);         // x 6..16, z 0..12
-  addBox(11, 4.0, -10.5, 10, 0.22, 3, MAT.floor2);      // x 6..16, z -12..-9
-  addBox(14, 4.0, -4.5, 4, 0.22, 9, MAT.floor2);        // x 12..16, z -9..0
+  const ramps = [
+    { axis: 'z', minX: -RW, maxX: RW, minZ: MH - RUN, maxZ: MH, yAtMinZ: 0, yAtMaxZ: PY },
+    { axis: 'z', minX: -RW, maxX: RW, minZ: -MH, maxZ: -MH + RUN, yAtMinZ: PY, yAtMaxZ: 0 },
+    { axis: 'x', minX: MH - RUN, maxX: MH, minZ: -RW, maxZ: RW, yAtMinX: 0, yAtMaxX: PY },
+    { axis: 'x', minX: -MH, maxX: -MH + RUN, minZ: -RW, maxZ: RW, yAtMinX: PY, yAtMaxX: 0 }
+  ];
+  for (const r of ramps) G.ramps.push(r);
 
-  /* --- stairwell --- */
-  // side walls full height
-  wallZ(6, -9, 0, 0, 8, [], 0.3, MAT.wallIn);
-  wallZ(12, -9, 0, 0, 8, [], 0.3, MAT.wallIn);
-  // closes the space under the stairs from the north
-  wallX(-9, 6, 12, 0, 3.9, [], 0.3, MAT.wallIn);
-  // landing rail on the 2nd floor south edge of the hole
-  wallX(0, 6, 12, 4.1, 5.35, [], 0.14, MAT.rail);
-  // handrail posts (decorative)
-  for (let i = 0; i < 6; i++) {
-    const t = i / 5;
-    addBox(6.2, 4.15 + 0.62 * t + 0.55, -0.4 - 7.6 * t, 0.08, 1.1, 0.08, MAT.rail, { collide: false, shadow: false });
+  /* --- maze walls: collinear runs merged so the collider list stays small --- */
+  for (let i = 1; i < N; i++) {
+    let run = -1;
+    for (let j = 0; j <= N; j++) {
+      const has = j < N && cells[j][i].W;
+      if (has && run < 0) run = j;
+      if (!has && run >= 0) {
+        addBox(g0 + i * cs, MAP.wallH / 2, g0 + (run + j) / 2 * cs,
+          MAP.wallT, MAP.wallH, (j - run) * cs + MAP.wallT, MAT.mazeWall, { name: 'maze' });
+        run = -1;
+      }
+    }
+  }
+  for (let j = 1; j < N; j++) {
+    let run = -1;
+    for (let i = 0; i <= N; i++) {
+      const has = i < N && cells[j][i].N;
+      if (has && run < 0) run = i;
+      if (!has && run >= 0) {
+        addBox(g0 + (run + i) / 2 * cs, MAP.wallH / 2, g0 + j * cs,
+          (i - run) * cs + MAP.wallT, MAP.wallH, MAP.wallT, MAT.mazeWall, { name: 'maze' });
+        run = -1;
+      }
+    }
   }
 
-  // ramp collider (rises from z=0 -> y0 to z=-9 -> y=4)
-  G.ramps.push({ minX: 6.15, maxX: 11.85, minZ: -9, maxZ: 0, yAtMinZ: 4, yAtMaxZ: 0 });
+  /* --- catwalk: solid parapet block all round, deck on top --- */
+  addBox(0, PY / 2, deckC, outer * 2, PY, deckW, MAT.mazeWall, { name: 'deckS' });
+  addBox(0, PY / 2, -deckC, outer * 2, PY, deckW, MAT.mazeWall, { name: 'deckN' });
+  addBox(deckC, PY / 2, 0, deckW, PY, MH * 2, MAT.mazeWall, { name: 'deckE' });
+  addBox(-deckC, PY / 2, 0, deckW, PY, MH * 2, MAT.mazeWall, { name: 'deckW' });
 
-  // visual steps
-  const steps = 20, run = 9 / steps;
-  for (let i = 0; i < steps; i++) {
-    const zc = -(i + 0.5) * run;
-    const hTop = 4 * (-zc) / 9;      // ramp height at step centre
-    addBox(9, hTop / 2, zc, 5.7, Math.max(0.08, hTop), run + 0.02, MAT.floor2, { collide: false });
+  /* dark trim along the inner lip so the two levels read apart */
+  const trim = (x, z, w, d) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.07, d), MAT.deckEdge);
+    m.position.set(x, PY + 0.035, z); m.receiveShadow = true; scene.add(m);
+  };
+  trim(0, MH - 0.09, MH * 2, 0.18);
+  trim(0, -MH + 0.09, MH * 2, 0.18);
+  trim(MH - 0.09, 0, 0.18, MH * 2);
+  trim(-MH + 0.09, 0, 0.18, MH * 2);
+
+  /* metal deck plate on top of the white parapet */
+  const plate = (x, z, w, d) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.05, d), MAT.deck);
+    m.position.set(x, PY + 0.025, z); m.receiveShadow = true; scene.add(m);
+  };
+  plate(0, deckC, outer * 2 - 0.1, deckW - 0.1);
+  plate(0, -deckC, outer * 2 - 0.1, deckW - 0.1);
+  plate(deckC, 0, deckW - 0.1, MH * 2 - 0.1);
+  plate(-deckC, 0, deckW - 0.1, MH * 2 - 0.1);
+
+  /* --- outer wall above the deck: sealed, no way out --- */
+  const wallTop = 11.0;
+  wallX(B, -outer, outer, PY, wallTop, [], OT, MAT.mazeWall);
+  wallX(-B, -outer, outer, PY, wallTop, [], OT, MAT.mazeWall);
+  wallZ(B, -MH - OT, MH + OT, PY, wallTop, [], OT, MAT.mazeWall);
+  wallZ(-B, -MH - OT, MH + OT, PY, wallTop, [], OT, MAT.mazeWall);
+
+  /* --- railings on the inner edge, open where each stair arrives --- */
+  const gap = RW + 1.2;
+  wallX(MH, -MH, MH, PY, PY + MAP.railH, [[-gap, gap]], 0.14, MAT.rail);
+  wallX(-MH, -MH, MH, PY, PY + MAP.railH, [[-gap, gap]], 0.14, MAT.rail);
+  wallZ(MH, -MH, MH, PY, PY + MAP.railH, [[-gap, gap]], 0.14, MAT.rail);
+  wallZ(-MH, -MH, MH, PY, PY + MAP.railH, [[-gap, gap]], 0.14, MAT.rail);
+  // posts
+  for (const s of [-1, 1]) {
+    for (let t = -26; t <= 26; t += 6.5) {
+      if (Math.abs(t) < gap + 1.5) continue;
+      addBox(t, PY + MAP.railH / 2, s * MH, 0.1, MAP.railH, 0.1, MAT.rail, { collide: false, shadow: false });
+      addBox(s * MH, PY + MAP.railH / 2, t, 0.1, MAP.railH, 0.1, MAT.rail, { collide: false, shadow: false });
+    }
   }
 
-  /* --- second floor outer walls --- */
-  wallX(12, -HALF_X, HALF_X, 4, 8, [[-6, -2]], 0.35, MAT.wall);
-  wallX(-12, -HALF_X, HALF_X, 4, 8, [[2, 6]], 0.35, MAT.wall);
-  wallZ(-HALF_X, -HALF_Z, HALF_Z, 4, 8, [[2, 6]], 0.35, MAT.wall);
-  wallZ(HALF_X, -HALF_Z, HALF_Z, 4, 8, [[-2, 2]], 0.35, MAT.wall);
+  /* --- stairs (visual steps; the ramp colliders do the lifting) --- */
+  const STEPS = 16;
+  for (const r of ramps) {
+    const along = r.axis === 'x' ? (r.maxX - r.minX) : (r.maxZ - r.minZ);
+    const run = along / STEPS;
+    for (let s = 0; s < STEPS; s++) {
+      const t = (s + 0.5) / STEPS;
+      if (r.axis === 'x') {
+        const h = r.yAtMinX + (r.yAtMaxX - r.yAtMinX) * t;
+        addBox(r.minX + (r.maxX - r.minX) * t, h / 2, 0, run + 0.02, Math.max(0.12, h), RW * 2,
+          MAT.mazeWall, { collide: false, name: 'step' });
+      } else {
+        const h = r.yAtMinZ + (r.yAtMaxZ - r.yAtMinZ) * t;
+        addBox(0, h / 2, r.minZ + (r.maxZ - r.minZ) * t, RW * 2, Math.max(0.12, h), run + 0.02,
+          MAT.mazeWall, { collide: false, name: 'step' });
+      }
+    }
+  }
 
-  /* --- second floor interior --- */
-  wallX(2, -16, -4, 4, 8, [[-8.4, -5.4]], 0.3, MAT.wallIn);
-  wallZ(-4, 2, 12, 4, 8, [[6.2, 9.2]], 0.3, MAT.wallIn);
-  wallX(-6, -16, -4, 4, 8, [[-12.4, -9.4]], 0.3, MAT.wallIn);
-  wallZ(2, -12, -6, 4, 8, [[-9.4, -7.4]], 0.3, MAT.wallIn);
-  wallX(6, 6, 16, 4, 8, [[9.2, 12.2]], 0.3, MAT.wallIn);
-
-  /* --- roof --- */
-  addBox(0, 8.22, 0, 32.7, 0.4, 24.7, MAT.roof, { name: 'roof' });
-
-  /* --- interior lights --- */
-  const lamp = (x, y, z, inten) => {
-    const l = new THREE.PointLight(0xffe3bb, inten * 1.25, 24, 1.7);
+  /* --- lighting --- */
+  const fill = (x, y, z, i) => {
+    const l = new THREE.PointLight(0xfff0d8, i, 30, 1.5);
     l.position.set(x, y, z);
     scene.add(l);
-    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.11, 6, 5), new THREE.MeshBasicMaterial({ color: 0xfff0d0 }));
-    bulb.position.set(x, y, z); scene.add(bulb);
   };
-  lamp(-8, 3.4, 4, 0.72); lamp(8, 3.4, -4, 0.72); lamp(0, 3.4, -8, 0.6);
-  lamp(-8, 7.4, 6, 0.68); lamp(9, 7.4, 6, 0.68); lamp(-6, 7.4, -7, 0.62);
+  fill(0, PY + 2.4, 0, 0.45);
+  fill(0, 3.0, MH - 4, 0.55);
+  fill(0, 3.0, -MH + 4, 0.55);
+  fill(MH - 4, 3.0, 0, 0.55);
+  fill(-MH + 4, 3.0, 0, 0.55);
 
-  // bright ceiling panels so interiors do not read as black voids (cut around the stairwell)
-  const ceilMat = new THREE.MeshStandardMaterial({ color: 0xf2f0e9, roughness: 0.97, metalness: 0.01, emissive: 0x33312c, emissiveIntensity: 1 });
-  addBox(-5, 3.87, 0, 22.2, 0.05, 24.2, ceilMat, { collide: false, shadow: false });
-  addBox(11, 3.87, 6, 10.2, 0.05, 12, ceilMat, { collide: false, shadow: false });
-  addBox(11, 3.87, -10.5, 10.2, 0.05, 3, ceilMat, { collide: false, shadow: false });
-  addBox(14, 3.87, -4.5, 4.2, 0.05, 9, ceilMat, { collide: false, shadow: false });
-  addBox(0, 7.9, 0, 32.2, 0.05, 24.2, ceilMat, { collide: false, shadow: false });
+  /* --- team HQs, on opposite corners of the maze --- */
+  const hqCell = (tx, tz) => {
+    let bi = 0, bj = 0, bd = 1e9;
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const c = cellCenter(i, j);
+      const d = Math.hypot(c.x - tx, c.z - tz);
+      if (d < bd) { bd = d; bi = i; bj = j; }
+    }
+    return cellCenter(bi, bj);
+  };
+  G.hq = { red: hqCell(-20, 20), blue: hqCell(20, -20) };
 
-  /* --- roof parapet --- */
-  wallX(12, -16, 16, 8, 9.0, [[-7, -3], [3, 7]], 0.3, MAT.wall);
-  wallX(-12, -16, 16, 8, 9.0, [[-7, -3], [3, 7]], 0.3, MAT.wall);
-  wallZ(-16, -12, 12, 8, 9.0, [[-6, -2], [2, 6]], 0.3, MAT.wall);
-  wallZ(16, -12, 12, 8, 9.0, [[-6, -2], [2, 6]], 0.3, MAT.wall);
-
-  addFacade();
-
-  /* --- outdoor cover --- */
-  const crates = [
-    [-24, 0.45, 18], [-21, 0.45, 18], [-24, 1.35, 18],
-    [24, 0.45, 18], [27, 0.45, 18],
-    [-24, 0.45, -18], [-27, 0.45, -18],
-    [24, 0.45, -18], [24, 1.35, -18],
-    [-6, 0.45, 26], [6, 0.45, 26], [-6, 0.45, -26], [6, 0.45, -26],
-    [22, 0.45, 4], [-22, 0.45, -4], [22, 0.45, -6], [-22, 0.45, 6],
-    [-30, 0.45, 0], [30, 0.45, 0], [0, 0.45, 20], [0, 0.45, -20]
-  ];
-  for (const c of crates) {
-    addBox(c[0], c[1], c[2], 1.1, 0.9, 1.1, MAT.crate);
-    addBox(c[0], c[1] + 0.46, c[2], 1.14, 0.06, 1.14, MAT.woodDark, { collide: false, shadow: false });
-  }
-  // low sandbag walls near the bases
-  const bags = [
-    [-8, 0.5, 24, 6, 1, 0.8], [8, 0.5, 24, 6, 1, 0.8],
-    [-8, 0.5, -24, 6, 1, 0.8], [8, 0.5, -24, 6, 1, 0.8],
-    [-14, 0.5, 30, 1, 1, 7], [14, 0.5, 30, 1, 1, 7],
-    [-14, 0.5, -30, 1, 1, 7], [14, 0.5, -30, 1, 1, 7]
-  ];
-  for (const b of bags) addBox(b[0], b[1], b[2], b[3], b[4], b[5], MAT.crate);
-
-  /* --- base platforms --- */
-  addBox(0, 0.06, 30, 10, 0.12, 7, MAT.pad, { name: 'redbase' });
-  addBox(0, 0.06, -30, 10, 0.12, 7, MAT.pad, { name: 'bluebase' });
-  // HQ rings
-  const ringGeo = new THREE.RingGeometry(2.2, 2.6, 40);
-  const ringR = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0xff4a4a, transparent: true, opacity: 0.55, side: THREE.DoubleSide }));
-  ringR.rotation.x = -Math.PI / 2; ringR.position.set(0, 0.19, 30); scene.add(ringR);
-  const ringB = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0x4d8dff, transparent: true, opacity: 0.55, side: THREE.DoubleSide }));
-  ringB.rotation.x = -Math.PI / 2; ringB.position.set(0, 0.19, -30); scene.add(ringB);
-
-  /* --- decorative lamps --- */
-  for (const p of [[-14, 30], [14, 30], [-14, -30], [14, -30], [-26, 0], [26, 0]]) {
-    addBox(p[0], 0.1, p[1], 0.5, 0.2, 0.5, MAT.metal, { collide: false });
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 3.4, 6), MAT.metal);
-    pole.position.set(p[0], 1.7, p[1]); pole.castShadow = true; scene.add(pole);
-    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffe9b0 }));
-    bulb.position.set(p[0], 3.5, p[1]); scene.add(bulb);
+  for (const t of ['red', 'blue']) {
+    const h = G.hq[t];
+    addBox(h.x, 0.055, h.z, 5.4, 0.11, 5.4, MAT.pad, { name: t + 'hq' });
+    const ring = new THREE.Mesh(new THREE.RingGeometry(1.9, 2.25, 40),
+      new THREE.MeshBasicMaterial({ color: t === 'red' ? 0xff4a4a : 0x4d8dff, transparent: true, opacity: 0.7, side: THREE.DoubleSide }));
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(h.x, 0.14, h.z);
+    scene.add(ring);
+    G[t + 'Ring'] = ring;
   }
 
-  addInteriorDetail();
-  addOutdoorDetail();
+  /* --- spawn slots: the six cells nearest each HQ --- */
+  G.spawns = { red: [], blue: [] };
+  for (const t of ['red', 'blue']) {
+    const h = G.hq[t];
+    const all = [];
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const c = cellCenter(i, j);
+      all.push({ x: c.x, z: c.z, d: Math.hypot(c.x - h.x, c.z - h.z) });
+    }
+    all.sort((a, b) => a.d - b.d);
+    G.spawns[t] = all.slice(0, 6).map(p => ({ x: p.x, z: p.z }));
+  }
+
+  /* --- weapon crates: dead ends first, plus two up on the catwalk --- */
+  const deadEnds = [];
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    const c = cells[j][i];
+    if (c.carve) continue;
+    const openings = (c.W ? 0 : 1) + (c.E ? 0 : 1) + (c.N ? 0 : 1) + (c.S ? 0 : 1);
+    if (openings === 1) { const p = cellCenter(i, j); deadEnds.push(p); }
+  }
+  const spots = [];
+  if (deadEnds.length) {
+    spots.push(deadEnds[(deadEnds.length * 0.13) | 0]);
+    while (spots.length < 6) {
+      let best = null, bd = -1;
+      for (const d of deadEnds) {
+        if (spots.indexOf(d) >= 0) continue;
+        let md = 1e9;
+        for (const s of spots) md = Math.min(md, Math.hypot(d.x - s.x, d.z - s.z));
+        if (md > bd) { bd = md; best = d; }
+      }
+      if (!best) break;
+      spots.push(best);
+    }
+  }
+  while (spots.length < 4) {
+    const p = cellCenter(3 + spots.length * 2, 3 + spots.length * 2);
+    spots.push(p);
+  }
+  spots.push({ x: -deckC, z: 11, y: PY });
+  spots.push({ x: deckC, z: -11, y: PY });
+  G.chestSpots = spots.map(s => [s.x, s.y || 0, s.z]);
 
   mergeStaticWorld();
-
   buildWaypoints();
 }
+
 
 
 /* ------------------------------------------------------------
@@ -1118,45 +1259,72 @@ function addNode(x, z, y) { const n = node(x, z, y); NODES.push(n); return n; }
 
 function buildWaypoints() {
   NODES.length = 0;
-  const g = []; // ground floor
-  const gPts = [
-    [-13, -9], [-13, -2], [-13, 6], [-9, 9], [-2, 9], [3, 9], [9, 9], [13, 6], [13, 1],
-    [-9, 0], [-2, 0], [3, 0], [-10, -8], [-2, -8], [3, -7], [9, -4], [13, -5], [13, -10],
-    [8, -11], [0, -3], [7, 4], [10, 2],
-    [-20, 0], [-20, 8], [-20, -8], [-24, 14], [-24, -14], [-28, 0],
-    [20, 0], [20, 8], [20, -8], [24, 14], [24, -14], [28, 0],
-    [0, 16], [-6, 20], [6, 20], [0, 24], [-12, 26], [12, 26],
-    [0, -16], [-6, -20], [6, -20], [0, -24], [-12, -26], [12, -26],
-    [0, 33], [-10, 33], [10, 33], [0, -33], [-10, -33], [10, -33]
-  ];
-  for (const p of gPts) g.push(addNode(p[0], p[1], 0));
+  const cells = G.maze, N = MAP.N, PY = MAP.platY, MH = MAP.mazeHalf;
+  const D = (MH + MAP.B + MAP.outerT / 2) / 2;   // catwalk centreline
 
-  // 2nd floor
-  const uPts = [
-    [-13, -9], [-13, -3], [-13, 5], [-9, 9], [-1, 9], [4, 9], [10, 9], [14, 5], [14, -3], [14, -11],
-    [-8, -3], [-1, -3], [4, -3], [-8, 5], [-1, 5], [4, 5], [10, -11], [10, -3], [-13, 10], [4, -10]
-  ];
-  const up = uPts.map(p => addNode(p[0], p[1], 4));
+  /* one node per maze cell, linked through the gaps that actually exist */
+  const grid = [];
+  for (let j = 0; j < N; j++) {
+    const row = [];
+    for (let i = 0; i < N; i++) { const c = cellCenter(i, j); row.push(addNode(c.x, c.z, 0)); }
+    grid.push(row);
+  }
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    if (i < N - 1 && !cells[j][i].E) link(grid[j][i], grid[j][i + 1]);
+    if (j < N - 1 && !cells[j][i].S) link(grid[j][i], grid[j + 1][i]);
+  }
 
-  // stair chain: ground -> ramp -> 2nd floor
-  const s0 = addNode(9, 2.2, 0);
-  const s1 = addNode(9, -1.2, 0);
-  const s2 = addNode(9, -4.6, 0);
-  const s3 = addNode(9, -7.8, 0);
-  const s4 = addNode(9, -10.4, 0);
+  /* catwalk ring */
+  const xs = [];
+  for (let x = -26; x <= 26.01; x += 6.5) xs.push(x);
+  const S = xs.map(x => addNode(x, D, PY));
+  const Nn = xs.map(x => addNode(x, -D, PY));
+  const E = xs.map(x => addNode(D, x, PY));
+  const W = xs.map(x => addNode(-D, x, PY));
+  for (const arr of [S, Nn, E, W]) for (let k = 0; k + 1 < arr.length; k++) link(arr[k], arr[k + 1]);
+  link(S[S.length - 1], E[E.length - 1]);
+  link(E[0], Nn[Nn.length - 1]);
+  link(Nn[0], W[W.length - 1]);
+  link(W[0], S[0]);
 
-  // connect same-level nodes with line of sight
-  connectLevel(g, false);
-  connectLevel(up, true);
+  /* stairs: chain the four ramps to the floor and to the ring */
+  const groundNodes = [];
+  for (const row of grid) for (const n of row) groundNodes.push(n);
+  const platNodes = S.concat(Nn, E, W);
+  const nearestIn = (list, x, z) => {
+    let best = null, bd = 1e9;
+    for (const n of list) {
+      const d = Math.hypot(n.x - x, n.z - z);
+      if (d < bd) { bd = d; best = n; }
+    }
+    return best;
+  };
 
-  // stair links
-  link(s0, s1); link(s1, s2); link(s2, s3); link(s3, s4);
-  linkAny(s0, g, 12);
-  linkAny(s4, up, 9);
+  for (const r of G.ramps) {
+    let a, m, b;
+    if (r.axis === 'x') {
+      const zc = (r.minZ + r.maxZ) / 2;
+      a = addNode(r.minX, zc, r.yAtMinX);
+      m = addNode((r.minX + r.maxX) / 2, zc, (r.yAtMinX + r.yAtMaxX) / 2);
+      b = addNode(r.maxX, zc, r.yAtMaxX);
+    } else {
+      const xc = (r.minX + r.maxX) / 2;
+      a = addNode(xc, r.minZ, r.yAtMinZ);
+      m = addNode(xc, (r.minZ + r.maxZ) / 2, (r.yAtMinZ + r.yAtMaxZ) / 2);
+      b = addNode(xc, r.maxZ, r.yAtMaxZ);
+    }
+    link(a, m); link(m, b);
+    const low = a.y < b.y ? a : b;
+    const high = a.y < b.y ? b : a;
+    const gN = nearestIn(groundNodes, low.x, low.z);
+    const pN = nearestIn(platNodes, high.x, high.z);
+    if (gN) link(low, gN);
+    if (pN) link(high, pN);
+  }
 
-  // ground floor / upper floor nodes share the stair chain
-  G.rampsNode = { s0, s4 };
+  G.rampsNode = null;
 }
+
 
 function link(a, b) {
   if (!a || !b || a === b) return;
@@ -1271,8 +1439,14 @@ function groundAt(x, z, feetY) {
   for (let i = 0; i < G.ramps.length; i++) {
     const r = G.ramps[i];
     if (x > r.minX && x < r.maxX && z > r.minZ && z < r.maxZ) {
-      const t = (z - r.minZ) / (r.maxZ - r.minZ);
-      const h = r.yAtMinZ + (r.yAtMaxZ - r.yAtMinZ) * t;
+      let h;
+      if (r.axis === 'x') {
+        const t = (x - r.minX) / (r.maxX - r.minX);
+        h = r.yAtMinX + (r.yAtMaxX - r.yAtMinX) * t;
+      } else {
+        const t = (z - r.minZ) / (r.maxZ - r.minZ);
+        h = r.yAtMinZ + (r.yAtMaxZ - r.yAtMinZ) * t;
+      }
       if (h <= feetY + tol && h > g) g = h;
     }
   }
@@ -1456,10 +1630,9 @@ function makeActor(team, name, isPlayer) {
 }
 
 function spawnPoint(team, i) {
-  const base = team === 'red' ? 33 : -33;
-  const offs = [[-6, 0], [6, 0], [-3, -3], [3, -3], [0, 2.5]];
-  const o = offs[i % offs.length];
-  return new V3(o[0], 0, base + (team === 'red' ? -o[1] : o[1]));
+  const list = (G.spawns && G.spawns[team]) || [];
+  const s = list.length ? list[i % list.length] : { x: 0, z: team === 'red' ? 20 : -20 };
+  return new V3(s.x, 0, s.z);
 }
 
 function ensureBotGroup() {
@@ -1511,13 +1684,14 @@ function createTeams() {
 }
 
 function finishSpawn(a, slot) {
-  a.hp = a.maxHp = (a.isPlayer ? 100 : a.diff.hp);
+  a.hp = a.maxHp = (a.isPlayer ? CFG.playerHp : a.diff.hp);
   a.alive = true;
   a.respawnT = 0;
   a.vel.set(0, 0, 0);
   a.carrying = null;
   a.capT = 0;
   a.reloadT = 0;
+  a.lastHurtT = 0;
   a.weapons = [
     { id: 'knife', mag: 0, res: 0 },
     { id: 'pistol', mag: WEAPONS.pistol.mag, res: WEAPONS.pistol.reserve }
@@ -1561,6 +1735,7 @@ function damage(target, amount, attacker, head, weaponName) {
   if (!target.alive) return;
   target.hp -= amount;
   target.hitFlash = 0.12;
+  target.lastHurtT = G.t;
   if (target.isPlayer) {
     $('dmgvig').classList.add('on');
     setTimeout(() => $('dmgvig').classList.remove('on'), 90);
@@ -1784,11 +1959,8 @@ function updateEffects(dt) {
 /* ------------------------------------------------------------
    CHESTS
    ------------------------------------------------------------ */
-const CHEST_SPOTS = [
-  [-12.5, 0, -8.5], [12.5, 0, 8.5],
-  [-12.5, 4.12, 6.5], [10, 4.12, -10.5],
-  [-5, 0, 24], [5, 0, -24]
-];
+/* spots are chosen at world-build time (maze dead ends + the catwalk) */
+function chestSpots() { return G.chestSpots || []; }
 
 function buildChest(x, y, z) {
   const grp = new THREE.Group();
@@ -1813,18 +1985,36 @@ function buildChest(x, y, z) {
     new THREE.MeshBasicMaterial({ color: 0xffc44d, transparent: true, opacity: 0.9 }));
   ring.rotation.x = Math.PI / 2; ring.position.y = 0.95; grp.add(ring);
 
-  const glow = new THREE.PointLight(0xffb347, 0.9, 5);
+  /* beacon: a soft column of light so a crate is visible across the maze */
+  const beamMat = new THREE.MeshBasicMaterial({
+    color: 0xffb43a, transparent: true, opacity: 0.22,
+    depthWrite: false, side: THREE.DoubleSide
+  });
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.5, 6.5, 10, 1, true), beamMat);
+  beam.position.y = 3.4;
+  grp.add(beam);
+
+  /* a solid marker cube at the top of the beam, readable from the catwalk */
+  const mark = new THREE.Mesh(new THREE.OctahedronGeometry(0.24, 0),
+    new THREE.MeshBasicMaterial({ color: 0xffd166 }));
+  mark.position.y = 2.3;
+  grp.add(mark);
+
+  const glow = new THREE.PointLight(0xffb347, 1.1, 7);
   glow.position.y = 0.9; grp.add(glow);
 
   scene.add(grp);
-  return { grp, lidPivot, ring, glow, pos: new V3(x, y, z), weapon: null, available: true, respawnT: 0, openT: 0 };
+  return {
+    grp, lidPivot, ring, glow, beam, mark, beamMat,
+    pos: new V3(x, y, z), weapon: null, available: true, respawnT: 0, openT: 0
+  };
 }
 
 function createChests() {
   if (G._chestGroup) scene.remove(G._chestGroup);
   for (const c of G.chests) scene.remove(c.grp);
   G.chests.length = 0;
-  for (const s of CHEST_SPOTS) {
+  for (const s of chestSpots()) {
     const c = buildChest(s[0], s[1], s[2]);
     c.weapon = pick(CHEST_POOL);
     G.chests.push(c);
@@ -1876,6 +2066,14 @@ function updateChests(dt) {
     c.ring.visible = c.available;
     c.glow.visible = c.available;
 
+    /* beacon pulse */
+    const pulse = 0.5 + 0.5 * Math.sin(now() * 2.2 + c.pos.x);
+    c.beam.visible = c.available;
+    c.mark.visible = c.available;
+    c.beamMat.opacity = 0.10 + pulse * 0.09;
+    c.mark.rotation.y += dt * 1.4;
+    c.mark.position.y = 2.25 + Math.sin(now() * 1.8 + c.pos.z) * 0.09;
+
     if (c.available && p.alive) {
       const d = Math.hypot(p.pos.x - c.pos.x, p.pos.z - c.pos.z) + Math.abs(p.pos.y - c.pos.y) * 2;
       if (d < 2.3 && (!near || d < near.d)) near = { c, d };
@@ -1903,6 +2101,8 @@ function takeChest(c, a) {
   c.available = false;
   c.respawnT = CFG.chestRespawn;
   c.ring.visible = false;
+  if (c.beam) c.beam.visible = false;
+  if (c.mark) c.mark.visible = false;
   if (a.isPlayer) {
     Snd.chest(); Snd.pickup();
     if (G.tutorial.active) G.tutorial.chests++;
@@ -1941,13 +2141,17 @@ function createFlags() {
     if (G.flags && G.flags[t]) scene.remove(G.flags[t].group);
   }
   G.flags = { red: buildFlag('red'), blue: buildFlag('blue') };
-  G.flagState.red = { at: 'base', carrier: null, dropT: 0, pos: new V3(0, 0, 30) };
-  G.flagState.blue = { at: 'base', carrier: null, dropT: 0, pos: new V3(0, 0, -30) };
-  G.flags.red.group.position.set(0, 0, 30);
-  G.flags.blue.group.position.set(0, 0, -30);
+  const rp = flagBasePos('red'), bp = flagBasePos('blue');
+  G.flagState.red = { at: 'base', carrier: null, dropT: 0, pos: rp.clone() };
+  G.flagState.blue = { at: 'base', carrier: null, dropT: 0, pos: bp.clone() };
+  G.flags.red.group.position.copy(rp);
+  G.flags.blue.group.position.copy(bp);
 }
 
-function flagBasePos(team) { return new V3(0, 0, team === 'red' ? 30 : -30); }
+function flagBasePos(team) {
+  const h = (G.hq && G.hq[team]) || { x: 0, z: team === 'red' ? 20 : -20 };
+  return new V3(h.x, 0, h.z);
+}
 
 function dropFlag(team, pos) {
   const fs = G.flagState[team];
@@ -2265,8 +2469,8 @@ const keys = Object.create(null);
 function createPlayer() {
   const p = makeActor('red', 'YOU', true);
   p.diff = DIFF[G.diff];
-  finishSpawn(p, 0);
-  p.hp = p.maxHp = 100;
+  finishSpawn(p, 4);              // slot 4: the bots take 0-3
+  p.hp = p.maxHp = CFG.playerHp;
   G.player = p;
   return p;
 }
@@ -2285,6 +2489,11 @@ function updatePlayer(dt) {
   if (p.reloadT > 0) {
     p.reloadT -= dt;
     if (p.reloadT <= 0) finishReload(p);
+  }
+
+  /* out-of-combat regeneration — the maze punishes you enough already */
+  if (G.t - (p.lastHurtT || 0) > CFG.regenDelay && p.hp < p.maxHp) {
+    p.hp = Math.min(p.maxHp, p.hp + CFG.regenRate * dt);
   }
 
   let wx = 0, wz = 0;
@@ -2768,20 +2977,38 @@ function buildMapBase() {
   g.fillStyle = 'rgba(10,14,20,0.9)';
   g.fillRect(0, 0, 176, 176);
   const S = 176 / 80, cx = 88, cy = 88;
-  g.fillStyle = 'rgba(168,188,220,0.5)';
+
+  /* outer envelope */
+  g.strokeStyle = 'rgba(150,170,200,0.55)';
+  g.lineWidth = 2;
+  g.strokeRect(cx - MAP.B * S, cy - MAP.B * S, MAP.B * 2 * S, MAP.B * 2 * S);
+
+  /* catwalk band */
+  g.fillStyle = 'rgba(120,145,180,0.18)';
+  const o = MAP.B + MAP.outerT / 2, m = MAP.mazeHalf;
+  g.fillRect(cx - o * S, cy - o * S, o * 2 * S, (o - m) * S);
+  g.fillRect(cx - o * S, cy + m * S, o * 2 * S, (o - m) * S);
+  g.fillRect(cx - o * S, cy - m * S, (o - m) * S, m * 2 * S);
+  g.fillRect(cx + m * S, cy - m * S, (o - m) * S, m * 2 * S);
+
+  /* maze walls */
+  g.fillStyle = 'rgba(228,232,240,0.62)';
   for (const b of G.colliders) {
     const hgt = b.maxY - b.minY;
     if (hgt < 1.6) continue;
     if (b.maxX - b.minX > 40 || b.maxZ - b.minZ > 40) continue;
-    const x = cx + b.minX * S, z = cy + b.minZ * S;
-    const w = (b.maxX - b.minX) * S, d = (b.maxZ - b.minZ) * S;
-    g.fillRect(x, z, w, d);
+    g.fillRect(cx + b.minX * S, cy + b.minZ * S, (b.maxX - b.minX) * S, (b.maxZ - b.minZ) * S);
   }
-  // bases
-  g.strokeStyle = 'rgba(255,74,74,0.8)';
-  g.strokeRect(cx - 6 * S, cy + 30 * S - 4 * S, 12 * S, 9 * S);
-  g.strokeStyle = 'rgba(77,141,255,0.8)';
-  g.strokeRect(cx - 6 * S, cy - 30 * S - 4 * S, 12 * S, 9 * S);
+
+  /* team bases */
+  if (G.hq) {
+    for (const t of ['red', 'blue']) {
+      const h = G.hq[t];
+      g.strokeStyle = t === 'red' ? 'rgba(255,74,74,0.9)' : 'rgba(77,141,255,0.9)';
+      g.lineWidth = 1.5;
+      g.strokeRect(cx + h.x * S - 4, cy + h.z * S - 4, 8, 8);
+    }
+  }
   mapBase = c;
 }
 
@@ -2792,6 +3019,19 @@ function drawMinimap() {
   if (mapBase) g.drawImage(mapBase, 0, 0);
   const S = 176 / 80, cx = 88, cy = 88;
   const p = G.player;
+
+  /* weapon crates — always shown, that is the whole point of the beacon */
+  for (const c of G.chests) {
+    if (!c.available) continue;
+    const x = cx + c.pos.x * S, y = cy + c.pos.z * S;
+    const r = 2.6 + Math.sin(now() * 3 + c.pos.x) * 0.7;
+    g.beginPath();
+    g.moveTo(x, y - r); g.lineTo(x + r, y); g.lineTo(x, y + r); g.lineTo(x - r, y);
+    g.closePath();
+    g.fillStyle = '#ffd166';
+    g.fill();
+    g.strokeStyle = 'rgba(0,0,0,0.55)'; g.lineWidth = 0.8; g.stroke();
+  }
 
   // flags
   if (G.mode === 'flag' && G.flags) {
@@ -2825,6 +3065,9 @@ function drawMinimap() {
   g.closePath(); g.fill();
   g.restore();
 }
+
+
+
 
 /* ---------- main hud ---------- */
 function updateHUD(dt) {
@@ -3085,11 +3328,14 @@ function startGame(mode) {
   $('hud').classList.add('show');
   $('scoreboard').classList.remove('show');
 
-  G.player.pos.set(0, 0, 33);
-  G.player.pos.y = groundAt(0, 33, 1);
-  G.player.yaw = 0;
+  const sp0 = spawnPoint('red', 4);
+  G.player.pos.copy(sp0);
+  G.player.pos.y = groundAt(sp0.x, sp0.z, 1);
+  G.player.vel.set(0, 0, 0);
+  G.player.yaw = mode === 'tutorial' ? -Math.PI / 2 : -Math.PI / 4;
   G.player.pitch = 0;
-  G.player.hp = 100;
+  G.player.hp = CFG.playerHp;
+  G.player.lastHurtT = 0;
 
   if (mode === 'tutorial') {
     $('modeName').textContent = 'TRAINING';
@@ -3102,7 +3348,8 @@ function startGame(mode) {
 }
 
 function spawnTutorialDummies() {
-  const spots = [[-6, 22], [0, 20], [6, 22]];
+  const h = G.hq.red, cs = MAP.cs;
+  const spots = [[h.x + cs, h.z - cs * 0.2], [h.x + cs * 2, h.z], [h.x + cs * 1.2, h.z + cs]];
   let i = 0;
   for (const s of spots) {
     const b = makeActor('blue', 'DUMMY ' + (++i), false);
@@ -3238,14 +3485,17 @@ const HT_PAGES = [
     t: 'MISSION BRIEFING',
     h: `<h3>5 v 5 · Red Team vs Blue Team</h3>
     <p>You deploy with the <span class="r">RED TEAM</span> — four AI teammates and you — against five <span class="b">BLUE</span> operators.
-    The arena is a two-storey white house with a courtyard, catwalks, cover and weapon crates.</p>
-    <h4>THE HOUSE</h4>
-    <p>Ground floor: four connected rooms, two entrances on each side and a main door at the south.
-    Second floor: catwalk rooms, a stairwell on the east side and open edges you can drop from.
-    Stairs are on the east wall — follow the ramp up, or use the outdoor cover to flank.</p>
+    The arena is a sealed white maze. There is no exit: the walls go all the way round and up.</p>
+    <h4>THE MAZE</h4>
+    <p><b>Level 1</b> is a 13x13 labyrinth with wide corridors and plenty of loops — you can always back out of a dead end.
+    <b>Level 2</b> is a catwalk platform that runs around the entire outer edge, 4.2 m above the maze floor.
+    From up there you can see the whole labyrinth and shoot down into it — but you are also the most exposed target on the map.</p>
+    <p>Four stairways lead up to the catwalk, one in the middle of each side. Red HQ sits in the south-west corner,
+    blue HQ in the north-east.</p>
     <h4>YOUR LOADOUT</h4>
     <p>You always start with a <span class="accent">knife</span> and a <span class="accent">pistol</span>.
-    Everything else is found in crates. Pick your fights early — a pistol loses to a rifle at range.</p>`
+    Everything else is found in crates. Pick your fights early — a pistol loses to a rifle at range.
+    You have <span class="accent">140 HP</span> and regenerate out of combat, so disengaging is a real option.</p>`
   },
   {
     t: 'CONTROLS',
@@ -3279,7 +3529,8 @@ const HT_PAGES = [
       <tr><td>AWP Sniper</td><td>115</td><td>5</td><td>Body-shot kill, punishing reload</td></tr>
     </table>
     <h4>CRATES</h4>
-    <p>Six wooden crates are spread across both floors and the courtyard, marked with a spinning gold ring.
+    <p>Eight wooden crates sit in maze dead ends and up on the catwalk. Every one throws a <span class="accent">column of gold light</span>
+    into the air, shows a spinning gold marker, and is drawn as a gold diamond on the tactical map — you should never have to hunt for one.
     Walk up and press <kbd>E</kbd> to take the weapon inside. A used crate refills after ~26 seconds with a random gun, so camp it or beat the enemy to it.</p>
     <p><span class="accent">Headshots deal double damage</span> — the AK and AWP kill in one headshot.</p>`
   },
@@ -3293,7 +3544,7 @@ const HT_PAGES = [
     </ul>
     <h3><span class="b">FLAG RAID</span> — 5:00</h3>
     <ul>
-      <li>Each team has a flag at its HQ: red at the south courtyard, blue at the north courtyard.</li>
+      <li>Each team has a flag at its HQ: red in the <b>south-west</b> corner of the maze, blue in the <b>north-east</b>.</li>
       <li>Walk over the enemy flag to pick it up, then carry it back to your own HQ to score.</li>
       <li>You can only score while <b>your own flag is at home</b> — if yours is stolen, hunt the carrier or touch your dropped flag to return it.</li>
       <li>Dropped flags return to base after 20 seconds.</li>
