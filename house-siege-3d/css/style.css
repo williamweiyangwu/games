@@ -236,7 +236,7 @@ b{font-weight:700}
 .rs-sub span{font-size:20px;font-weight:900;color:#fff}
 
 /* tutorial tasks */
-#tutTasks{position:absolute;left:50%;bottom:130px;transform:translateX(-50%);width:340px;display:none;
+#tutTasks{position:absolute;left:14px;bottom:96px;width:330px;display:none;
   background:rgba(8,11,17,.84);border:1px solid rgba(255,196,77,.3);border-radius:3px;padding:10px 12px}
 #tutTasks.show{display:block}
 .tt-head{font-size:9px;letter-spacing:.24em;color:var(--gold);margin-bottom:7px;font-weight:700}
