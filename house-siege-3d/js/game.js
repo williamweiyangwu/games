@@ -3438,6 +3438,7 @@ window.__wh = {
     return { score: G.score, time: Math.round(G.timeLeft) };
   },
   hurt(n) { damage(G.player, n, null, false, 'TEST'); },
+  fire() { tryFire(G.player); },
   killBot(name) {
     const b = G.bots.find(x => x.name === name);
     if (b) damage(b, 999, G.player, false, 'TEST');
