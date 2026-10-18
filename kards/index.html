@@ -265,7 +265,7 @@
   <div id="fit">
     <div id="stage">
       <header>
-        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v15</span></h1>
+        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v16</span></h1>
         <div id="turnbar">Player 1's Turn</div>
       </header>
 
@@ -372,78 +372,156 @@
 
 <script>
 // ---------------- Card definitions ----------------
+// fx kinds (units): haste | heal | hq | aoe | snipe | random | buff | draw
+// fx kinds (orders): target | hq | aoe | heal | draw | res | rally
 var DEFS = {
-  infantry:  { name: "Infantry",   cost: 1, atk: 2, hp: 2, art: "▲", text: "" },
-  scout:     { name: "Scout",      cost: 1, atk: 1, hp: 2, art: "➤", text: "Haste - attacks the turn it is played" },
-  medic:     { name: "Medic",      cost: 2, atk: 1, hp: 3, art: "✚", text: "Heals HQ for 3" },
-  grenadier: { name: "Grenadier",  cost: 2, atk: 2, hp: 2, art: "★", text: "Deals 1 to all enemy units" },
-  fighter:   { name: "Fighter",    cost: 2, atk: 3, hp: 1, art: "✈", air: true, text: "Air - ignores Guard" },
-  sniper:    { name: "Sniper",     cost: 3, atk: 4, hp: 2, art: "✛", text: "Deals 2 to the strongest enemy" },
-  artillery: { name: "Artillery",  cost: 3, atk: 2, hp: 3, art: "◎", text: "Deals 2 to a random enemy unit" },
-  tank:      { name: "Tank",       cost: 4, atk: 3, hp: 5, art: "▣", guard: true, text: "Guard - enemies must fight it first" },
-  bunker:    { name: "Bunker",     cost: 4, atk: 1, hp: 7, art: "⌂", guard: true, text: "Guard - a concrete wall" },
-  bomber:    { name: "Bomber",     cost: 5, atk: 4, hp: 3, art: "≫", air: true, text: "Breakthrough - ignores Guard" },
-  produce:   { name: "Produce",    cost: 0, type: "order", art: "◆", text: "Gain 1 resource" },
-  rally:     { name: "Rally",      cost: 1, type: "order", art: "⚑", text: "All your units can attack again" },
-  explode:   { name: "Explode",    cost: 1, type: "order", art: "✶", text: "Deal 1 damage to a unit" },
-  plan:      { name: "Plan",       cost: 1, type: "order", art: "✎", text: "Draw a card" },
-  snipe:     { name: "Snipe",      cost: 2, type: "order", art: "☠", text: "Deal 3 damage to a unit" },
-  bombard:   { name: "Bombard",    cost: 2, type: "order", art: "◉", text: "Deal 2 damage to the enemy HQ" },
-  airstrike: { name: "Airstrike",  cost: 3, type: "order", art: "☄", text: "Deal 2 damage to all enemy units" },
-  mortar:      { name: "Mortar Team", cost: 2, atk: 1, hp: 3, art: "❖", text: "Deals 1 to the enemy HQ" },
-  paratrooper: { name: "Paratrooper", cost: 3, atk: 3, hp: 2, art: "✦", air: true, text: "Air - ignores Guard" },
-  commander:   { name: "Commander",   cost: 4, atk: 3, hp: 4, art: "⚔", text: "Your other units get +1 attack" },
-  veteran:     { name: "Veteran",     cost: 5, atk: 5, hp: 5, art: "✠", text: "A battle-hardened all-rounder" },
-  reinforce:   { name: "Reinforce",   cost: 2, type: "order", art: "❋", text: "Heal your HQ for 6" },
-  conscription:{ name: "Conscription",cost: 3, type: "order", art: "☷", text: "Draw 2 cards" },
-  barrage:     { name: "Barrage",     cost: 4, type: "order", art: "✷", text: "Deal 3 to all enemy units" },
-  sabotage:    { name: "Sabotage",    cost: 2, type: "order", art: "⌁", text: "1 to enemy HQ, draw a card" },
-  landing:     { name: "Landing Craft", cost: 4, atk: 3, hp: 3, art: "⚓", text: "On play: draw a card" },
-  stuka:       { name: "Stuka",         cost: 4, atk: 3, hp: 2, art: "✥", air: true, text: "On play: 2 to the enemy HQ" },
-  guards:      { name: "Guards",        cost: 2, atk: 2, hp: 4, art: "☗", text: "Sturdy line infantry" },
-  zero:        { name: "Zero",          cost: 2, atk: 3, hp: 1, art: "✩", air: true, text: "Air - ignores Guard" },
-  heavybomber: { name: "Heavy Bomber",  cost: 6, atk: 5, hp: 4, art: "✪", air: true, text: "Air - a massive bomber" }
+  // ---- USA ----
+  usa_gi:        { f: "usa", name: "GI",             cost: 1, atk: 2, hp: 2, art: "▲", text: "" },
+  usa_marine:    { f: "usa", name: "Marine",         cost: 2, atk: 2, hp: 2, art: "⚓", fx: { k: "haste" }, text: "Haste." },
+  usa_engineer:  { f: "usa", name: "Engineer",       cost: 2, atk: 1, hp: 3, art: "⌂", fx: { k: "heal", n: 3 }, text: "Repairs your HQ for 3." },
+  usa_ranger:    { f: "usa", name: "Ranger",         cost: 3, atk: 3, hp: 3, art: "✛", fx: { k: "draw", n: 1 }, text: "Draw a card." },
+  usa_officer:   { f: "usa", name: "Officer",        cost: 3, atk: 2, hp: 3, art: "⚔", fx: { k: "buff", n: 1 }, text: "Your other units get +1 attack." },
+  usa_thompson:  { f: "usa", name: "Thompson",       cost: 3, atk: 3, hp: 2, art: "➤", fx: { k: "aoe", n: 1 }, text: "1 damage to all enemy units." },
+  usa_sherman:   { f: "usa", name: "Sherman",        cost: 4, atk: 3, hp: 5, art: "▣", guard: true, text: "Guard." },
+  usa_mustang:   { f: "usa", name: "P-51 Mustang",   cost: 4, atk: 4, hp: 2, art: "✈", air: true, text: "Air." },
+  usa_paratroop: { f: "usa", name: "101st Airborne", cost: 4, atk: 4, hp: 2, art: "✦", air: true, fx: { k: "draw", n: 1 }, text: "Air. Draw a card." },
+  usa_b17:       { f: "usa", name: "B-17",           cost: 6, atk: 5, hp: 4, art: "≫", air: true, fx: { k: "hq", n: 2 }, text: "2 damage to the enemy HQ." },
+  usa_produce:   { f: "usa", name: "War Production", cost: 0, type: "order", art: "◆", fx: { k: "res", n: 1 }, text: "Gain 1 resource." },
+  usa_rally:     { f: "usa", name: "Rally",          cost: 1, type: "order", art: "⚑", fx: { k: "rally" }, text: "All your units can attack again." },
+  usa_snipe:     { f: "usa", name: "Marksman",       cost: 2, type: "order", art: "☠", fx: { k: "target", n: 3 }, text: "Deal 3 damage to a unit." },
+  usa_bombard:   { f: "usa", name: "Bombardment",    cost: 3, type: "order", art: "◉", fx: { k: "hq", n: 3 }, text: "Deal 3 damage to the enemy HQ." },
+  usa_supply:    { f: "usa", name: "Supply Drop",    cost: 2, type: "order", art: "✎", fx: { k: "draw", n: 2 }, text: "Draw 2 cards." },
+  usa_airstrike: { f: "usa", name: "Airstrike",      cost: 4, type: "order", art: "☄", fx: { k: "aoe", n: 2 }, text: "2 damage to all enemy units." },
+  // ---- UK ----
+  uk_tommy:       { f: "uk", name: "Tommy",          cost: 1, atk: 2, hp: 2, art: "▲", text: "" },
+  uk_commando:    { f: "uk", name: "Commando",       cost: 2, atk: 3, hp: 1, art: "➤", fx: { k: "haste" }, text: "Haste." },
+  uk_radar:       { f: "uk", name: "Radar",          cost: 2, atk: 1, hp: 3, art: "◎", fx: { k: "draw", n: 1 }, text: "Draw a card." },
+  uk_beaufighter: { f: "uk", name: "Beaufighter",    cost: 3, atk: 3, hp: 2, art: "✈", air: true, text: "Air." },
+  uk_churchill:   { f: "uk", name: "Churchill",      cost: 4, atk: 2, hp: 6, art: "▣", guard: true, text: "Guard." },
+  uk_spitfire:    { f: "uk", name: "Spitfire",       cost: 4, atk: 4, hp: 2, art: "✦", air: true, text: "Air." },
+  uk_lrdg:        { f: "uk", name: "LRDG Patrol",    cost: 3, atk: 2, hp: 3, art: "➤", fx: { k: "random", n: 2 }, text: "2 damage to a random enemy." },
+  uk_monty:       { f: "uk", name: "Montgomery",     cost: 5, atk: 3, hp: 4, art: "⚔", fx: { k: "buff", n: 2 }, text: "Your other units get +2 attack." },
+  uk_lancaster:   { f: "uk", name: "Lancaster",      cost: 6, atk: 5, hp: 4, art: "≫", air: true, fx: { k: "hq", n: 3 }, text: "3 damage to the enemy HQ." },
+  uk_guard:       { f: "uk", name: "Coldstream",     cost: 3, atk: 2, hp: 5, art: "☗", guard: true, text: "Guard." },
+  uk_intel:       { f: "uk", name: "Intelligence",   cost: 1, type: "order", art: "✎", fx: { k: "draw", n: 1 }, text: "Draw a card." },
+  uk_rally:       { f: "uk", name: "Rally Cry",      cost: 2, type: "order", art: "⚑", fx: { k: "rally" }, text: "All your units can attack again." },
+  uk_snipe:       { f: "uk", name: "Sniper",         cost: 2, type: "order", art: "☠", fx: { k: "target", n: 3 }, text: "Deal 3 damage to a unit." },
+  uk_bombard:     { f: "uk", name: "Barrage",        cost: 3, type: "order", art: "◉", fx: { k: "hq", n: 2 }, text: "Deal 2 damage to the enemy HQ." },
+  uk_convoy:      { f: "uk", name: "Convoy Supply",  cost: 3, type: "order", art: "❋", fx: { k: "heal", n: 6 }, text: "Heal your HQ for 6." },
+  uk_airstrike:   { f: "uk", name: "RAF Strike",     cost: 4, type: "order", art: "☄", fx: { k: "aoe", n: 3 }, text: "3 damage to all enemy units." },
+  // ---- GERMANY ----
+  de_soldier:     { f: "germany", name: "Wehrmacht",    cost: 1, atk: 2, hp: 2, art: "▲", text: "" },
+  de_stuka:       { f: "germany", name: "Stuka",        cost: 2, atk: 2, hp: 1, art: "✈", air: true, fx: { k: "hq", n: 2 }, text: "2 damage to the enemy HQ." },
+  de_mg42:        { f: "germany", name: "MG42",         cost: 2, atk: 1, hp: 3, art: "❖", fx: { k: "aoe", n: 1 }, text: "1 damage to all enemy units." },
+  de_panzer:      { f: "germany", name: "Panzer IV",    cost: 3, atk: 3, hp: 3, art: "▣", fx: { k: "haste" }, text: "Haste." },
+  de_bf109:       { f: "germany", name: "Bf 109",       cost: 3, atk: 3, hp: 2, art: "✈", air: true, text: "Air." },
+  de_nebelwerfer: { f: "germany", name: "Nebelwerfer",  cost: 3, atk: 2, hp: 2, art: "◎", fx: { k: "random", n: 3 }, text: "3 damage to a random enemy." },
+  de_raider:      { f: "germany", name: "Raider",       cost: 3, atk: 2, hp: 3, art: "⚓", fx: { k: "hq", n: 2 }, text: "2 damage to the enemy HQ." },
+  de_fallschirm:  { f: "germany", name: "Fallschirm",   cost: 3, atk: 3, hp: 2, art: "✦", air: true, text: "Air." },
+  de_panthertank: { f: "germany", name: "Panther",      cost: 4, atk: 4, hp: 4, art: "▤", guard: true, text: "Guard." },
+  de_tiger:       { f: "germany", name: "Tiger",        cost: 5, atk: 5, hp: 5, art: "▥", guard: true, text: "Guard." },
+  de_blitz:       { f: "germany", name: "Blitzkrieg",   cost: 2, type: "order", art: "⚑", fx: { k: "rally" }, text: "All your units can attack again." },
+  de_grenade:     { f: "germany", name: "Grenade",      cost: 1, type: "order", art: "✶", fx: { k: "target", n: 2 }, text: "Deal 2 damage to a unit." },
+  de_artillery:   { f: "germany", name: "Artillery",    cost: 3, type: "order", art: "◉", fx: { k: "hq", n: 3 }, text: "Deal 3 damage to the enemy HQ." },
+  de_mobilize:    { f: "germany", name: "Mobilize",     cost: 1, type: "order", art: "◆", fx: { k: "res", n: 1 }, text: "Gain 1 resource." },
+  de_supply:      { f: "germany", name: "Requisition",  cost: 2, type: "order", art: "✎", fx: { k: "draw", n: 2 }, text: "Draw 2 cards." },
+  de_barrage:     { f: "germany", name: "Barrage",      cost: 4, type: "order", art: "✷", fx: { k: "aoe", n: 3 }, text: "3 damage to all enemy units." },
+  // ---- USSR ----
+  su_rifleman:     { f: "ussr", name: "Rifleman",     cost: 1, atk: 1, hp: 3, art: "▲", text: "" },
+  su_t34:          { f: "ussr", name: "T-34",         cost: 3, atk: 3, hp: 3, art: "▣", fx: { k: "haste" }, text: "Haste." },
+  su_guard:        { f: "ussr", name: "Guards",       cost: 2, atk: 2, hp: 4, art: "☗", text: "" },
+  su_katyusha:     { f: "ussr", name: "Katyusha",     cost: 3, atk: 1, hp: 3, art: "◎", fx: { k: "aoe", n: 2 }, text: "2 damage to all enemy units." },
+  su_ppsh:         { f: "ussr", name: "PPSh Squad",   cost: 2, atk: 2, hp: 2, art: "➤", fx: { k: "random", n: 2 }, text: "2 damage to a random enemy." },
+  su_siberian:     { f: "ussr", name: "Siberian",     cost: 3, atk: 3, hp: 3, art: "✚", fx: { k: "heal", n: 3 }, text: "Repairs your HQ for 3." },
+  su_commissar:    { f: "ussr", name: "Commissar",    cost: 2, atk: 1, hp: 3, art: "⚔", fx: { k: "buff", n: 1 }, text: "Your other units get +1 attack." },
+  su_molotov:      { f: "ussr", name: "Molotov",      cost: 2, atk: 2, hp: 1, art: "✶", fx: { k: "hq", n: 2 }, text: "2 damage to the enemy HQ." },
+  su_conscript:    { f: "ussr", name: "Conscript",    cost: 1, atk: 2, hp: 1, art: "▲", text: "" },
+  su_is2:          { f: "ussr", name: "IS-2",         cost: 5, atk: 5, hp: 5, art: "▤", guard: true, text: "Guard." },
+  su_humanwave:    { f: "ussr", name: "Human Wave",   cost: 2, type: "order", art: "☷", fx: { k: "rally" }, text: "All your units can attack again." },
+  su_molotovorder: { f: "ussr", name: "Molotov Hit",  cost: 1, type: "order", art: "✶", fx: { k: "target", n: 2 }, text: "Deal 2 damage to a unit." },
+  su_rocket:       { f: "ussr", name: "Rocket Barrage", cost: 3, type: "order", art: "☄", fx: { k: "hq", n: 3 }, text: "Deal 3 damage to the enemy HQ." },
+  su_conscription: { f: "ussr", name: "Conscription", cost: 1, type: "order", art: "◆", fx: { k: "res", n: 1 }, text: "Gain 1 resource." },
+  su_lendlease:    { f: "ussr", name: "Lend-Lease",   cost: 2, type: "order", art: "✎", fx: { k: "draw", n: 2 }, text: "Draw 2 cards." },
+  su_storm:        { f: "ussr", name: "Storm",        cost: 4, type: "order", art: "✷", fx: { k: "aoe", n: 3 }, text: "3 damage to all enemy units." },
+  // ---- JAPAN ----
+  jp_infantry:    { f: "japan", name: "Infantry",     cost: 1, atk: 2, hp: 2, art: "▲", text: "" },
+  jp_zero:        { f: "japan", name: "Zero",         cost: 2, atk: 3, hp: 1, art: "✈", air: true, text: "Air." },
+  jp_kneemortar:  { f: "japan", name: "Knee Mortar",  cost: 2, atk: 1, hp: 3, art: "❖", fx: { k: "hq", n: 2 }, text: "2 damage to the enemy HQ." },
+  jp_banzai:      { f: "japan", name: "Banzai",       cost: 2, atk: 3, hp: 1, art: "➤", fx: { k: "haste" }, text: "Haste." },
+  jp_type95:      { f: "japan", name: "Type 95",      cost: 3, atk: 2, hp: 2, art: "▣", fx: { k: "haste" }, text: "Haste." },
+  jp_navalair:    { f: "japan", name: "Naval Air",    cost: 3, atk: 3, hp: 2, art: "✦", air: true, text: "Air." },
+  jp_kamikaze:    { f: "japan", name: "Kamikaze",     cost: 3, atk: 4, hp: 1, art: "☄", air: true, fx: { k: "hq", n: 2 }, text: "Air. 2 damage to the enemy HQ." },
+  jp_officer:     { f: "japan", name: "Officer",      cost: 3, atk: 2, hp: 3, art: "⚔", fx: { k: "buff", n: 1 }, text: "Your other units get +1 attack." },
+  jp_island:      { f: "japan", name: "Island Base",  cost: 4, atk: 1, hp: 7, art: "⌂", guard: true, text: "Guard." },
+  jp_battleship:  { f: "japan", name: "Yamato",       cost: 6, atk: 6, hp: 6, art: "▥", guard: true, text: "Guard." },
+  jp_banzaiorder: { f: "japan", name: "Banzai Charge", cost: 2, type: "order", art: "⚑", fx: { k: "rally" }, text: "All your units can attack again." },
+  jp_torpedo:     { f: "japan", name: "Torpedo",      cost: 1, type: "order", art: "✶", fx: { k: "target", n: 2 }, text: "Deal 2 damage to a unit." },
+  jp_divebomb:    { f: "japan", name: "Dive Bombing", cost: 3, type: "order", art: "◉", fx: { k: "hq", n: 3 }, text: "Deal 3 damage to the enemy HQ." },
+  jp_mobilize:    { f: "japan", name: "Mobilize",     cost: 0, type: "order", art: "◆", fx: { k: "res", n: 1 }, text: "Gain 1 resource." },
+  jp_recon:       { f: "japan", name: "Recon",        cost: 1, type: "order", art: "✎", fx: { k: "draw", n: 2 }, text: "Draw 2 cards." },
+  jp_airstrike:   { f: "japan", name: "Air Raid",     cost: 4, type: "order", art: "☄", fx: { k: "aoe", n: 3 }, text: "3 damage to all enemy units." }
 };
 
 var FACTIONS = {
-  allies: { key: "allies", name: "ALLIES", flag: "★",  color: "#2a4d8c", sig: "landing",
-            passive: { extraDraw: 1 },
-            bonus: "Logistics \u2014 draw 1 extra card at the start.",
-            desc: "USA, UK and friends. Flexible orders and strong air power." },
-  axis:   { key: "axis",   name: "AXIS",   flag: "✚",  color: "#5a5c6c", sig: "stuka",
-            passive: { haste: true },
-            bonus: "Blitzkrieg \u2014 your units can attack the turn they are played.",
-            desc: "Germany. Strike first: every unit you play can attack immediately." },
-  ussr:   { key: "ussr",   name: "USSR",   flag: "☭",  color: "#8c2f2f", sig: "guards",
-            passive: { regen: 2 },
-            bonus: "Motherland \u2014 your HQ recovers 2 at the start of your turn.",
-            desc: "The Soviet Union. Outlast the enemy with resilient lines." },
-  japan:  { key: "japan",  name: "JAPAN",  flag: "☀",  color: "#8c6a2f", sig: "zero",
-            passive: { resBonus: 1 },
-            bonus: "War Economy \u2014 gain +1 extra resource each turn.",
-            desc: "Imperial Japan. Out-produce the enemy with cheap air power." }
+  usa:     { key: "usa",     name: "USA",     flag: "★", color: "#2a4d8c",
+             desc: "Industrial might and air power: Shermans, P-51s, B-17s and Marines." },
+  uk:      { key: "uk",      name: "UK",      flag: "♛", color: "#6b3fa0",
+             desc: "Commonwealth grit: Spitfires, Commandos, radar intel and steady Guards." },
+  germany: { key: "germany", name: "GERMANY", flag: "✠", color: "#5a5c6c",
+             desc: "Blitzkrieg: fast Panzers, Stukas and heavy Tigers that hit hard, early." },
+  ussr:    { key: "ussr",    name: "USSR",    flag: "☭", color: "#8c2f2f",
+             desc: "Endless numbers: T-34s, Katyusha rockets and unstoppable human waves." },
+  japan:   { key: "japan",   name: "JAPAN",   flag: "☀", color: "#8c6a2f",
+             desc: "Aggressive air and banzai strikes: cheap Zeros that pressure the HQ." }
 };
-var FACTION_KEYS = ["allies", "axis", "ussr", "japan"];
-var FACTION = "allies", FACTION2 = "axis";
-try { FACTION = localStorage.getItem("k6_fact") || "allies"; FACTION2 = localStorage.getItem("k6_fact2") || "axis"; } catch (e) {}
+var FACTION_KEYS = ["usa", "uk", "germany", "ussr", "japan"];
+var FACTION = "usa", FACTION2 = "germany";
+try { FACTION = localStorage.getItem("k6_fact") || "usa"; FACTION2 = localStorage.getItem("k6_fact2") || "germany"; } catch (e) {}
+// migrate old nation keys
+var FACTION_MIGRATE = { allies: "usa", axis: "germany" };
+FACTION = FACTION_MIGRATE[FACTION] || FACTION;
+FACTION2 = FACTION_MIGRATE[FACTION2] || FACTION2;
+if (FACTION_KEYS.indexOf(FACTION) === -1) FACTION = "usa";
+if (FACTION_KEYS.indexOf(FACTION2) === -1) FACTION2 = "germany";
 function saveFaction() {
   try { localStorage.setItem("k6_fact", FACTION); localStorage.setItem("k6_fact2", FACTION2); } catch (e) {}
 }
-function passiveOf(p) { var f = FACTIONS[p.faction || "allies"]; return (f && f.passive) || {}; }
 
 var CUSTOM_DECK = null;
-try { var cd = localStorage.getItem("k6_deck"); if (cd) CUSTOM_DECK = JSON.parse(cd); } catch (e) {}
-function deckTotal() {
-  var n = 0;
-  Object.keys(CUSTOM_DECK || {}).forEach(function (k) { n += (CUSTOM_DECK[k] || 0); });
-  return n;
-}
+try { var cd = localStorage.getItem("k6_deck_v2"); if (cd) CUSTOM_DECK = JSON.parse(cd); } catch (e) {}
 
 var MAX_HAND = 5;
 var MAX_BOARD = 4;
 var MAX_RES = 12;
+var DECK_SIZE = 40;
+var MAX_COPIES = 3;
 
-function orderNeedsTarget(key) { return key === "explode" || key === "snipe"; }
+function fxOf(key) { return (DEFS[key] || {}).fx || null; }
+function orderNeedsTarget(key) { var fx = fxOf(key); return !!(fx && fx.k === "target"); }
+
+function factionCardKeys(faction) {
+  return Object.keys(DEFS).filter(function (k) { return DEFS[k].f === faction; });
+}
+function deckDefaultCounts(faction) {
+  var m = {};
+  (DECK_COMPS[faction] || []).forEach(function (c) { m[c[0]] = c[1]; });
+  return m;
+}
+function validCustomDeck(faction) {
+  if (!CUSTOM_DECK) return false;
+  var total = 0;
+  var keys = factionCardKeys(faction);
+  for (var i = 0; i < keys.length; i++) {
+    var n = CUSTOM_DECK[keys[i]] || 0;
+    if (n < 0 || n > MAX_COPIES) return false;
+    total += n;
+  }
+  var all = Object.keys(CUSTOM_DECK);
+  for (var j = 0; j < all.length; j++) {
+    if ((CUSTOM_DECK[all[j]] || 0) > 0 && (DEFS[all[j]] || {}).f !== faction) return false;
+  }
+  return total === DECK_SIZE;
+}
 
 // ---------------- Game state ----------------
 var S = null;
@@ -455,27 +533,25 @@ function aiFaction() {
 }
 
 function freshPlayer(faction) {
-  return { hq: 20, res: 0, hand: [], board: [], deck: [], turnNum: 0, faction: faction || "allies" };
+  return { hq: 20, res: 0, hand: [], board: [], deck: [], turnNum: 0, faction: faction || "usa" };
 }
 
-var DECK_COMP = [ ["infantry",4], ["scout",2], ["medic",3], ["grenadier",2], ["fighter",2], ["sniper",2], ["artillery",2], ["tank",2], ["bunker",2], ["bomber",2], ["paratrooper",2], ["mortar",2], ["commander",1], ["veteran",1], ["produce",2], ["rally",2], ["explode",2], ["snipe",2], ["plan",2], ["bombard",2], ["airstrike",1], ["reinforce",2], ["conscription",1], ["barrage",1], ["sabotage",2], ["heavybomber",1] ];
-
-function deckSize() {
-  var n = 0;
-  DECK_COMP.forEach(function (c) { n += c[1]; });
-  return n;
-}
+var DECK_COMPS = {
+  usa:     [["usa_gi",3],["usa_marine",3],["usa_engineer",2],["usa_ranger",3],["usa_officer",2],["usa_thompson",3],["usa_sherman",3],["usa_mustang",3],["usa_paratroop",2],["usa_b17",2],["usa_produce",2],["usa_rally",2],["usa_snipe",3],["usa_bombard",2],["usa_supply",3],["usa_airstrike",2]],
+  uk:      [["uk_tommy",3],["uk_commando",3],["uk_radar",3],["uk_beaufighter",2],["uk_churchill",3],["uk_spitfire",3],["uk_lrdg",2],["uk_monty",2],["uk_lancaster",2],["uk_guard",3],["uk_intel",3],["uk_rally",2],["uk_snipe",3],["uk_bombard",2],["uk_convoy",2],["uk_airstrike",2]],
+  germany: [["de_soldier",3],["de_stuka",3],["de_mg42",3],["de_panzer",3],["de_bf109",3],["de_nebelwerfer",2],["de_raider",3],["de_fallschirm",3],["de_panthertank",2],["de_tiger",1],["de_blitz",3],["de_grenade",3],["de_artillery",2],["de_mobilize",2],["de_supply",2],["de_barrage",2]],
+  ussr:    [["su_rifleman",3],["su_t34",3],["su_guard",3],["su_katyusha",3],["su_ppsh",3],["su_siberian",2],["su_commissar",2],["su_molotov",3],["su_conscript",3],["su_is2",2],["su_humanwave",2],["su_molotovorder",3],["su_rocket",2],["su_conscription",2],["su_lendlease",2],["su_storm",2]],
+  japan:   [["jp_infantry",3],["jp_zero",3],["jp_kneemortar",3],["jp_banzai",3],["jp_type95",3],["jp_navalair",2],["jp_kamikaze",3],["jp_officer",2],["jp_island",3],["jp_battleship",1],["jp_banzaiorder",3],["jp_torpedo",3],["jp_divebomb",2],["jp_mobilize",2],["jp_recon",2],["jp_airstrike",2]]
+};
 
 function buildDeck(faction) {
   var list = [];
-  if (deckTotal() >= 20) {
-    Object.keys(CUSTOM_DECK).forEach(function (k) {
-      for (var i = 0; i < (CUSTOM_DECK[k] || 0); i++) if (DEFS[k]) list.push(k);
-    });
-  } else {
-    DECK_COMP.forEach(function (c) { for (var i = 0; i < c[1]; i++) list.push(c[0]); });
-    if (faction && FACTIONS[faction] && FACTIONS[faction].sig) list.push(FACTIONS[faction].sig);
-  }
+  var counts = validCustomDeck(faction) ? CUSTOM_DECK : deckDefaultCounts(faction);
+  Object.keys(counts).forEach(function (k) {
+    if (!DEFS[k] || DEFS[k].f !== faction) return;
+    var n = Math.min(counts[k] || 0, MAX_COPIES);
+    for (var i = 0; i < n; i++) list.push(k);
+  });
   for (var i = list.length - 1; i > 0; i--) {
     var j = Math.floor(Math.random() * (i + 1));
     var t = list[i]; list[i] = list[j]; list[j] = t;
@@ -571,9 +647,7 @@ function shakeFX() {
 
 // ---------------- Turn flow ----------------
 function drawStarting(p) {
-  var n = 4;
-  if (passiveOf(p).extraDraw) n += passiveOf(p).extraDraw;
-  draw(p, n);
+  draw(p, 4);
 }
 
 function newGame(f0, f1) {
@@ -602,9 +676,7 @@ function beginTurn(p) {
   if (S.over) return;
   var pl = S.players[p];
   pl.turnNum++;
-  pl.res = Math.min(pl.turnNum + (passiveOf(pl).resBonus || 0), MAX_RES);
-  var reg = passiveOf(pl).regen;
-  if (reg) pl.hq += reg;
+  pl.res = Math.min(pl.turnNum, MAX_RES);
   pl.board.forEach(function (u) { u.canAttack = true; });
   draw(pl, 1);
   S.cur = p;
@@ -676,11 +748,11 @@ function resolveOrderTarget(tidx) {
   var foe = S.players[other(S.cur)];
   var def = foe.board[tidx];
   if (!inst || !def) return;
-  var dmg = (inst.key === "snipe") ? 3 : 1;
+  var n = (fxOf(inst.key) || {}).n || 1;
   pl.res -= inst.cost;
   pl.hand.splice(S.readyOrder.hidx, 1);
-  def.hp -= dmg;
-  say(inst.name + " hits " + def.name + " for " + dmg + "!");
+  def.hp -= n;
+  say(inst.name + " hits " + def.name + " for " + n + "!");
   cleanBoard(foe);
   S.readyOrder = null;
   syncPub(S.cur);
@@ -692,100 +764,83 @@ function resolveOrderTarget(tidx) {
 function resolveOrder(inst, p) {
   var me = S.players[p];
   var foe = S.players[other(p)];
-  var k = inst.key;
-  if (k === "produce") {
-    me.res = Math.min(me.res + 1, MAX_RES);
-    say("Produce: +1 resource!");
-  } else if (k === "plan") {
-    draw(me, 1);
-    say("Plan: drew a card!");
+  var fx = fxOf(inst.key);
+  if (!fx) return;
+  var n = fx.n || 0, k = fx.k;
+  if (k === "res") {
+    me.res = Math.min(me.res + n, MAX_RES);
+    say(inst.name + ": +" + n + " resource!");
+  } else if (k === "draw") {
+    draw(me, n);
+    say(inst.name + ": drew " + n + " card" + (n === 1 ? "" : "s") + "!");
   } else if (k === "rally") {
     me.board.forEach(function (u) { u.canAttack = true; });
-    say("Rally: all your units can attack again!");
-  } else if (k === "bombard") {
-    foe.hq -= 2;
-    say("Bombard: the enemy HQ takes 2!");
-  } else if (k === "airstrike") {
+    say(inst.name + ": all Your units can attack again!");
+  } else if (k === "hq") {
+    foe.hq -= n;
+    say(inst.name + ": the enemy HQ takes " + n + "!");
+  } else if (k === "heal") {
+    me.hq += n;
+    say(inst.name + ": your HQ recovers " + n + "!");
+  } else if (k === "aoe") {
     if (foe.board.length > 0) {
-      foe.board.forEach(function (u) { u.hp -= 2; });
-      say("Airstrike hits every enemy unit for 2!");
+      foe.board.forEach(function (u) { u.hp -= n; });
+      say(inst.name + " strikes all Enemy units for " + n + "!");
       cleanBoard(foe);
     } else {
-      foe.hq -= 2;
-      say("Airstrike strikes the enemy HQ for 2!");
+      foe.hq -= n;
+      say(inst.name + ": the enemy HQ takes " + n + "!");
     }
-  } else if (k === "reinforce") {
-    me.hq += 6;
-    say("Reinforce: your HQ recovers 6!");
-  } else if (k === "conscription") {
-    draw(me, 2);
-    say("Conscription: drew 2 cards!");
-  } else if (k === "barrage") {
-    if (foe.board.length > 0) {
-      foe.board.forEach(function (u) { u.hp -= 3; });
-      say("Barrage hits every enemy unit for 3!");
-      cleanBoard(foe);
-    } else {
-      foe.hq -= 3;
-      say("Barrage strikes the enemy HQ for 3!");
-    }
-  } else if (k === "sabotage") {
-    foe.hq -= 1;
-    draw(me, 1);
-    say("Sabotage: 1 to the enemy HQ and drew a card!");
   }
 }
 
 function resolveBattlecry(inst, p) {
+  if (inst.type === "order") return;
   var me = S.players[p], foe = S.players[other(p)];
-  if (inst.key === "medic") {
-    me.hq += 3;
-    say("Medic heals your HQ for 3.");
-  } else if (inst.key === "grenadier") {
-    for (var i = 0; i < foe.board.length; i++) {
-      foe.board[i].hp -= 1;
-      if (foe.board[i].hp <= 0) say(foe.board[i].name + " was destroyed!");
-    }
-    cleanBoard(foe);
-  } else if (inst.key === "artillery") {
-    var targets = foe.board.filter(function (u) { return u.hp > 0; });
-    if (targets.length > 0) {
-      var t = targets[Math.floor(Math.random() * targets.length)];
-      t.hp -= 2;
-      say("Artillery hits " + t.name + " for 2!");
-      cleanBoard(foe);
-    } else {
-      foe.hq -= 2;
-      say("Artillery strikes the enemy HQ for 2!");
-    }
-  } else if (inst.key === "scout") {
+  var fx = fxOf(inst.key);
+  if (!fx) return;
+  var n = fx.n || 0, k = fx.k;
+  if (k === "haste") {
     inst.canAttack = true;
-    say("Scout is ready to attack!");
-  } else if (inst.key === "sniper") {
+    say(inst.name + " is ready to attack!");
+  } else if (k === "heal") {
+    me.hq += n;
+    say(inst.name + " repairs your HQ for " + n + ".");
+  } else if (k === "hq") {
+    foe.hq -= n;
+    say(inst.name + " shells the enemy HQ for " + n + "!");
+  } else if (k === "aoe") {
+    foe.board.forEach(function (u) { u.hp -= n; });
+    say(inst.name + " strikes all Enemy units for " + n + "!");
+    cleanBoard(foe);
+  } else if (k === "snipe") {
     var best = null;
     foe.board.forEach(function (u) { if (!best || u.atk > best.atk) best = u; });
     if (best) {
-      best.hp -= 2;
-      say("Sniper hits the enemy " + best.name + " for 2!");
+      best.hp -= n;
+      say(inst.name + " hits " + best.name + " for " + n + "!");
       cleanBoard(foe);
     } else {
-      say("Sniper finds no target.");
+      say(inst.name + " finds no target.");
     }
-  } else if (inst.key === "mortar") {
-    foe.hq -= 1;
-    say("Mortar shells the enemy HQ for 1!");
-  } else if (inst.key === "commander") {
-    var n = 0;
-    me.board.forEach(function (u) { if (u !== inst) { u.atk += 1; n++; } });
-    say(n > 0 ? "Commander rallies your units: +1 attack!" : "Commander takes the field.");
-  } else if (inst.key === "landing") {
-    draw(me, 1);
-    say("Landing Craft: drew a card!");
-  } else if (inst.key === "stuka") {
-    foe.hq -= 2;
-    say("Stuka dive-bombs the enemy HQ for 2!");
+  } else if (k === "random") {
+    if (foe.board.length > 0) {
+      var t = foe.board[Math.floor(Math.random() * foe.board.length)];
+      t.hp -= n;
+      say(inst.name + " hits " + t.name + " for " + n + "!");
+      cleanBoard(foe);
+    } else {
+      foe.hq -= n;
+      say(inst.name + " shells the enemy HQ for " + n + "!");
+    }
+  } else if (k === "buff") {
+    var cnt = 0;
+    me.board.forEach(function (u) { if (u !== inst) { u.atk += n; cnt++; } });
+    say(cnt > 0 ? inst.name + " rallies Your units: +" + n + " attack!" : inst.name + " takes the field.");
+  } else if (k === "draw") {
+    draw(me, n);
+    say(inst.name + ": drew " + n + " card" + (n === 1 ? "" : "s") + "!");
   }
-  if (passiveOf(me).haste) inst.canAttack = true;
 }
 
 function cleanBoard(p) {
@@ -841,7 +896,7 @@ function aiPlayOne(ai) {
       var foes = S.players[0].board;
       var t = aiPickTarget(foes);
       if (t) {
-        var dmg = (o.key === "snipe") ? 3 : 1;
+        var dmg = (fxOf(o.key) || {}).n || 1;
         t.hp -= dmg;
         say(o.name + " hits " + t.name + " for " + dmg + "!");
         cleanBoard(S.players[0]);
@@ -1113,9 +1168,7 @@ function onlineBeginMyTurn() {
   var p = NET.id;
   var pl = S.players[p];
   pl.turnNum++;
-  pl.res = Math.min(pl.turnNum + (passiveOf(pl).resBonus || 0), MAX_RES);
-  var reg = passiveOf(pl).regen;
-  if (reg) pl.hq += reg;
+  pl.res = Math.min(pl.turnNum, MAX_RES);
   pl.board.forEach(function (u) { u.canAttack = true; });
   draw(pl, 1);
   S.turn = p;
@@ -1144,7 +1197,7 @@ function resetOnline() {
   snap.hq = [20, 20];
   snap.res = [0, 0];
   snap.hand = [4, 4];
-  var ds = deckSize() - 4;
+  var ds = DECK_SIZE - 4;
   snap.deck = [ds, ds];
   snap.board = [[], []];
   snap.ver = NET.ver;
@@ -1163,7 +1216,7 @@ function pName(pid) {
 }
 
 function factionLabel(p) {
-  var f = FACTIONS[p.faction] || FACTIONS.allies;
+  var f = FACTIONS[p.faction] || FACTIONS.usa;
   return f.flag + " " + f.name;
 }
 
@@ -1701,11 +1754,11 @@ document.getElementById("newBtn").onclick = function () { newGame(); };
 var TUT_STEPS = [
   { t: "1. THE GOAL", h: "<p>Each player commands an <b>HQ with 20 HP</b> \u2014 the enemy HQ is at the top, yours at the bottom.</p><p>Reduce the enemy HQ to <b>0 HP</b> and you win. If your HQ hits 0 first, you lose.</p>" },
   { t: "2. RESOURCES & TURNS", h: "<ul><li>Every turn you gain <b>+1 resource</b> (up to 12), so bigger cards unlock as the game goes on.</li><li>Cards you can afford <b>glow gold</b> \u2014 click one to play it. Cards you can't pay for look dark.</li><li><b>END TURN</b> passes play \u2014 in LOCAL the other player takes the screen, in VS AI the computer acts, in ONLINE you wait for your opponent.</li></ul>" },
-  { t: "3. NATIONS", h: "<p>Each nation has a <b>unique power</b> plus a signature card. Pick yours with the <b>NATION</b> button.</p><ul><li><b>ALLIES</b> \u2605 \u2014 <b>Logistics</b>: draw 1 extra card at the start. Signature: <b>Landing Craft</b>.</li><li><b>AXIS</b> \u271a \u2014 <b>Blitzkrieg</b>: your units can attack the turn they are played. Signature: <b>Stuka</b>.</li><li><b>USSR</b> \u262d \u2014 <b>Motherland</b>: your HQ recovers 2 HP each turn. Signature: <b>Guards</b>.</li><li><b>JAPAN</b> \u2600 \u2014 <b>War Economy</b>: gain +1 extra resource each turn. Signature: <b>Zero</b>.</li></ul>" },
-  { t: "4. UNITS", h: "<p>Units fill your front row (max 4). Blue circle = cost, red = attack, green = HP. Hover a card to read its power.</p><ul><li><b>Infantry</b> (1) 2/2 \u2014 basic soldier.</li><li><b>Scout</b> (1) 1/2 \u2014 <b>Haste</b>: attacks the turn played.</li><li><b>Medic</b> (2) 1/3 \u2014 heals your HQ 3.</li><li><b>Grenadier</b> (2) 2/2 \u2014 1 damage to all enemies.</li><li><b>Guards</b> (2) 2/4 \u2014 sturdy line infantry.</li><li><b>Fighter</b> (2) 3/1 \u2014 <b>Air</b>.</li><li><b>Mortar</b> (2) 1/3 \u2014 1 damage to enemy HQ.</li><li><b>Sniper</b> (3) 4/2 \u2014 2 to the strongest enemy.</li><li><b>Artillery</b> (3) 2/3 \u2014 2 to a random enemy.</li><li><b>Paratrooper</b> (3) 3/2 \u2014 <b>Air</b>.</li><li><b>Tank</b> (4) 3/5 \u2014 <b>Guard</b>.</li><li><b>Bunker</b> (4) 1/7 \u2014 <b>Guard</b>.</li><li><b>Commander</b> (4) 3/4 \u2014 your other units +1 attack.</li><li><b>Landing Craft</b> (4) 3/3 \u2014 draw a card.</li><li><b>Stuka</b> (4) 3/2 \u2014 <b>Air</b>, 2 to enemy HQ.</li><li><b>Bomber</b> (5) 4/3 \u2014 <b>Air</b>.</li><li><b>Veteran</b> (5) 5/5 \u2014 battle-hardened.</li><li><b>Zero</b> (2) 3/1 \u2014 <b>Air</b> (Japan signature).</li><li><b>Heavy Bomber</b> (6) 5/4 \u2014 <b>Air</b>, massive.</li></ul>" },
-  { t: "5. ATTACKING", h: "<ul><li>Click your unit, then click an enemy unit or the enemy HQ.</li><li>Each unit attacks <b>once per turn</b>. When two units fight, <b>both</b> deal their attack to each other.</li><li><b>Guard</b> (Tank, Bunker) must be fought first \u2014 it shields the enemy HQ.</li><li><b>Air</b> (Fighter, Paratrooper, Stuka, Bomber, Zero, Heavy Bomber) ignores Guard and can always hit the HQ.</li><li>A unit normally can't attack the turn it's played \u2014 except <b>Haste</b> (Scout, or any AXIS unit).</li></ul>" },
-  { t: "6. ORDERS", h: "<p>Orders are one-shot cards \u2014 they resolve, then vanish.</p><ul><li><b>Produce</b> (0) \u2014 +1 resource (free!).</li><li><b>Explode</b> (1) \u2014 1 damage to a unit (pick a target).</li><li><b>Rally</b> (1) \u2014 all your units can attack again.</li><li><b>Sabotage</b> (2) \u2014 1 to enemy HQ + draw a card.</li><li><b>Plan</b> (1) \u2014 draw a card.</li><li><b>Snipe</b> (2) \u2014 3 damage to a unit (pick a target).</li><li><b>Bombard</b> (2) \u2014 2 to enemy HQ.</li><li><b>Reinforce</b> (2) \u2014 heal your HQ 6.</li><li><b>Conscription</b> (3) \u2014 draw 2 cards.</li><li><b>Airstrike</b> (3) \u2014 2 to every enemy unit.</li><li><b>Barrage</b> (4) \u2014 3 to every enemy unit.</li></ul>" },
-  { t: "7. DECK BUILDER", h: "<ul><li>Open <b>DECK</b> to customize your card counts with the <b>+</b> and <b>-</b> buttons.</li><li>Your deck must have at least <b>20 cards</b>.</li><li><b>USE DEFAULT</b> restores the standard deck, <b>SAVE</b> keeps your changes, <b>CLOSE</b> cancels.</li><li>A custom deck applies to the next LOCAL or VS AI game.</li></ul>" },
+  { t: "3. NATIONS", h: "<p>There are <b>5 nations</b>, each with its own <b>exclusive deck</b> of cards based on its real WW2 weapons. There are <b>no national buffs</b> \u2014 a nation is defined purely by its cards. Pick yours with the <b>NATION</b> button.</p><ul><li><b>USA</b> \u2605 \u2014 industrial might: Shermans, P-51s, B-17s, Marines.</li><li><b>UK</b> \u265b \u2014 Commonwealth: Spitfires, Commandos, radar, steady Guards.</li><li><b>GERMANY</b> \u2720 \u2014 Blitzkrieg: fast Panzers, Stukas, heavy Tigers.</li><li><b>USSR</b> \u262d \u2014 endless numbers: T-34s, Katyusha rockets, human waves.</li><li><b>JAPAN</b> \u2600 \u2014 aggressive air: cheap Zeros, banzai, kamikaze.</li></ul>" },
+  { t: "4. UNITS", h: "<p>Units fill your front row (max 4). Blue circle = cost, red = attack, green = HP. Hover a card to read its power. Each nation's units are different \u2014 here are the shared <b>keywords</b>:</p><ul><li><b>Haste</b> \u2014 can attack the turn it is played.</li><li><b>Guard</b> \u2014 enemies must fight it first; it shields your HQ.</li><li><b>Air</b> \u2014 ignores Guard and can always strike the HQ.</li><li><b>Battlecries</b> \u2014 many units have an effect on play: healing your HQ, damaging the enemy HQ or their units, drawing cards, or giving your other units +1 attack.</li></ul>" },
+  { t: "5. ATTACKING", h: "<ul><li>Click your unit, then click an enemy unit or the enemy HQ.</li><li>Each unit attacks <b>once per turn</b>. When two units fight, <b>both</b> deal their attack to each other.</li><li><b>Guard</b> units must be fought first \u2014 they shield the enemy HQ.</li><li><b>Air</b> units ignore Guard and can always hit the HQ.</li><li>A unit normally can't attack the turn it's played \u2014 unless it has <b>Haste</b>.</li></ul>" },
+  { t: "6. ORDERS", h: "<p>Orders are one-shot cards \u2014 they resolve, then vanish. Each nation has its own orders. The shared effects are:</p><ul><li><b>Damage a unit</b> \u2014 click the order, then pick an enemy unit.</li><li><b>Damage the enemy HQ</b> \u2014 a direct strike.</li><li><b>Damage all enemy units</b> \u2014 a sweeping barrage (hits the HQ if their board is empty).</li><li><b>Heal your HQ</b> \u2014 recover hit points.</li><li><b>Draw cards</b> \u2014 refill your hand.</li><li><b>Gain resource</b> \u2014 bank energy for bigger plays.</li><li><b>Rally</b> \u2014 all your units can attack again.</li></ul>" },
+  { t: "7. DECK BUILDER", h: "<ul><li>Open <b>DECK</b> to customize <b>your nation's</b> cards with the <b>+</b> and <b>-</b> buttons.</li><li>Your deck must have <b>exactly 40 cards</b>, with at most <b>3 copies</b> of any card.</li><li><b>USE DEFAULT</b> restores the standard 40-card deck, <b>SAVE</b> keeps your changes, <b>CLOSE</b> cancels.</li><li>A custom deck applies to your nation in the next LOCAL or VS AI game (the opponent uses their own nation's default deck).</li></ul>" },
   { t: "8. PLAY & MENU", h: "<ul><li><b>LOCAL</b> \u2014 two players share one screen (hot-seat).</li><li><b>VS AI</b> \u2014 battle the computer single-player.</li><li><b>ONLINE</b> \u2014 HOST gives you a room code to share, or press <b>ROOMS</b> to join a waiting game.</li><li><b>NATION</b> \u2014 choose your nation. <b>DECK</b> \u2014 build your deck.</li><li><b>TUTORIAL</b> reopens this guide, <b>\u2715</b>/<b>CLOSE</b> shuts it, <b>SOUND</b> toggles audio.</li></ul><p>Good luck, Commander!</p>" }
 ];
 var TUT_PAGE = 0;
@@ -1718,7 +1771,7 @@ function openTutorial() {
 
 function closeTutorial() {
   document.getElementById("tutorial").classList.remove("show");
-  try { localStorage.setItem("k6_tut_v3", "1"); } catch (e) {}
+  try { localStorage.setItem("k6_tut_v4", "1"); } catch (e) {}
 }
 
 function tutNext() {
@@ -1741,7 +1794,7 @@ function tutRender() {
 
 function maybeShowTutorial() {
   var seen = false;
-  try { seen = localStorage.getItem("k6_tut_v3") === "1"; } catch (e) {}
+  try { seen = localStorage.getItem("k6_tut_v4") === "1"; } catch (e) {}
   if (!seen) openTutorial();
 }
 
@@ -1752,7 +1805,7 @@ function openFactionPick() {
     var f = FACTIONS[k];
     return '<div class="frow' + (k === FACTION ? ' sel' : '') + '" onclick="pickFaction(\'' + k + '\')">' +
       '<span class="fflag">' + f.flag + '</span>' +
-      '<div><div class="fname">' + f.name + '</div><div class="fdesc">' + f.desc + '</div><div class="fbonus">' + f.bonus + '</div></div>' +
+      '<div><div class="fname">' + f.name + '</div><div class="fdesc">' + f.desc + '</div></div>' +
       '</div>';
   }).join("");
   document.getElementById("factionpick").classList.add("show");
@@ -1769,30 +1822,38 @@ function pickFaction(k) {
 // ---------------- Deck builder ----------------
 var DECK_WORK = null;
 
-function deckDefaultCounts() {
-  var m = {};
-  DECK_COMP.forEach(function (c) { m[c[0]] = c[1]; });
-  return m;
+function deckRowSort(a, b) {
+  var da = DEFS[a], db = DEFS[b];
+  var ta = da.type === "order" ? 1 : 0, tb = db.type === "order" ? 1 : 0;
+  if (ta !== tb) return ta - tb;
+  if (da.cost !== db.cost) return da.cost - db.cost;
+  return da.name.localeCompare(db.name);
 }
 
 function openDeckEdit() {
   DECK_WORK = {};
-  var src = CUSTOM_DECK || deckDefaultCounts();
-  Object.keys(src).forEach(function (k) { DECK_WORK[k] = src[k]; });
+  var src = validCustomDeck(FACTION) ? CUSTOM_DECK : deckDefaultCounts(FACTION);
+  factionCardKeys(FACTION).forEach(function (k) { DECK_WORK[k] = src[k] || 0; });
+  document.querySelector("#deckedit h2").textContent = "DECK BUILDER \u2014 " + FACTIONS[FACTION].name;
   renderDeckRows();
   document.getElementById("deckedit").classList.add("show");
 }
 
 function closeDeckEdit() { DECK_WORK = null; document.getElementById("deckedit").classList.remove("show"); }
 
-function deckInc(k) { if (!DECK_WORK) return; DECK_WORK[k] = (DECK_WORK[k] || 0) + 1; renderDeckRows(); }
+function deckInc(k) { if (!DECK_WORK) return; if ((DECK_WORK[k] || 0) >= MAX_COPIES) return; DECK_WORK[k] = (DECK_WORK[k] || 0) + 1; renderDeckRows(); }
 function deckDec(k) { if (!DECK_WORK) return; if ((DECK_WORK[k] || 0) > 0) DECK_WORK[k]--; renderDeckRows(); }
 
-function deckUseDefault() { DECK_WORK = deckDefaultCounts(); renderDeckRows(); }
+function deckUseDefault() { DECK_WORK = deckDefaultCounts(FACTION); renderDeckRows(); }
 
 function deckSave() {
+  var t = deckTotalWork();
+  if (t !== DECK_SIZE) {
+    document.getElementById("deckInfo").textContent = "Deck must be exactly " + DECK_SIZE + " cards \u2014 currently " + t + ".";
+    return;
+  }
   CUSTOM_DECK = DECK_WORK; DECK_WORK = null;
-  try { localStorage.setItem("k6_deck", JSON.stringify(CUSTOM_DECK)); } catch (e) {}
+  try { localStorage.setItem("k6_deck_v2", JSON.stringify(CUSTOM_DECK)); } catch (e) {}
   document.getElementById("deckedit").classList.remove("show");
   if (MODE === "local" || MODE === "ai") newGame();
 }
@@ -1805,7 +1866,7 @@ function deckTotalWork() {
 
 function renderDeckRows() {
   if (!DECK_WORK) return;
-  var keys = Object.keys(DEFS);
+  var keys = factionCardKeys(FACTION).sort(deckRowSort);
   var html = "";
   keys.forEach(function (k) {
     var d = DEFS[k];
@@ -1816,7 +1877,7 @@ function renderDeckRows() {
   });
   document.getElementById("deckRows").innerHTML = html;
   var t = deckTotalWork();
-  document.getElementById("deckInfo").textContent = "TOTAL: " + t + " cards" + (t >= 20 ? "" : "  (need at least 20)");
+  document.getElementById("deckInfo").textContent = "TOTAL: " + t + " / " + DECK_SIZE + " cards" + (t === DECK_SIZE ? "  \u2713" : "  (need exactly " + DECK_SIZE + ")");
 }
 
 (function () { var b = document.getElementById("soundBtn"); if (b) b.textContent = "SOUND " + (SFX ? "ON" : "OFF"); })();
