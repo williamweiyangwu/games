@@ -46,10 +46,10 @@
     color:#cfe3ff; border-radius:4px; }
   #shopBtn { position:fixed; z-index:55; right:10px; top:10px; width:44px; height:34px;
     font-weight:bold; font-size:12px; letter-spacing:1px; cursor:pointer; background:#0a1120cc;
-    border:2px solid #3b6a2b; color:#b6ff8a; border-radius:4px; display:none; }
+    border:2px solid #3b6a2b; color:#b6ff8a; border-radius:4px; display:none; touch-action:manipulation; }
   #boostBtn { position:fixed; z-index:55; left:10px; top:78px; width:64px; height:36px;
     font-weight:bold; font-size:12px; letter-spacing:1px; cursor:pointer; background:#0a1120cc;
-    border:2px solid #8fd0ff; color:#8fd0ff; border-radius:4px; display:none; }
+    border:2px solid #8fd0ff; color:#8fd0ff; border-radius:4px; display:none; touch-action:manipulation; }
   #touch { position:fixed; left:0; right:0; bottom:0; height:52%; z-index:54; display:none; touch-action:none; }
   #touch.on { display:block; }
   .joy { position:fixed; left:0; top:0; width:116px; height:116px; margin:-58px 0 0 -58px;
@@ -1435,60 +1435,63 @@ renderer.domElement.addEventListener('contextmenu', e=>e.preventDefault());
 /* ---- touch controls (twin stick) ---- */
 const touch = { active:false, left:{x:0,z:0}, right:{x:0,z:0}, boost:false };
 let touchReady=false;
+const touchLayer = document.getElementById('touch');
+const joyL = document.getElementById('joyL'), joyR = document.getElementById('joyR');
+const knobL = joyL.querySelector('.knob'), knobR = joyR.querySelector('.knob');
+const sticks = {};
+const TOUCH_MAX = 46;
+function place(e, side){
+  const s = sticks[e.pointerId]; if(!s) return;
+  const dx = e.clientX - s.ox, dy = e.clientY - s.oy;
+  const len = Math.hypot(dx, dy), cl = Math.min(len, TOUCH_MAX), ang = Math.atan2(dy, dx);
+  (side==='L'?knobL:knobR).style.transform = `translate(${Math.cos(ang)*cl}px,${Math.sin(ang)*cl}px)`;
+  const mag = Math.min(1, len/TOUCH_MAX);
+  const ux = len<1e-3 ? 0 : (dx/len)*mag, uy = len<1e-3 ? 0 : (dy/len)*mag;
+  const stick = side==='L' ? touch.left : touch.right;
+  stick.x = ux; stick.z = uy;
+}
+document.addEventListener('pointerdown', e=>{
+  if(!touch.active) return;
+  if(e.target && e.target.closest && (e.target.closest('#boostBtn')||e.target.closest('#shopBtn'))) return;
+  const side = e.clientX < window.innerWidth/2 ? 'L' : 'R';
+  (side==='L'?joyL:joyR).style.transform = `translate(${e.clientX}px,${e.clientY}px)`;
+  sticks[e.pointerId] = { side, ox:e.clientX, oy:e.clientY };
+  place(e, side);
+});
+document.addEventListener('pointermove', e=>{ if(sticks[e.pointerId]) place(e, sticks[e.pointerId].side); });
+const releaseTouch = e=>{
+  const s = sticks[e.pointerId]; if(!s) return;
+  const stick = s.side==='L' ? touch.left : touch.right;
+  stick.x = 0; stick.z = 0;
+  (s.side==='L'?knobL:knobR).style.transform = 'translate(0,0)';
+  delete sticks[e.pointerId];
+};
+document.addEventListener('pointerup', releaseTouch);
+document.addEventListener('pointercancel', releaseTouch);
+const bb = document.getElementById('boostBtn');
+bb.addEventListener('pointerdown', e=>{ e.preventDefault(); touch.boost = true; });
+bb.addEventListener('pointerup', ()=> touch.boost = false);
+bb.addEventListener('pointercancel', ()=> touch.boost = false);
+bb.addEventListener('pointerleave', ()=> touch.boost = false);
 function enableTouch(){
   if(touchReady) return; touchReady=true;
   touch.active = true;
-  const layer = document.getElementById('touch');
-  const joy = { L:document.getElementById('joyL'), R:document.getElementById('joyR') };
-  const knob = { L:joy.L.querySelector('.knob'), R:joy.R.querySelector('.knob') };
-  layer.classList.add('on');
+  touchLayer.classList.add('on');
   document.getElementById('cross').style.display = 'none';
   const sb = document.getElementById('shopBtn');
   sb.style.display = 'block';
   sb.onclick = ()=>toggleShop();
-  const bb = document.getElementById('boostBtn');
   bb.style.display = 'block';
-  bb.addEventListener('pointerdown', e=>{ e.preventDefault(); touch.boost = true; });
-  bb.addEventListener('pointerup', ()=> touch.boost = false);
-  bb.addEventListener('pointercancel', ()=> touch.boost = false);
-  bb.addEventListener('pointerleave', ()=> touch.boost = false);
-  const MAX = 46;
-  const sticks = {};
-  function place(e, side){
-    const s = sticks[e.pointerId];
-    const dx = e.clientX - s.ox, dy = e.clientY - s.oy;
-    const len = Math.hypot(dx, dy), cl = Math.min(len, MAX), ang = Math.atan2(dy, dx);
-    knob[side].style.transform = `translate(${Math.cos(ang)*cl}px,${Math.sin(ang)*cl}px)`;
-    const mag = Math.min(1, len/MAX);
-    const ux = len<1e-3 ? 0 : (dx/len)*mag, uy = len<1e-3 ? 0 : (dy/len)*mag;
-    touch[side].x = ux; touch[side].z = uy;
-  }
-  layer.addEventListener('pointerdown', e=>{
-    const r = layer.getBoundingClientRect();
-    const side = e.clientX < r.left + r.width/2 ? 'L' : 'R';
-    joy[side].style.transform = `translate(${e.clientX}px,${e.clientY}px)`;
-    sticks[e.pointerId] = { side, ox:e.clientX, oy:e.clientY };
-    layer.setPointerCapture(e.pointerId);
-    place(e, side);
-  });
-  layer.addEventListener('pointermove', e=>{ if(sticks[e.pointerId]) place(e, sticks[e.pointerId].side); });
-  const release = e=>{
-    const s = sticks[e.pointerId]; if(!s) return;
-    touch[s.side].x = 0; touch[s.side].z = 0;
-    knob[s.side].style.transform = 'translate(0,0)';
-    delete sticks[e.pointerId];
-  };
-  layer.addEventListener('pointerup', release);
-  layer.addEventListener('pointercancel', release);
 }
 // Show twin-stick controls when the primary pointer is coarse OR on the first real
 // touch event. Detection alone is unreliable (some devices report a "fine" primary
 // pointer, and headless browsers lie about maxTouchPoints), so we arm on first touch.
+// Enable in the CAPTURE phase so the handlers above see that very first finger-down.
 function initTouch(){
   if(window.matchMedia && matchMedia('(pointer: coarse)').matches){ enableTouch(); return; }
   const arm = e=>{ if(e && e.pointerType && e.pointerType!=='touch') return; enableTouch(); };
-  addEventListener('touchstart', arm, { once:true, passive:true });
-  addEventListener('pointerdown', arm, { once:true });
+  document.addEventListener('pointerdown', arm, { once:true, capture:true });
+  document.addEventListener('touchstart', arm, { once:true, passive:true, capture:true });
 }
 initTouch();
 const ray = new THREE.Raycaster(), ndc=new THREE.Vector2(), ground=new THREE.Plane(new THREE.Vector3(0,1,0),0);
