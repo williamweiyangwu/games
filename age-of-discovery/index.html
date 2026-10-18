@@ -509,17 +509,17 @@ const Game = {
 const PORTS = [];
 const SEA_SIZE = 1200;
 
-// Port definitions - spread across the map
+// Port definitions - scattered across the open sea
 const PORT_DEFS = [
-  { name: "Lisbon",          x: -50,   z: 200,  type: "home",    discovered: true,  color: 0xc8a850 },
-  { name: "Canary Islands",  x: -120,  z: 80,   type: "spice",   discovered: false, color: 0x8bc34a },
-  { name: "Cape Verde",      x: -180,  z: -40,  type: "ivory",   discovered: false, color: 0xf0e6d0 },
-  { name: "Gold Coast",      x: -220,  z: -160, type: "gold_ore",discovered: false, color: 0xffd700 },
-  { name: "Cape of Storms",  x: -200,  z: -320, type: "gems",    discovered: false, color: 0x9c27b0 },
-  { name: "Madagascar",      x: 60,    z: -360, type: "spice",   discovered: false, color: 0x4caf50 },
-  { name: "Zanzibar",        x: 180,   z: -300, type: "silk",    discovered: false, color: 0xe91e63 },
-  { name: "Calicut",         x: 320,   z: -200, type: "spice",   discovered: false, color: 0xff9800 },
-  { name: "Malacca",         x: 380,   z: -60,  type: "silk",    discovered: false, color: 0x00bcd4 },
+  { name: "Lisbon",          x: -480, z: 420,  type: "home",    discovered: true,  color: 0xc8a850 },
+  { name: "Canary Islands",  x: -60,  z: 660,  type: "spice",   discovered: false, color: 0x8bc34a },
+  { name: "Cape Verde",      x: 420,  z: 560,  type: "ivory",   discovered: false, color: 0xf0e6d0 },
+  { name: "Gold Coast",      x: 720,  z: 120,  type: "gold_ore",discovered: false, color: 0xffd700 },
+  { name: "Cape of Storms",  x: 380,  z: -420, type: "gems",    discovered: false, color: 0x9c27b0 },
+  { name: "Madagascar",      x: -80,  z: -680, type: "spice",   discovered: false, color: 0x4caf50 },
+  { name: "Zanzibar",        x: -520, z: -520, type: "silk",    discovered: false, color: 0xe91e63 },
+  { name: "Calicut",         x: -740, z: 60,   type: "spice",   discovered: false, color: 0xff9800 },
+  { name: "Malacca",         x: -180, z: -140, type: "silk",    discovered: false, color: 0x00bcd4 },
 ];
 
 const TRADE_GOODS = {
@@ -680,8 +680,9 @@ const oceanMat = new THREE.ShaderMaterial({
       float foam = smoothstep(0.85, 1.15, vWaveHeight) * 0.6;
       color = mix(color, foamColor, foam);
 
-      // Distance haze blends into the horizon
-      float dist = length(p);
+      // Distance haze - measured from the camera, not the world origin,
+      // so it stays a horizon effect anywhere on the map
+      float dist = length(p - cameraPosition.xz);
       float fade = smoothstep(220.0, 640.0, dist);
       color = mix(color, vec3(0.74, 0.85, 0.93), fade);
 
@@ -1400,7 +1401,12 @@ const cloudMat = new THREE.MeshStandardMaterial({
   roughness: 1.0, flatShading: true,
 });
 
-for (let i = 0; i < 20; i++) {
+// Clouds live in a box that follows the camera, so the sky is never
+// empty no matter how far from the origin the player sails.
+const CLOUD_RANGE = 1300;
+const CLOUD_COUNT = 60;
+
+for (let i = 0; i < CLOUD_COUNT; i++) {
   const cloudGroup = new THREE.Group();
   const numBlobs = 3 + Math.floor(Math.random() * 4);
   for (let j = 0; j < numBlobs; j++) {
@@ -1418,9 +1424,9 @@ for (let i = 0; i < 20; i++) {
     cloudGroup.add(blob);
   }
   cloudGroup.position.set(
-    (Math.random() - 0.5) * 800,
+    SPAWN.x + (Math.random() - 0.5) * CLOUD_RANGE * 2,
     60 + Math.random() * 40,
-    (Math.random() - 0.5) * 800
+    SPAWN.z + (Math.random() - 0.5) * CLOUD_RANGE * 2
   );
   const driftSpeed = 0.02 + Math.random() * 0.03;
   cloudGroup.userData.driftSpeed = driftSpeed;
@@ -1797,38 +1803,28 @@ function drawMinimap() {
     mmCtx.stroke();
   }
 
-  // Ports
+  // Ports - only ones you have actually charted
   PORTS.forEach(port => {
+    if (!port.userData.discovered) return;   // unexplored: stay off the chart
+
     const def = port.userData.def;
     const px = cx + def.x * MM_SCALE * 0.3;
     const py = cy - def.z * MM_SCALE * 0.3;  // flip z for top-down
-    const r = port.userData.discovered ? 4 : 3;
 
-    if (!port.userData.discovered) {
-      // Pulsing question mark
-      mmCtx.fillStyle = 'rgba(255,215,0,0.4)';
-      mmCtx.beginPath();
-      mmCtx.arc(px, py, r + 3 + Math.sin(Date.now() * 0.003) * 2, 0, Math.PI * 2);
-      mmCtx.fill();
-      mmCtx.fillStyle = '#ffd700';
-      mmCtx.font = 'bold 10px Georgia';
-      mmCtx.textAlign = 'center';
-      mmCtx.textBaseline = 'middle';
-      mmCtx.fillText('?', px, py);
-    } else {
-      mmCtx.fillStyle = '#' + def.color.toString(16).padStart(6, '0');
-      mmCtx.beginPath();
-      mmCtx.arc(px, py, r, 0, Math.PI * 2);
-      mmCtx.fill();
+    mmCtx.fillStyle = '#' + def.color.toString(16).padStart(6, '0');
+    mmCtx.beginPath();
+    mmCtx.arc(px, py, 4, 0, Math.PI * 2);
+    mmCtx.fill();
 
-      // Name if discovered
-      if (port.userData.discovered) {
-        mmCtx.fillStyle = 'rgba(240,230,208,0.7)';
-        mmCtx.font = '7px Georgia';
-        mmCtx.textAlign = 'center';
-        mmCtx.fillText(def.name.substring(0, 8), px, py + 8);
-      }
-    }
+    mmCtx.strokeStyle = 'rgba(0,0,0,0.45)';
+    mmCtx.lineWidth = 1;
+    mmCtx.stroke();
+
+    mmCtx.fillStyle = 'rgba(240,230,208,0.75)';
+    mmCtx.font = '7px Georgia';
+    mmCtx.textAlign = 'center';
+    mmCtx.textBaseline = 'middle';
+    mmCtx.fillText(def.name.substring(0, 9), px, py + 9);
   });
 
   // Ship
@@ -1978,10 +1974,13 @@ function animate() {
     flag.rotation.y = Math.sin(elapsed * 2.2) * 0.18;
   }
 
-  // Clouds drift
+  // Clouds drift + wrap into the box centred on the camera
   clouds.forEach(c => {
     c.position.x += c.userData.driftSpeed;
-    if (c.position.x > 400) c.position.x = -400;
+    if (c.position.x - camera.position.x >  CLOUD_RANGE) c.position.x -= CLOUD_RANGE * 2;
+    if (c.position.x - camera.position.x < -CLOUD_RANGE) c.position.x += CLOUD_RANGE * 2;
+    if (c.position.z - camera.position.z >  CLOUD_RANGE) c.position.z -= CLOUD_RANGE * 2;
+    if (c.position.z - camera.position.z < -CLOUD_RANGE) c.position.z += CLOUD_RANGE * 2;
   });
 
   // Camera follows ship
@@ -2022,10 +2021,11 @@ function animate() {
   });
 
   // Supplies drain over time (slower when anchored)
+  // Tuned for the wider map - ports are much further apart now.
   if (!Game.anchored) {
-    Game.supplies -= dt * 0.3 * (0.5 + Math.abs(Ship.speed));
+    Game.supplies -= dt * 0.22 * (0.5 + Math.abs(Ship.speed));
   } else {
-    Game.supplies -= dt * 0.05;
+    Game.supplies -= dt * 0.04;
   }
 
   // Crew attrition when supplies very low
@@ -2137,7 +2137,7 @@ renderer.render(scene, camera);
 loadingEl.style.display = 'none';
 
 // Debug handle (useful for testing from the console)
-window.__voyage = { Game, Ship, shipGroup, PORTS, keys };
+window.__voyage = { Game, Ship, shipGroup, PORTS, keys, clouds, camera };
 
 // Safety net: if anything throws later, surface it instead of failing silently
 window.addEventListener('error', (e) => {
