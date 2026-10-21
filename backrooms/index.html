@@ -63,6 +63,13 @@ body.playing{cursor:none}
 .slot.have{color:var(--amber);border-color:rgba(216,194,124,.45)}
 .slot.act{border-color:#e8562f;color:#ff9a72;box-shadow:0 0 12px rgba(232,86,47,.35)}
 
+#useprompt{position:absolute;left:50%;top:calc(50% + 30px);transform:translateX(-50%);
+  display:flex;align-items:center;gap:9px;font-size:10px;letter-spacing:3px;color:var(--dim);
+  opacity:0;transition:opacity .15s;white-space:nowrap}
+#useprompt.on{opacity:1}
+#useprompt b{display:inline-block;min-width:22px;padding:3px 7px;text-align:center;
+  border:1px solid rgba(216,194,124,.5);color:var(--amber);font-weight:400;
+  box-shadow:0 0 14px rgba(216,194,124,.18)}
 #cross{position:absolute;left:50%;top:50%;width:26px;height:26px;transform:translate(-50%,-50%);opacity:.85}
 #cross:before,#cross:after{content:'';position:absolute;background:rgba(226,212,168,.75)}
 #cross:before{width:1px;height:8px;left:12px;top:0}
@@ -132,9 +139,10 @@ h1{font-size:clamp(30px,7vw,64px);letter-spacing:.16em;font-weight:700;line-heig
 <div id="hud">
   <div id="danger"></div>
   <div id="objective">
-    <span id="objtext">FIND <b>3 FUSES</b> &nbsp;·&nbsp; POWER THE EXIT</span>
+    <span id="objtext">SEARCH THE LOCKERS &nbsp;·&nbsp; FIND <b>3 FUSES</b> &nbsp;·&nbsp; POWER THE EXIT</span>
     <div id="fuses"><div class="fuse"></div><div class="fuse"></div><div class="fuse"></div></div>
   </div>
+  <div id="useprompt"><b>E</b><span>OPEN</span></div>
   <div id="cross"><div class="h"></div><div class="h2"></div><div class="dot"></div></div>
   <div id="vitals">
     <div class="lbl"><span>VITALS</span><b id="hpn">100</b></div>
@@ -172,6 +180,7 @@ h1{font-size:clamp(30px,7vw,64px);letter-spacing:.16em;font-weight:700;line-heig
     <div><kbd>SHIFT</kbd>SPRINT</div>
     <div><kbd>CTRL</kbd>CROUCH</div>
     <div><kbd>LMB</kbd>ATTACK</div>
+    <div><kbd>E</kbd>OPEN LOCKER</div>
     <div><kbd>F</kbd>TORCH</div>
     <div><kbd>1 2 3</kbd>WEAPONS</div>
     <div><kbd>ESC</kbd>PAUSE</div>
@@ -326,6 +335,22 @@ const AU={
     o.frequency.setValueAtTime(760,t);o.frequency.exponentialRampToValueAtTime(1450,t+.1);
     const g=c.createGain();this.env(g,t,.005,.14,.13);
     o.connect(g);g.connect(this.master);o.start(t);o.stop(t+.2);
+  },
+  chest(){
+    if(!this.ready)return;const c=this.ctx,t=c.currentTime;
+    // lid thunk
+    const o=c.createOscillator();o.type='sine';
+    o.frequency.setValueAtTime(150,t);o.frequency.exponentialRampToValueAtTime(55,t+.22);
+    const g=c.createGain();this.env(g,t,.004,.25,.5);
+    o.connect(g);g.connect(this.master);o.start(t);o.stop(t+.4);
+    // hinge creak
+    const n=this.noiseSrc();
+    const bp=c.createBiquadFilter();bp.type='bandpass';bp.frequency.value=900;bp.Q.value=6;
+    const ng=c.createGain();
+    ng.gain.setValueAtTime(.0001,t);
+    ng.gain.exponentialRampToValueAtTime(.09,t+.05);
+    ng.gain.exponentialRampToValueAtTime(.0001,t+.5);
+    n.connect(bp);bp.connect(ng);ng.connect(this.master);n.start(t);n.stop(t+.55);
   },
   fuse(){
     if(!this.ready)return;const c=this.ctx,t=c.currentTime;
@@ -985,11 +1010,24 @@ function eyeGlow(color,size){
   sp.scale.set(size,size,1);
   return sp;
 }
-const skinMat=()=>new THREE.MeshStandardMaterial({color:0x15151c,roughness:.92,metalness:.02,emissive:0x0b0b10,emissiveIntensity:.55});
+const skinMat=()=>new THREE.MeshStandardMaterial({color:0x0c0c0f,roughness:.96,metalness:.02,emissive:0x04040a,emissiveIntensity:.5});
+
+// Real Backrooms monster art (Backrooms Wiki, CC BY-SA 3.0), billboarded so it
+// always turns to face you. The grin keeps fog:false so it reads through the haze.
+const MON_TEX={};
+(function loadMonsterArt(){
+  const ld=new THREE.TextureLoader();
+  [['smiler','assets/mon-smiler.png'],['hound','assets/mon-hound.png']].forEach(([k,u])=>{
+    const t=ld.load(u);
+    t.colorSpace=THREE.SRGBColorSpace;
+    MON_TEX[k]=t;
+  });
+})();
 
 function buildSmiler(){
   const g=new THREE.Group();
   const sk=skinMat();
+  // lanky dark silhouette; the wiki art supplies the face
   const body=new THREE.Mesh(new THREE.CylinderGeometry(.2,.33,1.3,10),sk);
   body.position.y=1.15;g.add(body);
   const neck=new THREE.Mesh(new THREE.CylinderGeometry(.09,.11,.3,8),sk);
@@ -997,22 +1035,19 @@ function buildSmiler(){
   const head=new THREE.Mesh(new THREE.SphereGeometry(.26,16,12),sk);
   head.position.y=2.12;head.scale.set(.88,1.15,.85);g.add(head);
 
-  const eyeMat=new THREE.MeshBasicMaterial({color:0xfff7d8,fog:false});
-  for(const sx of[-1,1]){
-    const e=new THREE.Mesh(new THREE.SphereGeometry(.055,10,8),eyeMat);
-    e.position.set(sx*.105,2.21,.205);g.add(e);
-    const glow=eyeGlow(0xffe0a8,.05);
-    glow.position.copy(e.position);g.add(glow);
-  }
-  // grin
-  const teethMat=new THREE.MeshBasicMaterial({color:0xfff8e0,fog:false});
-  for(let i=0;i<11;i++){
-    const t=i/10;
-    const x=(t-.5)*.40;
-    const y=2.02-Math.cos((t-.5)*Math.PI)*.055;
-    const tooth=new THREE.Mesh(new THREE.BoxGeometry(.028,.055,.02),teethMat);
-    tooth.position.set(x,y,.228);g.add(tooth);
-  }
+  // the grin itself — billboarded, never fogged out
+  const face=new THREE.Sprite(new THREE.SpriteMaterial({
+    map:MON_TEX.smiler,transparent:true,fog:false,depthWrite:false
+  }));
+  face.scale.set(1.06,.77,1);
+  face.position.set(0,2.15,.26);
+  g.add(face);
+
+  // soft halo so the grin reads as a light source in pitch black
+  const halo=eyeGlow(0xffd9a0,1.5);
+  halo.position.set(0,2.15,.06);
+  g.add(halo);
+
   // arms
   const arms=[];
   for(const sx of[-1,1]){
@@ -1030,35 +1065,23 @@ function buildSmiler(){
 }
 function buildHound(){
   const g=new THREE.Group();
-  const sk=skinMat();
-  const body=new THREE.Mesh(new THREE.BoxGeometry(.52,.46,1.15),sk);
-  body.position.y=.72;g.add(body);
-  const chest=new THREE.Mesh(new THREE.BoxGeometry(.58,.52,.42),sk);
-  chest.position.set(0,.76,.44);g.add(chest);
-  const head=new THREE.Mesh(new THREE.BoxGeometry(.34,.3,.52),sk);
-  head.position.set(0,.68,.85);g.add(head);
-  const jaw=new THREE.Mesh(new THREE.BoxGeometry(.3,.12,.4),sk);
-  jaw.position.set(0,.55,.9);g.add(jaw);
-  const eyeMat=new THREE.MeshBasicMaterial({color:0xff7a50,fog:false});
-  for(const sx of[-1,1]){
-    const e=new THREE.Mesh(new THREE.SphereGeometry(.035,8,6),eyeMat);
-    e.position.set(sx*.11,.73,1.05);g.add(e);
-    const glow=eyeGlow(0xff8a55,.05);
+  // the wiki sketch itself, billboarded
+  const beast=new THREE.Sprite(new THREE.SpriteMaterial({
+    map:MON_TEX.hound,transparent:true,fog:false,depthWrite:false
+  }));
+  beast.scale.set(2.35,1.2,1);
+  beast.position.set(0,.92,0);
+  g.add(beast);
+
+  // red eyes at the head end of the sketch
+  for(const dy of[-.05,.05]){
+    const e=new THREE.Mesh(new THREE.SphereGeometry(.04,8,6),
+      new THREE.MeshBasicMaterial({color:0xff7a50,fog:false}));
+    e.position.set(-.99,.99+dy,0);g.add(e);
+    const glow=eyeGlow(0xff8a55,.16);
     glow.position.copy(e.position);g.add(glow);
   }
-  const legs=[];
-  for(const sx of[-1,1])for(const sz of[-1,1]){
-    const leg=new THREE.Mesh(new THREE.CylinderGeometry(.055,.04,.72,6),sk);
-    leg.position.set(sx*.22,.36,sz*.4);
-    g.add(leg);legs.push(leg);
-  }
-  // spine spikes
-  for(let i=0;i<5;i++){
-    const s=new THREE.Mesh(new THREE.ConeGeometry(.05,.18,4),sk);
-    s.position.set(0,1.0,.3-i*.16);s.rotation.x=.3;g.add(s);
-  }
-  g.userData.legs=legs;
-  g.userData.height=.72;
+  g.userData.height=.92;
   return g;
 }
 
@@ -1348,6 +1371,129 @@ function spawnItem(type,x,z){
   items.push({type,mesh:g,x,z,phase:rand(0,TAU),taken:false});
 }
 
+
+/* ══════════════════════════════════════════════════════════════
+   CHESTS — every weapon and supply is locked in a locker
+   ══════════════════════════════════════════════════════════════ */
+let chests=[];
+let chestTarget=null;
+
+const CHEST_LABEL={
+  pistol:'M1911',shotgun:'SAWN-OFF SHOTGUN',ammo:'AMMO',food:'CANNED FOOD',
+  water:'WATER',battery:'BATTERY'
+};
+
+function texChestMetal(){
+  const S=256,[c,g]=cnv(S,S);
+  g.fillStyle='#5c6167';g.fillRect(0,0,S,S);
+  for(let x=0;x<S;x+=32){
+    g.fillStyle=(x/32)%2?'rgba(0,0,0,.10)':'rgba(255,255,255,.045)';
+    g.fillRect(x,0,32,S);
+  }
+  for(let k=0;k<26;k++){
+    const x=Math.random()*S,y=Math.random()*S*.6,h=60+Math.random()*160;
+    const gr=g.createLinearGradient(x,y,x,y+h);
+    gr.addColorStop(0,'rgba(96,58,24,.32)');gr.addColorStop(1,'rgba(96,58,24,0)');
+    g.fillStyle=gr;g.fillRect(x,y,2+Math.random()*6,h);
+  }
+  g.fillStyle='rgba(0,0,0,.35)';
+  for(let y=14;y<S;y+=42)for(let x=10;x<S;x+=42){
+    g.beginPath();g.arc(x,y,2.4,0,TAU);g.fill();
+  }
+  const img=g.getImageData(0,0,S,S),d=img.data;
+  for(let i=0;i<d.length;i+=4){
+    const n=(Math.random()-.5)*20;d[i]+=n;d[i+1]+=n;d[i+2]+=n;
+  }
+  g.putImageData(img,0,0);
+  const t=new THREE.CanvasTexture(c);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping;t.colorSpace=THREE.SRGBColorSpace;
+  return t;
+}
+
+function buildChest(){
+  const g=new THREE.Group();
+  const metal=new THREE.MeshStandardMaterial({map:texChestMetal(),color:0x9aa0a8,roughness:.5,metalness:.8});
+  const dark=new THREE.MeshStandardMaterial({color:0x14161a,roughness:.7,metalness:.5});
+  const shell=new THREE.Mesh(new THREE.BoxGeometry(.98,1.9,.58),metal);
+  shell.position.y=.95;g.add(shell);
+  const plinth=new THREE.Mesh(new THREE.BoxGeometry(1.04,.12,.62),dark);
+  plinth.position.y=.06;g.add(plinth);
+  for(const sx of[-1,1])for(const sz of[-1,1]){
+    const f=new THREE.Mesh(new THREE.BoxGeometry(.1,.1,.1),dark);
+    f.position.set(sx*.42,.16,sz*.22);g.add(f);
+  }
+  // double doors, hinged at the outer edge
+  const doors=[];
+  for(const sx of[-1,1]){
+    const pivot=new THREE.Group();
+    pivot.position.set(sx*.49,.95,.29);
+    const door=new THREE.Mesh(new THREE.BoxGeometry(.47,1.66,.05),metal);
+    door.position.set(-sx*.235,0,0);
+    pivot.add(door);
+    const h=new THREE.Mesh(new THREE.BoxGeometry(.05,.22,.05),dark);
+    h.position.set(-sx*.06,0,.06);
+    pivot.add(h);
+    g.add(pivot);doors.push(pivot);
+  }
+  // vent slits + indicator lamp
+  for(let i=0;i<4;i++){
+    const v=new THREE.Mesh(new THREE.BoxGeometry(.5,.03,.02),dark);
+    v.position.set(0,1.62+i*.07,.31);g.add(v);
+  }
+  const lamp=new THREE.Mesh(new THREE.SphereGeometry(.035,8,6),
+    new THREE.MeshBasicMaterial({color:0xd8a04a}));
+  lamp.position.set(0,1.78,.32);g.add(lamp);
+  const halo=eyeGlow(0xd8a04a,.24);
+  halo.position.copy(lamp.position);g.add(halo);
+  g.userData.doors=doors;
+  g.userData.lamp=halo;
+  return g;
+}
+
+function spawnChest(x,z,loot){
+  const g=buildChest();
+  g.position.set(x,0,z);
+  g.rotation.y=rand(0,TAU);
+  scene.add(g);
+  const col={x,z,hx:.55,hz:.4};
+  collidersExtra.push(col);
+  chests.push({mesh:g,x,z,loot,open:false,openT:0,col});
+}
+
+function openChest(c){
+  if(!c||c.open)return;
+  c.open=true;c.openT=0;
+  // loot lands on the floor between you and the locker so it is always reachable
+  const dx=player.pos.x-c.x,dz=player.pos.z-c.z;
+  const d=Math.hypot(dx,dz)||1;
+  spawnItem(c.loot,c.x+dx/d*.8,c.z+dz/d*.8);
+  if(AU.chest)AU.chest();
+  else AU.pickup();
+  toast(`${CHEST_LABEL[c.loot]||'SUPPLIES'} — GRAB IT`);
+}
+
+function updateChests(dt){
+  let target=null,bd=1e9;
+  for(const c of chests){
+    if(c.open){
+      c.openT=Math.min(1,c.openT+dt*2.4);
+      const d=c.mesh.userData.doors;
+      if(d){d[0].rotation.y=-c.openT*2.0;d[1].rotation.y=c.openT*2.0;}
+      const lamp=c.mesh.userData.lamp;
+      if(lamp)lamp.material.opacity=Math.max(0,1-c.openT);
+      continue;
+    }
+    const dist=Math.hypot(c.x-player.pos.x,c.z-player.pos.z);
+    if(dist<2.1&&dist<bd){
+      const fx=-Math.sin(player.yaw),fz=-Math.cos(player.yaw);
+      const dot=((c.x-player.pos.x)*fx+(c.z-player.pos.z)*fz)/(dist||1);
+      if(dot>.3){target=c;bd=dist;}
+    }
+  }
+  chestTarget=target;
+  el.useprompt.classList.toggle('on',!!target);
+}
+
 /* ══════════════════════════════════════════════════════════════
    WORLD POPULATION
    ══════════════════════════════════════════════════════════════ */
@@ -1370,21 +1516,29 @@ function populate(){
   while(chosen.length<3)chosen.push(far[randInt(0,Math.min(30,far.length-1))]);
   chosen.forEach(c=>spawnItem('fuse',c.x,c.z));
 
-  // weapons
-  const mid=far.filter(c=>c.d>4&&c.d<16);
-  const pickCell=()=>pick(far);
-  const pistolCell=pickCell();
-  spawnItem('pistol',pistolCell.x,pistolCell.z);
-  const shotCell=pickCell();
-  spawnItem('shotgun',shotCell.x,shotCell.z);
-
-  // supplies
-  const kinds=['food','food','food','food','water','water','water','battery','battery',
-               'battery','battery','ammo','ammo','ammo','ammo','ammo','ammo','food','water'];
-  for(const k of kinds){
-    const c=pickCell();
-    spawnItem(k,c.x,c.z);
+  // ---- weapons & supplies: locked in chests spread through the maze ----
+  const taken=new Set(chosen.map(c=>c.i+','+c.j));
+  if(exitInfo)taken.add(exitInfo.cell[0]+','+exitInfo.cell[1]);
+  const spots=[];
+  const pool=far.filter(c=>!taken.has(c.i+','+c.j)&&c.d>2);
+  // one guaranteed starter locker within a short walk of spawn
+  const nearPool=pool.filter(c=>c.d>=3&&c.d<=7);
+  if(nearPool.length)spots.push(pick(nearPool));
+  // then a spread of lockers, never two in the same stretch of hall
+  const rest=pool.filter(c=>!spots.includes(c));
+  for(let k=rest.length-1;k>0;k--){
+    const j=randInt(0,k);[rest[k],rest[j]]=[rest[j],rest[k]];
   }
+  for(const c of rest){
+    if(spots.length>=15)break;
+    if(spots.every(o=>Math.hypot(o.i-c.i,o.j-c.j)>4))spots.push(c);
+  }
+  const lootBag=['pistol','shotgun','ammo','ammo','ammo','ammo','food','food','food','food',
+                 'water','water','water','battery','battery'];
+  for(let i=lootBag.length-1;i>0;i--){
+    const j=randInt(0,i);[lootBag[i],lootBag[j]]=[lootBag[j],lootBag[i]];
+  }
+  spots.forEach((c,i)=>spawnChest(c.x,c.z,lootBag[i%lootBag.length]));
 }
 
 function spawnMonsters(n){
@@ -1427,7 +1581,7 @@ const el={
   fuses:[...document.querySelectorAll('.fuse')],objtext:$('#objtext'),
   slots:[...document.querySelectorAll('.slot')],arrow:$('#arrow'),
   dmg:$('#dmg'),danger:$('#danger'),flash:$('#flash'),static:$('#static'),
-  vig:$('#vig')
+  vig:$('#vig'),useprompt:$('#useprompt')
 };
 
 let toastQueue=[];
@@ -1480,6 +1634,7 @@ addEventListener('keydown',e=>{
     if(e.code==='Digit2')selectWeapon('pistol');
     if(e.code==='Digit3')selectWeapon('shotgun');
     if(e.code==='ControlLeft'||e.code==='ControlRight')player.crouch=true;
+    if(e.code==='KeyE'&&chestTarget)openChest(chestTarget);
   }
   if(state==='dead'&&e.code==='KeyR')location.reload();
   if(state==='playing'&&e.code==='Escape'){
@@ -1612,7 +1767,7 @@ function attack(){
       if(t<0||t>50)continue;
       const px=ox-dir.x*t,py=oy-dir.y*t,pz=oz-dir.z*t;
       const dist2=px*px+py*py+pz*pz;
-      const rad=m.kind==='smiler'?.62:.6;
+      const rad=m.kind==='smiler'?.78:.6;
       if(dist2<rad*rad&&t<wallD&&t<hitT){hitT=t;hit=m;}
     }
     if(hit)hit.hurt(w.dmg);
@@ -2065,6 +2220,7 @@ function tick(){
     updatePlayer(dt);
     for(const m of monsters)m.update(dt);
     updateItems(dt);
+    updateChests(dt);
     updateExit(dt);
     updateLights(dt);
     updateDanger(dt);
@@ -2187,7 +2343,7 @@ boot();
 
 // debug hook (harmless)
 window.__BR={player,get monsters(){return monsters;},get state(){return state;},startGame,
-  get items(){return items;},get exit(){return exitInfo;},spawnHallu,get playT(){return playT;},get hunter(){return hunterActive;},los,solidAt,camera,scene,
+  get items(){return items;},get chests(){return chests;},get exit(){return exitInfo;},spawnHallu,openChest,get playT(){return playT;},get hunter(){return hunterActive;},los,solidAt,camera,scene,
   get info(){return{calls:renderer.info.render.calls,tris:renderer.info.render.triangles,geo:renderer.info.memory.geometries,tex:renderer.info.memory.textures};}};
 </script>
 </body>
