@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>WHITE MAZE 5v5 — 3D Tactical Shooter</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230a0d13'/%3E%3Cpath d='M16 5l9 6v10l-9 6-9-6V11z' fill='none' stroke='%23ff4a4a' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23ffc44d'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css?v=8">
+</head>
+<body>
+
+<!-- ================= LOADING ================= -->
+<div id="loading">
+  <div class="load-wrap">
+    <div class="load-logo">WHITE&nbsp;MAZE<span>5v5</span></div>
+    <div class="load-sub">TACTICAL ARENA · THREE.JS</div>
+    <div class="load-bar"><div class="load-fill" id="loadFill"></div></div>
+    <div class="load-text" id="loadText">Booting engine…</div>
+  </div>
+</div>
+
+<!-- ================= MAIN MENU ================= -->
+<div id="menu" class="screen">
+  <div class="menu-bg"></div>
+  <div class="menu-inner">
+    <div class="brand">
+      <div class="brand-kicker">RED TEAM vs BLUE TEAM</div>
+      <h1>WHITE<span>MAZE</span></h1>
+      <div class="brand-sub">5 v 5 · WHITE MAZE · CATWALK · CHEST WEAPONS</div>
+    </div>
+
+    <div class="menu-grid">
+      <div class="mode-card" data-mode="tdm">
+        <div class="mc-top"><span class="mc-tag red">DEATHMATCH</span><span class="mc-time">5:00</span></div>
+        <h3>Team Deathmatch</h3>
+        <p>Kill the enemy team. Most kills when the clock hits zero wins. 3 second respawn.</p>
+        <div class="mc-go">DEPLOY →</div>
+      </div>
+      <div class="mode-card" data-mode="flag">
+        <div class="mc-top"><span class="mc-tag blue">CAPTURE THE FLAG</span><span class="mc-time">5:00</span></div>
+        <h3>Flag Raid</h3>
+        <p>Steal the enemy flag and carry it to your HQ. Most captures wins. 3 second respawn.</p>
+        <div class="mc-go">DEPLOY →</div>
+      </div>
+      <div class="mode-card tut" data-mode="tutorial">
+        <div class="mc-top"><span class="mc-tag gold">TRAINING</span><span class="mc-time">SAFE</span></div>
+        <h3>Tutorial</h3>
+        <p>Learn movement, shooting, chests and the objective — with live targets.</p>
+        <div class="mc-go">START →</div>
+      </div>
+    </div>
+
+    <div class="menu-bottom">
+      <div class="diff-block">
+        <div class="diff-label">YOUR TEAM</div>
+        <div class="diff-row team" id="teamRow">
+          <button data-team="red" class="on">RED</button>
+          <button data-team="blue">BLUE</button>
+        </div>
+        <div class="diff-desc" id="teamDesc">You spawn in the south-west plaza with four AI teammates. The other five operators hunt you.</div>
+      </div>
+      <div class="diff-block">
+        <div class="diff-label">AI DIFFICULTY</div>
+        <div class="diff-row" id="diffRow">
+          <button data-diff="easy">EASY</button>
+          <button data-diff="normal" class="on">NORMAL</button>
+          <button data-diff="hard">HARD</button>
+          <button data-diff="legend">LEGEND</button>
+        </div>
+        <div class="diff-desc" id="diffDesc">Balanced bots. They miss sometimes and react in a third of a second.</div>
+      </div>
+      <div class="menu-btns">
+        <button class="btn ghost" id="btnHowTo">HOW TO PLAY</button>
+        <div class="sens">
+          <label>SENSITIVITY <span id="sensVal">1.0</span></label>
+          <input type="range" id="sens" min="0.3" max="2.5" step="0.05" value="1">
+        </div>
+      </div>
+    </div>
+    <div class="foot-note">Desktop only · click the arena to capture the mouse · ESC to pause</div>
+  </div>
+</div>
+
+<!-- ================= HUD ================= -->
+<div id="hud">
+  <div id="nameplates"></div>
+
+  <!-- top bar -->
+  <div class="topbar">
+    <div class="teamscore red"><span class="ts-name">RED</span><span class="ts-num" id="scoreRed">0</span></div>
+    <div class="clockbox">
+      <div class="clock" id="clock">5:00</div>
+      <div class="mode-name" id="modeName">TEAM DEATHMATCH</div>
+    </div>
+    <div class="teamscore blue"><span class="ts-num" id="scoreBlue">0</span><span class="ts-name">BLUE</span></div>
+  </div>
+
+  <!-- roster -->
+  <div id="roster">
+    <div class="roster-team">
+      <div class="rt-head red">RED <span id="redAlive">5/5</span></div>
+      <div id="rosterRed"></div>
+    </div>
+    <div class="roster-team">
+      <div class="rt-head blue">BLUE <span id="blueAlive">5/5</span></div>
+      <div id="rosterBlue"></div>
+    </div>
+  </div>
+
+  <!-- minimap -->
+  <div id="mapBox"><canvas id="minimap" width="176" height="176"></canvas><div class="map-label">TACTICAL MAP</div></div>
+
+  <!-- kill feed -->
+  <div id="feed"></div>
+
+  <!-- objective banner -->
+  <div id="objBanner"></div>
+
+  <!-- crosshair -->
+  <div id="crosshair">
+    <div class="ch t"></div><div class="ch b"></div><div class="ch l"></div><div class="ch r"></div><div class="ch dot"></div>
+  </div>
+  <div id="hitmarker">✕</div>
+  <div id="dmgvig"></div>
+  <div id="scope">
+    <div class="sc-ring"></div>
+    <div class="sc-h"></div><div class="sc-v"></div>
+    <div class="sc-mil"></div>
+  </div>
+
+  <!-- bottom left: health -->
+  <div class="vitals">
+    <div class="v-label">HEALTH</div>
+    <div class="hp-row">
+      <div class="hp-bar"><div class="hp-fill" id="hpFill"></div></div>
+      <div class="hp-num" id="hpNum">100</div>
+    </div>
+    <div class="v-sub" id="vSub">KNIFE · PISTOL</div>
+  </div>
+
+  <!-- bottom right: weapon -->
+  <div class="gunbox">
+    <div class="g-name" id="gName">M9 PISTOL</div>
+    <div class="g-ammo"><span id="gMag">12</span><i>/</i><span id="gRes">96</span></div>
+    <div class="g-hint" id="gHint">R RELOAD</div>
+  </div>
+
+  <!-- bag / loadout -->
+  <div id="bag">
+    <div class="bag-head">BAG <span>1–4</span></div>
+    <div id="bagList"></div>
+  </div>
+
+  <!-- chest prompt -->
+  <div id="prompt"><b>E</b> OPEN CRATE</div>
+
+  <!-- flag carrier -->
+  <div id="carryBanner">YOU CARRY THE ENEMY FLAG — RETURN TO BASE</div>
+
+  <!-- respawn -->
+  <div id="respawn">
+    <div class="rs-title">ELIMINATED</div>
+    <div class="rs-sub">Respawning in <span id="rsNum">3</span></div>
+  </div>
+
+  <!-- tutorial checklist -->
+  <div id="tutTasks">
+    <div class="tt-head">TRAINING OBJECTIVES</div>
+    <div id="ttList"></div>
+  </div>
+</div>
+
+<!-- ================= PAUSE ================= -->
+<div id="pause" class="screen">
+  <div class="panel">
+    <h2>PAUSED</h2>
+    <div class="pause-score" id="pauseScore"></div>
+    <div class="keylist">
+      <div><b>W A S D</b> Move</div><div><b>MOUSE</b> Look / Aim</div>
+      <div><b>LEFT CLICK</b> Fire</div><div><b>R</b> Reload</div>
+      <div><b>Q</b> Aim down sights</div><div><b>E</b> Open crate</div>
+      <div><b>SHIFT</b> Sprint</div><div><b>SPACE</b> Jump</div>
+      <div><b>1 2 3 4</b> Weapons</div><div><b>TAB</b> Scoreboard</div>
+    </div>
+    <div class="panel-btns">
+      <button class="btn" id="btnResume">RESUME</button>
+      <button class="btn ghost" id="btnRestart">RESTART</button>
+      <button class="btn ghost" id="btnQuit">QUIT TO MENU</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= END ================= -->
+<div id="end" class="screen">
+  <div class="panel wide">
+    <div class="end-kicker" id="endKicker">MATCH COMPLETE</div>
+    <h2 id="endTitle">RED TEAM WINS</h2>
+    <div class="end-score" id="endScore">75 — 61</div>
+    <div class="end-stats" id="endStats"></div>
+    <div class="panel-btns">
+      <button class="btn" id="btnAgain">PLAY AGAIN</button>
+      <button class="btn ghost" id="btnMenu">MAIN MENU</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= TUTORIAL / HOW TO PLAY ================= -->
+<div id="howto" class="screen">
+  <div class="panel wide howto">
+    <div class="ht-head">
+      <h2>FIELD MANUAL</h2>
+      <div class="ht-pages" id="htDots"></div>
+    </div>
+    <div class="ht-body" id="htBody"></div>
+    <div class="panel-btns">
+      <button class="btn ghost" id="htPrev">← BACK</button>
+      <button class="btn" id="htNext">NEXT →</button>
+      <button class="btn ghost" id="htClose">CLOSE</button>
+    </div>
+  </div>
+</div>
+
+<script src="lib/three.min.js"></script>
+<script src="js/game.js?v=8"></script>
+</body>
+</html>
