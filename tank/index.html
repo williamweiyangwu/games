@@ -78,7 +78,7 @@
   #tut { position:fixed; z-index:53; left:50%; top:142px; transform:translateX(-50%);
     text-align:center; background:#0a1120dd; border:2px solid #ffd76a; border-radius:5px;
     padding:8px 16px; font-size:13px; letter-spacing:1px; color:#ffe9a8; display:none;
-    max-width:82vw; box-shadow:0 6px 24px #000a; }
+    max-width:82vw; box-shadow:0 6px 24px #000a; pointer-events:none; }
   #shop { position:fixed; inset:0; z-index:70; background:#02040acc; display:none;
     align-items:center; justify-content:center; }
   #shop.on { display:flex; }
@@ -329,6 +329,9 @@
   <p class="sub">Spend credits to field a stronger tank. Instantly replaces your current tank.</p>
   <div class="cards" id="cards"></div>
   <div class="close">press <b>B</b> / <b>ESC</b> or tap outside to close</div>
+  <button id="shopClose" style="margin-top:10px;padding:10px 26px;font-size:14px;font-family:inherit;
+    cursor:pointer;background:#1b3b63;color:#fff;border:2px solid #8fd0ff;border-radius:4px;
+    touch-action:manipulation;">CLOSE</button>
 </div></div>
 <div id="over"><div>
   <div class="big" id="overTxt">VICTORY</div>
@@ -859,11 +862,11 @@ function addMoney(t,amt){ if(!t||!amt) return; if(t.isPlayer){ money += amt; pst
 let tutorial=false;
 let tut={ step:0, moved:0, fired:false, boosted:false, shopped:false, px:null, pz:null };
 const TUT_STEPS = [
-  { txt:'MOVE — <b>WASD / ARROWS</b> or the <b>LEFT stick</b>', chk:()=> tut.moved>12 },
-  { txt:'AIM &amp; FIRE — <b>MOUSE + CLICK</b> or the <b>RIGHT stick</b>', chk:()=> tut.fired },
-  { txt:'BOOST — <b>SHIFT / Q</b> or the <b>BOOST</b> button', chk:()=> tut.boosted },
-  { txt:'UPGRADE — press <b>B</b> or the <b>SHOP</b> button and buy a tank', chk:()=> tut.shopped },
-  { txt:'NOW <b>DESTROY THE RED HQ</b> to win — good luck!', chk:()=> false },
+  { txt:'MOVE — <b>WASD / ARROWS</b> or the <b>LEFT stick</b>', tt:'MOVE — drag the <b>LEFT stick</b> around', chk:()=> tut.moved>12 },
+  { txt:'AIM &amp; FIRE — <b>MOUSE + CLICK</b> or the <b>RIGHT stick</b>', tt:'AIM &amp; FIRE — drag the <b>RIGHT stick</b> to aim, release to stop firing', chk:()=> tut.fired },
+  { txt:'BOOST — <b>SHIFT / Q</b> or the <b>BOOST</b> button', tt:'BOOST — hold the <b>BOOST</b> button', chk:()=> tut.boosted },
+  { txt:'UPGRADE — press <b>B</b> or the <b>SHOP</b> button and buy a tank', tt:'UPGRADE — tap <b>SHOP</b>, pick a tank, then tap outside the panel to close it', chk:()=> tut.shopped },
+  { txt:'NOW <b>DESTROY THE RED HQ</b> to win — good luck!', tt:'NOW <b>DESTROY THE RED HQ</b> to win — good luck!', chk:()=> false },
 ];
 function resetTutorial(){
   tutorial=true;
@@ -884,8 +887,8 @@ function tutTick(dt){
   while(TUT_STEPS[tut.step] && TUT_STEPS[tut.step].chk() && guard++<8) tut.step++;
   const cur=TUT_STEPS[tut.step];
   const total=TUT_STEPS.length;
-  const done=Math.min(tut.step, total-1);
-  el('tut').innerHTML = `<b style="color:#ffd76a">TUTORIAL ${Math.min(tut.step+1,total)}/${total}</b> — ${cur?cur.txt:''}`;
+  const curTxt = cur ? ((touch.active && cur.tt) ? cur.tt : cur.txt) : '';
+  el('tut').innerHTML = `<b style="color:#ffd76a">TUTORIAL ${Math.min(tut.step+1,total)}/${total}</b> — ${curTxt}`;
 }
 
 /* ============================================================
@@ -1419,7 +1422,7 @@ addEventListener('keydown', e=>{
   const k=e.key.toLowerCase();
   keys[k]=true;
   if(k==='b'){ toggleShop(); }
-  if(k==='escape'){ document.getElementById('shop').classList.remove('on'); }
+  if(k==='escape'){ closeShop(); }
   if(k>='1'&&k<='6'){ buy(ORDER[+k-1]); }
   if(k===' '){ if(player) player.wantFire=true; e.preventDefault(); }
   if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)) e.preventDefault();
@@ -1554,9 +1557,16 @@ function toggleShop(){
   shopEl.classList.toggle('on');
   if(shopEl.classList.contains('on')){ if(tutorial) tut.shopped=true; refreshShop(); }
 }
+function closeShop(){
+  if(shopEl.classList.contains('on')) shopEl.classList.remove('on');
+}
 shopEl.addEventListener('click', e=>{
-  if(e.target === shopEl) shopEl.classList.remove('on');
+  if(e.target === shopEl) closeShop();
 });
+shopEl.addEventListener('pointerdown', e=>{
+  if(e.target === shopEl) closeShop();
+});
+document.getElementById('shopClose').addEventListener('click', e=>{ e.stopPropagation(); closeShop(); });
 buildShop();
 /* ============================================================
    END
@@ -2418,7 +2428,7 @@ function frame(now){
   requestAnimationFrame(frame);
 }
 
-window.__T = { get player(){return player;}, get money(){return money;}, get gameOver(){return gameOver;},
+window.__T = { get player(){return player;}, get money(){return money;}, set money(v){money=v;}, get gameOver(){return gameOver;},
   NET, DIFFS, CLASSES, ORDER, HQS, tanks, bullets, setup, update, netGuestUpdate, buildSnap, applySnap,
   netBeginPlay, netRenderSeats, resetGame, readLocalInput, netEvent, fire, netFeed, startGame, aiLevel:()=>aiLevel,
   damage, damageHQ, addMoney, buyFor, applySnap, applyEvent,
@@ -2429,6 +2439,12 @@ window.__T = { get player(){return player;}, get money(){return money;}, get gam
   get tutorial(){return tutorial;}, get tut(){return tut;},
   get MODE(){return MODE;}, get kills(){return kills;},
   get Q(){return Q;}, get HIGH(){return HIGH();}, applyQuality,
+  aiSteer, musicStart, musicStop, setMute, get musicOn(){return musicOn;}, get muted(){return muted;},
+  get AC(){return AC;}, get cover(){return MAPS[mapName]?MAPS[mapName].cover:[];},
+  stepBullets, destroyWall, applyPowerup, get pstats(){return pstats;},
+  toggleShop, closeShop, get shopEl(){return shopEl;},
+  get shopCloseBtn(){return document.getElementById('shopClose');},
+  finish, startGame,
   get gfx(){return { q:Q, dpr:renderer.getPixelRatio(),
     rt:rt? [rt.width,rt.height]:null, tone:renderer.toneMapping, shadow:renderer.shadowMap.type,
     bg: (scene.background && scene.background.isTexture)? 'sky':'color',
