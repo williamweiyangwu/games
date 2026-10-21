@@ -328,7 +328,7 @@
   <h2>ARMORY</h2>
   <p class="sub">Spend credits to field a stronger tank. Instantly replaces your current tank.</p>
   <div class="cards" id="cards"></div>
-  <div class="close">press <b>B</b> or <b>ESC</b> to close</div>
+  <div class="close">press <b>B</b> / <b>ESC</b> or tap outside to close</div>
 </div></div>
 <div id="over"><div>
   <div class="big" id="overTxt">VICTORY</div>
@@ -1452,7 +1452,7 @@ function place(e, side){
 }
 document.addEventListener('pointerdown', e=>{
   if(!touch.active) return;
-  if(e.target && e.target.closest && (e.target.closest('#boostBtn')||e.target.closest('#shopBtn'))) return;
+  if(e.target && e.target.closest && (e.target.closest('#boostBtn')||e.target.closest('#shopBtn')||e.target.closest('#shop')||e.target.closest('.panel')||e.target.closest('.card'))) return;
   const side = e.clientX < window.innerWidth/2 ? 'L' : 'R';
   (side==='L'?joyL:joyR).style.transform = `translate(${e.clientX}px,${e.clientY}px)`;
   sticks[e.pointerId] = { side, ox:e.clientX, oy:e.clientY };
@@ -1554,6 +1554,9 @@ function toggleShop(){
   shopEl.classList.toggle('on');
   if(shopEl.classList.contains('on')){ if(tutorial) tut.shopped=true; refreshShop(); }
 }
+shopEl.addEventListener('click', e=>{
+  if(e.target === shopEl) shopEl.classList.remove('on');
+});
 buildShop();
 /* ============================================================
    END
@@ -1841,7 +1844,7 @@ function startGame(mode){
   setup(mode);
   money = 0;
   el('hint').innerHTML = touch.active
-    ? 'AI — <b style="color:#8fd0ff">'+AI().label+'</b><br>LEFT STICK — move<br>RIGHT STICK — aim &amp; fire<br>SHOP — upgrade tank'
+    ? 'AI — <b style="color:#8fd0ff">'+AI().label+'</b><br>LEFT STICK — move<br>RIGHT STICK — aim &amp; fire<br>SHOP — upgrade tank<br>BOOST — speed boost'
     : 'AI — <b style="color:#8fd0ff">'+AI().label+'</b><br>'
       + 'WASD / ARROWS — move<br>MOUSE — aim &nbsp;|&nbsp; CLICK / SPACE — fire<br>B — shop &nbsp;|&nbsp; 1-6 — quick buy';
 }
@@ -2205,7 +2208,9 @@ function netBeginPlay(mode, roster, localId){
   NET.snap=null; NET.evSeen=0; NET.events=[]; NET.nextEv=1; NET.bulletId=1; NET.snapT=0; NET.pingT=0; NET.inAt=0;
   money=0;
   el('hint').innerHTML = 'AI — <b style="color:#8fd0ff">'+AI().label+'</b> · ROOM '+NET.code+'<br>'
-    + 'WASD / ARROWS — move<br>MOUSE — aim &nbsp;|&nbsp; CLICK / SPACE — fire<br>B — shop &nbsp;|&nbsp; 1-6 — quick buy';
+    + (touch.active
+      ? 'LEFT STICK — move<br>RIGHT STICK — aim &amp; fire<br>SHOP — upgrade &nbsp;|&nbsp; BOOST — boost'
+      : 'WASD / ARROWS — move<br>MOUSE — aim &nbsp;|&nbsp; CLICK / SPACE — fire<br>B — shop &nbsp;|&nbsp; 1-6 — quick buy');
   showBadge(true);
   netSetMsg('lobbyMsg','');
 }
