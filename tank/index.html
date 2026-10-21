@@ -231,11 +231,11 @@
   </div>
   <div class="mrow">
     <div class="mcard d" id="mDef"><h3>SIEGE</h3>
-      <p>3:00 TIMER<br>You are randomly spawned on the <b>DEFENDER (blue)</b> or <b>ATTACKER (red)</b>.<br><br>Defender has the HQ (<b>2000 HP</b>). Attacker has no HQ at all.<br><br>Destroy the blue HQ before time runs out to win as attacker — otherwise the defender holds.</p></div>
+      <p>3:00 TIMER<br>You are randomly spawned on the <b>DEFENDER (blue)</b> or <b>ATTACKER (red)</b>.<br><br>Defender has the HQ (<b><span id="hqHpSie">2600</span> HP</b>). Attacker has no HQ at all.<br><br>Destroy the blue HQ before time runs out to win as attacker — otherwise the defender holds.</p></div>
     <div class="mcard" id="mTdm"><h3 style="color:#b6ff8a">TEAM DEATHMATCH</h3>
       <p>3:00 TIMER<br><b>No HQ at all — no HP bars, just tanks.</b><br><br>5 v 5, 3 second respawns.<br>Most <b>kills</b> when the clock hits 0:00 wins.<br><br>You spawn as BLUE tank #1.</p></div>
     <div class="mcard" id="mSkl"><h3 style="color:#c9a3ff">SKIRMISH</h3>
-      <p>Classic mode.<br><br>Both sides have an HQ (2000 HP).<br>First team to destroy the enemy HQ wins.<br><br>You always spawn as BLUE tank #1.</p></div>
+      <p>Classic mode.<br><br>Both sides have an HQ (<span id="hqHpSkl">2600</span> HP).<br>First team to destroy the enemy HQ wins.<br><br>You always spawn as BLUE tank #1.</p></div>
   </div>
   <div style="text-align:center;margin-top:14px">
     <button class="nbtn" id="mOnline" style="border-color:#c9a3ff;box-shadow:0 0 18px #a855f755">ONLINE — PLAY WITH FRIENDS</button>
@@ -348,6 +348,8 @@ import * as THREE from 'three';
 /* ---- tuning constants (declared up front: makeHQ() runs below) ---- */
 const SIEGE_TIME = 180;      // 3:00 for siege / tdm
 const HQ_HP      = 2600;     // HQ hp in siege and skirmish
+// keep the mode cards in sync with the real HQ health bar
+for(const id of ['hqHpSie','hqHpSkl']){ const n=document.getElementById(id); if(n) n.textContent=HQ_HP; }
 // AI difficulty — only affects bots, never the player
 const DIFFS = {
   easy:   { label:'EASY',   spread:0.140, cdMul:1.55, dmgMul:0.55, retargetMul:1.6, aimTol:0.50 },
