@@ -454,7 +454,7 @@
     <button class="bigbtn battle" id="mBattle">&#9876; Battle</button>
 
     <div class="card" id="newsCard">
-      <h3>&#128240; THE CONTINENTAL <small>daily paper</small></h3>
+      <h3>&#128240; <span id="newsNamePanel">THE CONTINENTAL</span> <small>daily paper</small></h3>
       <div id="newsPanel"></div>
     </div>
 
@@ -586,7 +586,7 @@
 
 <div id="nModal" class="modal">
   <div class="mbox">
-    <div class="mhead"><b>&#128240; THE CONTINENTAL</b><button class="btn" id="nModalClose">&#10005; Close</button></div>
+    <div class="mhead"><b>&#128240; <span id="newsNameModal">THE CONTINENTAL</span></b><button class="btn" id="nModalClose">&#10005; Close</button></div>
     <div class="mbody paper" id="nModalBody"></div>
   </div>
 </div>
@@ -1695,7 +1695,8 @@ function newGame(player){
   S.pick.clear();
   invalidateWars();
   selectProv(firstSector(player));
-  log('War breaks out. '+startGold(player)+' gold in the treasury, '+startUnits(player)+' riflemen and two mine fields at home.');
+  log('War breaks out. '+startGold(player)+' gold in the treasury, '+startUnits(player)+
+      (MAP==='china'?' spearmen and two salt works at home.':' riflemen and two mine fields at home.'));
   log('Click a territory to inspect it, recruit, and give orders.');
   render();
 }
@@ -1877,7 +1878,7 @@ var MAPS={
     secCap:function(){ return EU_SEC_CAP; }, natCap:function(){ return EU_NAT_CAP; },
     proj:function(){ return EU_PROJ; },
     blocs:['Axis','Allies','Other','Neutral'],
-    defaultPlayer:'germany', tabAir:'&#9992; Air Force',
+    defaultPlayer:'germany', tabAir:'&#9992; Air Force', newsName:'THE CONTINENTAL',
     rules:'Nations that fought in the Second World War are on the map. Each begins with its own treasury, riflemen and two mine fields at home &mdash; a major power far more than a micro-state.<br>There is <b>no daily income</b> &mdash; <b>mine fields are the only gold</b> in the game, mined at each nation\u2019s own rate. Buy mine cars to lay more, and take countries to grow your yield.<br>Click a country to open its sheet: a small map of the country with the units standing in it. Recruit in your own territory, then order units into a neighbouring country. Every front is a real front &mdash; the AI nations fight each other too, so a war can be won without fighting the whole continent.<br>Units fight at their best on friendly soil, and hardest of all in their homeland. Tanks, artillery and bombers cost upkeep every day, so a huge army can bankrupt you.<br>Army sizes follow real history: micro-states like <b>Albania</b> or <b>Denmark</b> hold just <b>2&ndash;3</b> units, while a major power fields up to <b>14</b>. The Soviet Union is split into three fronts &mdash; <b>South 4</b>, <b>Centre 4</b>, <b>North 5</b> &mdash; and a weak state buys only basic rifles, guns and fighters: no tanks, heavy armour or bomber fleets.<br>Send your men at a front and they <b>hold the ground until the country falls</b> &mdash; only then do the survivors march back home to rearm. Only <b>one territory on the whole map</b> changes hands each day.<br>You win by holding <b>every</b> territory. You lose if you hold none.'
   },
   china:{
@@ -1890,11 +1891,18 @@ var MAPS={
     secCap:function(){ return CN_SEC_CAP; }, natCap:function(){ return CN_NAT_CAP; },
     proj:function(){ return CN_PROJ; },
     blocs:CN_BLOCS,
-    defaultPlayer:'shaanxi', tabAir:'&#127993; Siege &amp; Cavalry',
-    rules:'The 34 province-level divisions of the modern People\u2019s Republic are on the map &mdash; each a country in its own right, fighting to unify the realm. Every province begins with its own treasury, spearmen and salt works at home.<br>There is <b>no daily income</b> &mdash; <b>salt is the only gold</b>, boiled at each province\u2019s own rate. Buy <b>Salt Works</b> and send them to your frontier to swell your yield.<br>Buy levies, crossbows and chariots in the <b>Army</b> tab; the <b>Siege &amp; Cavalry</b> tab holds horse archers, ballistae, catapults and the full siege train, which strike across a border and retire home.<br>Click a province to open its sheet: a small map of it with the units standing there. Recruit in your own land, then order units into a neighbouring province. Every frontier is a real front &mdash; the rival provinces fight one another too.<br>Units fight best on friendly soil and hardest of all in their homeland. Heavy chariots, siege engines and the Imperial Guard cost upkeep daily, so a vast host can bankrupt you.<br>Send your men at a frontier and they <b>hold the ground until it falls</b> &mdash; only then do the survivors march home. Only <b>one province on the whole map</b> changes hands each day.<br>You win by holding <b>every</b> province. You lose if you hold none.'
+    defaultPlayer:'shaanxi', tabAir:'&#127993; Siege &amp; Cavalry', newsName:'THE COURT GAZETTE',
+    rules:'The 34 province-level divisions of the modern People\u2019s Republic are on the map &mdash; each a country in its own right, fighting to unify the realm. Every province begins with its own treasury, spearmen and salt works at home.<br>There is <b>no daily income</b> &mdash; <b>salt is the only gold</b>, boiled at each province\u2019s own rate. Buy <b>Salt Works</b> and send them to your frontier to swell your yield.<br>Buy levies, crossbows and chariots in the <b>Army</b> tab; the <b>Siege &amp; Cavalry</b> tab holds horse archers, ballistae, catapults and the full siege train, which strike across a border and retire home.<br>Click a province to open its sheet: a small map of it with the units standing there. Recruit in your own land, then order units into a neighbouring province. Every frontier is a real front &mdash; the rival provinces fight one another too.<br>Units fight best on friendly soil and hardest of all in their homeland. Heavy chariots, siege engines and the Imperial Guard cost upkeep daily, so a vast host can bankrupt you.<br>Send your men at a frontier and they <b>hold the ground until it falls</b> &mdash; only then do the survivors march home. Only <b>one province on the whole map</b> changes hands each day.<br>You win by holding <b>every</b> province. You lose if you hold none.',
+    tutCN:"<div class=\"tutS\"><div class=\"tutN\">1</div><div><h4>Pick a province</h4><p>Aim of the war: hold <b>every</b> province on the map. You start with <b>your province's own treasury and spearmen</b> and two salt works at home. The frontier is long and every neighbour is a rival.</p></div></div>"+
+      "<div class=\"tutS\"><div class=\"tutN\">2</div><div><h4>Money comes from salt</h4><p>There is <b>no daily income</b> &mdash; salt works pay <b>4 gold a day each</b>. Buy <b>Salt Works</b> in the Shop and send them to your frontier to lay more. No salt, no money to pay for troops.</p></div></div>"+
+      "<div class=\"tutS\"><div class=\"tutN\">3</div><div><h4>Recruit &amp; move</h4><p>Click a province you own to open it, pick a unit in the Shop (the <b>Army</b> and <b>Siege &amp; Cavalry</b> tabs). Then click <b>Battle</b>, tick your units, and click a flashing border to send them into a neighbouring province. <b>Select every unit on my fronts</b> grabs your whole line at once. They hold the ground until it falls, then the survivors retire home.</p></div></div>"+
+      "<div class=\"tutS\"><div class=\"tutN\">4</div><div><h4>One piece a day</h4><p>Only <b>one province on the whole map</b> can change hands each day &mdash; whoever has held the front longest takes it. Attack on several borders and the strongest claim wins. When a province loses its last piece it <b>capitulates</b> and its host disbands.</p></div></div>"+
+      "<div class=\"tutS\"><div class=\"tutN\">5</div><div><h4>Defend your homeland</h4><p>Units fight at their best on friendly soil, and hardest of all in their home province. Salt works maul attackers. Heavy chariots, siege engines and the Imperial Guard cost upkeep every day, so a vast host can bankrupt you.</p></div></div>"+
+      "<div class=\"tutS\"><div class=\"tutN\">6</div><div><h4>Speed controls</h4><p>Use <b>0.5&times;</b>, <b>1&times;</b>, <b>2&times;</b> or <b>3&times;</b> to speed up or slow the war down, and <b>Pause</b> to stop it. Open <b>News</b> for dispatches and <b>Mail</b> to talk to other provinces.</p></div></div>"
   }
 };
 var MAP='europe';
+var TUT_ORIG=null;
 function currentMap(){ return MAPS[MAP]; }
 function useMap(name){
   if(!MAPS[name]) name='europe';
@@ -2729,12 +2737,21 @@ function renderPanel(){
   document.getElementById('sUnits').textContent=unitsOf(me).length;
   document.getElementById('sPow').textContent=Math.round(unitsOf(me).reduce(function(s,u){
     return s+U(u.owner,u.type).atk; },0));
-  var d=new Date(1939,8,1+S.day);
-  var mon=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
-  document.getElementById('sDate').textContent=d.getDate()+' '+mon+' '+d.getFullYear();
+  var dl=document.getElementById('dateBox').querySelector('span');
+  if(MAP==='china'){
+    document.getElementById('sDate').textContent='Day '+(S.day+1);
+    if(dl) dl.textContent='of the war';
+  }else{
+    var d=new Date(1939,8,1+S.day);
+    var mon=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
+    document.getElementById('sDate').textContent=d.getDate()+' '+mon+' '+d.getFullYear();
+    if(dl) dl.textContent='day';
+  }
 
   /* selected province */
   var id=S.sel, p=S.prov[id], n=NBY[id];
+  if(!p || !n){ S.sel=firstSector(me); id=S.sel; p=S.prov[id]; n=NBY[id]; }
+  if(!p || !n) return;
   var see=(p.owner===me)||known(id);
   document.getElementById('pFlag').innerHTML=flag(n);
   document.getElementById('pName').textContent=n.name;
@@ -3032,6 +3049,15 @@ function applyMapUI(){
   if(r) r.innerHTML=P.rules;
   var ta=document.getElementById('tabAir');
   if(ta) ta.innerHTML=P.tabAir;
+  var np=document.getElementById('newsNamePanel');
+  if(np) np.textContent=P.newsName;
+  var nm=document.getElementById('newsNameModal');
+  if(nm) nm.textContent=P.newsName;
+  var tbox=document.querySelector('#tutModal .tut');
+  if(tbox){
+    if(TUT_ORIG===null) TUT_ORIG=tbox.innerHTML;
+    tbox.innerHTML=(MAP==='china'&&P.tutCN)?P.tutCN:TUT_ORIG;
+  }
   var wrap=document.getElementById('mapPick');
   if(wrap){
     var order=['europe','china'], h='';
@@ -3260,13 +3286,21 @@ function netRecv(topic,txt){
     else if(s==='cmd'){ if(o && o.p){ var nat=seatOf(o.p); if(nat) netApplyCmd(nat,o); } }
     else if(s==='lobby'){ if(NET.mode===2) recvLobby(o); }
     else if(s==='state'){ if(NET.mode===2 && NET.started) applyNetState(o); }
-    else if(s==='go'){ if(NET.mode===2 && o && o.s){ NET.started=true; netGuestStart(); } }
+    else if(s==='go'){ if(NET.mode===2 && o && o.s){
+      if(o.map && MAPS[o.map] && o.map!==MAP){ useMap(o.map); chosen=MAPS[o.map].defaultPlayer; buildMap(); buildPicker(); applyMapUI(); }
+      NET.started=true; netGuestStart();
+    } }
   }catch(e){}
 }
 function netPushLobby(){ netPubRoom('lobby', JSON.stringify(snap())); }
-function snap(){ return {h:NET.pid, hn:NET.name, seats:NET.seats, names:NET.roster, ready:NET.ready, started:!!NET.started}; }
+function snap(){ return {h:NET.pid, hn:NET.name, seats:NET.seats, names:NET.roster, ready:NET.ready, started:!!NET.started, map:MAP}; }
 function recvLobby(o){
   if(!o) return;
+  /* follow the host onto its map before listing seats */
+  if(o.map && MAPS[o.map] && o.map!==MAP){
+    useMap(o.map); chosen=MAPS[o.map].defaultPlayer;
+    buildMap(); buildPicker(); newGame(chosen); applyMapUI();
+  }
   NET.hostP=o.h; NET.hostName=o.hn||'Host';
   NET.roster=o.names||{};
   NET.seats=o.seats||{};
@@ -3433,7 +3467,8 @@ function netGuestStart(){
   document.getElementById('start').style.display='none';
   document.getElementById('net').style.display='none';
   if(!NET.myNation){ flash('You are seated?'); return; }
-  S.player=NET.myNation; S.sel=firstSector(NET.myNation);
+  if(!NBY[NET.myNation]){ flash('That province is not on this map.'); return; }
+  newGame(NET.myNation);
   setSpeed(0);
   document.getElementById('bPause').innerHTML='&#9654; (remote)';
   flash('Syncing with host '+NET.hostName+'...');
@@ -3447,7 +3482,7 @@ function netHostStart(){
   if(!gate.ok){ netSt(gate.text); return; }
   NET.started=true;
   netPushLobby();
-  netPubRoom('go', JSON.stringify({s:1}));
+  netPubRoom('go', JSON.stringify({s:1, map:MAP}));
   document.getElementById('start').style.display='none';
   document.getElementById('net').style.display='none';
   newGame(NET.hostNation);
@@ -3465,7 +3500,7 @@ function netStateOut(){
     if(u.moving) o.mv=[u.moving.to, u.moving.t, u.moving.from, u.moving.assault?1:0];
     return o;
   });
-  return {v:1, day:S.day, uid:S.uid, wars:wars, prov:prov, units:units,
+  return {v:1, map:MAP, day:S.day, uid:S.uid, wars:wars, prov:prov, units:units,
           gold:S.gold, log:S.log.slice(-20), over:!!S.over,
           news:S.news.slice(-30), elim:Array.prototype.slice.call(S.elimSet||[]),
           cap:Array.prototype.slice.call(S.capSet||[]),
@@ -3473,6 +3508,9 @@ function netStateOut(){
 }
 function applyNetState(o){
   if(!o || o.v!==1) return;
+  if(o.map && MAPS[o.map] && o.map!==MAP){
+    useMap(o.map); buildMap(); buildPicker(); applyMapUI();
+  }
   S.day=o.day; S.uid=o.uid;
   S.over=null;
   S.wars=new Set(o.wars||[]);
@@ -3495,6 +3533,7 @@ function applyNetState(o){
   S.mailSeq=o.mailSeq||0;
   S.nextDispatchDay=o.nextDispatchDay||0;
   S.nextMailDay=o.nextMailDay||0;
+  if(!S.prov[S.sel]) S.sel=firstSector(S.player);
   NET.lastState=Date.now();
   if(NET.hostOfflineWarned){ NET.hostOfflineWarned=false; }
   render();
@@ -3525,7 +3564,7 @@ function hasSave(){ try{ return !!localStorage.getItem('e1939_save'); }catch(e){
 function loadGame(){
   var o; try{ o=JSON.parse(localStorage.getItem('e1939_save')||'null'); }catch(e){ o=null; }
   if(!o || o.v!==1){ flash('No saved war found.'); return; }
-  if(NET && NET.mode!==0){ netClose(); }
+  if(NET && NET.mode!==0){ netLeave(); }
   DIFF=o.diff||'normal';
   chosen=o.player;
   /* bring the right world back before rebuilding any of its pieces */
@@ -3564,7 +3603,9 @@ function guestCheck(){
     end(false,'Your nation has been overrun. You now watch the war from the gallery.');
   } else if(landOf(me)>=WIN_NEED){
     S.over={win:true};
-    end(true,'Every territory on the continent flies your flag. Europe is yours.');
+    end(true, MAP==='china'
+      ? 'Every province on the map flies your banner. The realm is unified.'
+      : 'Every territory on the continent flies your flag. Europe is yours.');
   }
 }
 function netApplyCmd(nat,msg){
@@ -3670,10 +3711,12 @@ var SHOWCASE={heavy:1, rocket:1, hnky:1};
 var N_MONTH=['January','February','March','April','May','June','July','August','September','October','November','December'];
 var NEWS_INTERVAL=10;
 function dayFull(d){
+  if(MAP==='china') return 'Day '+(d+1);
   var dt=new Date(1939,8,1+d);
   return N_MONTH[dt.getMonth()]+' the '+dt.getDate();
 }
 function dayMeta(d){
+  if(MAP==='china') return 'Day '+(d+1)+', the war for the realm';
   var dt=new Date(1939,8,1+d);
   return N_MONTH[dt.getMonth()]+' the '+dt.getDate()+', '+dt.getFullYear();
 }
@@ -3684,6 +3727,7 @@ function Nname(id){
 }
 function newsCanvas(){ return !(NET && NET.mode===2); }
 function pick(a){ return a[(Math.random()*a.length)|0]; }
+function pickT(eu,cn){ return pick(MAP==='china'?cn:eu); }
 function news(h,b,cap){
   if(!newsCanvas()) return;
   if(S.day < (S.nextDispatchDay||0)) return;
@@ -3735,7 +3779,9 @@ function newsCaptures(evs){
     var body='On '+dayFull(first.d)+', the army of <b>'+tn+'</b> '+verb+' <b>'+list+'</b>. ';
     if(ln){
       var t=U(lead.owner,lead.type);
-      if(t.air) body+='Squadrons of the <b>'+ln+'</b> burned the roads ahead of the columns. ';
+      if(t.air) body+=pickT(
+        ['Squadrons of the <b>'+ln+'</b> burned the roads ahead of the columns. '],
+        ['Riders and engines of the <b>'+ln+'</b> swept the roads ahead of the columns. ']);
       else if(t.atk>=20) body+='The assault was led by the <b>'+ln+'</b>; nothing in the garrison was heavy enough to stop it. ';
       else if(t.def>=1.7) body+='Under the covering fire of the <b>'+ln+'</b>, the infantry moved up at first light. ';
       else if(t.mines) body+='Sappers with the <b>'+ln+'</b> had seeded the approaches the night before. ';
@@ -3744,13 +3790,22 @@ function newsCaptures(evs){
       body+='Infantry poured over the border at first light, and the defenders gave way by noon. ';
     }
     body+= isCap
-      ? pick(['The flag of '+Nname(first.old)+' came down over its capital for the last time.',
-              'The garrison surrendered as the grey columns reached the government quarter; for the people of '+Nname(first.old)+', the war has come home.',
-              'Refugees streamed out of '+names[0]+' through the night - a nation with no army left and nowhere safe to wait.'])
-      : pick(['Refugee columns choked the roads out of '+names[0]+' until after dark.',
-              'Local radios fell silent the moment the first shells landed.',
-              'The frontier posts changed hands before the church bells finished ringing.',
-              'Maps in the foreign offices were redrawn with a straight line and a sigh.']);
+      ? pickT(
+          ['The flag of '+Nname(first.old)+' came down over its capital for the last time.',
+           'The garrison surrendered as the grey columns reached the government quarter; for the people of '+Nname(first.old)+', the war has come home.',
+           'Refugees streamed out of '+names[0]+' through the night - a nation with no army left and nowhere safe to wait.'],
+          ['The banner of '+Nname(first.old)+' came down over its seat for the last time.',
+           'The garrison laid down its arms as the host reached the governor\u2019s hall; for the people of '+Nname(first.old)+', the war has come home.',
+           'Refugees streamed out of '+names[0]+' through the night - a province with no host left and nowhere safe to wait.'])
+      : pickT(
+          ['Refugee columns choked the roads out of '+names[0]+' until after dark.',
+           'Local radios fell silent the moment the first shells landed.',
+           'The frontier posts changed hands before the church bells finished ringing.',
+           'Maps in the foreign offices were redrawn with a straight line and a sigh.'],
+          ['Refugee carts choked the roads out of '+names[0]+' until after dark.',
+           'Watchfires on the frontier guttered out the moment the first volley landed.',
+           'The border passes changed hands before the temple bells finished ringing.',
+           'Lines on the magistrates\u2019 maps were redrawn with a stroke of the brush and a sigh.']);
     news(headline, body, isCap);
   }
 }
@@ -3760,11 +3815,18 @@ function newsUnveil(nid,type,loc){
   var ln=unitFancy(nid,type);
   var t=U(nid,type);
   var detail=t.air
-    ? pick(['Design bureaux across the continent have been told to answer it before the snow clears.',
-            'The airfields that can fly it count their mechanics carefully; there will be no spares.'])
-    : pick(['Engineers who worked on it say it is the heaviest thing ever put on tracks.',
-            'The proving grounds have been closed - the shots disturbed the border towns for a week.',
-            'Crews at the front already call it the end of the argument.']);
+    ? pickT(
+        ['Design bureaux across the continent have been told to answer it before the snow clears.',
+         'The airfields that can fly it count their mechanics carefully; there will be no spares.'],
+        ['Riders and siege-masters have been ordered to match it before the snows close the passes.',
+         'The stables and workshops that can field it count their horses and bolts carefully; there will be no spares.'])
+    : pickT(
+        ['Engineers who worked on it say it is the heaviest thing ever put on tracks.',
+         'The proving grounds have been closed - the shots disturbed the border towns for a week.',
+         'Crews at the front already call it the end of the argument.'],
+        ['Artisans who worked on it say it is the heaviest thing ever set on wheels.',
+         'The drill grounds have been closed - the clatter disturbed the border towns for a week.',
+         'Levies at the frontier already call it the end of the argument.']);
   news(tn+' unveils the '+ln,
     'On '+dayFull(S.day)+', '+tn+' paraded a new weapon for the armies at the front: the '+
     t.name.toLowerCase()+' <b>'+ln+'</b>, shipped to '+Nname(loc)+'. '+detail, true);
@@ -3806,9 +3868,9 @@ function newsElim(){
     if(landOf(n.id)===0 && unitsOf(n.id).length===0){
       S.elimSet.add(n.id);
       news(Nname(n.id)+' is wiped from the map',
-        'On '+dayFull(S.day)+', the last '+Nname(n.id)+' flag was lowered. After '+S.day+' days of war, '+
-        'the nation is a casualty list and a rumour - no army, no territory, no government left to receive the surrender. '+
-        'The continent fights on over the ruins.', true);
+        'On '+dayFull(S.day)+', the last '+Nname(n.id)+' flag was lowered. After '+(S.day+1)+' days of war, '+
+        'the '+(MAP==='china'?'province':'nation')+' is a casualty list and a rumour - no army, no territory, no government left to receive the surrender. '+
+        (MAP==='china'?'The realm fights on over the ruins.':'The continent fights on over the ruins.'), true);
     }
   });
 }
@@ -3853,10 +3915,11 @@ function setMailFocus(v){ MAIL_FOCUS=v; syncUIPause(); }
 function setNewsFocus(v){ NEWS_FOCUS=!!v; syncUIPause(); }
 function setNewsHover(v){ NEWS_HOVER=!!v; syncUIPause(); }
 function uiPauseHint(){
+  var nn=currentMap().newsName;
   if(MAIL_FOCUS!==null) return 'Close the diplomatic pouch to resume the war.';
-  if(NEWS_FOCUS) return 'Close THE CONTINENTAL to resume the war.';
+  if(NEWS_FOCUS) return 'Close '+nn+' to resume the war.';
   if(NEWS_HOVER) return 'Move off the paper to resume the war.';
-  return 'Close THE CONTINENTAL to resume the war.';
+  return 'Close '+nn+' to resume the war.';
 }
 function openMail(id){
   var me=S.player;
@@ -3885,7 +3948,7 @@ var COMPOSE_SUBJECTS=[
   {id:'trade', label:'Propose a trade agreement', dMood:1,
    body:'Gold, timber, steel - no nation has everything. I propose our merchants move freely and both treasuries breathe a little easier.'},
   {id:'praise', label:'Send congratulations', dMood:2,
-   body:'Your soldiers are the talk of every chancellery in Europe. I write to salute a nation that has earned its place on the map.'},
+   body:'Your soldiers are the talk of every court in the land. I write to salute a nation that has earned its place on the map.'},
   {id:'warning', label:'Issue a warning', dMood:-1,
    body:'Consider this a courtesy. Keep your armies away from my frontier, and there will be no unpleasantness between us.'},
   {id:'ultimatum', label:'Issue an ultimatum', dMood:-3, war:true,
@@ -3921,10 +3984,10 @@ var MAIL_KINDS={
     ]; }
   },
   threat:{
-    sub:['An ultimatum','A threat from the chancellery','Your doom approaches'],
+    sub:['An ultimatum','A threat from the court','Your doom approaches'],
     body:function(fn,tn){ return pick([
       'The letter from '+fn+' is short and ugly: "Surrender your pretensions, or we will bury them."',
-      fn+' declares that '+tn+' has made an enemy it cannot afford. "The next courier brings artillery."',
+      fn+' declares that '+tn+' has made an enemy it cannot afford. "The next courier brings engines of war."',
       'A black-bordered note from '+fn+' lists the towns it will burn first.'
     ]); },
     replies:function(){ return [
@@ -3950,7 +4013,7 @@ var MAIL_KINDS={
   praise:{
     sub:['Congratulations','A toast from the capital','In admiration'],
     body:function(fn,tn){ return pick([
-      'The salons of '+fn+' raise a glass to '+tn+'. "The whole continent watches your soldiers with admiration."',
+      'The salons of '+fn+' raise a glass to '+tn+'. "The whole world watches your soldiers with admiration."',
       fn+' writes to offer congratulations on the campaign - and, perhaps, to be remembered as a friend.',
       'A letter of praise arrives from '+fn+', full of flattery and careful good wishes.'
     ]); },
@@ -3965,7 +4028,7 @@ var MAIL_KINDS={
     body:function(fn,tn){ return pick([
       fn+' passes along a rumour: another court is arming, and its eyes are not on its own borders.',
       'A wine-stained note from '+fn+' claims to know where the next war will begin - and it is not between you.',
-      'The intelligence service of '+fn+' shares what it has heard: troop trains, night movements, sealed orders.'
+      'The intelligence service of '+fn+' shares what it has heard: columns on the march, night movements, sealed orders.'
     ]); },
     replies:function(){ return [
       {t:'Thank them', m:1},
@@ -4017,7 +4080,7 @@ function respondMail(from,to){
     sub=pick(['A cold reply','Your enemy answers','No quarter']);
     body=Nname(from)+' is not appeased. "Remember these words when the guns turn your way."';
   } else {
-    sub=pick(['A measured reply','The chancellery replies','Your note, received']);
+    sub=pick(['A measured reply','The court replies','Your note, received']);
     body=Nname(from)+' gives nothing away. "Your note has been received and weighed. Time will tell."';
   }
   addMail(from,to,sub,body,simpleReplies(tone==='friendly'));
