@@ -37,13 +37,6 @@
     border-bottom: 1px solid var(--border);
   }
   .topbar .brand { font-weight: 700; letter-spacing: 1px; }
-  .lang-switch {
-    background: var(--panel); color: var(--text);
-    border: 1px solid var(--border); border-radius: 999px;
-    padding: 6px 16px; cursor: pointer; font-size: 0.85rem;
-    transition: all .2s;
-  }
-  .lang-switch:hover { border-color: var(--muted); }
 
   header {
     padding: 56px 20px 40px;
@@ -121,7 +114,7 @@
   .legend span { display: flex; align-items: center; gap: 6px; }
   .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 
-  /* 地图 */
+  /* Map */
   .map-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
   .map-year { text-align: center; font-size: 1.5rem; font-weight: 700; color: var(--gold); margin-bottom: 2px; }
   .map-phase { text-align: center; font-size: 1rem; font-weight: 600; margin-bottom: 4px; }
@@ -156,12 +149,11 @@
   .avatar.axis { background: linear-gradient(135deg, #e5534b, #7a2e2a); }
   .avatar.allies { background: linear-gradient(135deg, #3b82f6, #1e40af); }
   .figure .name { font-size: 1.15rem; font-weight: 700; }
-  .figure .en-name { color: var(--muted); font-size: 0.85rem; margin-bottom: 4px; }
   .figure .role { color: var(--gold); font-size: 0.85rem; margin-bottom: 8px; }
   .figure .fact { color: var(--muted); font-size: 0.85rem; text-align: left; }
   .figure .hint { color: var(--gold); font-size: 0.75rem; margin-top: 8px; opacity: 0.8; }
 
-  /* 人物详情弹窗 */
+  /* Figure detail modal */
   .modal-overlay {
     position: fixed; inset: 0; background: rgba(0,0,0,.65);
     display: none; align-items: center; justify-content: center;
@@ -190,7 +182,7 @@
   .modal-events li:last-child { border-bottom: none; }
   .modal-events .yr { color: var(--gold); font-weight: 700; min-width: 58px; flex-shrink: 0; }
 
-  /* 人物头像照片 */
+  /* Figure portrait photos */
   .avatar, .modal-avatar { position: relative; overflow: hidden; }
   .portrait { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: none; }
 
@@ -200,21 +192,20 @@
 <body>
 
 <div class="topbar">
-  <div class="brand" data-i18n="brand">欧洲二战全过程</div>
-  <button class="lang-switch" id="langSwitch">EN</button>
+  <div class="brand" data-i18n="brand">WWII in Europe</div>
 </div>
 
 <header>
-  <h1 data-i18n="title">欧洲二战全过程</h1>
-  <p data-i18n="subtitle">1939 — 1945 · 从入侵波兰到德国无条件投降</p>
+  <h1 data-i18n="title">World War II in Europe</h1>
+  <p data-i18n="subtitle">1939 — 1945 · From the invasion of Poland to Germany's surrender</p>
   <div class="stats" id="stats"></div>
 </header>
 
 <div class="container">
 
   <section id="map">
-    <h2 data-i18n="mapTitle">欧洲领土控制变化</h2>
-    <p class="sub" data-i18n="mapSub">拖动或播放查看 1939–1945 年轴心国与盟军控制区域及关键战役的演变。</p>
+    <h2 data-i18n="mapTitle">Territorial Control of Europe</h2>
+    <p class="sub" data-i18n="mapSub">Drag or play through 1939–1945 to see how Axis and Allied control, plus key battles, evolved.</p>
     <div class="map-panel">
       <div class="map-year" id="mapYear">1939.09</div>
       <div class="map-phase" id="mapPhase"></div>
@@ -241,8 +232,8 @@
   </section>
 
   <section id="chart">
-    <h2 data-i18n="chartTitle">轴心国控制欧洲版图的变化</h2>
-    <p class="sub" data-i18n="chartSub">以下曲线估算轴心国（纳粹德国及其盟友）控制的欧洲领土比例，从闪电战扩张到最终崩溃。</p>
+    <h2 data-i18n="chartTitle">Axis Control of Europe Over Time</h2>
+    <p class="sub" data-i18n="chartSub">Estimated share of European territory under Axis (Nazi Germany and allies) control, from Blitzkrieg expansion to final collapse.</p>
     <div class="chart-wrap">
       <svg id="controlChart" width="100%" height="340" viewBox="0 0 900 340" preserveAspectRatio="xMidYMid meet"></svg>
       <div class="tooltip" id="chartTip"></div>
@@ -251,16 +242,16 @@
   </section>
 
   <section id="timeline">
-    <h2 data-i18n="timelineTitle">事件时间轴</h2>
+    <h2 data-i18n="timelineTitle">Timeline of Events</h2>
     <div class="filters" id="filters"></div>
     <div style="margin-bottom:18px;">
-      <button class="btn primary" id="timelinePlay">&#9654; <span data-i18n="autoPlay">自动播放</span></button>
+      <button class="btn primary" id="timelinePlay">&#9654; <span data-i18n="autoPlay">Autoplay</span></button>
     </div>
     <div class="timeline" id="timelineList"></div>
   </section>
 
   <section id="figures">
-    <h2 data-i18n="figuresTitle">关键人物</h2>
+    <h2 data-i18n="figuresTitle">Key Figures</h2>
     <div class="figures" id="figuresList"></div>
   </section>
 
@@ -282,32 +273,12 @@
   </div>
 </div>
 
-<footer data-i18n="footer">数据基于公开历史资料整理，为教学演示用途，部分数字为估算值。地图数据：© ammap.com</footer>
+<footer data-i18n="footer">Data compiled from public historical sources for educational purposes; some figures are estimates.</footer>
 
 <script src="europe-geo.js"></script>
 <script>
-// ================= 语言 =================
-let lang = "en";
+// ================= Language =================
 const I18N = {
-  zh: {
-    brand: "欧洲二战全过程", title: "欧洲二战全过程",
-    subtitle: "1939 — 1945 · 从入侵波兰到德国无条件投降",
-    chartTitle: "轴心国控制欧洲版图的变化",
-    chartSub: "以下曲线估算轴心国（纳粹德国及其盟友）控制的欧洲领土比例，从闪电战扩张到最终崩溃。",
-    mapTitle: "欧洲领土控制变化",
-    mapSub: "拖动或播放查看 1939–1945 年轴心国与盟军控制区域及关键战役的演变。",
-    timelineTitle: "事件时间轴", figuresTitle: "关键人物", autoPlay: "自动播放",
-    footer: "数据基于公开历史资料整理，为教学演示用途，部分数字为估算值。",
-    statDuration: "战争持续时间", statCountries: "参战国（含殖民地）",
-    statDeaths: "死亡人数（全球）", statCamps: "主要阵营",
-    legendAxis: "轴心国", legendAllies: "盟军", legendNeutral: "中立", legendOccupied: "轴心占领",
-    legendBattle: "战役", legendCity: "主要城市",
-    legendCurve: "轴心国控制比例", legendCounter: "盟军反攻（1943后）", legendNode: "关键战役节点",
-    stateAxis: "轴心国", stateOccupied: "轴心占领", stateAllies: "盟军", stateNeutral: "中立",
-    axisCount: "轴心控制国家：{n} 个", stage: "阶段 {i} / {n}",
-    all: "全部", pause: "暂停", resume: "继续",
-    keyEvents: "重要经历", life: "生卒", viewDetail: "点击查看详情"
-  },
   en: {
     brand: "WWII in Europe", title: "World War II in Europe",
     subtitle: "1939 — 1945 · From the invasion of Poland to Germany's surrender",
@@ -328,152 +299,152 @@ const I18N = {
     keyEvents: "Key events", life: "Life", viewDetail: "Click for details"
   }
 };
-function t(key) { return I18N[lang][key]; }
-function tt(obj) { return obj[lang]; }
+function t(key) { return I18N[key]; }
+function tt(obj) { return obj.en; }
 
-// ================= 阶段 =================
+// ================= Phases =================
 const PHASES = {
-  outbreak: { zh: "战争爆发", en: "Outbreak", color: "#d4a72c" },
-  blitz:    { zh: "闪电战",   en: "Blitzkrieg", color: "#e5534b" },
-  east:     { zh: "东线",     en: "Eastern Front", color: "#a83232" },
-  turning:  { zh: "转折",     en: "Turning Point", color: "#3b82f6" },
-  liberation:{ zh: "解放",    en: "Liberation", color: "#22c55e" },
-  end:      { zh: "终结",     en: "Final Defeat", color: "#8b5cf6" },
+  outbreak: {  en: "Outbreak", color: "#d4a72c" },
+  blitz:    {    en: "Blitzkrieg", color: "#e5534b" },
+  east:     {      en: "Eastern Front", color: "#a83232" },
+  turning:  {      en: "Turning Point", color: "#3b82f6" },
+  liberation:{     en: "Liberation", color: "#22c55e" },
+  end:      {      en: "Final Defeat", color: "#8b5cf6" },
 };
 
-// ================= 事件 =================
+// ================= Events =================
 const events = [
-  { date:{zh:"1939年9月1日",en:"1 Sep 1939"}, phase:"outbreak", side:"axis",
-    title:{zh:"德国入侵波兰",en:"Germany invades Poland"},
-    desc:{zh:"德军以闪电战突袭波兰，第二次世界大战欧洲战场爆发。",en:"Germany launches a Blitzkrieg on Poland, starting WWII in Europe."},
-    detail:{zh:"德军出动约60个师、2000多辆坦克和飞机，实施空地一体化的闪电战。两天后，英国和法国对德宣战，但未采取实质性军事行动，进入所谓的「假战」阶段。波兰在一个月内被占领。",en:"Germany attacked with ~60 divisions, 2000+ tanks and aircraft. Britain and France declared war two days later but took little action, entering the 'Phoney War'. Poland fell within a month."} },
-  { date:{zh:"1939年9月17日",en:"17 Sep 1939"}, phase:"outbreak", side:"axis",
-    title:{zh:"苏联入侵波兰东部",en:"Soviet invasion of eastern Poland"},
-    desc:{zh:"根据《莫洛托夫-里宾特洛甫条约》秘密议定书，苏联占领波兰东部。",en:"Under the secret protocol of the Molotov–Ribbentrop Pact, the USSR occupies eastern Poland."},
-    detail:{zh:"苏德两国在战争爆发前签订互不侵犯条约并划分东欧势力范围。苏联随后吞并了波兰东部、波罗的海三国及芬兰部分领土。",en:"The USSR then annexed eastern Poland, the Baltic states and parts of Finland."} },
-  { date:{zh:"1939年11月30日",en:"30 Nov 1939"}, phase:"outbreak", side:"allies",
-    title:{zh:"苏芬战争",en:"Winter War"},
-    desc:{zh:"苏联入侵芬兰，冬季战争爆发，芬兰顽强抵抗。",en:"The USSR invades Finland; Finland resists fiercely in the Winter War."},
-    detail:{zh:"芬兰军队凭借地形与战术在冰天雪地中给苏军造成巨大伤亡，但最终于1940年3月被迫割让约10%的领土。",en:"Finland inflicted heavy casualties on the Red Army but ceded ~10% of its territory in March 1940."} },
-  { date:{zh:"1940年4月9日",en:"9 Apr 1940"}, phase:"blitz", side:"axis",
-    title:{zh:"入侵丹麦与挪威",en:"Invasion of Denmark & Norway"},
-    desc:{zh:"德军占领丹麦、挪威，确保瑞典铁矿石运输线和北欧战略地位。",en:"Germany occupies Denmark and Norway to secure Swedish iron ore routes."},
-    detail:{zh:"丹麦在数小时内投降，挪威在英国援助下抵抗至6月。纳尔维克海战与登陆作战是盟军的亮点，但最终仍告失败。",en:"Denmark surrendered within hours; Norway held out until June with British help but ultimately fell."} },
-  { date:{zh:"1940年5月10日",en:"10 May 1940"}, phase:"blitz", side:"axis",
-    title:{zh:"西线攻势与法国战役",en:"Battle of France"},
-    desc:{zh:"德军绕过马奇诺防线，经阿登森林突入法国。",en:"Germany bypasses the Maginot Line and breaks through the Ardennes into France."},
-    detail:{zh:"德军主攻方向选择盟军认为坦克无法通过的阿登山区，装甲部队在数日内突破色当，切断英法联军主力。",en:"Panzer divisions broke through at Sedan within days, cutting off the main Allied armies."} },
-  { date:{zh:"1940年5月26日",en:"26 May 1940"}, phase:"blitz", side:"allies",
-    title:{zh:"敦刻尔克大撤退",en:"Dunkirk evacuation"},
-    desc:{zh:"约33.8万盟军士兵从敦刻尔克海滩撤离至英国。",en:"About 338,000 Allied troops are evacuated from Dunkirk to Britain."},
-    detail:{zh:"在德军装甲部队暂停进攻的间隙，英国动员了大量民用船只参与撤退，保存了英军绝大部分有生力量。",en:"Britain mobilized hundreds of civilian 'little ships' to rescue the army, saving Britain's fighting force."} },
-  { date:{zh:"1940年6月22日",en:"22 Jun 1940"}, phase:"blitz", side:"axis",
-    title:{zh:"法国投降",en:"Fall of France"},
-    desc:{zh:"法国在贡比涅签署停战协定，法国被分区占领。",en:"France signs an armistice at Compiègne and is partitioned and occupied."},
-    detail:{zh:"停战协定在当年德国签署投降书的同一节车厢中签署。法国北部和西部由德国占领，南部由维希傀儡政府控制。",en:"The armistice was signed in the same railway carriage as Germany's 1918 surrender; the north was occupied and the south run by the Vichy regime."} },
-  { date:{zh:"1940年7月-10月",en:"Jul–Oct 1940"}, phase:"blitz", side:"allies",
-    title:{zh:"不列颠空战",en:"Battle of Britain"},
-    desc:{zh:"德国空军对英国发动大规模空袭，英国皇家空军顽强抗击。",en:"The Luftwaffe attacks Britain; the RAF holds firm."},
-    detail:{zh:"这是二战中首次完全由空军进行的战役。英国的雷达预警与战斗机指挥体系发挥关键作用，最终迫使希特勒放弃登陆英国的海狮计划。",en:"Britain's radar and fighter command defeated the Luftwaffe, forcing Hitler to abandon Operation Sea Lion — Germany's first major setback."} },
-  { date:{zh:"1941年6月22日",en:"22 Jun 1941"}, phase:"east", side:"axis",
-    title:{zh:"巴巴罗萨行动",en:"Operation Barbarossa"},
-    desc:{zh:"德国撕毁互不侵犯条约，以约300万兵力对苏联发动全面入侵。",en:"Germany invades the USSR with ~3 million men, opening the Eastern Front."},
-    detail:{zh:"德军分北方、中央、南方三个集团军群推进，初期势如破竹，包围并歼灭大量苏军，但未能实现速决战的目标。",en:"Three army groups advanced rapidly and destroyed whole Soviet armies, but failed to win a quick victory."} },
-  { date:{zh:"1941年9月-1944年1月",en:"Sep 1941–Jan 1944"}, phase:"east", side:"axis",
-    title:{zh:"列宁格勒围城战",en:"Siege of Leningrad"},
-    desc:{zh:"德军封锁列宁格勒长达872天，造成约100万平民死亡。",en:"Leningrad is besieged for 872 days, killing ~1 million civilians."},
-    detail:{zh:"居民在饥饿与严寒中坚持抵抗，通过「生命之路」获得有限补给，是二战史上最惨烈的围城战之一。",en:"The city survived on supplies across frozen Lake Ladoga — the 'Road of Life' — in one of history's most brutal sieges."} },
-  { date:{zh:"1941年10月-1942年1月",en:"Oct 1941–Jan 1942"}, phase:"east", side:"allies",
-    title:{zh:"莫斯科保卫战",en:"Battle of Moscow"},
-    desc:{zh:"苏军挫败德军攻占莫斯科的台风行动，打破德军不可战胜神话。",en:"The Red Army halts Operation Typhoon, shattering the myth of German invincibility."},
-    detail:{zh:"德军推进至距莫斯科仅数十公里处，但苏联军民死守，并趁严冬发起反攻。这是德国陆军在二战中的第一次重大战略失败。",en:"German forces reached the city's outskirts but were thrown back by a winter counteroffensive."} },
-  { date:{zh:"1941年12月7日",en:"7 Dec 1941"}, phase:"east", side:"neutral",
-    title:{zh:"珍珠港事件（亚太）",en:"Pearl Harbor (Pacific)"},
-    desc:{zh:"日本偷袭美国珍珠港，美国参战，战争扩展为全球冲突。",en:"Japan attacks Pearl Harbor, bringing the US into a global war."},
-    detail:{zh:"虽然发生在太平洋，但美国参战使欧洲战场的战略天平彻底改变。美英确定「先欧后亚」战略，为欧洲战场的胜利提供决定性资源。",en:"US entry transformed the balance of power; the Allies adopted a 'Germany first' strategy."} },
-  { date:{zh:"1942年8月-1943年2月",en:"Aug 1942–Feb 1943"}, phase:"turning", side:"allies",
-    title:{zh:"斯大林格勒战役",en:"Battle of Stalingrad"},
-    desc:{zh:"二战转折点，德军第6集团军约30万人被围歼。",en:"The war's turning point: the German 6th Army (~300,000 men) is surrounded and destroyed."},
-    detail:{zh:"这场惨烈的城市巷战和随后的冬季反攻（天王星行动）彻底扭转了东线战局，德国在东线由攻转守。",en:"Operation Uranus encircled the 6th Army; Field Marshal Paulus surrendered, putting Germany on the defensive in the East."} },
-  { date:{zh:"1942年10月-11月",en:"Oct–Nov 1942"}, phase:"turning", side:"allies",
-    title:{zh:"阿拉曼战役",en:"Battle of El Alamein"},
-    desc:{zh:"蒙哥马利指挥英军在埃及击败隆美尔的非洲军团。",en:"Montgomery's Eighth Army defeats Rommel's Afrika Korps in Egypt."},
-    detail:{zh:"第二次阿拉曼战役标志北非战场的转机。丘吉尔称「阿拉曼之前我们没有胜利，之后我们没有失败」。",en:"The victory turned the tide in North Africa; Churchill said 'Before Alamein we never had a victory.'"} },
-  { date:{zh:"1943年7月",en:"Jul 1943"}, phase:"turning", side:"allies",
-    title:{zh:"库尔斯克会战",en:"Battle of Kursk"},
-    desc:{zh:"史上最大规模坦克战，德军「堡垒行动」失败。",en:"The largest tank battle in history ends in German defeat."},
-    detail:{zh:"苏军在普罗霍罗夫卡等地的坦克决战中击退德军装甲集群，从此东线的战略主动权完全转入苏联手中。",en:"After the tank clash at Prokhorovka, the strategic initiative in the East passed permanently to the USSR."} },
-  { date:{zh:"1943年7月-8月",en:"Jul–Aug 1943"}, phase:"turning", side:"allies",
-    title:{zh:"西西里登陆与意大利投降",en:"Sicily & Italy's surrender"},
-    desc:{zh:"盟军登陆西西里岛，墨索里尼下台，意大利倒戈。",en:"The Allies invade Sicily, Mussolini falls, and Italy switches sides."},
-    detail:{zh:"盟军随后在意大利本土登陆，德军接管意大利北部并长期顽抗，意大利战场推进缓慢而惨烈。",en:"Germany occupied northern Italy and resisted stubbornly on the slow, bloody Italian front."} },
-  { date:{zh:"1944年6月6日",en:"6 Jun 1944"}, phase:"liberation", side:"allies",
-    title:{zh:"诺曼底登陆（D-Day）",en:"D-Day: Normandy landings"},
-    desc:{zh:"盟军实施史上最大规模两栖登陆，开辟西线第二战场。",en:"The largest amphibious landing in history opens a second front in the West."},
-    detail:{zh:"约15.6万盟军士兵在奥马哈、犹他、金、剑、朱诺五处海滩登陆，成功建立滩头阵地，是西线反攻的开端。",en:"~156,000 troops landed on five beaches (Omaha, Utah, Gold, Sword, Juno), securing a foothold for the Western counteroffensive."} },
-  { date:{zh:"1944年6月-8月",en:"Jun–Aug 1944"}, phase:"liberation", side:"allies",
-    title:{zh:"巴格拉季昂行动",en:"Operation Bagration"},
-    desc:{zh:"苏军在白俄罗斯发动大规模攻势，重创德军中央集团军群。",en:"The Red Army smashes Army Group Centre in Belorussia."},
-    detail:{zh:"苏军以约240万兵力进攻，几乎全歼德国中央集团军群，是德军损失最惨重的战役之一，与诺曼底登陆形成东西夹击。",en:"A massive offensive nearly annihilated Army Group Centre, complementing D-Day with a devastating blow in the East."} },
-  { date:{zh:"1944年8月25日",en:"25 Aug 1944"}, phase:"liberation", side:"allies",
-    title:{zh:"巴黎解放",en:"Liberation of Paris"},
-    desc:{zh:"盟军与法国抵抗力量解放巴黎。",en:"Allied and French Resistance forces liberate Paris."},
-    detail:{zh:"在盟军逼近之际，巴黎市民发动起义，自由法国第2装甲师率先入城，戴高乐随后在凯旋门下举行胜利游行。",en:"Parisians rose up, and the Free French 2nd Armored Division entered the city; de Gaulle led a victory parade down the Champs-Élysées."} },
-  { date:{zh:"1944年12月-1945年1月",en:"Dec 1944–Jan 1945"}, phase:"liberation", side:"axis",
-    title:{zh:"突出部战役（阿登反击）",en:"Battle of the Bulge"},
-    desc:{zh:"德军在西线发动最后的战略反攻，最终失败。",en:"Germany's last major Western offensive fails."},
-    detail:{zh:"德军在阿登地区突袭兵力空虚的美军防线，一度造成突出部，但被盟军航空兵和增援部队挫败，耗尽德国西线最后预备队。",en:"The surprise attack in the Ardennes was blunted by Allied air power and reinforcements, exhausting Germany's last reserves."} },
-  { date:{zh:"1945年1月-4月",en:"Jan–Apr 1945"}, phase:"end", side:"allies",
-    title:{zh:"东线大攻势",en:"Vistula–Oder Offensive"},
-    desc:{zh:"苏军发起维斯瓦河-奥得河攻势，兵临柏林。",en:"The Red Army advances from the Vistula to the Oder, closing on Berlin."},
-    detail:{zh:"苏军迅速推进至距柏林仅约60公里处，并肃清东普鲁士、波美拉尼亚等地的德军，为柏林战役铺平道路。",en:"Soviet forces reached within ~60 km of Berlin, clearing East Prussia and Pomerania for the final assault."} },
-  { date:{zh:"1945年2月",en:"Feb 1945"}, phase:"end", side:"neutral",
-    title:{zh:"雅尔塔会议",en:"Yalta Conference"},
-    desc:{zh:"美英苏三巨头确定战后欧洲格局。",en:"Roosevelt, Churchill and Stalin decide postwar Europe."},
-    detail:{zh:"三巨头在克里米亚雅尔塔会晤，讨论战后德国处置、波兰边界与联合国成立等议题，奠定战后世界秩序。",en:"The Big Three discussed the postwar division of Germany, Poland's borders and the founding of the UN."} },
-  { date:{zh:"1945年4月16日-5月2日",en:"16 Apr–2 May 1945"}, phase:"end", side:"allies",
-    title:{zh:"柏林战役",en:"Battle of Berlin"},
-    desc:{zh:"苏军对柏林发起总攻，红旗插上国会大厦。",en:"The Red Army storms Berlin; the Soviet flag rises over the Reichstag."},
-    detail:{zh:"约250万苏军从奥得河前线发起进攻，与守城德军展开残酷巷战。4月30日希特勒自杀，5月2日柏林守军投降。",en:"~2.5 million Soviet troops fought bitter street battles; Hitler committed suicide on 30 April and Berlin surrendered on 2 May."} },
-  { date:{zh:"1945年5月8日",en:"8 May 1945"}, phase:"end", side:"allies",
-    title:{zh:"德国无条件投降",en:"Germany's unconditional surrender"},
-    desc:{zh:"纳粹德国正式签署无条件投降书，欧洲战场结束。",en:"Nazi Germany signs an unconditional surrender, ending the war in Europe."},
-    detail:{zh:"投降书于5月8日生效（俄罗斯因时差纪念为5月9日胜利日）。欧洲二战至此结束，但太平洋战场仍在继续。",en:"The surrender took effect on 8 May (Victory Day, 9 May in Russia). War in Europe ended, though the Pacific war continued."} },
+  { date:{en:"1 Sep 1939"}, phase:"outbreak", side:"axis",
+    title:{en:"Germany invades Poland"},
+    desc:{en:"Germany launches a Blitzkrieg on Poland, starting WWII in Europe."},
+    detail:{en:"Germany attacked with ~60 divisions, 2000+ tanks and aircraft. Britain and France declared war two days later but took little action, entering the 'Phoney War'. Poland fell within a month."} },
+  { date:{en:"17 Sep 1939"}, phase:"outbreak", side:"axis",
+    title:{en:"Soviet invasion of eastern Poland"},
+    desc:{en:"Under the secret protocol of the Molotov–Ribbentrop Pact, the USSR occupies eastern Poland."},
+    detail:{en:"The USSR then annexed eastern Poland, the Baltic states and parts of Finland."} },
+  { date:{en:"30 Nov 1939"}, phase:"outbreak", side:"allies",
+    title:{en:"Winter War"},
+    desc:{en:"The USSR invades Finland; Finland resists fiercely in the Winter War."},
+    detail:{en:"Finland inflicted heavy casualties on the Red Army but ceded ~10% of its territory in March 1940."} },
+  { date:{en:"9 Apr 1940"}, phase:"blitz", side:"axis",
+    title:{en:"Invasion of Denmark & Norway"},
+    desc:{en:"Germany occupies Denmark and Norway to secure Swedish iron ore routes."},
+    detail:{en:"Denmark surrendered within hours; Norway held out until June with British help but ultimately fell."} },
+  { date:{en:"10 May 1940"}, phase:"blitz", side:"axis",
+    title:{en:"Battle of France"},
+    desc:{en:"Germany bypasses the Maginot Line and breaks through the Ardennes into France."},
+    detail:{en:"Panzer divisions broke through at Sedan within days, cutting off the main Allied armies."} },
+  { date:{en:"26 May 1940"}, phase:"blitz", side:"allies",
+    title:{en:"Dunkirk evacuation"},
+    desc:{en:"About 338,000 Allied troops are evacuated from Dunkirk to Britain."},
+    detail:{en:"Britain mobilized hundreds of civilian 'little ships' to rescue the army, saving Britain's fighting force."} },
+  { date:{en:"22 Jun 1940"}, phase:"blitz", side:"axis",
+    title:{en:"Fall of France"},
+    desc:{en:"France signs an armistice at Compiègne and is partitioned and occupied."},
+    detail:{en:"The armistice was signed in the same railway carriage as Germany's 1918 surrender; the north was occupied and the south run by the Vichy regime."} },
+  { date:{en:"Jul–Oct 1940"}, phase:"blitz", side:"allies",
+    title:{en:"Battle of Britain"},
+    desc:{en:"The Luftwaffe attacks Britain; the RAF holds firm."},
+    detail:{en:"Britain's radar and fighter command defeated the Luftwaffe, forcing Hitler to abandon Operation Sea Lion — Germany's first major setback."} },
+  { date:{en:"22 Jun 1941"}, phase:"east", side:"axis",
+    title:{en:"Operation Barbarossa"},
+    desc:{en:"Germany invades the USSR with ~3 million men, opening the Eastern Front."},
+    detail:{en:"Three army groups advanced rapidly and destroyed whole Soviet armies, but failed to win a quick victory."} },
+  { date:{en:"Sep 1941–Jan 1944"}, phase:"east", side:"axis",
+    title:{en:"Siege of Leningrad"},
+    desc:{en:"Leningrad is besieged for 872 days, killing ~1 million civilians."},
+    detail:{en:"The city survived on supplies across frozen Lake Ladoga — the 'Road of Life' — in one of history's most brutal sieges."} },
+  { date:{en:"Oct 1941–Jan 1942"}, phase:"east", side:"allies",
+    title:{en:"Battle of Moscow"},
+    desc:{en:"The Red Army halts Operation Typhoon, shattering the myth of German invincibility."},
+    detail:{en:"German forces reached the city's outskirts but were thrown back by a winter counteroffensive."} },
+  { date:{en:"7 Dec 1941"}, phase:"east", side:"neutral",
+    title:{en:"Pearl Harbor (Pacific)"},
+    desc:{en:"Japan attacks Pearl Harbor, bringing the US into a global war."},
+    detail:{en:"US entry transformed the balance of power; the Allies adopted a 'Germany first' strategy."} },
+  { date:{en:"Aug 1942–Feb 1943"}, phase:"turning", side:"allies",
+    title:{en:"Battle of Stalingrad"},
+    desc:{en:"The war's turning point: the German 6th Army (~300,000 men) is surrounded and destroyed."},
+    detail:{en:"Operation Uranus encircled the 6th Army; Field Marshal Paulus surrendered, putting Germany on the defensive in the East."} },
+  { date:{en:"Oct–Nov 1942"}, phase:"turning", side:"allies",
+    title:{en:"Battle of El Alamein"},
+    desc:{en:"Montgomery's Eighth Army defeats Rommel's Afrika Korps in Egypt."},
+    detail:{en:"The victory turned the tide in North Africa; Churchill said 'Before Alamein we never had a victory.'"} },
+  { date:{en:"Jul 1943"}, phase:"turning", side:"allies",
+    title:{en:"Battle of Kursk"},
+    desc:{en:"The largest tank battle in history ends in German defeat."},
+    detail:{en:"After the tank clash at Prokhorovka, the strategic initiative in the East passed permanently to the USSR."} },
+  { date:{en:"Jul–Aug 1943"}, phase:"turning", side:"allies",
+    title:{en:"Sicily & Italy's surrender"},
+    desc:{en:"The Allies invade Sicily, Mussolini falls, and Italy switches sides."},
+    detail:{en:"Germany occupied northern Italy and resisted stubbornly on the slow, bloody Italian front."} },
+  { date:{en:"6 Jun 1944"}, phase:"liberation", side:"allies",
+    title:{en:"D-Day: Normandy landings"},
+    desc:{en:"The largest amphibious landing in history opens a second front in the West."},
+    detail:{en:"~156,000 troops landed on five beaches (Omaha, Utah, Gold, Sword, Juno), securing a foothold for the Western counteroffensive."} },
+  { date:{en:"Jun–Aug 1944"}, phase:"liberation", side:"allies",
+    title:{en:"Operation Bagration"},
+    desc:{en:"The Red Army smashes Army Group Centre in Belorussia."},
+    detail:{en:"A massive offensive nearly annihilated Army Group Centre, complementing D-Day with a devastating blow in the East."} },
+  { date:{en:"25 Aug 1944"}, phase:"liberation", side:"allies",
+    title:{en:"Liberation of Paris"},
+    desc:{en:"Allied and French Resistance forces liberate Paris."},
+    detail:{en:"Parisians rose up, and the Free French 2nd Armored Division entered the city; de Gaulle led a victory parade down the Champs-Élysées."} },
+  { date:{en:"Dec 1944–Jan 1945"}, phase:"liberation", side:"axis",
+    title:{en:"Battle of the Bulge"},
+    desc:{en:"Germany's last major Western offensive fails."},
+    detail:{en:"The surprise attack in the Ardennes was blunted by Allied air power and reinforcements, exhausting Germany's last reserves."} },
+  { date:{en:"Jan–Apr 1945"}, phase:"end", side:"allies",
+    title:{en:"Vistula–Oder Offensive"},
+    desc:{en:"The Red Army advances from the Vistula to the Oder, closing on Berlin."},
+    detail:{en:"Soviet forces reached within ~60 km of Berlin, clearing East Prussia and Pomerania for the final assault."} },
+  { date:{en:"Feb 1945"}, phase:"end", side:"neutral",
+    title:{en:"Yalta Conference"},
+    desc:{en:"Roosevelt, Churchill and Stalin decide postwar Europe."},
+    detail:{en:"The Big Three discussed the postwar division of Germany, Poland's borders and the founding of the UN."} },
+  { date:{en:"16 Apr–2 May 1945"}, phase:"end", side:"allies",
+    title:{en:"Battle of Berlin"},
+    desc:{en:"The Red Army storms Berlin; the Soviet flag rises over the Reichstag."},
+    detail:{en:"~2.5 million Soviet troops fought bitter street battles; Hitler committed suicide on 30 April and Berlin surrendered on 2 May."} },
+  { date:{en:"8 May 1945"}, phase:"end", side:"allies",
+    title:{en:"Germany's unconditional surrender"},
+    desc:{en:"Nazi Germany signs an unconditional surrender, ending the war in Europe."},
+    detail:{en:"The surrender took effect on 8 May (Victory Day, 9 May in Russia). War in Europe ended, though the Pacific war continued."} },
 ];
 
-// ================= 地图国家（使用真实地理边界 europe-geo.js）=================
-// 每个“集团”对应二战中的一个政治实体，codes 为 europe-geo.js 中的 ISO 代码。
+// ================= Map countries (real geographic borders from europe-geo.js) =================
+// Each "bloc" is a political entity of WWII; codes are the ISO codes used in europe-geo.js.
 const groups = [
-  { id:"uk", name:{zh:"英国",en:"United Kingdom"}, codes:["GB"], label:[185,530], abbr:"UK" },
-  { id:"ireland", name:{zh:"爱尔兰",en:"Ireland"}, codes:["IE"], label:[156,533], abbr:"IRL" },
-  { id:"norway", name:{zh:"挪威",en:"Norway"}, codes:["NO"], label:[330,373], abbr:"NOR" },
-  { id:"sweden", name:{zh:"瑞典",en:"Sweden"}, codes:["SE"], label:[330,410], abbr:"SWE" },
-  { id:"finland", name:{zh:"芬兰",en:"Finland"}, codes:["FI"], label:[386,372], abbr:"FIN" },
-  { id:"denmark", name:{zh:"丹麦",en:"Denmark"}, codes:["DK"], label:[289,501], abbr:"DEN" },
-  { id:"france", name:{zh:"法国",en:"France"}, codes:["FR"], label:[225,600], abbr:"FRA" },
-  { id:"netherlands", name:{zh:"荷兰",en:"Netherlands"}, codes:["NL"], label:[246,548], abbr:"NED" },
-  { id:"belgium", name:{zh:"比利时",en:"Belgium"}, codes:["BE"], label:[241,565], abbr:"BEL" },
-  { id:"luxembourg", name:{zh:"卢森堡",en:"Luxembourg"}, codes:["LU"], label:[252,572], abbr:"LUX", skipLabel:true },
-  { id:"germany", name:{zh:"德国",en:"Germany"}, codes:["DE"], label:[285,560], abbr:"GER" },
-  { id:"switzerland", name:{zh:"瑞士",en:"Switzerland"}, codes:["CH"], label:[266,603], abbr:"SUI" },
-  { id:"austria", name:{zh:"奥地利",en:"Austria"}, codes:["AT"], label:[301,594], abbr:"AUT" },
-  { id:"czechoslovakia", name:{zh:"捷克斯洛伐克",en:"Czechoslovakia"}, codes:["CZ","SK"], label:[325,575], abbr:"CZE" },
-  { id:"poland", name:{zh:"波兰",en:"Poland"}, codes:["PL"], label:[340,548], abbr:"POL" },
-  { id:"estonia", name:{zh:"爱沙尼亚",en:"Estonia"}, codes:["EE"], label:[379,471], abbr:"EST" },
-  { id:"latvia", name:{zh:"拉脱维亚",en:"Latvia"}, codes:["LV"], label:[376,492], abbr:"LVA" },
-  { id:"lithuania", name:{zh:"立陶宛",en:"Lithuania"}, codes:["LT"], label:[371,513], abbr:"LTU" },
-  { id:"ussr", name:{zh:"苏联",en:"Soviet Union"}, codes:["RU","UA","BY","MD","GE","AM","AZ","KZ"], label:[475,450], abbr:"USSR" },
-  { id:"portugal", name:{zh:"葡萄牙",en:"Portugal"}, codes:["PT"], label:[120,678], abbr:"POR" },
-  { id:"spain", name:{zh:"西班牙",en:"Spain"}, codes:["ES"], label:[160,688], abbr:"ESP" },
-  { id:"italy", name:{zh:"意大利",en:"Italy"}, codes:["IT"], label:[290,655], abbr:"ITA" },
-  { id:"hungary", name:{zh:"匈牙利",en:"Hungary"}, codes:["HU"], label:[342,599], abbr:"HUN" },
-  { id:"romania", name:{zh:"罗马尼亚",en:"Romania"}, codes:["RO"], label:[379,610], abbr:"ROM" },
-  { id:"yugoslavia", name:{zh:"南斯拉夫",en:"Yugoslavia"}, codes:["RS","HR","BA","ME","MK","SI","KV"], label:[332,625], abbr:"YUG" },
-  { id:"bulgaria", name:{zh:"保加利亚",en:"Bulgaria"}, codes:["BG"], label:[382,641], abbr:"BUL" },
-  { id:"albania", name:{zh:"阿尔巴尼亚",en:"Albania"}, codes:["AL"], label:[347,655], abbr:"ALB" },
-  { id:"greece", name:{zh:"希腊",en:"Greece"}, codes:["GR"], label:[372,680], abbr:"GRE" },
-  { id:"turkey", name:{zh:"土耳其",en:"Turkey"}, codes:["TR"], label:[448,674], abbr:"TUR" },
-  { id:"iceland", name:{zh:"冰岛",en:"Iceland"}, codes:["IS"], label:[83,379], abbr:"ISL" },
+  { id:"uk", name:{en:"United Kingdom"}, codes:["GB"], label:[185,530], abbr:"UK" },
+  { id:"ireland", name:{en:"Ireland"}, codes:["IE"], label:[156,533], abbr:"IRL" },
+  { id:"norway", name:{en:"Norway"}, codes:["NO"], label:[330,373], abbr:"NOR" },
+  { id:"sweden", name:{en:"Sweden"}, codes:["SE"], label:[330,410], abbr:"SWE" },
+  { id:"finland", name:{en:"Finland"}, codes:["FI"], label:[386,372], abbr:"FIN" },
+  { id:"denmark", name:{en:"Denmark"}, codes:["DK"], label:[289,501], abbr:"DEN" },
+  { id:"france", name:{en:"France"}, codes:["FR"], label:[225,600], abbr:"FRA" },
+  { id:"netherlands", name:{en:"Netherlands"}, codes:["NL"], label:[246,548], abbr:"NED" },
+  { id:"belgium", name:{en:"Belgium"}, codes:["BE"], label:[241,565], abbr:"BEL" },
+  { id:"luxembourg", name:{en:"Luxembourg"}, codes:["LU"], label:[252,572], abbr:"LUX", skipLabel:true },
+  { id:"germany", name:{en:"Germany"}, codes:["DE"], label:[285,560], abbr:"GER" },
+  { id:"switzerland", name:{en:"Switzerland"}, codes:["CH"], label:[266,603], abbr:"SUI" },
+  { id:"austria", name:{en:"Austria"}, codes:["AT"], label:[301,594], abbr:"AUT" },
+  { id:"czechoslovakia", name:{en:"Czechoslovakia"}, codes:["CZ","SK"], label:[325,575], abbr:"CZE" },
+  { id:"poland", name:{en:"Poland"}, codes:["PL"], label:[340,548], abbr:"POL" },
+  { id:"estonia", name:{en:"Estonia"}, codes:["EE"], label:[379,471], abbr:"EST" },
+  { id:"latvia", name:{en:"Latvia"}, codes:["LV"], label:[376,492], abbr:"LVA" },
+  { id:"lithuania", name:{en:"Lithuania"}, codes:["LT"], label:[371,513], abbr:"LTU" },
+  { id:"ussr", name:{en:"Soviet Union"}, codes:["RU","UA","BY","MD","GE","AM","AZ","KZ"], label:[475,450], abbr:"USSR" },
+  { id:"portugal", name:{en:"Portugal"}, codes:["PT"], label:[120,678], abbr:"POR" },
+  { id:"spain", name:{en:"Spain"}, codes:["ES"], label:[160,688], abbr:"ESP" },
+  { id:"italy", name:{en:"Italy"}, codes:["IT"], label:[290,655], abbr:"ITA" },
+  { id:"hungary", name:{en:"Hungary"}, codes:["HU"], label:[342,599], abbr:"HUN" },
+  { id:"romania", name:{en:"Romania"}, codes:["RO"], label:[379,610], abbr:"ROM" },
+  { id:"yugoslavia", name:{en:"Yugoslavia"}, codes:["RS","HR","BA","ME","MK","SI","KV"], label:[332,625], abbr:"YUG" },
+  { id:"bulgaria", name:{en:"Bulgaria"}, codes:["BG"], label:[382,641], abbr:"BUL" },
+  { id:"albania", name:{en:"Albania"}, codes:["AL"], label:[347,655], abbr:"ALB" },
+  { id:"greece", name:{en:"Greece"}, codes:["GR"], label:[372,680], abbr:"GRE" },
+  { id:"turkey", name:{en:"Turkey"}, codes:["TR"], label:[448,674], abbr:"TUR" },
+  { id:"iceland", name:{en:"Iceland"}, codes:["IS"], label:[83,379], abbr:"ISL" },
 ];
 
 const codeToGroup = {};
@@ -481,7 +452,7 @@ groups.forEach(g => g.codes.forEach(code => codeToGroup[code] = g));
 
 const STATE_COLORS = { axis:"#e5534b", occupied:"#7a2e2a", allies:"#3b82f6", neutral:"#4a5568" };
 
-// ================= 地图周期（基础状态 + 增量变化）=================
+// ================= Map periods (base state + incremental changes) =================
 const baseControl = {
   uk:"allies", ireland:"neutral", norway:"neutral", sweden:"neutral", finland:"neutral", denmark:"neutral",
   france:"allies", netherlands:"neutral", belgium:"neutral", luxembourg:"neutral", germany:"axis", switzerland:"neutral",
@@ -492,40 +463,40 @@ const baseControl = {
 };
 
 const periodDefs = [
-  { t:"1939.09", label:{zh:"德国入侵波兰",en:"Germany invades Poland"},
-    desc:{zh:"1939年9月1日，德军以闪电战突袭波兰，英法随即对德宣战，欧洲二战爆发。波兰在一个月内沦陷，被德苏两国瓜分。",en:"On 1 September 1939 Germany attacked Poland; Britain and France declared war, beginning WWII in Europe. Poland fell within a month and was partitioned between Germany and the USSR."}, changes:{} },
-  { t:"1940.04", label:{zh:"入侵丹麦与挪威",en:"Invasion of Denmark & Norway"},
-    desc:{zh:"德军于4月占领丹麦与挪威，确保瑞典铁矿石运输与北欧战略地位。丹麦数小时投降，挪威抵抗至6月。",en:"Germany occupied Denmark and Norway in April to secure Swedish iron ore and naval bases. Denmark fell within hours; Norway held out until June."}, changes:{ denmark:"occupied", norway:"occupied" } },
-  { t:"1940.06", label:{zh:"法国投降",en:"Fall of France"},
-    desc:{zh:"德军经阿登森林突破，绕过马奇诺防线。6月22日法国签署停战协定，西欧大部沦陷，仅英国继续抵抗。",en:"German panzers broke through the Ardennes and outflanked the Maginot Line. France surrendered on 22 June, leaving Britain to fight on alone in the West."}, changes:{ france:"occupied", netherlands:"occupied", belgium:"occupied", luxembourg:"occupied" } },
-  { t:"1940.06", label:{zh:"苏联吞并波罗的海三国",en:"Soviet annexation of the Baltic"},
-    desc:{zh:"苏联在1940年6月吞并爱沙尼亚、拉脱维亚和立陶宛，扩大其在东欧的势力范围。",en:"The USSR annexed Estonia, Latvia and Lithuania in June 1940, expanding its sphere in Eastern Europe."}, changes:{ estonia:"allies", latvia:"allies", lithuania:"allies" } },
-  { t:"1940.10", label:{zh:"轴心南扩",en:"Axis expansion south"},
-    desc:{zh:"匈牙利与罗马尼亚加入轴心国，意大利入侵希腊受挫。轴心阵营在地中海与东南欧扩张。",en:"Hungary and Romania joined the Axis, while Italy's invasion of Greece stalled. The Axis expanded across the Mediterranean and the Balkans."}, changes:{ hungary:"axis", romania:"axis" } },
-  { t:"1941.04", label:{zh:"巴尔干战役",en:"Balkan campaign"},
-    desc:{zh:"德军入侵南斯拉夫与希腊，迅速占领巴尔干半岛。保加利亚也加入轴心。",en:"Germany invaded Yugoslavia and Greece, quickly overrunning the Balkans. Bulgaria also joined the Axis."}, changes:{ yugoslavia:"occupied", greece:"occupied", bulgaria:"axis" } },
-  { t:"1941.06", label:{zh:"巴巴罗萨行动",en:"Operation Barbarossa"},
-    desc:{zh:"6月22日，德国撕毁条约，以约300万兵力入侵苏联。波罗的海三国被德军占领，芬兰作为共战方参战。",en:"On 22 June Germany invaded the USSR with ~3 million men. The Baltic states were occupied, and Finland joined as a co-belligerent."}, changes:{ ussr:"allies", estonia:"occupied", latvia:"occupied", lithuania:"occupied", finland:"axis" } },
-  { t:"1941.12", label:{zh:"莫斯科战役",en:"Battle of Moscow"},
-    desc:{zh:"德军兵临莫斯科城下，但苏军趁严冬反攻，粉碎了德国速胜的幻想。",en:"German forces reached the gates of Moscow, but a Soviet winter counteroffensive shattered hopes of a quick victory."}, changes:{} },
-  { t:"1942.08", label:{zh:"轴心巅峰",en:"Axis high-water mark"},
-    desc:{zh:"轴心国扩张达到顶峰，德军深入苏联腹地，逼近斯大林格勒与高加索油田。",en:"The Axis reached its greatest extent, driving deep into the USSR toward Stalingrad and the Caucasus oilfields."}, changes:{} },
-  { t:"1943.02", label:{zh:"斯大林格勒战役",en:"Battle of Stalingrad"},
-    desc:{zh:"苏军合围并歼灭德军第6集团军，约30万人被俘或阵亡，成为东线转折点。",en:"The Red Army encircled and destroyed the German 6th Army (~300,000 men), the turning point of the Eastern Front."}, changes:{} },
-  { t:"1943.07", label:{zh:"库尔斯克与意大利投降",en:"Kursk & Italy's surrender"},
-    desc:{zh:"库尔斯克坦克战成为德国最后一次东线攻势。7月墨索里尼倒台，意大利于9月投降并倒戈。",en:"Kursk proved Germany's last Eastern offensive. Mussolini fell in July and Italy surrendered and switched sides in September."}, changes:{ italy:"allies" } },
-  { t:"1944.06", label:{zh:"诺曼底登陆",en:"D-Day: Normandy"},
-    desc:{zh:"6月6日，盟军在诺曼底实施史上最大规模两栖登陆，开辟西线第二战场，解放法国与比荷卢。",en:"On 6 June the Allies launched the largest amphibious landing in history at Normandy, opening a second front and liberating France and the Low Countries."}, changes:{ france:"allies", netherlands:"allies", belgium:"allies", luxembourg:"allies" } },
-  { t:"1944.08", label:{zh:"东南欧倒戈",en:"Southeast Europe defects"},
-    desc:{zh:"罗马尼亚、保加利亚先后倒向盟军，芬兰与苏联停战，匈牙利被德军占领。",en:"Romania and Bulgaria switched to the Allies, Finland made peace with the USSR, and Hungary was occupied by Germany."}, changes:{ romania:"allies", bulgaria:"allies", finland:"allies", hungary:"occupied" } },
-  { t:"1944.10", label:{zh:"希腊与波罗的海解放",en:"Greece & the Baltics liberated"},
-    desc:{zh:"希腊、阿尔巴尼亚与南斯拉夫相继解放，苏联夺回波罗的海三国，纳粹帝国开始瓦解。",en:"Greece, Albania and Yugoslavia were liberated, and the USSR retook the Baltic states as the Nazi empire crumbled."}, changes:{ greece:"allies", albania:"allies", yugoslavia:"allies", estonia:"allies", latvia:"allies", lithuania:"allies" } },
-  { t:"1945.01", label:{zh:"东线大攻势",en:"Vistula–Oder Offensive"},
-    desc:{zh:"苏军发起维斯瓦河-奥得河攻势，解放波兰，兵临柏林城下。",en:"The Vistula–Oder Offensive liberated Poland and brought the Red Army to the gates of Berlin."}, changes:{ poland:"allies" } },
-  { t:"1945.04", label:{zh:"柏林战役",en:"Battle of Berlin"},
-    desc:{zh:"苏军攻克柏林，希特勒自杀。捷克斯洛伐克、丹麦与挪威相继解放。",en:"The Red Army stormed Berlin and Hitler took his own life. Czechoslovakia, Denmark and Norway were liberated."}, changes:{ germany:"occupied", austria:"occupied", czechoslovakia:"allies", denmark:"allies", norway:"allies" } },
-  { t:"1945.05", label:{zh:"德国无条件投降",en:"Germany's surrender"},
-    desc:{zh:"5月8日，德国正式投降，欧洲战场结束。纳粹在欧洲的统治彻底终结。",en:"Germany surrendered on 8 May 1945, ending the war in Europe and Nazi rule once and for all."}, changes:{} },
+  { t:"1939.09", label:{en:"Germany invades Poland"},
+    desc:{en:"On 1 September 1939 Germany attacked Poland; Britain and France declared war, beginning WWII in Europe. Poland fell within a month and was partitioned between Germany and the USSR."}, changes:{} },
+  { t:"1940.04", label:{en:"Invasion of Denmark & Norway"},
+    desc:{en:"Germany occupied Denmark and Norway in April to secure Swedish iron ore and naval bases. Denmark fell within hours; Norway held out until June."}, changes:{ denmark:"occupied", norway:"occupied" } },
+  { t:"1940.06", label:{en:"Fall of France"},
+    desc:{en:"German panzers broke through the Ardennes and outflanked the Maginot Line. France surrendered on 22 June, leaving Britain to fight on alone in the West."}, changes:{ france:"occupied", netherlands:"occupied", belgium:"occupied", luxembourg:"occupied" } },
+  { t:"1940.06", label:{en:"Soviet annexation of the Baltic"},
+    desc:{en:"The USSR annexed Estonia, Latvia and Lithuania in June 1940, expanding its sphere in Eastern Europe."}, changes:{ estonia:"allies", latvia:"allies", lithuania:"allies" } },
+  { t:"1940.10", label:{en:"Axis expansion south"},
+    desc:{en:"Hungary and Romania joined the Axis, while Italy's invasion of Greece stalled. The Axis expanded across the Mediterranean and the Balkans."}, changes:{ hungary:"axis", romania:"axis" } },
+  { t:"1941.04", label:{en:"Balkan campaign"},
+    desc:{en:"Germany invaded Yugoslavia and Greece, quickly overrunning the Balkans. Bulgaria also joined the Axis."}, changes:{ yugoslavia:"occupied", greece:"occupied", bulgaria:"axis" } },
+  { t:"1941.06", label:{en:"Operation Barbarossa"},
+    desc:{en:"On 22 June Germany invaded the USSR with ~3 million men. The Baltic states were occupied, and Finland joined as a co-belligerent."}, changes:{ ussr:"allies", estonia:"occupied", latvia:"occupied", lithuania:"occupied", finland:"axis" } },
+  { t:"1941.12", label:{en:"Battle of Moscow"},
+    desc:{en:"German forces reached the gates of Moscow, but a Soviet winter counteroffensive shattered hopes of a quick victory."}, changes:{} },
+  { t:"1942.08", label:{en:"Axis high-water mark"},
+    desc:{en:"The Axis reached its greatest extent, driving deep into the USSR toward Stalingrad and the Caucasus oilfields."}, changes:{} },
+  { t:"1943.02", label:{en:"Battle of Stalingrad"},
+    desc:{en:"The Red Army encircled and destroyed the German 6th Army (~300,000 men), the turning point of the Eastern Front."}, changes:{} },
+  { t:"1943.07", label:{en:"Kursk & Italy's surrender"},
+    desc:{en:"Kursk proved Germany's last Eastern offensive. Mussolini fell in July and Italy surrendered and switched sides in September."}, changes:{ italy:"allies" } },
+  { t:"1944.06", label:{en:"D-Day: Normandy"},
+    desc:{en:"On 6 June the Allies launched the largest amphibious landing in history at Normandy, opening a second front and liberating France and the Low Countries."}, changes:{ france:"allies", netherlands:"allies", belgium:"allies", luxembourg:"allies" } },
+  { t:"1944.08", label:{en:"Southeast Europe defects"},
+    desc:{en:"Romania and Bulgaria switched to the Allies, Finland made peace with the USSR, and Hungary was occupied by Germany."}, changes:{ romania:"allies", bulgaria:"allies", finland:"allies", hungary:"occupied" } },
+  { t:"1944.10", label:{en:"Greece & the Baltics liberated"},
+    desc:{en:"Greece, Albania and Yugoslavia were liberated, and the USSR retook the Baltic states as the Nazi empire crumbled."}, changes:{ greece:"allies", albania:"allies", yugoslavia:"allies", estonia:"allies", latvia:"allies", lithuania:"allies" } },
+  { t:"1945.01", label:{en:"Vistula–Oder Offensive"},
+    desc:{en:"The Vistula–Oder Offensive liberated Poland and brought the Red Army to the gates of Berlin."}, changes:{ poland:"allies" } },
+  { t:"1945.04", label:{en:"Battle of Berlin"},
+    desc:{en:"The Red Army stormed Berlin and Hitler took his own life. Czechoslovakia, Denmark and Norway were liberated."}, changes:{ germany:"occupied", austria:"occupied", czechoslovakia:"allies", denmark:"allies", norway:"allies" } },
+  { t:"1945.05", label:{en:"Germany's surrender"},
+    desc:{en:"Germany surrendered on 8 May 1945, ending the war in Europe and Nazi rule once and for all."}, changes:{} },
 ];
 
 const periods = [];
@@ -534,85 +505,85 @@ periodDefs.forEach((p, i) => {
   periods.push({ year:p.t, label:p.label, desc:p.desc, control:Object.assign({}, prev, p.changes) });
 });
 
-// ================= 城市与战役标记 =================
+// ================= City and battle markers =================
 const cities = [
-  { name:{zh:"伦敦",en:"London"}, x:195, y:545 },
-  { name:{zh:"巴黎",en:"Paris"}, x:222, y:588 },
-  { name:{zh:"柏林",en:"Berlin"}, x:295, y:540 },
-  { name:{zh:"华沙",en:"Warsaw"}, x:355, y:540 },
-  { name:{zh:"莫斯科",en:"Moscow"}, x:475, y:448 },
-  { name:{zh:"列宁格勒",en:"Leningrad"}, x:388, y:435 },
-  { name:{zh:"斯大林格勒",en:"Stalingrad"}, x:505, y:505 },
-  { name:{zh:"罗马",en:"Rome"}, x:300, y:662 },
-  { name:{zh:"维也纳",en:"Vienna"}, x:308, y:590 },
+  { name:{en:"London"}, x:195, y:545 },
+  { name:{en:"Paris"}, x:222, y:588 },
+  { name:{en:"Berlin"}, x:295, y:540 },
+  { name:{en:"Warsaw"}, x:355, y:540 },
+  { name:{en:"Moscow"}, x:475, y:448 },
+  { name:{en:"Leningrad"}, x:388, y:435 },
+  { name:{en:"Stalingrad"}, x:505, y:505 },
+  { name:{en:"Rome"}, x:300, y:662 },
+  { name:{en:"Vienna"}, x:308, y:590 },
 ];
 const battles = [
-  { name:{zh:"波兰战役",en:"Invasion of Poland"}, date:{zh:"1939.09",en:"Sep 1939"}, x:352, y:538, at:0 },
-  { name:{zh:"挪威战役",en:"Norwegian Campaign"}, date:{zh:"1940.04",en:"Apr 1940"}, x:330, y:368, at:1 },
-  { name:{zh:"敦刻尔克",en:"Dunkirk"}, date:{zh:"1940.05",en:"May 1940"}, x:245, y:558, at:2 },
-  { name:{zh:"不列颠空战",en:"Battle of Britain"}, date:{zh:"1940.07",en:"Jul 1940"}, x:192, y:548, at:3 },
-  { name:{zh:"列宁格勒围城",en:"Siege of Leningrad"}, date:{zh:"1941.09",en:"Sep 1941"}, x:400, y:430, at:6 },
-  { name:{zh:"莫斯科战役",en:"Battle of Moscow"}, date:{zh:"1941.12",en:"Dec 1941"}, x:487, y:440, at:7 },
-  { name:{zh:"斯大林格勒",en:"Stalingrad"}, date:{zh:"1942.08",en:"Aug 1942"}, x:517, y:510, at:8 },
-  { name:{zh:"库尔斯克",en:"Kursk"}, date:{zh:"1943.07",en:"Jul 1943"}, x:458, y:492, at:10 },
-  { name:{zh:"诺曼底登陆",en:"D-Day Normandy"}, date:{zh:"1944.06",en:"Jun 1944"}, x:228, y:578, at:11 },
-  { name:{zh:"柏林战役",en:"Battle of Berlin"}, date:{zh:"1945.04",en:"Apr 1945"}, x:284, y:534, at:15 },
+  { name:{en:"Invasion of Poland"}, date:{en:"Sep 1939"}, x:352, y:538, at:0 },
+  { name:{en:"Norwegian Campaign"}, date:{en:"Apr 1940"}, x:330, y:368, at:1 },
+  { name:{en:"Dunkirk"}, date:{en:"May 1940"}, x:245, y:558, at:2 },
+  { name:{en:"Battle of Britain"}, date:{en:"Jul 1940"}, x:192, y:548, at:3 },
+  { name:{en:"Siege of Leningrad"}, date:{en:"Sep 1941"}, x:400, y:430, at:6 },
+  { name:{en:"Battle of Moscow"}, date:{en:"Dec 1941"}, x:487, y:440, at:7 },
+  { name:{en:"Stalingrad"}, date:{en:"Aug 1942"}, x:517, y:510, at:8 },
+  { name:{en:"Kursk"}, date:{en:"Jul 1943"}, x:458, y:492, at:10 },
+  { name:{en:"D-Day Normandy"}, date:{en:"Jun 1944"}, x:228, y:578, at:11 },
+  { name:{en:"Battle of Berlin"}, date:{en:"Apr 1945"}, x:284, y:534, at:15 },
 ];
 const seaLabels = [
-  { zh:"大西洋", en:"Atlantic Ocean", x:75, y:470 },
-  { zh:"北海", en:"North Sea", x:235, y:478 },
-  { zh:"波罗的海", en:"Baltic Sea", x:345, y:452 },
-  { zh:"地中海", en:"Mediterranean", x:300, y:708 },
-  { zh:"黑海", en:"Black Sea", x:455, y:640 },
+  {  en:"Atlantic Ocean", x:75, y:470 },
+  {  en:"North Sea", x:235, y:478 },
+  {  en:"Baltic Sea", x:345, y:452 },
+  {  en:"Mediterranean", x:300, y:708 },
+  {  en:"Black Sea", x:455, y:640 },
 ];
 
-// ================= 人物 =================
+// ================= Figures =================
 const figures = [
-  { name:{zh:"阿道夫·希特勒",en:"Adolf Hitler"}, role:{zh:"纳粹德国元首",en:"Führer of Nazi Germany"}, side:"axis", initial:"H",
-    born:{zh:"1889年4月20日",en:"20 Apr 1889"}, died:{zh:"1945年4月30日",en:"30 Apr 1945"},
-    fact:{zh:"1933年上台，推行扩张与种族灭绝政策，发动二战。1945年4月30日在柏林地堡自杀。",en:"Came to power in 1933, launched WWII and the Holocaust; committed suicide in his Berlin bunker on 30 April 1945."},
-    detail:{zh:"奥地利裔德国政治家、纳粹党领袖。1933年就任德国总理，逐步建立一党独裁的极权统治，推行种族主义与反犹政策，并通过军事扩张于1939年挑起第二次世界大战。战争后期在盟军东西夹击下节节败退，最终在柏林地堡自杀。",en:"Austrian-born German politician and Nazi leader. Becoming Chancellor in 1933, he built a totalitarian one-party state, pursued racist and anti-Semitic policies, and launched WWII in 1939. Defeated on both fronts, he committed suicide in his Berlin bunker."},
-    events:[{y:{zh:"1933",en:"1933"},t:{zh:"就任德国总理",en:"Became Chancellor of Germany"}},{y:{zh:"1939",en:"1939"},t:{zh:"入侵波兰，发动二战",en:"Invaded Poland, starting WWII"}},{y:{zh:"1941",en:"1941"},t:{zh:"入侵苏联",en:"Invaded the USSR"}},{y:{zh:"1945",en:"1945"},t:{zh:"在柏林地堡自杀",en:"Committed suicide in Berlin"}}] },
-  { name:{zh:"约瑟夫·斯大林",en:"Joseph Stalin"}, role:{zh:"苏联领导人",en:"Soviet leader"}, side:"allies", initial:"S",
-    born:{zh:"1878年12月18日",en:"18 Dec 1878"}, died:{zh:"1953年3月5日",en:"5 Mar 1953"},
-    fact:{zh:"领导苏联在1941年后抗击德国入侵，取得东线决定性胜利。",en:"Led the USSR against the German invasion from 1941, winning the decisive Eastern Front victories."},
-    detail:{zh:"苏联最高领导人。通过大清洗巩固权力，二战期间领导苏联军民抗击纳粹侵略，指挥红军在东线取得莫斯科、斯大林格勒、库尔斯克等决定性胜利，战后成为超级大国苏联的象征性领袖。",en:"Supreme leader of the USSR. Having consolidated power through the Great Purge, he led the Soviet war effort against Nazi Germany, overseeing the decisive Eastern Front victories at Moscow, Stalingrad and Kursk, and emerged as leader of a superpower."},
-    events:[{y:{zh:"1924",en:"1924"},t:{zh:"成为苏联领导人",en:"Rose to lead the USSR"}},{y:{zh:"1941",en:"1941"},t:{zh:"领导卫国战争",en:"Led the Great Patriotic War"}},{y:{zh:"1943",en:"1943"},t:{zh:"斯大林格勒转折",en:"Presided over the Stalingrad turning point"}},{y:{zh:"1945",en:"1945"},t:{zh:"攻克柏林",en:"Oversaw the capture of Berlin"}}] },
-  { name:{zh:"温斯顿·丘吉尔",en:"Winston Churchill"}, role:{zh:"英国首相",en:"British Prime Minister"}, side:"allies", initial:"C",
-    born:{zh:"1874年11月30日",en:"30 Nov 1874"}, died:{zh:"1965年1月24日",en:"24 Jan 1965"},
-    fact:{zh:"1940年临危受命，在不列颠空战期间鼓舞英国坚持抵抗，是盟军重要领袖。",en:"Became PM in 1940, rallying Britain through the Blitz as a key Allied leader."},
-    detail:{zh:"英国政治家、作家、演说家。1940年就任首相，在法国沦陷、英国孤立无援之际以坚定意志和雄辩口才鼓舞国民抵抗到底，与美苏结成反法西斯同盟，是同盟国核心领袖之一。",en:"British statesman, writer and orator. Becoming Prime Minister in 1940, he rallied Britain to fight on alone after the fall of France, and helped forge the grand alliance with the United States and the USSR as a central Allied leader."},
-    events:[{y:{zh:"1940",en:"1940"},t:{zh:"就任英国首相",en:"Became Prime Minister"}},{y:{zh:"1940",en:"1940"},t:{zh:"不列颠空战",en:"Rallied Britain during the Battle of Britain"}},{y:{zh:"1941",en:"1941"},t:{zh:"与罗斯福签署《大西洋宪章》",en:"Signed the Atlantic Charter with FDR"}},{y:{zh:"1945",en:"1945"},t:{zh:"出席雅尔塔会议",en:"Attended the Yalta Conference"}}] },
-  { name:{zh:"富兰克林·罗斯福",en:"Franklin D. Roosevelt"}, role:{zh:"美国总统",en:"US President"}, side:"allies", initial:"R",
-    born:{zh:"1882年1月30日",en:"30 Jan 1882"}, died:{zh:"1945年4月12日",en:"12 Apr 1945"},
-    fact:{zh:"领导美国参战并提供巨大工业与军事资源，与丘吉尔、斯大林共同规划战后秩序。",en:"Led the US into the war and, with Churchill and Stalin, shaped the postwar order."},
-    detail:{zh:"美国第32任总统，唯一连任四届的美国总统。领导美国走出大萧条，珍珠港事件后推动美国全面参战，凭借强大的工业与军事实力成为「民主国家兵工厂」，与丘吉尔、斯大林共同规划战后世界秩序。",en:"The 32nd US President and the only one elected four times. He guided America out of the Great Depression and, after Pearl Harbor, led the nation into full war, making the US the 'arsenal of democracy' and shaping the postwar order with Churchill and Stalin."},
-    events:[{y:{zh:"1933",en:"1933"},t:{zh:"就任美国总统",en:"Became US President"}},{y:{zh:"1941",en:"1941"},t:{zh:"珍珠港事件后对轴心宣战",en:"Brought the US into the war"}},{y:{zh:"1943",en:"1943"},t:{zh:"出席德黑兰会议",en:"Attended the Tehran Conference"}},{y:{zh:"1945",en:"1945"},t:{zh:"出席雅尔塔会议（同年病逝）",en:"Attended Yalta; died that April"}}] },
-  { name:{zh:"贝尼托·墨索里尼",en:"Benito Mussolini"}, role:{zh:"意大利独裁者",en:"Italian dictator"}, side:"axis", initial:"M",
-    born:{zh:"1883年7月29日",en:"29 Jul 1883"}, died:{zh:"1945年4月28日",en:"28 Apr 1945"},
-    fact:{zh:"法西斯主义创始人，意大利轴心领袖。1943年被推翻，1945年4月被游击队员处决。",en:"Fascist founder and Italian Axis leader; deposed in 1943 and executed by partisans in April 1945."},
-    detail:{zh:"意大利法西斯主义创始人、独裁者。1922年「进军罗马」后执政，建立法西斯政权。1936年与德国结盟形成轴心，1940年参战。军事上屡遭挫败，1943年被罢免，1945年被意大利游击队员抓获并处决。",en:"Founder of Italian Fascism and dictator. He seized power in the 1922 'March on Rome', allied with Nazi Germany in 1936 to form the Axis, and entered the war in 1940. After repeated defeats he was deposed in 1943 and executed by partisans in 1945."},
-    events:[{y:{zh:"1922",en:"1922"},t:{zh:"进军罗马上台",en:"Seized power in the March on Rome"}},{y:{zh:"1936",en:"1936"},t:{zh:"与德国结盟",en:"Allied with Nazi Germany"}},{y:{zh:"1940",en:"1940"},t:{zh:"意大利参战",en:"Brought Italy into the war"}},{y:{zh:"1943",en:"1943"},t:{zh:"被罢免",en:"Deposed in 1943"}}] },
-  { name:{zh:"夏尔·戴高乐",en:"Charles de Gaulle"}, role:{zh:"自由法国领导人",en:"Free French leader"}, side:"allies", initial:"G",
-    born:{zh:"1890年11月22日",en:"22 Nov 1890"}, died:{zh:"1970年11月9日",en:"9 Nov 1970"},
-    fact:{zh:"法国沦陷后在伦敦号召继续抵抗，领导自由法国运动，1944年凯旋巴黎。",en:"Refused to accept defeat, led Free France from London, and returned in triumph to Paris in 1944."},
-    detail:{zh:"法国将军、政治家。法国沦陷后拒绝投降，在伦敦通过广播号召抵抗，组织自由法国运动。1944年随盟军重返巴黎，成为法国抵抗的象征，战后建立法兰西第五共和国并任总统。",en:"French general and statesman. Refusing to surrender after France fell, he broadcast an appeal from London and organized Free France. He returned to Paris with the Allies in 1944 as the symbol of French resistance, and later founded the Fifth Republic."},
-    events:[{y:{zh:"1940",en:"1940"},t:{zh:"发表「6·18」广播号召抵抗",en:"Broadcast the 18 June appeal"}},{y:{zh:"1940",en:"1940"},t:{zh:"组织自由法国",en:"Founded Free France"}},{y:{zh:"1944",en:"1944"},t:{zh:"凯旋巴黎",en:"Returned to liberated Paris"}},{y:{zh:"1958",en:"1958"},t:{zh:"建立法兰西第五共和国",en:"Founded the Fifth Republic"}}] },
-  { name:{zh:"埃尔温·隆美尔",en:"Erwin Rommel"}, role:{zh:"德军元帅（沙漠之狐）",en:"German field marshal ('Desert Fox')"}, side:"axis", initial:"R",
-    born:{zh:"1891年11月15日",en:"15 Nov 1891"}, died:{zh:"1944年10月14日",en:"14 Oct 1944"},
-    fact:{zh:"在北非指挥非洲军团屡获胜绩，后负责大西洋壁垒防御，1944年卷入刺杀希特勒事件被迫自杀。",en:"Commanded the Afrika Korps and later defended the Atlantic Wall; forced to take his own life in 1944."},
-    detail:{zh:"德国陆军元帅，绰号「沙漠之狐」。一战即崭露头角，二战初期指挥第7装甲师在法国战役中屡建战功，后统帅北非非洲军团，以灵活机动的战术著称。1944年负责大西洋壁垒防御，卷入刺杀希特勒事件后被迫服毒自杀。",en:"German field marshal, nicknamed the 'Desert Fox'. He distinguished himself in France in 1940 and later led the Afrika Korps in North Africa, famed for bold, mobile tactics. In 1944 he defended the Atlantic Wall and was forced to commit suicide after being implicated in the plot against Hitler."},
-    events:[{y:{zh:"1940",en:"1940"},t:{zh:"指挥第7装甲师（法国战役）",en:"Led a panzer division in France"}},{y:{zh:"1941",en:"1941"},t:{zh:"统帅北非非洲军团",en:"Commanded the Afrika Korps"}},{y:{zh:"1942",en:"1942"},t:{zh:"阿拉曼战役",en:"Fought at El Alamein"}},{y:{zh:"1944",en:"1944"},t:{zh:"负责大西洋壁垒，被迫自杀",en:"Defended the Atlantic Wall; died Oct 1944"}}] },
-  { name:{zh:"格奥尔基·朱可夫",en:"Georgy Zhukov"}, role:{zh:"苏联元帅",en:"Soviet marshal"}, side:"allies", initial:"Z",
-    born:{zh:"1896年12月1日",en:"1 Dec 1896"}, died:{zh:"1974年6月18日",en:"18 Jun 1974"},
-    fact:{zh:"指挥莫斯科、斯大林格勒、库尔斯克及柏林战役，被誉为最杰出的苏军统帅之一。",en:"Directed the battles of Moscow, Stalingrad, Kursk and Berlin — among the finest Soviet commanders."},
-    detail:{zh:"苏联元帅，被誉为二战最杰出的军事统帅之一。参与或指挥哈勒欣河、莫斯科保卫战、斯大林格勒、库尔斯克、白俄罗斯攻势及柏林战役，四次获「苏联英雄」称号，1945年代表苏联接受德国投降。",en:"Soviet marshal and one of WWII's finest commanders. He directed or took part in the battles of Khalkhin Gol, Moscow, Stalingrad, Kursk, Operation Bagration and Berlin, was four times a Hero of the Soviet Union, and accepted Germany's surrender in 1945."},
-    events:[{y:{zh:"1939",en:"1939"},t:{zh:"哈勒欣河击败日本",en:"Defeated Japan at Khalkhin Gol"}},{y:{zh:"1941",en:"1941"},t:{zh:"指挥莫斯科保卫战",en:"Directed the defense of Moscow"}},{y:{zh:"1943",en:"1943"},t:{zh:"指挥库尔斯克会战",en:"Commanded at Kursk"}},{y:{zh:"1945",en:"1945"},t:{zh:"攻克柏林",en:"Led the assault on Berlin"}}] },
-  { name:{zh:"德怀特·艾森豪威尔",en:"Dwight D. Eisenhower"}, role:{zh:"盟军最高统帅",en:"Supreme Allied Commander"}, side:"allies", initial:"E",
-    born:{zh:"1890年10月14日",en:"14 Oct 1890"}, died:{zh:"1969年3月28日",en:"28 Mar 1969"},
-    fact:{zh:"指挥诺曼底登陆及西线盟军，统筹对德最后攻势，后成为美国总统。",en:"Planned D-Day and led the Western Allies to victory; later became US President."},
-    detail:{zh:"美国陆军五星上将、政治家。1943年起任欧洲盟军最高统帅，筹划并指挥诺曼底登陆及西线作战，协调多国盟军最终击败纳粹德国。战后任北约最高司令，1953–1961年任美国总统。",en:"American five-star general and statesman. As Supreme Allied Commander in Europe from 1943, he planned and led D-Day and the Western campaign that defeated Nazi Germany. After the war he became NATO commander and, from 1953 to 1961, US President."},
-    events:[{y:{zh:"1943",en:"1943"},t:{zh:"任欧洲盟军最高统帅",en:"Became Supreme Allied Commander"}},{y:{zh:"1944",en:"1944"},t:{zh:"筹划并指挥诺曼底登陆",en:"Planned and led D-Day"}},{y:{zh:"1945",en:"1945"},t:{zh:"接受德国投降",en:"Accepted Germany's surrender"}},{y:{zh:"1953",en:"1953"},t:{zh:"就任美国总统",en:"Became US President"}}] },
+  { name:{en:"Adolf Hitler"}, role:{en:"Führer of Nazi Germany"}, side:"axis", initial:"H",
+    born:{en:"20 Apr 1889"}, died:{en:"30 Apr 1945"},
+    fact:{en:"Came to power in 1933, launched WWII and the Holocaust; committed suicide in his Berlin bunker on 30 April 1945."},
+    detail:{en:"Austrian-born German politician and Nazi leader. Becoming Chancellor in 1933, he built a totalitarian one-party state, pursued racist and anti-Semitic policies, and launched WWII in 1939. Defeated on both fronts, he committed suicide in his Berlin bunker."},
+    events:[{y:{en:"1933"},t:{en:"Became Chancellor of Germany"}},{y:{en:"1939"},t:{en:"Invaded Poland, starting WWII"}},{y:{en:"1941"},t:{en:"Invaded the USSR"}},{y:{en:"1945"},t:{en:"Committed suicide in Berlin"}}] },
+  { name:{en:"Joseph Stalin"}, role:{en:"Soviet leader"}, side:"allies", initial:"S",
+    born:{en:"18 Dec 1878"}, died:{en:"5 Mar 1953"},
+    fact:{en:"Led the USSR against the German invasion from 1941, winning the decisive Eastern Front victories."},
+    detail:{en:"Supreme leader of the USSR. Having consolidated power through the Great Purge, he led the Soviet war effort against Nazi Germany, overseeing the decisive Eastern Front victories at Moscow, Stalingrad and Kursk, and emerged as leader of a superpower."},
+    events:[{y:{en:"1924"},t:{en:"Rose to lead the USSR"}},{y:{en:"1941"},t:{en:"Led the Great Patriotic War"}},{y:{en:"1943"},t:{en:"Presided over the Stalingrad turning point"}},{y:{en:"1945"},t:{en:"Oversaw the capture of Berlin"}}] },
+  { name:{en:"Winston Churchill"}, role:{en:"British Prime Minister"}, side:"allies", initial:"C",
+    born:{en:"30 Nov 1874"}, died:{en:"24 Jan 1965"},
+    fact:{en:"Became PM in 1940, rallying Britain through the Blitz as a key Allied leader."},
+    detail:{en:"British statesman, writer and orator. Becoming Prime Minister in 1940, he rallied Britain to fight on alone after the fall of France, and helped forge the grand alliance with the United States and the USSR as a central Allied leader."},
+    events:[{y:{en:"1940"},t:{en:"Became Prime Minister"}},{y:{en:"1940"},t:{en:"Rallied Britain during the Battle of Britain"}},{y:{en:"1941"},t:{en:"Signed the Atlantic Charter with FDR"}},{y:{en:"1945"},t:{en:"Attended the Yalta Conference"}}] },
+  { name:{en:"Franklin D. Roosevelt"}, role:{en:"US President"}, side:"allies", initial:"R",
+    born:{en:"30 Jan 1882"}, died:{en:"12 Apr 1945"},
+    fact:{en:"Led the US into the war and, with Churchill and Stalin, shaped the postwar order."},
+    detail:{en:"The 32nd US President and the only one elected four times. He guided America out of the Great Depression and, after Pearl Harbor, led the nation into full war, making the US the 'arsenal of democracy' and shaping the postwar order with Churchill and Stalin."},
+    events:[{y:{en:"1933"},t:{en:"Became US President"}},{y:{en:"1941"},t:{en:"Brought the US into the war"}},{y:{en:"1943"},t:{en:"Attended the Tehran Conference"}},{y:{en:"1945"},t:{en:"Attended Yalta; died that April"}}] },
+  { name:{en:"Benito Mussolini"}, role:{en:"Italian dictator"}, side:"axis", initial:"M",
+    born:{en:"29 Jul 1883"}, died:{en:"28 Apr 1945"},
+    fact:{en:"Fascist founder and Italian Axis leader; deposed in 1943 and executed by partisans in April 1945."},
+    detail:{en:"Founder of Italian Fascism and dictator. He seized power in the 1922 'March on Rome', allied with Nazi Germany in 1936 to form the Axis, and entered the war in 1940. After repeated defeats he was deposed in 1943 and executed by partisans in 1945."},
+    events:[{y:{en:"1922"},t:{en:"Seized power in the March on Rome"}},{y:{en:"1936"},t:{en:"Allied with Nazi Germany"}},{y:{en:"1940"},t:{en:"Brought Italy into the war"}},{y:{en:"1943"},t:{en:"Deposed in 1943"}}] },
+  { name:{en:"Charles de Gaulle"}, role:{en:"Free French leader"}, side:"allies", initial:"G",
+    born:{en:"22 Nov 1890"}, died:{en:"9 Nov 1970"},
+    fact:{en:"Refused to accept defeat, led Free France from London, and returned in triumph to Paris in 1944."},
+    detail:{en:"French general and statesman. Refusing to surrender after France fell, he broadcast an appeal from London and organized Free France. He returned to Paris with the Allies in 1944 as the symbol of French resistance, and later founded the Fifth Republic."},
+    events:[{y:{en:"1940"},t:{en:"Broadcast the 18 June appeal"}},{y:{en:"1940"},t:{en:"Founded Free France"}},{y:{en:"1944"},t:{en:"Returned to liberated Paris"}},{y:{en:"1958"},t:{en:"Founded the Fifth Republic"}}] },
+  { name:{en:"Erwin Rommel"}, role:{en:"German field marshal ('Desert Fox')"}, side:"axis", initial:"R",
+    born:{en:"15 Nov 1891"}, died:{en:"14 Oct 1944"},
+    fact:{en:"Commanded the Afrika Korps and later defended the Atlantic Wall; forced to take his own life in 1944."},
+    detail:{en:"German field marshal, nicknamed the 'Desert Fox'. He distinguished himself in France in 1940 and later led the Afrika Korps in North Africa, famed for bold, mobile tactics. In 1944 he defended the Atlantic Wall and was forced to commit suicide after being implicated in the plot against Hitler."},
+    events:[{y:{en:"1940"},t:{en:"Led a panzer division in France"}},{y:{en:"1941"},t:{en:"Commanded the Afrika Korps"}},{y:{en:"1942"},t:{en:"Fought at El Alamein"}},{y:{en:"1944"},t:{en:"Defended the Atlantic Wall; died Oct 1944"}}] },
+  { name:{en:"Georgy Zhukov"}, role:{en:"Soviet marshal"}, side:"allies", initial:"Z",
+    born:{en:"1 Dec 1896"}, died:{en:"18 Jun 1974"},
+    fact:{en:"Directed the battles of Moscow, Stalingrad, Kursk and Berlin — among the finest Soviet commanders."},
+    detail:{en:"Soviet marshal and one of WWII's finest commanders. He directed or took part in the battles of Khalkhin Gol, Moscow, Stalingrad, Kursk, Operation Bagration and Berlin, was four times a Hero of the Soviet Union, and accepted Germany's surrender in 1945."},
+    events:[{y:{en:"1939"},t:{en:"Defeated Japan at Khalkhin Gol"}},{y:{en:"1941"},t:{en:"Directed the defense of Moscow"}},{y:{en:"1943"},t:{en:"Commanded at Kursk"}},{y:{en:"1945"},t:{en:"Led the assault on Berlin"}}] },
+  { name:{en:"Dwight D. Eisenhower"}, role:{en:"Supreme Allied Commander"}, side:"allies", initial:"E",
+    born:{en:"14 Oct 1890"}, died:{en:"28 Mar 1969"},
+    fact:{en:"Planned D-Day and led the Western Allies to victory; later became US President."},
+    detail:{en:"American five-star general and statesman. As Supreme Allied Commander in Europe from 1943, he planned and led D-Day and the Western campaign that defeated Nazi Germany. After the war he became NATO commander and, from 1953 to 1961, US President."},
+    events:[{y:{en:"1943"},t:{en:"Became Supreme Allied Commander"}},{y:{en:"1944"},t:{en:"Planned and led D-Day"}},{y:{en:"1945"},t:{en:"Accepted Germany's surrender"}},{y:{en:"1953"},t:{en:"Became US President"}}] },
 ];
 
 const figurePhoto = [
@@ -628,41 +599,41 @@ const figurePhoto = [
 ];
 function portraitUrl(src, size) { return src; }
 
-// ================= 图表数据 =================
+// ================= Chart data =================
 const controlData = [
-  { label:{zh:"1939.09 入侵波兰",en:"Sep 1939 · Poland invaded"}, v:10 },
-  { label:{zh:"1940.04 入侵北欧",en:"Apr 1940 · Scandinavia"}, v:16 },
-  { label:{zh:"1940.06 法国投降",en:"Jun 1940 · France falls"}, v:38 },
-  { label:{zh:"1940.08 不列颠空战",en:"Aug 1940 · Battle of Britain"}, v:40 },
-  { label:{zh:"1941.04 巴尔干战役",en:"Apr 1941 · Balkans"}, v:45 },
-  { label:{zh:"1941.06 巴巴罗萨",en:"Jun 1941 · Barbarossa"}, v:48 },
-  { label:{zh:"1941.12 莫斯科战役",en:"Dec 1941 · Battle of Moscow"}, v:50 },
-  { label:{zh:"1942.11 斯大林格勒",en:"Nov 1942 · Stalingrad"}, v:52 },
-  { label:{zh:"1943.02 斯大林格勒投降",en:"Feb 1943 · Stalingrad falls"}, v:48 },
-  { label:{zh:"1943.07 库尔斯克",en:"Jul 1943 · Kursk"}, v:42 },
-  { label:{zh:"1944.06 诺曼底登陆",en:"Jun 1944 · D-Day"}, v:35 },
-  { label:{zh:"1944.12 突出部战役",en:"Dec 1944 · Bulge"}, v:25 },
-  { label:{zh:"1945.04 柏林战役",en:"Apr 1945 · Berlin"}, v:10 },
-  { label:{zh:"1945.05 德国投降",en:"May 1945 · Surrender"}, v:2 },
+  { label:{en:"Sep 1939 · Poland invaded"}, v:10 },
+  { label:{en:"Apr 1940 · Scandinavia"}, v:16 },
+  { label:{en:"Jun 1940 · France falls"}, v:38 },
+  { label:{en:"Aug 1940 · Battle of Britain"}, v:40 },
+  { label:{en:"Apr 1941 · Balkans"}, v:45 },
+  { label:{en:"Jun 1941 · Barbarossa"}, v:48 },
+  { label:{en:"Dec 1941 · Battle of Moscow"}, v:50 },
+  { label:{en:"Nov 1942 · Stalingrad"}, v:52 },
+  { label:{en:"Feb 1943 · Stalingrad falls"}, v:48 },
+  { label:{en:"Jul 1943 · Kursk"}, v:42 },
+  { label:{en:"Jun 1944 · D-Day"}, v:35 },
+  { label:{en:"Dec 1944 · Bulge"}, v:25 },
+  { label:{en:"Apr 1945 · Berlin"}, v:10 },
+  { label:{en:"May 1945 · Surrender"}, v:2 },
 ];
 
-// ================= 统计 =================
+// ================= Stats =================
 const stats = [
-  { num:"6年1天", numEn:"6 yrs", label:"statDuration" },
-  { num:"61国", numEn:"61", label:"statCountries" },
-  { num:"约7000万", numEn:"~70M", label:"statDeaths" },
-  { num:"2个", numEn:"2", label:"statCamps" },
+  { numEn:"6 yrs", label:"statDuration" },
+  { numEn:"61", label:"statCountries" },
+  { numEn:"~70M", label:"statDeaths" },
+  { numEn:"2", label:"statCamps" },
 ];
 
-// ================= 渲染：统计 =================
+// ================= Render: stats =================
 function renderStats() {
   const el = document.getElementById("stats");
   el.innerHTML = stats.map(s =>
-    `<div class="stat"><div class="num">${lang==="zh"?s.num:s.numEn}</div><div class="label">${t(s.label)}</div></div>`
+    `<div class="stat"><div class="num">${s.numEn}</div><div class="label">${t(s.label)}</div></div>`
   ).join("");
 }
 
-// ================= 渲染：时间轴 =================
+// ================= Render: timeline =================
 let timelineFilter = "all";
 function renderTimeline(filter) {
   if (filter !== undefined) timelineFilter = filter;
@@ -702,7 +673,7 @@ function renderFilters() {
   });
 }
 
-// ================= 渲染：图表 =================
+// ================= Render: chart =================
 function renderChart() {
   const svg = document.getElementById("controlChart");
   svg.innerHTML = "";
@@ -720,7 +691,7 @@ function renderChart() {
   }
   [0,2,4,6,8,10,12,13].forEach(i => {
     const tx = add("text", { x:x(i), y:H-padB+24, "text-anchor":"middle", fill:"#8b96a5", "font-size":11 });
-    tx.textContent = tt(controlData[i].label).split(/[.\s]/)[0].replace(/[年月]/g,""); svg.appendChild(tx);
+    tx.textContent = tt(controlData[i].label).split(/[.\s]/)[0]; svg.appendChild(tx);
   });
 
   const grad = add("linearGradient", { id:"areaGrad", x1:0, y1:0, x2:0, y2:1 });
@@ -740,7 +711,7 @@ function renderChart() {
   const tip = document.getElementById("chartTip");
   controlData.forEach((d,i) => {
     const c = add("circle", { cx:x(i), cy:y(d.v), r:6, fill:"#d4a72c", stroke:"#0d1117", "stroke-width":2, cursor:"pointer" });
-    c.addEventListener("mouseenter", () => { tip.style.display="block"; tip.innerHTML = `<b>${tt(d.label)}</b><br>${lang==="zh"?"轴心控制约":"Axis controls ~"} ${d.v}% ${lang==="zh"?"欧洲领土":"of Europe"}`; });
+    c.addEventListener("mouseenter", () => { tip.style.display="block"; tip.innerHTML = `<b>${tt(d.label)}</b><br>${"Axis controls ~"} ${d.v}% ${"of Europe"}`; });
     c.addEventListener("mousemove", ev => { tip.style.left = ev.clientX+14+"px"; tip.style.top = ev.clientY-30+"px"; });
     c.addEventListener("mouseleave", () => tip.style.display="none");
     svg.appendChild(c);
@@ -748,7 +719,7 @@ function renderChart() {
 
   const peak = controlData.reduce((a,b) => a.v>b.v?a:b);
   const pk = add("text", { x:x(controlData.indexOf(peak)), y:y(peak.v)-14, "text-anchor":"middle", fill:"#e5534b", "font-size":12, "font-weight":700 });
-  pk.textContent = (lang==="zh"?"峰值":"Peak") + " " + peak.v + "%";
+  pk.textContent = ("Peak") + " " + peak.v + "%";
   svg.appendChild(pk);
 
   document.getElementById("chartLegend").innerHTML = `
@@ -757,7 +728,7 @@ function renderChart() {
     <span><span class="dot" style="background:#d4a72c"></span>${t("legendNode")}</span>`;
 }
 
-// ================= 渲染：地图 =================
+// ================= Render: map =================
 let mapPeriod = 0;
 let mapPlaying = false, mapTimer = null, mapSpeed = 2500;
 
@@ -782,15 +753,15 @@ function renderMap() {
   document.getElementById("mapSlider").max = periods.length - 1;
   document.getElementById("mapSlider").value = mapPeriod;
 
-  // 海洋背景
+  // Ocean background
   svg.appendChild(add("rect", { x:0, y:0, width:800, height:766, fill:"#0e1b2b" }));
-  // 海域标签
+  // Sea labels
   seaLabels.forEach(s => {
     const tx = add("text", { x:s.x, y:s.y, "text-anchor":"middle", fill:"#4a6b8a", "font-size":10, "font-style":"italic", opacity:0.75 });
     tx.textContent = tt(s); svg.appendChild(tx);
   });
 
-  // 国家（真实地理边界）
+  // Countries (real geographic borders)
   let axisCount = 0;
   groups.forEach(g => {
     const state = p.control[g.id];
@@ -804,21 +775,21 @@ function renderMap() {
     if (g) bindTip(path, () => `<b>${tt(g.name)}</b><br>${t("state"+capitalize(state))}`);
     svg.appendChild(path);
   });
-  // 集团标签
+  // Bloc labels
   groups.forEach(g => {
     if (g.skipLabel) return;
     const lbl = add("text", { x:g.label[0], y:g.label[1], "text-anchor":"middle", fill:"#0d1117", "font-size":10, "font-weight":700 });
     lbl.textContent = g.abbr; svg.appendChild(lbl);
   });
 
-  // 城市
+  // Cities
   cities.forEach(ct => {
     svg.appendChild(add("circle", { cx:ct.x, cy:ct.y, r:3.5, fill:"#e6edf3", stroke:"#0d1117", "stroke-width":1 }));
     const lbl = add("text", { x:ct.x+7, y:ct.y-5, fill:"#dbe4ee", "font-size":10, "font-weight":600 });
     lbl.textContent = tt(ct.name); svg.appendChild(lbl);
   });
 
-  // 战役（时间窗口内显示）
+  // Battles (shown within the time window)
   battles.forEach(b => {
     if (mapPeriod < b.at || mapPeriod > b.at + 2) return;
     const star = add("text", { x:b.x, y:b.y, "text-anchor":"middle", fill:"#f5c518", "font-size":16, "font-weight":700, class:"battle" });
@@ -866,13 +837,12 @@ function stopMapPlay() {
   document.getElementById("mapPlay").innerHTML = "&#9654;";
 }
 
-// ================= 渲染：人物 =================
+// ================= Render: figures =================
 function renderFigures() {
   document.getElementById("figuresList").innerHTML = figures.map((f, i) => `
     <div class="figure" data-idx="${i}" style="cursor:pointer;">
       <div class="avatar ${f.side}"><span>${f.initial}</span><img class="portrait" src="${portraitUrl(figurePhoto[i], 200)}" alt="${tt(f.name)}" loading="lazy" onload="this.style.display='block'" onerror="this.style.display='none'"></div>
       <div class="name">${tt(f.name)}</div>
-      <div class="en-name">${lang==="zh"?f.name.en:f.name.zh}</div>
       <div class="role">${tt(f.role)}</div>
       <div class="fact">${tt(f.fact)}</div>
       <div class="hint">${t("viewDetail")} ›</div>
@@ -889,7 +859,7 @@ function openFigure(i) {
   av.innerHTML = `<span>${f.initial}</span><img class="portrait" src="${portraitUrl(figurePhoto[i], 500)}" alt="" onload="this.style.display='block'" onerror="this.style.display='none'">`;
   document.getElementById("modalName").textContent = tt(f.name);
   document.getElementById("modalRole").textContent = tt(f.role);
-  document.getElementById("modalLife").textContent = t("life") + (lang==="zh"?"：":": ") + tt(f.born) + " – " + tt(f.died);
+  document.getElementById("modalLife").textContent = t("life") + (": ") + tt(f.born) + " – " + tt(f.died);
   document.getElementById("modalDetail").textContent = tt(f.detail);
   document.getElementById("modalEvents").innerHTML =
     "<h4>" + t("keyEvents") + "</h4><ul>" +
@@ -905,7 +875,7 @@ function closeFigure() {
 
 
 
-// ================= 时间轴自动播放 =================
+// ================= Timeline autoplay =================
 let tlPlaying = false, tlTimer = null, tlIdx = 0;
 function timelinePlayToggle() {
   const btn = document.getElementById("timelinePlay");
@@ -929,7 +899,7 @@ function timelinePlayToggle() {
   }, 2800);
 }
 
-// ================= 应用语言 =================
+// ================= Apply language =================
 function applyI18n() {
   document.querySelectorAll("[data-i18n]").forEach(el => el.textContent = t(el.dataset.i18n));
   closeFigure();
@@ -939,12 +909,10 @@ function applyI18n() {
   renderChart();
   renderMap();
   renderFigures();
-  document.getElementById("langSwitch").textContent = lang==="zh" ? "EN" : "中文";
   if (tlPlaying) { timelinePlayToggle(); }
 }
 
-// ================= 初始化 =================
-document.getElementById("langSwitch").addEventListener("click", () => { lang = lang==="zh"?"en":"zh"; applyI18n(); });
+// ================= Initialisation =================
 
 document.getElementById("mapPlay").addEventListener("click", () => mapPlaying ? stopMapPlay() : startMapPlay());
 document.getElementById("mapPrev").addEventListener("click", () => setMapPeriod(mapPeriod-1));
@@ -956,7 +924,7 @@ document.getElementById("mapSpeed").addEventListener("change", e => {
 });
 document.getElementById("timelinePlay").addEventListener("click", timelinePlayToggle);
 
-// 人物详情弹窗
+  // Figure detail modal
 document.getElementById("modalClose").addEventListener("click", closeFigure);
 document.getElementById("figureModal").addEventListener("click", e => { if (e.target === e.currentTarget) closeFigure(); });
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeFigure(); });
