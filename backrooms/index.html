@@ -180,7 +180,7 @@ h1{font-size:clamp(30px,7vw,64px);letter-spacing:.16em;font-weight:700;line-heig
 .opsmap{flex:1;display:flex;flex-direction:column;border-right:1px solid rgba(64,220,160,.22);min-width:0}
 .opstabs{display:flex;border-bottom:1px solid rgba(64,220,160,.22)}
 .opstab{flex:1;padding:10px 4px;text-align:center;font-size:9.5px;letter-spacing:2.5px;
-  color:#3f7a64;cursor:pointer;transition:.15s;border-right:1px solid rgba(64,220,160,.14);white-space:nowrap;overflow:hidden}
+  color:#3f7a64;cursor:pointer;transition:color .15s;border-right:1px solid rgba(64,220,160,.14);white-space:nowrap;overflow:hidden}
 .opstab:last-child{border-right:none}
 .opstab.on{color:#06120d;background:rgba(64,220,160,.8)}
 .opstab:hover:not(.on){color:#7fe8c0;background:rgba(64,220,160,.08)}
@@ -222,6 +222,62 @@ h1{font-size:clamp(30px,7vw,64px);letter-spacing:.16em;font-weight:700;line-heig
 .btn.ops{margin-top:14px;padding:9px 26px;font-size:10px;letter-spacing:3px;
   border-color:rgba(64,220,160,.45);color:#7fe8c0}
 .btn.ops:hover{background:rgba(64,220,160,.12);border-color:#7fe8c0;box-shadow:0 0 30px rgba(64,220,160,.16)}
+
+/* ---------- HUD: save flash + dodge meter ---------- */
+#saveind,#dashhint{position:absolute;font-size:9px;letter-spacing:3px;color:#8b8159;
+  transition:opacity .3s;pointer-events:none;white-space:nowrap;text-shadow:0 1px 3px #000}
+#saveind{top:66px;left:50%;transform:translateX(-50%);color:#7fe8c0;opacity:0;
+  text-shadow:0 0 12px rgba(64,220,160,.5)}
+#saveind.on{opacity:.95}
+#dashhint{left:26px;bottom:140px;opacity:.72}
+#dashhint.cool{color:#5a5238;opacity:.5}
+
+/* ---------- achievements ---------- */
+#ach{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;
+  background:rgba(2,2,1,.86);opacity:0;pointer-events:none;transition:opacity .2s}
+#ach.on{opacity:1;pointer-events:auto}
+.achbox{width:min(760px,94vw);max-height:88vh;display:flex;flex-direction:column;
+  border:1px solid rgba(216,194,124,.4);background:rgba(8,7,4,.97);
+  box-shadow:0 0 90px rgba(0,0,0,.9),inset 0 0 80px rgba(216,194,124,.03)}
+.achhead{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;
+  border-bottom:1px solid rgba(216,194,124,.3);font-size:12px;letter-spacing:5px;color:#d8c27c;
+  text-shadow:0 0 16px rgba(216,194,124,.4)}
+.achhead #achcount{font-size:10px;letter-spacing:2px;color:#8b8159}
+.achhead .x{cursor:pointer;border:1px solid rgba(216,194,124,.42);padding:4px 12px;font-size:9px;
+  letter-spacing:2px;color:#d8c27c;transition:.15s}
+.achhead .x:hover{background:rgba(216,194,124,.14)}
+#achgrid{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+  gap:10px;overflow:auto}
+.achcard{border:1px solid rgba(216,194,124,.16);padding:12px 14px;background:rgba(216,194,124,.02);
+  opacity:.55}
+.achcard.on{border-color:rgba(216,194,124,.5);background:rgba(216,194,124,.07);opacity:1;
+  box-shadow:inset 0 0 26px rgba(216,194,124,.05)}
+.achcard .achname{font-size:11px;letter-spacing:3px;color:#d8c27c}
+.achcard.on .achname{text-shadow:0 0 12px rgba(216,194,124,.5)}
+.achcard .achdesc{margin-top:5px;font-size:8.5px;letter-spacing:1.5px;color:#6d6547;line-height:1.7}
+.achnote{padding:10px 20px 14px;font-size:8.5px;letter-spacing:2px;color:#5d5539;text-align:center}
+
+/* ---------- operator: map chooser ---------- */
+#opsselect{position:fixed;inset:0;z-index:75;display:flex;align-items:center;justify-content:center;
+  background:rgba(1,4,3,.9);opacity:0;pointer-events:none;transition:opacity .2s}
+#opsselect.on{opacity:1;pointer-events:auto}
+.oselbox{width:min(760px,94vw);border:1px solid rgba(64,220,160,.4);background:rgba(4,10,8,.97);
+  box-shadow:0 0 90px rgba(0,0,0,.9)}
+.oselhead{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;
+  border-bottom:1px solid rgba(64,220,160,.3);font-size:12px;letter-spacing:5px;color:#7fe8c0;
+  text-shadow:0 0 16px rgba(64,220,160,.5)}
+.oselhead .x{cursor:pointer;border:1px solid rgba(64,220,160,.42);padding:4px 12px;font-size:9px;
+  letter-spacing:2px;color:#7fe8c0;transition:.15s}
+.oselhead .x:hover{background:rgba(64,220,160,.14)}
+.oselgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:18px}
+@media(max-width:640px){.oselgrid{grid-template-columns:1fr}}
+.oselcard{border:1px solid rgba(64,220,160,.3);padding:22px 16px;text-align:center;cursor:pointer;
+  background:rgba(64,220,160,.03);transition:.15s}
+.oselcard:hover{border-color:#7fe8c0;background:rgba(64,220,160,.1);box-shadow:0 0 34px rgba(64,220,160,.12)}
+.oselname{font-size:16px;letter-spacing:4px;color:#a8f0d4}
+.oselsub{margin-top:8px;font-size:10px;letter-spacing:3px;color:#4f8f78}
+.oselmeta{margin-top:14px;font-size:8px;letter-spacing:2px;color:#2f5f4f;line-height:1.9}
+.oselnote{padding:0 20px 16px;font-size:8.5px;letter-spacing:2px;color:#2f5f4f;text-align:center}
 </style>
 </head>
 <body>
@@ -255,6 +311,8 @@ h1{font-size:clamp(30px,7vw,64px);letter-spacing:.16em;font-weight:700;line-heig
     <div class="slot" data-slot="3">3</div>
   </div>
   <div id="invhint"><b>E</b>INVENTORY</div>
+  <div id="dashhint">SPACE · DODGE READY</div>
+  <div id="saveind">PROGRESS SAVED</div>
   <div id="weapon">
     <div id="wname">RUSTED PIPE</div>
     <div id="wammo">—</div>
@@ -285,7 +343,7 @@ h1{font-size:clamp(30px,7vw,64px);letter-spacing:.16em;font-weight:700;line-heig
   <div class="opsbox">
     <div class="opshead">
       <span>OPERATOR MODE — LEVEL SURVEILLANCE</span>
-      <span class="r"><span class="hold" id="opshold">TIME HELD</span><span class="x" id="opsclose">CLOSE</span></span>
+      <span class="r"><span class="hold" id="opshold">TIME HELD</span><span class="x" id="opsmaps">MAPS</span><span class="x" id="opsclose">CLOSE</span></span>
     </div>
     <div class="opsbody">
       <div class="opsmap">
@@ -298,6 +356,38 @@ h1{font-size:clamp(30px,7vw,64px);letter-spacing:.16em;font-weight:700;line-heig
       </div>
       <div class="opsside" id="opsside"></div>
     </div>
+  </div>
+</div>
+
+<div id="opsselect">
+  <div class="oselbox">
+    <div class="oselhead">SELECT SURVEILLANCE MAP<span class="x" id="opselclose">CANCEL</span></div>
+    <div class="oselgrid">
+      <div class="oselcard" data-lv="0">
+        <div class="oselname">LEVEL 0</div>
+        <div class="oselsub">THE LOBBY</div>
+        <div class="oselmeta">ENDLESS YELLOW HALLS<br>LIVE FEED AVAILABLE</div>
+      </div>
+      <div class="oselcard" data-lv="1">
+        <div class="oselname">LEVEL 1</div>
+        <div class="oselsub">WAREHOUSE</div>
+        <div class="oselmeta">CONCRETE &amp; DAMP CRATES<br>ARCHIVE RELAY ONLY</div>
+      </div>
+      <div class="oselcard" data-lv="2">
+        <div class="oselname">LEVEL 2</div>
+        <div class="oselsub">PIPE DREAMS</div>
+        <div class="oselmeta">STEAM &amp; NARROW SERVICE<br>ARCHIVE RELAY ONLY</div>
+      </div>
+    </div>
+    <div class="oselnote">OPERATOR ACCESS IS LOGGED · THE EXIT DOES NOT OPEN WITHOUT 3 FUSES</div>
+  </div>
+</div>
+
+<div id="ach">
+  <div class="achbox">
+    <div class="achhead">ACHIEVEMENTS<span id="achcount">0/12</span><span class="x" id="achclose">CLOSE</span></div>
+    <div id="achgrid"></div>
+    <div class="achnote">PROGRESS IS REMEMBERED ON THIS MACHINE</div>
   </div>
 </div>
 
@@ -321,11 +411,14 @@ h1{font-size:clamp(30px,7vw,64px);letter-spacing:.16em;font-weight:700;line-heig
     <div><kbd>F</kbd>TORCH</div>
     <div><kbd>1 2 3</kbd>WEAPONS</div>
     <div><kbd>4 5 6</kbd>USE ITEM</div>
+    <div><kbd>SPACE</kbd>DODGE</div>
     <div><kbd>O</kbd>OPERATOR MAP</div>
     <div><kbd>ESC</kbd>PAUSE</div>
   </div>
   <button class="btn" id="startbtn">DESCEND</button>
+  <button class="btn" id="continuebtn" style="display:none">CONTINUE</button>
   <button class="btn ops" id="opsbtn">OPERATOR MODE</button>
+  <button class="btn ops" id="achbtn">ACHIEVEMENTS · 0/12</button>
   <div class="warn">CONTAINS FLASHING LIGHTS &amp; SUDDEN LOUD NOISES · HEADPHONES RECOMMENDED</div>
 </div>
 
@@ -334,7 +427,9 @@ h1{font-size:clamp(30px,7vw,64px);letter-spacing:.16em;font-weight:700;line-heig
   <div class="sub">THE HALLS ARE WAITING</div>
   <div class="rule"></div>
   <button class="btn" id="resumebtn">RESUME</button>
+  <button class="btn" id="savebtn">SAVE GAME</button>
   <button class="btn ops" id="opsbtn2">OPERATOR MODE</button>
+  <button class="btn ops" id="achbtn2">ACHIEVEMENTS · 0/12</button>
 </div>
 
 <div class="screen hide" id="death">
@@ -810,30 +905,45 @@ let wallSegs=[],wallMesh=null,exitSeg=null,exitInfo=null;
 let fixtures=[],fixtureInst=null;
 let collidersExtra=[];
 
-function buildLevel(){
-  generateMaze();
+function restoreMaze(mz){
+  vWall=mz.v.map(s=>s.split('').map(Number));
+  hWall=mz.h.map(s=>s.split('').map(Number));
+}
+
+function buildLevel(sv){
+  if(sv&&sv.maze)restoreMaze(sv.maze);
+  else generateMaze();
   const wallTex=texWall();
   const wallMat=new THREE.MeshStandardMaterial({map:wallTex,roughness:.88,metalness:.03,color:0xffffff});
 
-  // choose exit: farthest border cell
-  const startI=1,startJ=1;
-  const{prev}=bfs(startI,startJ);
-  let best=null,bestD=-1;
-  const border=[];
-  for(let i=0;i<GX;i++)for(let j=0;j<GZ;j++){
-    if(i===0||j===0||i===GX-1||j===GZ-1)border.push([i,j]);
+  // choose exit: farthest border cell — or the one stored in a save
+  let ei,ej,exitAxis,ex,ez;
+  if(sv&&sv.maze&&sv.maze.exitCell&&sv.maze.exitSeg){
+    const seg=sv.maze.exitSeg;
+    ei=sv.maze.exitCell[0];ej=sv.maze.exitCell[1];
+    if(seg.t==='v'){exitAxis='z';ex=seg.i===0?-HALF_W:HALF_W;ez=cz(ej);}
+    else{exitAxis='x';ex=cx(ei);ez=seg.j===0?-HALF_D:HALF_D;}
+    exitSeg={i:seg.i,j:seg.j,t:seg.t};
+  }else{
+    const startI=1,startJ=1;
+    const{prev}=bfs(startI,startJ);
+    let best=null,bestD=-1;
+    const border=[];
+    for(let i=0;i<GX;i++)for(let j=0;j<GZ;j++){
+      if(i===0||j===0||i===GX-1||j===GZ-1)border.push([i,j]);
+    }
+    const distMap=bfs(startI,startJ).dist;
+    for(const[i,j]of border){
+      const d=distMap[i+j*GX];
+      if(d>bestD){bestD=d;best=[i,j];}
+    }
+    const[bei,bej]=best;
+    ei=bei;ej=bej;
+    if(ei===0){exitAxis='z';ex=-HALF_W;ez=cz(ej);vWall[0][ej]=0;exitSeg={i:0,j:ej,t:'v'};}
+    else if(ei===GX-1){exitAxis='z';ex=HALF_W;ez=cz(ej);vWall[GX][ej]=0;exitSeg={i:GX,j:ej,t:'v'};}
+    else if(ej===0){exitAxis='x';ex=cx(ei);ez=-HALF_D;hWall[ei][0]=0;exitSeg={i:ei,j:0,t:'h'};}
+    else {exitAxis='x';ex=cx(ei);ez=HALF_D;hWall[ei][GZ]=0;exitSeg={i:ei,j:GZ,t:'h'};}
   }
-  const distMap=bfs(startI,startJ).dist;
-  for(const[i,j]of border){
-    const d=distMap[i+j*GX];
-    if(d>bestD){bestD=d;best=[i,j];}
-  }
-  const[ei,ej]=best;
-  let exitAxis,ex,ez;
-  if(ei===0){exitAxis='z';ex=-HALF_W;ez=cz(ej);vWall[0][ej]=0;exitSeg={i:0,j:ej,t:'v'};}
-  else if(ei===GX-1){exitAxis='z';ex=HALF_W;ez=cz(ej);vWall[GX][ej]=0;exitSeg={i:GX,j:ej,t:'v'};}
-  else if(ej===0){exitAxis='x';ex=cx(ei);ez=-HALF_D;hWall[ei][0]=0;exitSeg={i:ei,j:0,t:'h'};}
-  else {exitAxis='x';ex=cx(ei);ez=HALF_D;hWall[ei][GZ]=0;exitSeg={i:ei,j:GZ,t:'h'};}
 
   // collect wall segments (excluding exit gap)
   wallSegs=[];
@@ -1056,13 +1166,14 @@ const player={
   nextAttack:0,dead:false,
   bob:0,bobAmt:0,shake:0,shakeV:0,
   hurtT:0,breathT:0,stepPhase:0,exhausted:false,
-  fuses:0,kills:0,startTime:0
+  fuses:0,kills:0,startTime:0,
+  dmgTaken:0,chests:0,lastWeapon:'pipe'
 };
 
 const WEAPONS={
   pipe:{name:'RUSTED PIPE',rate:.55,dmg:48,melee:true,range:2.45},
-  pistol:{name:'M1911',rate:.24,dmg:34,spread:.014,pellets:1,ammoKey:'pistolAmmo'},
-  shotgun:{name:'SAWN-OFF',rate:.92,dmg:13,spread:.085,pellets:8,ammoKey:'shells'}
+  pistol:{name:'M1911',rate:.24,dmg:52,spread:.014,pellets:1,ammoKey:'pistolAmmo'},
+  shotgun:{name:'SAWN-OFF',rate:.92,dmg:19,spread:.085,pellets:8,ammoKey:'shells'}
 };
 const SLOT_ORDER=['pipe','pistol','shotgun'];
 
@@ -1721,6 +1832,9 @@ class Monster{
     if(this.hp<=0){
       this.dead=true;
       player.kills++;
+      unlockAch('first_blood');
+      unlockAch(player.lastWeapon==='pipe'?'brawler':'gunner');
+      if(player.kills>=10)unlockAch('exterminator');
       AU.growl(clamp((this.pos.x-player.pos.x)*.1,-1,1),.5,.6);
       toast(this.def.death);
     }
@@ -1889,6 +2003,8 @@ function spawnChest(x,z,loot){
 function openChest(c){
   if(!c||c.open)return;
   c.open=true;c.openT=0;
+  player.chests++;
+  if(player.chests>=5)unlockAch('collector');
   // loot lands on the floor between you and the locker so it is always reachable
   const dx=player.pos.x-c.x,dz=player.pos.z-c.z;
   const d=Math.hypot(dx,dz)||1;
@@ -2044,6 +2160,13 @@ function updateHUD(){
     s.classList.toggle('act',player.weapon===k);
   });
   el.fuses.forEach((f,i)=>f.classList.toggle('lit',i<player.fuses));
+  // dodge meter
+  const dh=$('#dashhint');
+  if(dh){
+    if(dashT>0){dh.textContent='DODGING';dh.classList.add('cool');}
+    else if(dashCd>0){dh.textContent='DODGE · '+dashCd.toFixed(1)+'s';dh.classList.add('cool');}
+    else{dh.textContent='SPACE · DODGE READY';dh.classList.remove('cool');}
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -2164,6 +2287,7 @@ function tryUnlock(){
   const v=$('#pwinput').value.trim().toLowerCase().replace(/\s+/g,' ');
   if(v===OPS_PW){
     opUnlocked=true;
+    unlockAch('operator');
     closePw();
     openOps();
   }else{
@@ -2181,10 +2305,13 @@ function openOps(){
   document.exitPointerLock&&document.exitPointerLock();
   drawOpsMap();
   renderOpsSide();
+  // opening from the title/pause screen: let the operator pick the map first
+  if(opsFrom!=='playing')openOpsSelect();
 }
 function closeOps(){
   if(!opsOpen)return;
   opsOpen=false;
+  closeOpsSelect();
   $('#ops').classList.remove('on');
   if(opsFrom==='playing'&&state==='playing')requestLock();
 }
@@ -2221,7 +2348,7 @@ function drawOpsMap(){
   c.clearRect(0,0,w,h);
   c.fillStyle=L.bg;c.fillRect(0,0,w,h);
 
-  const pad=22;
+  const pad=34;
   const size=Math.min(w-pad*2,h-pad*2);
   const cell=size/GX;
   const ox=(w-size)/2,oy=(h-size)/2;
@@ -2257,7 +2384,7 @@ function drawOpsMap(){
 
   // sector labels
   c.fillStyle=L.dim;c.font='9px monospace';c.textAlign='center';c.textBaseline='middle';
-  for(let i=0;i<GX;i++)c.fillText(String.fromCharCode(65+i),ox+i*cell+cell/2,oy-11);
+  for(let i=0;i<GX;i++)c.fillText(String.fromCharCode(65+i),ox+i*cell+cell/2,oy-7);
   for(let j=0;j<GZ;j++)c.fillText(String(j+1),ox-12,oy+j*cell+cell/2);
 
   // supply lockers (level 0 only)
@@ -2374,6 +2501,189 @@ function renderOpsSide(){
 }
 
 /* ══════════════════════════════════════════════════════════════
+   ACHIEVEMENTS — persisted in localStorage, toasted on unlock
+   ══════════════════════════════════════════════════════════════ */
+const ACH_DEFS=[
+  {id:'first_blood',name:'FIRST BLOOD',desc:'KILL A MONSTER'},
+  {id:'brawler',name:'BRAWLER',desc:'KILL ONE WITH THE RUSTED PIPE'},
+  {id:'gunner',name:'GUNNER',desc:'KILL ONE WITH A FIREARM'},
+  {id:'exterminator',name:'EXTERMINATOR',desc:'KILL 10 MONSTERS IN ONE RUN'},
+  {id:'collector',name:'COLLECTOR',desc:'OPEN 5 LOCKERS IN ONE RUN'},
+  {id:'armed',name:'ARMED',desc:'FIND THE M1911'},
+  {id:'loaded',name:'FULLY LOADED',desc:'FIND THE SAWN-OFF'},
+  {id:'powered',name:'POWER UP',desc:'RECOVER ALL 3 FUSES'},
+  {id:'operator',name:'OPERATOR',desc:'UNLOCK THE SURVEILLANCE CONSOLE'},
+  {id:'survivor',name:'SURVIVOR',desc:'SURVIVE 5 MINUTES'},
+  {id:'untouchable',name:'UNTOUCHABLE',desc:'ESCAPE WITHOUT A SCRATCH'},
+  {id:'escape',name:'NO-CLIP OUT',desc:'ESCAPE THE BACKROOMS'}
+];
+const ACH_KEY='br_achs_v1';
+let achUnlocked=new Set();
+try{achUnlocked=new Set(JSON.parse(localStorage.getItem(ACH_KEY)||'[]'));}catch(e){}
+function unlockAch(id){
+  if(achUnlocked.has(id))return;
+  const a=ACH_DEFS.find(x=>x.id===id);
+  if(!a)return;
+  achUnlocked.add(id);
+  try{localStorage.setItem(ACH_KEY,JSON.stringify([...achUnlocked]));}catch(e){}
+  toast('ACHIEVEMENT UNLOCKED — '+a.name,3400);
+  if(AU.fuse)AU.fuse();
+  updateAchButtons();
+}
+function updateAchButtons(){
+  const t='ACHIEVEMENTS · '+achUnlocked.size+'/'+ACH_DEFS.length;
+  const b1=$('#achbtn'),b2=$('#achbtn2'),c=$('#achcount');
+  if(b1)b1.textContent=t;
+  if(b2)b2.textContent=t;
+  if(c)c.textContent=achUnlocked.size+'/'+ACH_DEFS.length;
+}
+function renderAchPanel(){
+  $('#achgrid').innerHTML=ACH_DEFS.map(a=>{
+    const on=achUnlocked.has(a.id);
+    return `<div class="achcard${on?' on':''}"><div class="achname">${on?'◆ ':'· '}${a.name}</div>`+
+           `<div class="achdesc">${on?a.desc:'LOCKED — '+a.desc}</div></div>`;
+  }).join('');
+  updateAchButtons();
+}
+function openAch(){renderAchPanel();$('#ach').classList.add('on');}
+function closeAch(){$('#ach').classList.remove('on');}
+$('#achbtn').addEventListener('click',openAch);
+$('#achbtn2').addEventListener('click',openAch);
+$('#achclose').addEventListener('click',closeAch);
+
+/* ══════════════════════════════════════════════════════════════
+   SAVE / CONTINUE — the whole run (maze, loot, monsters) is kept
+   in localStorage; CONTINUE on the title screen restores it
+   ══════════════════════════════════════════════════════════════ */
+const SAVE_KEY='br_save_v1';
+const CONT_KEY='br_continue';
+const OPSLV_KEY='br_opslv';
+function hasSave(){return !!localStorage.getItem(SAVE_KEY);}
+function deleteSave(){try{localStorage.removeItem(SAVE_KEY);}catch(e){}updateContinueBtn();}
+function updateContinueBtn(){
+  const b=$('#continuebtn');
+  if(b)b.style.display=hasSave()?'inline-block':'none';
+}
+let saveIndT=0;
+let restoredRun=false;                 // set when boot() rebuilt a saved run
+function saveGame(manual){
+  if((state!=='playing'&&state!=='paused')||player.dead)return;
+  try{
+    const data={
+      v:1,
+      maze:{v:vWall.map(c=>c.join('')),h:hWall.map(c=>c.join('')),
+            exitSeg:exitSeg?{i:exitSeg.i,j:exitSeg.j,t:exitSeg.t}:null,
+            exitCell:exitInfo?exitInfo.cell:null,spawnCell},
+      levelExits:LEVEL_EXITS,
+      player:{pos:[player.pos.x,player.pos.z],yaw:player.yaw,pitch:player.pitch,
+        hp:player.hp,stamina:player.stamina,battery:player.battery,
+        weapon:player.weapon,owned:player.owned,ammo:player.ammo,inv:player.inv,
+        fuses:player.fuses,kills:player.kills,dmgTaken:player.dmgTaken,chests:player.chests},
+      playT,nextHunt,
+      exitOpen:!!(exitInfo&&exitInfo.open),exitT:exitInfo?exitInfo.t:0,
+      torchOn,
+      chests:chests.map(c=>({x:c.x,z:c.z,loot:c.loot,open:c.open})),
+      items:items.map(it=>({type:it.type,x:it.x,z:it.z})),
+      monsters:monsters.filter(m=>!m.dead)
+        .map(m=>({kind:m.kind,x:m.pos.x,z:m.pos.z,hp:m.hp,alert:m.alert}))
+    };
+    localStorage.setItem(SAVE_KEY,JSON.stringify(data));
+    lastSavePT=playT;
+    if(manual)toast('PROGRESS SAVED');
+    const si=$('#saveind');
+    if(si){si.classList.add('on');saveIndT=1.8;}
+  }catch(e){if(manual)toast('SAVE FAILED');}
+}
+function applySave(sv){
+  LEVEL_EXITS=sv.levelExits||LEVEL_EXITS;
+  const P=sv.player||{};
+  player.pos.set((P.pos||[0,0])[0],0,(P.pos||[0,0])[1]);
+  player.yaw=P.yaw||0;player.pitch=P.pitch||0;
+  player.hp=P.hp==null?100:P.hp;
+  player.stamina=P.stamina==null?100:P.stamina;
+  player.battery=P.battery==null?100:P.battery;
+  player.weapon=P.weapon||'pipe';
+  player.owned=Object.assign({pipe:true,pistol:false,shotgun:false},P.owned||{});
+  player.ammo=Object.assign({pistolAmmo:0,shells:0},P.ammo||{});
+  player.inv=Object.assign({food:0,water:0,battery:0},P.inv||{});
+  player.fuses=P.fuses||0;player.kills=P.kills||0;
+  player.dmgTaken=P.dmgTaken||0;player.chests=P.chests||0;
+  playT=sv.playT||0;nextHunt=sv.nextHunt||22;hunterActive=false;
+  lastSavePT=playT;
+  if(sv.maze&&sv.maze.spawnCell)spawnCell=sv.maze.spawnCell;
+  // exit state
+  if(exitInfo){
+    exitInfo.open=!!sv.exitOpen;
+    exitInfo.t=sv.exitT||0;
+    if(exitInfo.open){
+      exitPowered=true;
+      const idx=collidersExtra.indexOf(exitInfo.col);
+      if(idx>=0)collidersExtra.splice(idx,1);
+      el.objtext.innerHTML='REACH THE <b>EXIT</b>';
+      el.objtext.style.color='#e8562f';
+      exitInfo.door.position.y=WALL_H*.48+exitInfo.t*WALL_H*1.0;
+      exitInfo.glowMat.opacity=exitInfo.t*.85;
+      exitInfo.signMat.opacity=.18+exitInfo.t*.82;
+    }
+  }
+  // torch
+  torchOn=sv.torchOn!==false;
+  flash.intensity=torchOn?26:0;
+  // lockers
+  for(const c of sv.chests||[]){
+    spawnChest(c.x,c.z,c.loot);
+    if(c.open){
+      const nc=chests[chests.length-1];
+      nc.open=true;nc.openT=1;
+      const d=nc.mesh.userData.doors;
+      if(d){d[0].rotation.y=-2.0;d[1].rotation.y=2.0;}
+      const lamp=nc.mesh.userData.lamp;
+      if(lamp)lamp.material.opacity=0;
+    }
+  }
+  // loose items
+  for(const it of sv.items||[])spawnItem(it.type,it.x,it.z);
+  // monsters
+  for(const s of sv.monsters||[]){
+    const m=new Monster(s.kind,0,0);
+    m.pos.set(s.x,0,s.z);
+    m.mesh.position.set(s.x,m.def.fly||0,s.z);
+    m.hp=s.hp;
+    if(s.alert)m.alert=s.alert;
+    monsters.push(m);
+  }
+  camera.position.set(player.pos.x,1.62,player.pos.z);
+  camera.rotation.y=player.yaw;
+  restoredRun=true;
+}
+$('#continuebtn').addEventListener('click',()=>{
+  if(!hasSave())return;
+  try{localStorage.setItem(CONT_KEY,'1');}catch(e){}
+  location.reload();
+});
+$('#savebtn').addEventListener('click',()=>saveGame(true));
+
+/* ══════════════════════════════════════════════════════════════
+   OPERATOR MODE — map chooser
+   ══════════════════════════════════════════════════════════════ */
+let opsSelectOpen=false;
+function openOpsSelect(){opsSelectOpen=true;$('#opsselect').classList.add('on');}
+function closeOpsSelect(){opsSelectOpen=false;$('#opsselect').classList.remove('on');}
+function chooseOpsLevel(lv){
+  opsLevel=clamp(lv,0,2);
+  try{localStorage.setItem(OPSLV_KEY,String(opsLevel));}catch(e){}
+  document.querySelectorAll('.opstab').forEach(x=>x.classList.toggle('on',+x.dataset.lv===opsLevel));
+  closeOpsSelect();
+  drawOpsMap();
+  renderOpsSide();
+}
+$('#opsmaps').addEventListener('click',openOpsSelect);
+$('#opselclose').addEventListener('click',closeOpsSelect);
+[...document.querySelectorAll('.oselcard')].forEach(c=>{
+  c.addEventListener('click',()=>chooseOpsLevel(+c.dataset.lv));
+});
+
+/* ══════════════════════════════════════════════════════════════
    INPUT
    ══════════════════════════════════════════════════════════════ */
 const keys={};
@@ -2384,6 +2694,7 @@ addEventListener('keydown',e=>{
   if(e.code==='Space')e.preventDefault();
   // overlays own the keyboard first
   if(e.code==='Escape'){
+    if(opsSelectOpen){closeOpsSelect();return;}
     if(opsOpen){closeOps();return;}
     if(pwOpen){closePw();return;}
     if(invOpen){closeInv();return;}
@@ -2482,6 +2793,7 @@ function attack(){
   const now=performance.now()/1000;
   if(now<player.nextAttack)return;
   const w=WEAPONS[player.weapon];
+  player.lastWeapon=player.weapon;
   player.nextAttack=now+w.rate;
   swingT=0;
 
@@ -2552,6 +2864,7 @@ function attack(){
 
 function damagePlayer(amount,src){
   if(state!=='playing'||player.dead)return;
+  player.dmgTaken+=amount;
   player.hp-=amount;
   player.hurtT=.5;
   player.shake=Math.max(player.shake,.9);
@@ -2584,9 +2897,11 @@ function pickup(it){
       AU.pickup();break;
     case 'pistol':
       player.owned.pistol=true;player.ammo.pistolAmmo+=8;
+      unlockAch('armed');
       AU.pickup();toast('M1911 — 8 ROUNDS');selectWeapon('pistol');break;
     case 'shotgun':
       player.owned.shotgun=true;player.ammo.shells+=4;
+      unlockAch('loaded');
       AU.pickup();toast('SAWN-OFF — 4 SHELLS');selectWeapon('shotgun');break;
   }
   updateHUD();
@@ -2595,6 +2910,7 @@ function pickup(it){
 let exitPowered=false;
 function powerExit(){
   exitPowered=true;
+  unlockAch('powered');
   AU.door(true);
   exitInfo.open=true;
   const idx=collidersExtra.indexOf(exitInfo.col);
@@ -2624,6 +2940,7 @@ let hallu=null,halluT=rand(20,36);
 let heartT=0;
 let swingT=1;
 let muzzleFlashT=0;
+let lastSavePT=0;                      // playT of the last autosave
 
 function randomEvent(){
   const r=Math.random();
@@ -2734,16 +3051,22 @@ function setState(s){
 function startGame(){
   AU.init();
   if(AU.ctx&&AU.ctx.state==='suspended')AU.ctx.resume();
+  // a focused button would swallow SPACE as a click during play
+  if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
+  // starting a brand-new run supersedes any stored save
+  if(!restoredRun&&hasSave())deleteSave();
   setState('playing');
   requestLock();
   player.startTime=performance.now();
-  toast('YOU NO-CLIPPED OUT OF REALITY',3600);
+  if(restoredRun){restoredRun=false;toast('RUN RESTORED — WELCOME BACK',3000);}
+  else toast('YOU NO-CLIPPED OUT OF REALITY',3600);
 }
 
 function die(){
   if(state!=='playing')return;
   state='dying';
   player.dead=true;
+  deleteSave();
   if(invOpen)closeInv();
   if(opsOpen)closeOps();
   if(pwOpen)closePw();
@@ -2761,6 +3084,9 @@ function die(){
 function win(){
   if(state!=='playing')return;
   state='winning';
+  unlockAch('escape');
+  if(player.dmgTaken<=0)unlockAch('untouchable');
+  deleteSave();
   if(invOpen)closeInv();
   if(opsOpen)closeOps();
   if(pwOpen)closePw();
@@ -2785,6 +3111,8 @@ function fmt(s){
 
 /* ---- player update ---- */
 const tmpV=new THREE.Vector3();
+let dashT=0,dashCd=0;                 // dodge dash: active time + cooldown
+const dashDir=new THREE.Vector3(0,0,-1);
 function updatePlayer(dt){
   if(player.dead)return;
 
@@ -2809,6 +3137,21 @@ function updatePlayer(dt){
   let spd=sprinting?5.9:(player.crouch?1.75:3.35);
   if(player.stamina<=0)spd=Math.min(spd,2.1);
 
+  // ---- dodge dash (SPACE): a short committed burst, costs stamina ----
+  dashCd=Math.max(0,dashCd-dt);
+  if(dashT>0)dashT-=dt;
+  if(keys.Space&&dashT<=0&&dashCd<=0&&player.stamina>=25&&!player.crouch){
+    dashT=.24;dashCd=1.25;player.stamina-=25;
+    let dx=fwd.x,dz=fwd.z;
+    if(moving){
+      dx=fwd.x*iz+right.x*ix;dz=fwd.z*iz+right.z*ix;
+      const l=Math.hypot(dx,dz)||1;dx/=l;dz/=l;
+    }
+    dashDir.set(dx,0,dz);
+    AU.swing();
+    player.shake=Math.max(player.shake,.16);
+  }
+
   if(sprinting){
     player.stamina-=dt*16;
     if(player.stamina<=0){player.stamina=0;}
@@ -2818,9 +3161,14 @@ function updatePlayer(dt){
 
   const wishX=(fwd.x*iz+right.x*ix)*spd;
   const wishZ=(fwd.z*iz+right.z*ix)*spd;
-  // acceleration smoothing
-  player.velX=lerp(player.velX||0,wishX,Math.min(1,dt*12));
-  player.velZ=lerp(player.velZ||0,wishZ,Math.min(1,dt*12));
+  // acceleration smoothing (overridden mid-dash: the burst is committed)
+  if(dashT>0){
+    player.velX=dashDir.x*11.5;
+    player.velZ=dashDir.z*11.5;
+  }else{
+    player.velX=lerp(player.velX||0,wishX,Math.min(1,dt*12));
+    player.velZ=lerp(player.velZ||0,wishZ,Math.min(1,dt*12));
+  }
 
   player.pos.x+=player.velX*dt;
   player.pos.z+=player.velZ*dt;
@@ -3008,6 +3356,10 @@ function tick(){
       eventT-=dt;
       if(eventT<=0){eventT=rand(13,26);randomEvent();}
 
+      // autosave every 20s of elapsed play (wall-clock, not frame-bound)
+      if(playT-lastSavePT>=20){lastSavePT=playT;saveGame(false);}
+      if(playT>300)unlockAch('survivor');
+
     // hunt pressure: the maze is never empty — something always comes for you.
     // First hunt at 22s, then again every 26s so there are no quiet stretches.
     if(!hunterActive&&playT>nextHunt){
@@ -3043,6 +3395,11 @@ function tick(){
     }
     }
     lastTickW=nowW;
+    // the SAVED flash fades in real time even while the world is frozen
+    if(saveIndT>0){
+      saveIndT-=dt;
+      if(saveIndT<=0){const si=$('#saveind');if(si)si.classList.remove('on');}
+    }
   }else if(state==='menu'){
     // slow drift camera on title screen
     camera.position.set(Math.sin(elapsed*.07)*1.4,1.62,Math.cos(elapsed*.05)*1.4);
@@ -3080,61 +3437,84 @@ function updateViewModel(dt){
    BOOT
    ══════════════════════════════════════════════════════════════ */
 function boot(){
-  buildLevel();
+  // continue a saved run if the title screen asked for it
+  let sv=null;
+  if(localStorage.getItem(CONT_KEY)==='1'){
+    try{sv=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');}catch(e){sv=null;}
+    localStorage.removeItem(CONT_KEY);
+    if(sv&&(!sv.maze||!sv.maze.exitCell||!sv.player))sv=null;
+  }
+  buildLevel(sv);
   buildViewModels();
 
-  // spawn
-  const{dist}=bfs(1,1);
-  let bestCell=[1,1],bd=-1;
-  for(let i=0;i<GX;i++)for(let j=0;j<GZ;j++){
-    const d=dist[i+j*GX];
-    if(d>0&&d<7&&Math.random()<.5&&d>bd){bd=d;bestCell=[i,j];}
-  }
-  spawnCell=bestCell;
-  player.pos.set(cx(spawnCell[0]),0,cz(spawnCell[1]));
-
-  // operator map: level 0's exit is the real door; levels 1 and 2 get the
-  // next-farthest perimeter gates so the console can show all three
-  LEVEL_EXITS=[exitInfo.cell];
-  {
-    const dmap=bfs(spawnCell[0],spawnCell[1]).dist;
-    const border=[];
+  if(sv){
+    applySave(sv);
+  }else{
+    // spawn
+    const{dist}=bfs(1,1);
+    let bestCell=[1,1],bd=-1;
     for(let i=0;i<GX;i++)for(let j=0;j<GZ;j++){
-      if(i===0||j===0||i===GX-1||j===GZ-1)border.push([i,j,dmap[i+j*GX]]);
+      const d=dist[i+j*GX];
+      if(d>0&&d<7&&Math.random()<.5&&d>bd){bd=d;bestCell=[i,j];}
     }
-    border.sort((a,b)=>b[2]-a[2]);
-    const used=new Set([exitInfo.cell.join(',')]);
-    for(const b of border){
-      if(LEVEL_EXITS.length>=3)break;
-      const k=b[0]+','+b[1];
-      if(used.has(k)||b[2]<0)continue;
-      used.add(k);LEVEL_EXITS.push([b[0],b[1]]);
+    spawnCell=bestCell;
+    player.pos.set(cx(spawnCell[0]),0,cz(spawnCell[1]));
+
+    // operator map: level 0's exit is the real door; levels 1 and 2 get the
+    // next-farthest perimeter gates so the console can show all three
+    LEVEL_EXITS=[exitInfo.cell];
+    {
+      const dmap=bfs(spawnCell[0],spawnCell[1]).dist;
+      const border=[];
+      for(let i=0;i<GX;i++)for(let j=0;j<GZ;j++){
+        if(i===0||j===0||i===GX-1||j===GZ-1)border.push([i,j,dmap[i+j*GX]]);
+      }
+      border.sort((a,b)=>b[2]-a[2]);
+      const used=new Set([exitInfo.cell.join(',')]);
+      for(const b of border){
+        if(LEVEL_EXITS.length>=3)break;
+        const k=b[0]+','+b[1];
+        if(used.has(k)||b[2]<0)continue;
+        used.add(k);LEVEL_EXITS.push([b[0],b[1]]);
+      }
     }
-  }
-  // face the longest open corridor
-  let bestYaw=rand(0,TAU),bestD=-1;
-  for(let k=0;k<16;k++){
-    const a=k/16*TAU;
-    const dx=-Math.sin(a),dz=-Math.cos(a);
-    let d=0;
-    while(d<28&&!solidAt(player.pos.x+dx*d,player.pos.z+dz*d))d+=.4;
-    if(d>bestD){bestD=d;bestYaw=a;}
-  }
-  player.yaw=bestYaw;
+    // face the longest open corridor
+    let bestYaw=rand(0,TAU),bestD=-1;
+    for(let k=0;k<16;k++){
+      const a=k/16*TAU;
+      const dx=-Math.sin(a),dz=-Math.cos(a);
+      let d=0;
+      while(d<28&&!solidAt(player.pos.x+dx*d,player.pos.z+dz*d))d+=.4;
+      if(d>bestD){bestD=d;bestYaw=a;}
+    }
+    player.yaw=bestYaw;
 
-  playT=0;hunterActive=false;nextHunt=22;lastTickW=performance.now();
-  populate();
-  spawnMonsters(5);
+    playT=0;hunterActive=false;nextHunt=22;lastTickW=performance.now();
+    populate();
+    spawnMonsters(5);
 
-  camera.position.set(player.pos.x,1.62,player.pos.z);
-  camera.rotation.y=player.yaw;
+    camera.position.set(player.pos.x,1.62,player.pos.z);
+    camera.rotation.y=player.yaw;
+  }
+
+  // remember which surveillance map the operator last picked
+  try{
+    const lv=clamp(parseInt(localStorage.getItem(OPSLV_KEY)||'0',10)||0,0,2);
+    opsLevel=lv;
+    document.querySelectorAll('.opstab').forEach(x=>x.classList.toggle('on',+x.dataset.lv===lv));
+  }catch(e){}
 
   el.vig.style.opacity='.9';
+  updateContinueBtn();
+  updateAchButtons();
   tick();
 }
 
 $('#startbtn').addEventListener('click',startGame);
-$('#resumebtn').addEventListener('click',()=>{setState('playing');requestLock();});
+$('#resumebtn').addEventListener('click',()=>{
+  if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
+  setState('playing');requestLock();
+});
 $('#retrybtn').addEventListener('click',()=>location.reload());
 $('#againbtn').addEventListener('click',()=>location.reload());
 
@@ -3149,6 +3529,10 @@ window.__BR={player,get monsters(){return monsters;},get state(){return state;},
   get opsOpen(){return opsOpen;},get pwOpen(){return pwOpen;},
   get levelExits(){return LEVEL_EXITS;},get opsLevel(){return opsLevel;},
   requestOps,openOps,closeOps,
+  saveGame,hasSave,deleteSave,openAch,closeAch,openOpsSelect,closeOpsSelect,chooseOpsLevel,
+  get dashT(){return dashT;},get dashCd(){return dashCd;},
+  get achs(){return [...achUnlocked];},
+  WEAPONS,ACH_DEFS,
   debugSpawn(kind,dx=3,dz=2){
     const x=player.pos.x+dx,z=player.pos.z+dz;
     const m=new Monster(kind,0,0);
@@ -3156,6 +3540,7 @@ window.__BR={player,get monsters(){return monsters;},get state(){return state;},
     monsters.push(m);return m;
   },
   get info(){return{calls:renderer.info.render.calls,tris:renderer.info.render.triangles,geo:renderer.info.memory.geometries,tex:renderer.info.memory.textures};}};
+window.BR=window.__BR;
 </script>
 </body>
 </html>
