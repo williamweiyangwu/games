@@ -1797,8 +1797,7 @@ var pr = projectTrack(c.x, c.z, c.i);
     if (window.Peer) return Promise.resolve(window.Peer);
     if (peerLib) return peerLib;
     peerLib = new Promise(function (resolve, reject) {
-      var sources = ['./lib/peerjs.min.js',
-        'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js'];
+      var sources = ['./lib/peerjs.min.js'];
       var tryNext = function (i) {
         if (i >= sources.length) {
           reject(new Error('Could not load the online library - check your connection.'));
