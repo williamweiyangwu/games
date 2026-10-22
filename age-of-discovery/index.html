@@ -435,22 +435,12 @@
 
 <script type="module">
 // ============================================================
-//  THREE.JS LOADER - several CDNs, ESM first then classic UMD
-//  (classic scripts also work when the file is opened via file://)
+//  THREE.JS LOADER - bundled locally, no external requests
 // ============================================================
 const ESM_CDNS = [
   './three.module.min.js',   // bundled locally with the page
-  'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js',
-  'https://unpkg.com/three@0.160.0/build/three.module.js',
-  'https://cdn.staticfile.org/three.js/0.160.0/three.module.js',
-  'https://lib.baomitu.com/three.js/0.160.0/three.module.js',
-  'https://esm.sh/three@0.160.0',
 ];
 const UMD_CDNS = [
-  'https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js',
-  'https://cdn.staticfile.org/three.js/0.152.2/three.min.js',
-  'https://unpkg.com/three@0.152.2/build/three.min.js',
-  'https://lib.baomitu.com/three.js/0.152.2/three.min.js',
 ];
 
 function loadClassicScript(src) {
@@ -486,7 +476,7 @@ if (!THREE) {
   document.querySelector('#loading .spinner').style.display = 'none';
   document.getElementById('loadingText').style.display = 'none';
   document.getElementById('loadErr').style.display = 'block';
-  throw new Error('Three.js could not be loaded from any CDN');
+  throw new Error('Three.js could not be loaded from ./three.module.min.js');
 }
 
 // ============================================================
