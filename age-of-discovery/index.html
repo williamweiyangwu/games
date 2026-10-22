@@ -321,8 +321,9 @@
   <div class="subtitle">~ Set sail for the unknown ~</div>
   <div class="desc">
     The year is 1492. You command a caravel bound for uncharted waters.
-    Sail across the endless ocean, discover distant lands, trade exotic goods,
-    and claim glory for your name. But beware — the sea is vast, supplies are finite,
+    Sail across the endless ocean and discover distant lands. Every island trades
+    one way only &mdash; buy their exotic goods there, then carry them home to Lisbon
+    to sell for fortune and glory. But beware &mdash; the sea is vast, supplies are finite,
     and fortune favors the bold.
   </div>
   <div class="controls-info">
@@ -1626,34 +1627,49 @@ function showDiscoveryPrompt(def, port) {
 
 function showTradePanel(def) {
   const panel = document.getElementById('tradePanel');
-  document.getElementById('tpTitle').textContent = def.name + ' Market';
-  document.getElementById('tpSub').textContent = TRADE_GOODS[def.type] ? `Specialty: ${TRADE_GOODS[def.type].name}` : 'General Goods';
+  // Every island trades in ONE direction only:
+  //   Lisbon (home)  -> SELL your cargo
+  //   foreign ports  -> BUY their goods
+  const isHome = def.type === 'home';
+  const mode = isHome ? 'sell' : 'buy';
 
-  const goods = TRADE_GOODS[def.type] ? [TRADE_GOODS[def.type]] : Object.values(TRADE_GOODS);
-  // Also sell all goods at any port
-  const allGoods = Object.entries(TRADE_GOODS);
+  document.getElementById('tpTitle').textContent = def.name + ' Market';
+  const localName = TRADE_GOODS[def.type] ? TRADE_GOODS[def.type].name : 'General Goods';
+  document.getElementById('tpSub').innerHTML = isHome
+    ? `Home market &mdash; <span style="color:#4fc3f7;">sell your cargo here</span>`
+    : `Specialty: ${localName} &mdash; <span style="color:#8bc34a;">buy goods here</span>`;
 
   const itemsDiv = document.getElementById('tradeItems');
   itemsDiv.innerHTML = '';
 
-  allGoods.forEach(([key, good]) => {
+  Object.entries(TRADE_GOODS).forEach(([key, good]) => {
     const isLocal = def.type === key;
-    const buyPrice = isLocal ? Math.floor(good.buyPrice * 0.8) : good.buyPrice;
-    const sellPrice = isLocal ? good.sellPrice : Math.floor(good.sellPrice * 0.7);
     const owned = Game.inventory[key] || 0;
+    const price = mode === 'buy'
+      ? (isLocal ? Math.floor(good.buyPrice * 0.8) : good.buyPrice)
+      : good.sellPrice;                       // the home market always pays full price
+    const disabled = mode === 'buy' ? Game.gold < price : owned === 0;
 
     const item = document.createElement('div');
     item.className = 'trade-item';
     item.innerHTML = `
       <span class="name">${good.icon} ${good.name}${isLocal ? ' <span style="color:#8bc34a;font-size:11px;">(local)</span>' : ''}</span>
-      <span class="price">Buy: ${buyPrice}g | Sell: ${sellPrice}g</span>
+      <span class="price">${mode === 'buy' ? 'Buy' : 'Sell'}: ${price}g</span>
       <div class="actions">
-        <button class="trade-btn buy" data-action="buy" data-key="${key}" data-price="${buyPrice}" ${Game.gold < buyPrice ? 'disabled' : ''}>Buy</button>
-        <button class="trade-btn sell" data-action="sell" data-key="${key}" data-price="${sellPrice}" ${owned === 0 ? 'disabled' : ''}>Sell (${owned})</button>
+        <button class="trade-btn ${mode}" data-action="${mode}" data-key="${key}" data-price="${price}" ${disabled ? 'disabled' : ''}>${mode === 'buy' ? 'Buy' : 'Sell (' + owned + ')'}</button>
       </div>
     `;
     itemsDiv.appendChild(item);
   });
+
+  // Nothing to trade here right now? Point the player at the trade loop.
+  const holdEmpty = Object.values(Game.inventory).every(v => !v);
+  if (mode === 'sell' && holdEmpty) {
+    const hint = document.createElement('div');
+    hint.className = 'trade-item';
+    hint.innerHTML = `<span class="name" style="color:#999;font-style:italic;">Your hold is empty &mdash; buy goods at the islands, then bring them home to sell.</span>`;
+    itemsDiv.appendChild(hint);
+  }
 
   // Resupply row
   const supplyRow = document.createElement('div');
