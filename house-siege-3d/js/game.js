@@ -742,8 +742,10 @@ function buildWorld() {
   wallZ(B, -outer, outer, PY, wallTop, [], OT, MAT.mazeWall);
   wallZ(-B, -outer, outer, PY, wallTop, [], OT, MAT.mazeWall);
 
-  /* --- railings on the inner edge, open where each stair arrives --- */
-  const gap = RW + 1.2;
+  /* --- railings on the inner edge, open only where each stair arrives ---
+     the gap is the ramp width plus a hair: any wider and you can stroll
+     off the catwalk through the railing right beside the stairs */
+  const gap = RW + 0.45;
   wallX(MH, -MH, MH, PY, PY + MAP.railH, [[-gap, gap]], 0.14, MAT.rail);
   wallX(-MH, -MH, MH, PY, PY + MAP.railH, [[-gap, gap]], 0.14, MAT.rail);
   wallZ(MH, -MH, MH, PY, PY + MAP.railH, [[-gap, gap]], 0.14, MAT.rail);
@@ -757,7 +759,11 @@ function buildWorld() {
     }
   }
 
-  /* --- stairs (visual steps; the ramp colliders do the lifting) --- */
+  /* --- stairs: solid boxes from the floor up. The smooth ramp in groundAt
+     still does the lifting, so the 0.26 m rises are walked, not jumped —
+     but the steps themselves are REAL: without colliders you could walk
+     into the staircase from the side at ground level and clip straight
+     through the white steps (and shoot through them). --- */
   const STEPS = 16;
   for (const r of ramps) {
     const along = r.axis === 'x' ? (r.maxX - r.minX) : (r.maxZ - r.minZ);
@@ -767,11 +773,11 @@ function buildWorld() {
       if (r.axis === 'x') {
         const h = r.yAtMinX + (r.yAtMaxX - r.yAtMinX) * t;
         addBox(r.minX + (r.maxX - r.minX) * t, h / 2, 0, run + 0.02, Math.max(0.12, h), RW * 2,
-          MAT.mazeWall, { collide: false, name: 'step' });
+          MAT.mazeWall, { noBase: true, name: 'step' });
       } else {
         const h = r.yAtMinZ + (r.yAtMaxZ - r.yAtMinZ) * t;
         addBox(0, h / 2, r.minZ + (r.maxZ - r.minZ) * t, RW * 2, Math.max(0.12, h), run + 0.02,
-          MAT.mazeWall, { collide: false, name: 'step' });
+          MAT.mazeWall, { noBase: true, name: 'step' });
       }
     }
   }
@@ -3752,7 +3758,7 @@ function boot() {
 
 /* debug handle (used by the automated smoke test) */
 window.__wh = {
-  G, startGame, groundAt,
+  G, startGame, groundAt, resolveHorizontal, moveActor,
   get camera() { return camera; },
   get scene() { return scene; },
   get renderer() { return renderer; },
