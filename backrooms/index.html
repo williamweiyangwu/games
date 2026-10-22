@@ -203,7 +203,7 @@ h1{font-size:clamp(30px,7vw,64px);letter-spacing:.16em;font-weight:700;line-heig
   <div class="invbox">
     <div class="invhead">INVENTORY<span>[E] CLOSE</span></div>
     <div id="invbody"></div>
-    <div class="invnote">CLICK A SUPPLY TO USE IT &nbsp;·&nbsp; [4] FOOD &nbsp;·&nbsp; [5] WATER &nbsp;·&nbsp; [6] BATTERY<br>THE HALLS DO NOT WAIT WHILE YOU LOOK AWAY</div>
+    <div class="invnote">CLICK A SUPPLY TO USE IT &nbsp;·&nbsp; [4] FOOD &nbsp;·&nbsp; [5] WATER &nbsp;·&nbsp; [6] BATTERY<br>TIME STANDS STILL WHILE THE INVENTORY IS OPEN</div>
   </div>
 </div>
 
@@ -2440,21 +2440,22 @@ function tick(){
 
   if(state==='playing'){
     const nowW=performance.now();
-    playT+=Math.min(2,(nowW-lastTickW)/1000);
-    lastTickW=nowW;
-    updatePlayer(dt);
-    for(const m of monsters)m.update(dt);
-    updateItems(dt);
-    updateChests(dt);
-    updateExit(dt);
-    updateLights(dt);
-    updateDanger(dt);
-    updateHallu(dt);
-    updateViewModel(dt);
-    updateHUD();
+    // the inventory freezes time: the world renders, nothing simulates
+    if(!invOpen){
+      playT+=Math.min(2,(nowW-lastTickW)/1000);
+      updatePlayer(dt);
+      for(const m of monsters)m.update(dt);
+      updateItems(dt);
+      updateChests(dt);
+      updateExit(dt);
+      updateLights(dt);
+      updateDanger(dt);
+      updateHallu(dt);
+      updateViewModel(dt);
+      updateHUD();
 
-    eventT-=dt;
-    if(eventT<=0){eventT=rand(13,26);randomEvent();}
+      eventT-=dt;
+      if(eventT<=0){eventT=rand(13,26);randomEvent();}
 
     // hunt pressure: the maze is never empty — something always comes for you.
     // First hunt at 22s, then again every 26s so there are no quiet stretches.
@@ -2489,6 +2490,8 @@ function tick(){
       while(tries<60&&Math.hypot(cx(c.i)-player.pos.x,cz(c.j)-player.pos.z)<15);
       monsters.push(new Monster(Math.random()<.5?'smiler':'hound',c.i,c.j));
     }
+    }
+    lastTickW=nowW;
   }else if(state==='menu'){
     // slow drift camera on title screen
     camera.position.set(Math.sin(elapsed*.07)*1.4,1.62,Math.cos(elapsed*.05)*1.4);
