@@ -125,6 +125,39 @@ h1{font-size:clamp(30px,7vw,64px);letter-spacing:.16em;font-weight:700;line-heig
 .stats{margin-top:22px;font-size:11px;letter-spacing:2.5px;color:#8b8159;line-height:2.1}
 .stats b{color:#d8c27c;font-weight:400}
 .ghost{position:absolute;font-size:11px;letter-spacing:4px;color:#3a3520}
+
+/* ---------- inventory ---------- */
+#inv{position:fixed;inset:0;z-index:45;display:flex;align-items:center;justify-content:center;
+  background:rgba(2,2,1,.78);opacity:0;pointer-events:none;transition:opacity .18s}
+#inv.on{opacity:1;pointer-events:auto}
+#inv:before{content:'';position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,.25) 0 1px,transparent 1px 3px);opacity:.4}
+.invbox{position:relative;width:min(540px,92vw);max-height:86vh;overflow:auto;
+  border:1px solid rgba(216,194,124,.4);background:rgba(10,9,5,.96);
+  box-shadow:0 0 60px rgba(0,0,0,.8),inset 0 0 60px rgba(216,194,124,.04);padding:22px 26px 26px}
+.invhead{display:flex;justify-content:space-between;align-items:baseline;
+  font-size:14px;letter-spacing:5px;color:#f0e2b0;border-bottom:1px solid rgba(216,194,124,.35);
+  padding-bottom:10px;margin-bottom:6px;text-shadow:0 0 18px rgba(216,194,124,.4)}
+.invhead span{font-size:9px;letter-spacing:2px;color:#7c7350}
+.invsec{font-size:9px;letter-spacing:3px;color:#7c7350;margin:14px 0 6px}
+.invrow{display:flex;justify-content:space-between;align-items:center;gap:10px;
+  padding:7px 10px;border:1px solid rgba(216,194,124,.14);margin-bottom:5px;
+  font-size:11px;letter-spacing:1.5px;color:#6e674a;cursor:default;transition:.15s}
+.invrow .n{display:flex;align-items:center;gap:9px}
+.invrow .dot{width:7px;height:7px;border-radius:50%;background:#3a3520;flex:none}
+.invrow.have{color:#e2d3a0;border-color:rgba(216,194,124,.35)}
+.invrow.have .dot{background:#d8c27c;box-shadow:0 0 8px rgba(216,194,124,.7)}
+.invrow.eq{border-color:#e8562f;color:#ffc4a8;box-shadow:inset 0 0 18px rgba(232,86,47,.08)}
+.invrow.eq .dot{background:#e8562f;box-shadow:0 0 8px rgba(232,86,47,.8)}
+.invrow.use{cursor:pointer}
+.invrow.use:hover{background:rgba(216,194,124,.09);border-color:rgba(216,194,124,.5)}
+.invrow .v{color:#8b8159;font-size:10px;letter-spacing:1px;text-align:right;white-space:nowrap}
+.invrow .v b{color:#e8dcae;font-weight:400}
+.invnote{margin-top:16px;font-size:9px;letter-spacing:2px;color:#5d5539;line-height:1.9}
+#invhint{position:absolute;right:26px;bottom:128px;font-size:9px;letter-spacing:2.5px;
+  color:#7c7350;text-align:right;text-shadow:0 1px 3px #000}
+#invhint b{color:#a49a72;font-weight:400;border:1px solid rgba(216,194,124,.3);
+  padding:1px 5px;margin-right:5px}
 </style>
 </head>
 <body>
@@ -142,7 +175,7 @@ h1{font-size:clamp(30px,7vw,64px);letter-spacing:.16em;font-weight:700;line-heig
     <span id="objtext">SEARCH THE LOCKERS &nbsp;·&nbsp; FIND <b>3 FUSES</b> &nbsp;·&nbsp; POWER THE EXIT</span>
     <div id="fuses"><div class="fuse"></div><div class="fuse"></div><div class="fuse"></div></div>
   </div>
-  <div id="useprompt"><b>E</b><span>OPEN</span></div>
+  <div id="useprompt"><b>RMB</b><span>OPEN LOCKER</span></div>
   <div id="cross"><div class="h"></div><div class="h2"></div><div class="dot"></div></div>
   <div id="vitals">
     <div class="lbl"><span>VITALS</span><b id="hpn">100</b></div>
@@ -157,12 +190,21 @@ h1{font-size:clamp(30px,7vw,64px);letter-spacing:.16em;font-weight:700;line-heig
     <div class="slot" data-slot="2">2</div>
     <div class="slot" data-slot="3">3</div>
   </div>
+  <div id="invhint"><b>E</b>INVENTORY</div>
   <div id="weapon">
     <div id="wname">RUSTED PIPE</div>
     <div id="wammo">—</div>
   </div>
   <div id="toasts"></div>
   <div id="arrow"><i></i></div>
+</div>
+
+<div id="inv">
+  <div class="invbox">
+    <div class="invhead">INVENTORY<span>[E] CLOSE</span></div>
+    <div id="invbody"></div>
+    <div class="invnote">CLICK A SUPPLY TO USE IT &nbsp;·&nbsp; [4] FOOD &nbsp;·&nbsp; [5] WATER &nbsp;·&nbsp; [6] BATTERY<br>THE HALLS DO NOT WAIT WHILE YOU LOOK AWAY</div>
+  </div>
 </div>
 
 <div class="screen" id="title">
@@ -180,9 +222,11 @@ h1{font-size:clamp(30px,7vw,64px);letter-spacing:.16em;font-weight:700;line-heig
     <div><kbd>SHIFT</kbd>SPRINT</div>
     <div><kbd>CTRL</kbd>CROUCH</div>
     <div><kbd>LMB</kbd>ATTACK</div>
-    <div><kbd>E</kbd>OPEN LOCKER</div>
+    <div><kbd>E</kbd>INVENTORY</div>
+    <div><kbd>RMB</kbd>OPEN LOCKER</div>
     <div><kbd>F</kbd>TORCH</div>
     <div><kbd>1 2 3</kbd>WEAPONS</div>
+    <div><kbd>4 5 6</kbd>USE ITEM</div>
     <div><kbd>ESC</kbd>PAUSE</div>
   </div>
   <button class="btn" id="startbtn">DESCEND</button>
@@ -911,6 +955,7 @@ const player={
   eye:1.62,crouch:false,
   weapon:'pipe',owned:{pipe:true,pistol:false,shotgun:false},
   ammo:{pistolAmmo:0,shells:0},
+  inv:{food:0,water:0,battery:0},
   nextAttack:0,dead:false,
   bob:0,bobAmt:0,shake:0,shakeV:0,
   hurtT:0,breathT:0,stepPhase:0,exhausted:false,
@@ -1012,76 +1057,138 @@ function eyeGlow(color,size){
 }
 const skinMat=()=>new THREE.MeshStandardMaterial({color:0x0c0c0f,roughness:.96,metalness:.02,emissive:0x04040a,emissiveIntensity:.5});
 
-// Real Backrooms monster art (Backrooms Wiki, CC BY-SA 3.0), billboarded so it
-// always turns to face you. The grin keeps fog:false so it reads through the haze.
+// Real Backrooms monster art (Backrooms Wiki, CC BY-SA 3.0). The Smiler's grin
+// is billboarded so it always turns to face you; the Hound is fully modelled.
 const MON_TEX={};
 (function loadMonsterArt(){
   const ld=new THREE.TextureLoader();
-  [['smiler','assets/mon-smiler.png'],['hound','assets/mon-hound.png']].forEach(([k,u])=>{
-    const t=ld.load(u);
-    t.colorSpace=THREE.SRGBColorSpace;
-    MON_TEX[k]=t;
-  });
+  const t=ld.load('assets/mon-smiler.png');
+  t.colorSpace=THREE.SRGBColorSpace;
+  MON_TEX.smiler=t;
 })();
+
+// Every bone is a Group welded to its parent, so limbs stay attached to the
+// body through any pose. Parts flagged userData.skin are tinted by the
+// hallucination pass; sprites/eyes keep their own materials.
+function bone(parent,geo,x,y,z,mat){
+  const m=new THREE.Mesh(geo,mat||skinMatCache||skinMat());
+  m.position.set(x,y,z);
+  parent.add(m);
+  m.userData.skin=!mat;   // untyped parts take the tint used by the hallucination pass
+  return m;
+}
+let skinMatCache=null;
 
 function buildSmiler(){
   const g=new THREE.Group();
-  const sk=skinMat();
-  // lanky dark silhouette; the wiki art supplies the face
-  const body=new THREE.Mesh(new THREE.CylinderGeometry(.2,.33,1.3,10),sk);
-  body.position.y=1.15;g.add(body);
-  const neck=new THREE.Mesh(new THREE.CylinderGeometry(.09,.11,.3,8),sk);
-  neck.position.y=1.88;g.add(neck);
-  const head=new THREE.Mesh(new THREE.SphereGeometry(.26,16,12),sk);
-  head.position.y=2.12;head.scale.set(.88,1.15,.85);g.add(head);
-
-  // the grin itself — billboarded, never fogged out
+  skinMatCache=skinMat();
+  const sk=skinMatCache;
+  // ---- legs: hip -> knee -> foot, fully connected ----
+  const legs=[];
+  for(const sx of[-1,1]){
+    const hip=new THREE.Group();hip.position.set(sx*.15,.66,0);
+    bone(hip,new THREE.CylinderGeometry(.062,.05,.32,6),0,-.16,0);            // thigh
+    const knee=new THREE.Group();knee.position.y=-.32;hip.add(knee);
+    bone(knee,new THREE.CylinderGeometry(.05,.036,.30,6),0,-.15,0);           // shin
+    bone(knee,new THREE.BoxGeometry(.11,.05,.26),0,-.31,.05);                 // foot
+    g.add(hip);legs.push(hip);
+  }
+  // ---- pelvis + tapered torso ----
+  bone(g,new THREE.SphereGeometry(.19,12,9),0,.74,0);
+  bone(g,new THREE.CylinderGeometry(.21,.31,1.22,10),0,1.30,0);
+  // ---- shoulders + two-segment arms welded to the torso ----
+  const arms=[];
+  for(const sx of[-1,1]){
+    const shoulder=new THREE.Group();shoulder.position.set(sx*.27,1.70,0);
+    bone(shoulder,new THREE.SphereGeometry(.115,10,8),0,0,0);                 // deltoid
+    bone(shoulder,new THREE.CylinderGeometry(.056,.048,.5,6),0,-.25,0);       // upper arm
+    const elbow=new THREE.Group();elbow.position.y=-.5;shoulder.add(elbow);
+    bone(elbow,new THREE.CylinderGeometry(.046,.038,.44,6),0,-.22,0);         // forearm
+    for(let f=-1;f<=1;f++){                                                   // finger-claws
+      const claw=bone(elbow,new THREE.ConeGeometry(.014,.17,5),f*.045,-.58,f*.03);
+      claw.rotation.x=-.35+f*.2;
+    }
+    g.add(shoulder);arms.push(shoulder);
+  }
+  // ---- neck + head ----
+  bone(g,new THREE.CylinderGeometry(.075,.10,.24,8),0,1.99,0);
+  const head=bone(g,new THREE.SphereGeometry(.235,14,10),0,2.26,0);
+  head.scale.set(.9,1.06,.9);
+  // the grin — real wiki art, billboarded, never fogged out
   const face=new THREE.Sprite(new THREE.SpriteMaterial({
     map:MON_TEX.smiler,transparent:true,fog:false,depthWrite:false
   }));
-  face.scale.set(1.06,.77,1);
-  face.position.set(0,2.15,.26);
+  face.scale.set(1.02,.74,1);
+  face.position.set(0,2.27,.24);
   g.add(face);
-
-  // soft halo so the grin reads as a light source in pitch black
+  // eyes
+  const eyeMat=new THREE.MeshBasicMaterial({color:0xfff0c0,fog:false});
+  for(const sx of[-1,1]){
+    const e=bone(g,new THREE.SphereGeometry(.032,8,6),sx*.085,2.38,.2,eyeMat);
+    const glow=eyeGlow(0xffe9b0,.13);glow.position.copy(e.position);g.add(glow);
+  }
+  // halo so the face reads as a light source in pitch black
   const halo=eyeGlow(0xffd9a0,1.5);
-  halo.position.set(0,2.15,.06);
+  halo.position.set(0,2.27,.05);
   g.add(halo);
 
-  // arms
-  const arms=[];
-  for(const sx of[-1,1]){
-    const arm=new THREE.Group();
-    const up=new THREE.Mesh(new THREE.CylinderGeometry(.055,.045,.72,6),sk);
-    up.position.y=-.36;
-    arm.add(up);
-    arm.position.set(sx*.3,1.72,0);
-    arm.rotation.z=sx*.12;
-    g.add(arm);arms.push(arm);
-  }
   g.userData.arms=arms;
-  g.userData.height=2.12;
+  g.userData.legs=legs;
+  g.userData.height=2.26;
   return g;
 }
+
 function buildHound(){
   const g=new THREE.Group();
-  // the wiki sketch itself, billboarded
-  const beast=new THREE.Sprite(new THREE.SpriteMaterial({
-    map:MON_TEX.hound,transparent:true,fog:false,depthWrite:false
-  }));
-  beast.scale.set(2.35,1.2,1);
-  beast.position.set(0,.92,0);
-  g.add(beast);
-
-  // red eyes at the head end of the sketch
-  for(const dy of[-.05,.05]){
-    const e=new THREE.Mesh(new THREE.SphereGeometry(.04,8,6),
-      new THREE.MeshBasicMaterial({color:0xff7a50,fog:false}));
-    e.position.set(-.99,.99+dy,0);g.add(e);
-    const glow=eyeGlow(0xff8a55,.16);
-    glow.position.copy(e.position);g.add(glow);
+  const fur=new THREE.MeshStandardMaterial({color:0x6f5c3a,roughness:.97,metalness:.02});
+  const dark=new THREE.MeshStandardMaterial({color:0x1d1710,roughness:.99});
+  const toothMat=new THREE.MeshBasicMaterial({color:0xd8cfae,fog:false});
+  // ---- torso: long capsule + haunch, legs rooted under the body ----
+  const torso=bone(g,new THREE.CapsuleGeometry(.30,.66,4,12),0,.72,0,fur);
+  torso.rotation.x=Math.PI/2;
+  bone(g,new THREE.SphereGeometry(.30,12,9),0,.72,-.34,fur);
+  const legs=[];
+  for(const sx of[-1,1])for(const sz of[-1,1]){
+    const hip=new THREE.Group();
+    hip.position.set(sx*.24,.60,sz*.30);
+    bone(hip,new THREE.CylinderGeometry(.075,.06,.30,6),0,-.15,0,fur);
+    const knee=new THREE.Group();knee.position.y=-.30;hip.add(knee);
+    bone(knee,new THREE.CylinderGeometry(.055,.045,.26,6),0,-.13,0,fur);
+    bone(knee,new THREE.BoxGeometry(.11,.05,.18),0,-.27,sz*.02,dark);          // paw
+    g.add(hip);legs.push(hip);
   }
-  g.userData.height=.92;
+  // ---- neck, skull, snout, jaw, teeth ----
+  const neck=bone(g,new THREE.CylinderGeometry(.13,.17,.42,8),0,.86,.42,fur);
+  neck.rotation.x=.55;
+  bone(g,new THREE.BoxGeometry(.26,.25,.30),0,1.06,.62,fur);                   // skull
+  bone(g,new THREE.BoxGeometry(.17,.15,.28),0,.99,.84,fur);                    // snout
+  bone(g,new THREE.SphereGeometry(.045,8,6),0,1.05,.98,dark);                  // nose
+  bone(g,new THREE.BoxGeometry(.20,.09,.26),0,.90,.84,dark);                   // jaw
+  for(let i=0;i<4;i++)for(const sx of[-1,1]){
+    bone(g,new THREE.ConeGeometry(.016,.07,4),sx*(.028+i*.044),.955,.90,toothMat);
+  }
+  for(const sx of[-1,1]){                                                      // ears
+    const ear=bone(g,new THREE.ConeGeometry(.07,.20,5),sx*.13,1.26,.56,dark);
+    ear.rotation.set(-.3,0,sx*.25);
+  }
+  // ---- eyes that pierce the fog ----
+  const eyeMat=new THREE.MeshBasicMaterial({color:0xff6a3a,fog:false});
+  for(const sx of[-1,1]){
+    const e=bone(g,new THREE.SphereGeometry(.038,8,6),sx*.085,1.12,.72,eyeMat);
+    const glow=eyeGlow(0xff7a48,.2);glow.position.copy(e.position);g.add(glow);
+  }
+  // ---- tail: 3 chained segments ----
+  const tail=[];
+  let prev=g;
+  for(let i=0;i<3;i++){
+    const seg=new THREE.Group();
+    seg.position.set(0,.82+i*.05,-.52-i*.15);
+    bone(seg,new THREE.CylinderGeometry(.045-i*.01,.055-i*.012,.2,5),0,0,-.09,fur);
+    prev.add(seg);tail.push(seg);prev=seg;
+  }
+  g.userData.legs=legs;
+  g.userData.tail=tail;
+  g.userData.height=.72;
   return g;
 }
 
@@ -1089,13 +1196,13 @@ class Monster{
   constructor(kind,ci,cj){
     this.kind=kind;
     this.pos=new THREE.Vector3(cx(ci),0,cz(cj));
-    this.hp=kind==='smiler'?150:95;
+    this.hp=kind==='smiler'?220:150;
     this.maxHp=this.hp;
-    this.walkSpd=kind==='smiler'?1.15:1.5;
-    this.chaseSpd=kind==='smiler'?3.15:4.35;
-    this.dmg=kind==='smiler'?21:14;
-    this.sight=kind==='smiler'?19:15;
-    this.radius=kind==='smiler'?.5:.48;
+    this.walkSpd=kind==='smiler'?1.35:1.75;
+    this.chaseSpd=kind==='smiler'?3.6:4.7;
+    this.dmg=kind==='smiler'?26:20;
+    this.sight=kind==='smiler'?21:16;
+    this.radius=kind==='smiler'?.5:.42;
     this.mesh=kind==='smiler'?buildSmiler():buildHound();
     this.mesh.position.copy(this.pos);
     scene.add(this.mesh);
@@ -1109,6 +1216,9 @@ class Monster{
     this.vel=new THREE.Vector3();
     this.seenT=0;this.growlCd=rand(2,7);
     this.stepCd=0;
+    // telegraphed lunge — coil, then commit
+    this.lungeCd=rand(2.5,6);this.windT=0;this.lungeT=0;
+    this.lungeDir=new THREE.Vector3();
   }
   cell(){const[x,z]=cellOf(this.pos.x,this.pos.z);return[clamp(x,0,GX-1),clamp(z,0,GZ-1)];}
   repath(){
@@ -1148,7 +1258,7 @@ class Monster{
 
     if(this.losT<=0){
       this.losT=.18+Math.random()*.12;
-      if(this.canSee()){this.alert=Math.max(this.alert,5.5);this.seenT=1;}
+      if(this.canSee()){this.alert=Math.max(this.alert,6.5);this.seenT=1;}
       else this.seenT=Math.max(0,this.seenT-dt*3);
     }
     if(this.alert>0)this.alert-=dt;
@@ -1157,7 +1267,36 @@ class Monster{
     const chasing=this.alert>0;
     const spd=chasing?this.chaseSpd:this.walkSpd;
 
-    if(chasing){
+    // ---- telegraphed lunge: coil back, then commit at 11 m/s ----
+    this.lungeCd-=dt;
+    if(this.lungeT>0){
+      this.lungeT-=dt;
+      this.pos.x+=this.lungeDir.x*dt;
+      this.pos.z+=this.lungeDir.z*dt;
+      this.mesh.rotation.x=.3;
+      if(distP<1.8&&this.attackCd<=0){
+        this.attackCd=1.0;
+        damagePlayer(this.dmg*1.3,this);
+        this.lungeT=0;
+      }
+      if(this.lungeT<=0)this.lungeCd=rand(4,8);
+    }else if(this.windT>0){
+      this.windT-=dt;
+      this.mesh.rotation.x=-this.windT*1.6;
+      if(this.windT<=0){
+        this.lungeT=.5;
+        const dx=player.pos.x-this.pos.x,dz=player.pos.z-this.pos.z;
+        const d=Math.hypot(dx,dz)||1;
+        this.lungeDir.set(dx/d*11,0,dz/d);
+        AU.growl(clamp((this.pos.x-player.pos.x)*.08,-1,1),.6,this.kind==='smiler'?.7:1.3);
+      }
+    }else if(chasing&&this.seenT>0&&distP>2.0&&distP<7&&this.lungeCd<=0&&Math.random()<dt*1.3){
+      this.windT=this.kind==='smiler'?.42:.3;
+    }else{
+      this.mesh.rotation.x=lerp(this.mesh.rotation.x,0,Math.min(1,dt*6));
+    }
+
+    if(chasing&&this.lungeT<=0&&this.windT<=0){
       if(this.repathT<=0){
         this.repathT=.35;
         this.repath();
@@ -1186,7 +1325,7 @@ class Monster{
         const pan=Math.max(-1,Math.min(1,(this.pos.x-player.pos.x)*.08));
         AU.growl(pan,clamp(.45-distP*.012,.05,.45),this.kind==='smiler'?.8:1.15);
       }
-    }else{
+    }else if(this.lungeT<=0&&this.windT<=0){
       this.wanderT-=dt;
       if(this.wanderT<=0||!this.path.length){
         this.wanderT=rand(2.0,4.5);
@@ -1223,7 +1362,7 @@ class Monster{
 
     // attack
     if(distP<1.55&&this.attackCd<=0&&this.seenT>.2){
-      this.attackCd=1.15;
+      this.attackCd=1.0;
       damagePlayer(this.dmg,this);
     }
 
@@ -1260,14 +1399,18 @@ class Monster{
     if(this.kind==='smiler'){
       const sw=Math.sin(this.phase)*.42;
       if(u.arms){u.arms[0].rotation.x=sw;u.arms[1].rotation.x=-sw;}
+      if(u.legs){u.legs[0].rotation.x=Math.sin(this.phase)*.38;u.legs[1].rotation.x=-Math.sin(this.phase)*.38;}
       this.mesh.position.y=Math.abs(Math.sin(this.phase*.5))*.04;
       this.mesh.rotation.z=Math.sin(this.phase*.5)*.03;
     }else{
       if(u.legs){
-        u.legs[0].rotation.x=Math.sin(this.phase)*.7;
-        u.legs[1].rotation.x=-Math.sin(this.phase)*.7;
-        u.legs[2].rotation.x=-Math.sin(this.phase)*.7;
-        u.legs[3].rotation.x=Math.sin(this.phase)*.7;
+        const s=Math.sin(this.phase);
+        u.legs[0].rotation.x=s*.7;u.legs[1].rotation.x=-s*.7;
+        u.legs[2].rotation.x=-s*.7;u.legs[3].rotation.x=s*.7;
+      }
+      if(u.tail){
+        const w=Math.sin(this.phase*1.7);
+        u.tail.forEach((t,i)=>{t.rotation.y=w*(.22+i*.16);});
       }
       this.mesh.position.y=Math.abs(Math.sin(this.phase))*.05;
       this.mesh.rotation.z=Math.sin(this.phase*.5)*.05;
@@ -1533,8 +1676,8 @@ function populate(){
     if(spots.length>=15)break;
     if(spots.every(o=>Math.hypot(o.i-c.i,o.j-c.j)>4))spots.push(c);
   }
-  const lootBag=['pistol','shotgun','ammo','ammo','ammo','ammo','food','food','food','food',
-                 'water','water','water','battery','battery'];
+  const lootBag=['pistol','shotgun','ammo','ammo','ammo','ammo','ammo','food','food','food',
+                 'food','food','water','water','water','battery','battery','battery'];
   for(let i=lootBag.length-1;i>0;i--){
     const j=randInt(0,i);[lootBag[i],lootBag[j]]=[lootBag[j],lootBag[i]];
   }
@@ -1581,7 +1724,8 @@ const el={
   fuses:[...document.querySelectorAll('.fuse')],objtext:$('#objtext'),
   slots:[...document.querySelectorAll('.slot')],arrow:$('#arrow'),
   dmg:$('#dmg'),danger:$('#danger'),flash:$('#flash'),static:$('#static'),
-  vig:$('#vig'),useprompt:$('#useprompt')
+  vig:$('#vig'),useprompt:$('#useprompt'),
+  inv:$('#inv'),invbody:$('#invbody')
 };
 
 let toastQueue=[];
@@ -1620,6 +1764,75 @@ function updateHUD(){
 }
 
 /* ══════════════════════════════════════════════════════════════
+   INVENTORY — [E] toggles it, supplies are used from here
+   ══════════════════════════════════════════════════════════════ */
+let invOpen=false;
+function openInv(){
+  if(state!=='playing'||invOpen)return;
+  invOpen=true;
+  renderInv();
+  el.inv.classList.add('on');
+  document.exitPointerLock&&document.exitPointerLock();
+}
+function closeInv(){
+  if(!invOpen)return;
+  invOpen=false;
+  el.inv.classList.remove('on');
+  if(state==='playing')requestLock();
+}
+function renderInv(){
+  let h='';
+  h+='<div class="invsec">WEAPONS · [1] [2] [3]</div>';
+  for(const k of SLOT_ORDER){
+    const own=player.owned[k],eq=player.weapon===k;
+    h+=`<div class="invrow ${own?'have':''} ${eq?'eq':''}" data-w="${k}">`+
+       `<span class="n"><span class="dot"></span>${WEAPONS[k].name}</span>`+
+       `<span class="v">${eq?'<b>EQUIPPED</b>':own?'READY':'— LOCKED —'}</span></div>`;
+  }
+  h+='<div class="invsec">AMMUNITION</div>';
+  h+=`<div class="invrow have"><span class="n"><span class="dot"></span>9MM ROUNDS</span>`+
+     `<span class="v"><b>${player.ammo.pistolAmmo}</b></span></div>`;
+  h+=`<div class="invrow have"><span class="n"><span class="dot"></span>12G SHELLS</span>`+
+     `<span class="v"><b>${player.ammo.shells}</b></span></div>`;
+  h+='<div class="invsec">SUPPLIES · CLICK OR [4] [5] [6] TO USE</div>';
+  const sup=[
+    ['food','CANNED FOOD',player.inv.food,'+30 HP'],
+    ['water','WATER',player.inv.water,'STAMINA · +10 HP'],
+    ['battery','BATTERY',player.inv.battery,'TORCH +45%']
+  ];
+  for(const[k,n,c,d]of sup){
+    h+=`<div class="invrow ${c>0?'have use':''}" data-use="${k}">`+
+       `<span class="n"><span class="dot"></span>${n}</span>`+
+       `<span class="v"><b>×${c}</b> · ${d}</span></div>`;
+  }
+  h+='<div class="invsec">KEY ITEMS</div>';
+  h+=`<div class="invrow ${player.fuses>0?'have':''}">`+
+     `<span class="n"><span class="dot"></span>FUSES</span>`+
+     `<span class="v"><b>${player.fuses}/3</b></span></div>`;
+  el.invbody.innerHTML=h;
+}
+el.invbody.addEventListener('click',e=>{
+  const row=e.target.closest('.invrow');
+  if(!row)return;
+  if(row.dataset.w){if(player.owned[row.dataset.w])selectWeapon(row.dataset.w);}
+  else if(row.dataset.use)useItem(row.dataset.use);
+});
+function useItem(kind){
+  let ok=false;
+  if(kind==='food'&&player.inv.food>0){
+    player.inv.food--;player.hp=Math.min(100,player.hp+30);ok=true;
+    toast('CANNED FOOD — +30 HP');
+  }else if(kind==='water'&&player.inv.water>0){
+    player.inv.water--;player.stamina=100;player.hp=Math.min(100,player.hp+10);ok=true;
+    toast('WATER — STAMINA RESTORED');
+  }else if(kind==='battery'&&player.inv.battery>0){
+    player.inv.battery--;player.battery=Math.min(100,player.battery+45);ok=true;
+    toast('BATTERY — TORCH +45%');
+  }
+  if(ok){AU.pickup();renderInv();updateHUD();}
+}
+
+/* ══════════════════════════════════════════════════════════════
    INPUT
    ══════════════════════════════════════════════════════════════ */
 const keys={};
@@ -1629,17 +1842,23 @@ addEventListener('keydown',e=>{
   keys[e.code]=true;
   if(e.code==='Space')e.preventDefault();
   if(state==='playing'){
+    if(e.code==='KeyE'&&!e.repeat){invOpen?closeInv():openInv();}
     if(e.code==='KeyF')toggleTorch();
     if(e.code==='Digit1')selectWeapon('pipe');
     if(e.code==='Digit2')selectWeapon('pistol');
     if(e.code==='Digit3')selectWeapon('shotgun');
+    if(e.code==='Digit4')useItem('food');
+    if(e.code==='Digit5')useItem('water');
+    if(e.code==='Digit6')useItem('battery');
     if(e.code==='ControlLeft'||e.code==='ControlRight')player.crouch=true;
-    if(e.code==='KeyE'&&chestTarget)openChest(chestTarget);
   }
   if(state==='dead'&&e.code==='KeyR')location.reload();
   if(state==='playing'&&e.code==='Escape'){
-    setState('paused');
-    if(document.exitPointerLock)document.exitPointerLock();
+    if(invOpen)closeInv();
+    else{
+      setState('paused');
+      if(document.exitPointerLock)document.exitPointerLock();
+    }
   }
 });
 addEventListener('keyup',e=>{
@@ -1650,7 +1869,9 @@ addEventListener('keyup',e=>{
 const canvas=renderer.domElement;
 canvas.addEventListener('mousedown',e=>{
   if(state!=='playing')return;
+  if(invOpen)return; // the overlay owns the cursor while the inventory is up
   if(e.button===0)attack();
+  if(e.button===2&&chestTarget)openChest(chestTarget);
   if(document.pointerLockElement!==canvas){dragging=true;lastMX=e.clientX;lastMY=e.clientY;}
 });
 addEventListener('mouseup',()=>dragging=false);
@@ -1680,7 +1901,7 @@ addEventListener('wheel',e=>{
 addEventListener('contextmenu',e=>e.preventDefault());
 
 document.addEventListener('pointerlockchange',()=>{
-  if(document.pointerLockElement!==canvas&&state==='playing'){
+  if(document.pointerLockElement!==canvas&&state==='playing'&&!invOpen){
     setState('paused');
   }
 });
@@ -1762,7 +1983,7 @@ function attack(){
     let hit=null,hitT=1e9;
     for(const m of monsters){
       if(m.dead)continue;
-      const ox=m.pos.x-player.pos.x,oz=m.pos.z-player.pos.z,oy=(m.kind==='smiler'?1.2:.72)-1.62;
+      const ox=m.pos.x-player.pos.x,oz=m.pos.z-player.pos.z,oy=(m.kind==='smiler'?1.35:.72)-1.62;
       const t=ox*dir.x+oy*dir.y+oz*dir.z;
       if(t<0||t>50)continue;
       const px=ox-dir.x*t,py=oy-dir.y*t,pz=oz-dir.z*t;
@@ -1806,11 +2027,11 @@ function pickup(it){
       if(player.fuses>=3)powerExit();
       break;
     case 'food':
-      player.hp=Math.min(100,player.hp+28);AU.pickup();toast('CANNED FOOD +28 HP');break;
+      player.inv.food++;AU.pickup();toast('CANNED FOOD +1 — [E] INVENTORY');break;
     case 'water':
-      player.hp=Math.min(100,player.hp+10);player.stamina=100;AU.pickup();toast('WATER — STAMINA RESTORED');break;
+      player.inv.water++;AU.pickup();toast('WATER +1 — [E] INVENTORY');break;
     case 'battery':
-      player.battery=Math.min(100,player.battery+45);AU.pickup();toast('BATTERY +45%');break;
+      player.inv.battery++;AU.pickup();toast('BATTERY +1 — [E] INVENTORY');break;
     case 'ammo':
       if(player.owned.pistol||Math.random()<.5){player.ammo.pistolAmmo+=8;toast('8 ROUNDS');}
       else{player.ammo.shells+=3;toast('3 SHELLS');}
@@ -1839,7 +2060,7 @@ function powerExit(){
   setTimeout(()=>{
     if(state!=='playing')return;
     const{dist}=bfs(spawnCell[0],spawnCell[1]);
-    for(let k=0;k<2;k++){
+    for(let k=0;k<3;k++){
       let c=null,tries=0;
       do{c={i:randInt(0,GX-1),j:randInt(0,GZ-1)};tries++;}
       while(tries<40&&Math.hypot(cx(c.i)-player.pos.x,cz(c.j)-player.pos.z)<12);
@@ -1890,7 +2111,9 @@ function spawnHallu(){
   if(!cands.length){halluT=rand(10,18);return;}
   const[i,j]=pick(cands);
   const g=buildSmiler();
-  g.traverse(o=>{if(o.material&&o.material.color&&o.material.type!=='MeshBasicMaterial')o.material=skinMat();});
+  // only the untyped skin parts get re-tinted; the grin sprite and eye glows survive
+  const hm=skinMat();
+  g.traverse(o=>{if(o.userData&&o.userData.skin&&o.material)o.material=hm;});
   g.position.set(cx(i),0,cz(j));
   g.rotation.y=Math.atan2(player.pos.x-cx(i),player.pos.z-cz(j));
   g.scale.setScalar(.98);
@@ -1950,7 +2173,7 @@ function updateHallu(dt){
    ══════════════════════════════════════════════════════════════ */
 const clock=new THREE.Clock();
 let state='menu';
-let elapsed=0,playT=0,hunterActive=false,nextHunt=20,lastTickW=performance.now();
+let elapsed=0,playT=0,hunterActive=false,nextHunt=14,lastTickW=performance.now();
 
 const SCREENS={menu:'#title',playing:null,paused:'#pause',dead:'#death',won:'#win'};
 function setState(s){
@@ -1975,6 +2198,7 @@ function die(){
   if(state!=='playing')return;
   state='dying';
   player.dead=true;
+  if(invOpen)closeInv();
   AU.stinger();
   document.exitPointerLock&&document.exitPointerLock();
   el.static.style.transition='opacity 1.4s';
@@ -1989,6 +2213,7 @@ function die(){
 function win(){
   if(state!=='playing')return;
   state='winning';
+  if(invOpen)closeInv();
   document.exitPointerLock&&document.exitPointerLock();
   const t=((performance.now()-player.startTime)/1000);
   $('#winstats').innerHTML=
@@ -2232,7 +2457,7 @@ function tick(){
     if(eventT<=0){eventT=rand(13,26);randomEvent();}
 
     // hunt pressure: the maze is never empty — something always comes for you.
-    // First hunt at 20s, then again every 25s so there are no quiet stretches.
+    // First hunt at 14s, then again every 18s so there are no quiet stretches.
     if(!hunterActive&&playT>nextHunt){
       let best=null,bd=1e9;
       for(const m of monsters){
@@ -2241,7 +2466,7 @@ function tick(){
         if(d<bd){bd=d;best=m;}
       }
       if(best){
-        best.alert=1e9;hunterActive=true;nextHunt=playT+25;
+        best.alert=1e9;hunterActive=true;nextHunt=playT+18;
         AU.growl(clamp((best.pos.x-player.pos.x)*.08,-1,1),.55,best.kind==='smiler'?.8:1.15);
       }
     }
@@ -2258,7 +2483,7 @@ function tick(){
     }
     // monsters respawn to keep pressure
     const alive=monsters.filter(m=>!m.dead).length;
-    if(alive<5&&Math.random()<dt*.22){
+    if(alive<7&&Math.random()<dt*.28){
       let c=null,tries=0;
       do{c={i:randInt(0,GX-1),j:randInt(0,GZ-1)};tries++;}
       while(tries<60&&Math.hypot(cx(c.i)-player.pos.x,cz(c.j)-player.pos.z)<15);
@@ -2321,9 +2546,9 @@ function boot(){
   }
   player.yaw=bestYaw;
 
-  playT=0;hunterActive=false;nextHunt=20;lastTickW=performance.now();
+  playT=0;hunterActive=false;nextHunt=14;lastTickW=performance.now();
   populate();
-  spawnMonsters(5);
+  spawnMonsters(6);
 
   camera.position.set(player.pos.x,1.62,player.pos.z);
   camera.rotation.y=player.yaw;
@@ -2344,6 +2569,7 @@ boot();
 // debug hook (harmless)
 window.__BR={player,get monsters(){return monsters;},get state(){return state;},startGame,
   get items(){return items;},get chests(){return chests;},get exit(){return exitInfo;},spawnHallu,openChest,get playT(){return playT;},get hunter(){return hunterActive;},los,solidAt,camera,scene,
+  get chestTarget(){return chestTarget;},get invOpen(){return invOpen;},useItem,
   get info(){return{calls:renderer.info.render.calls,tris:renderer.info.render.triangles,geo:renderer.info.memory.geometries,tex:renderer.info.memory.textures};}};
 </script>
 </body>

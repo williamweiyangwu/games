@@ -12,7 +12,7 @@ A single website that collects nine browser games in one place.
 | Tank War — 2D arena | [`tank/`](tank/) | Ready |
 | Apex Racing — 3D race car | [`race-car/`](race-car/) | Ready |
 | WWII Europe — interactive history | [`ww2-europe/`](ww2-europe/) | Ready |
-| The Backrooms — 3D survival horror | [`backrooms/`](backrooms/) | Ready |
+| The Backrooms — 3D survival horror | [`backrooms/`](backrooms/) | In development — can't be played yet |
 | Age of Discovery — 3D sailing adventure | [`age-of-discovery/`](age-of-discovery/) | Ready |
 
 ## Run locally
