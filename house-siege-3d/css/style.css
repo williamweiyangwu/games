@@ -126,6 +126,7 @@ b{font-weight:700}
 .ts-name{font-size:9px;letter-spacing:.22em;font-weight:700;color:#9aa6ba}
 .ts-num{font-size:22px;font-weight:900;line-height:1;font-variant-numeric:tabular-nums;
   text-shadow:0 2px 6px rgba(0,0,0,.8)}
+.ts-cap{font-size:7px;letter-spacing:.18em;font-weight:700;color:#7c879c;margin-top:3px}
 .teamscore.red .ts-num{color:var(--red)} .teamscore.blue .ts-num{color:var(--blue)}
 .clockbox{text-align:center;min-width:104px}
 .clock{font-size:26px;font-weight:900;letter-spacing:.04em;font-variant-numeric:tabular-nums;
