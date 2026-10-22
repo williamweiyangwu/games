@@ -268,7 +268,7 @@
   <div id="fit">
     <div id="stage">
       <header>
-        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v17</span></h1>
+        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v18</span></h1>
         <div id="turnbar">Player 1's Turn</div>
       </header>
 
@@ -390,11 +390,11 @@ var DEFS = {
   usa_paratroop: { f: "usa", name: "101st Airborne", cost: 4, atk: 4, hp: 2, art: "✦", air: true, fx: { k: "draw", n: 1 }, text: "Air. Deployment: Draw a card." },
   usa_b17:       { f: "usa", name: "B-17",           cost: 6, atk: 5, hp: 4, art: "≫", air: true, fx: { k: "hq", n: 2 }, text: "Deployment: Deal 2 damage to the enemy HQ." },
   usa_produce:   { f: "usa", name: "War Production", cost: 0, type: "order", art: "◆", fx: { k: "res", n: 1 }, text: "Gain 1 resource." },
-  usa_rally:     { f: "usa", name: "Rally",          cost: 1, type: "order", art: "⚑", fx: { k: "rally" }, text: "All your units can attack again." },
+  usa_rally:     { f: "usa", name: "Rally",          cost: 2, type: "order", art: "⚑", fx: { k: "rally" }, text: "All your units can attack again." },
   usa_snipe:     { f: "usa", name: "Marksman",       cost: 2, type: "order", art: "☠", fx: { k: "target", n: 3 }, text: "Deal 3 damage to a unit." },
   usa_bombard:   { f: "usa", name: "Bombardment",    cost: 3, type: "order", art: "◉", fx: { k: "hq", n: 3 }, text: "Deal 3 damage to the enemy HQ." },
   usa_supply:    { f: "usa", name: "Supply Drop",    cost: 2, type: "order", art: "✎", fx: { k: "draw", n: 2 }, text: "Draw 2 cards." },
-  usa_airstrike: { f: "usa", name: "Airstrike",      cost: 4, type: "order", art: "☄", fx: { k: "aoe", n: 2 }, text: "2 damage to all enemy units." },
+  usa_airstrike: { f: "usa", name: "Airstrike",      cost: 4, type: "order", art: "☄", fx: { k: "aoe", n: 3 }, text: "3 damage to all enemy units." },
   // ---- UK ----
   uk_tommy:       { f: "uk", name: "Tommy",          cost: 1, atk: 2, hp: 2, art: "▲", text: "" },
   uk_commando:    { f: "uk", name: "Commando",       cost: 2, atk: 3, hp: 1, art: "➤", fx: { k: "haste" }, text: "Haste." },
@@ -409,7 +409,7 @@ var DEFS = {
   uk_intel:       { f: "uk", name: "Intelligence",   cost: 1, type: "order", art: "✎", fx: { k: "draw", n: 1 }, text: "Draw a card." },
   uk_rally:       { f: "uk", name: "Rally Cry",      cost: 2, type: "order", art: "⚑", fx: { k: "rally" }, text: "All your units can attack again." },
   uk_snipe:       { f: "uk", name: "Sniper",         cost: 2, type: "order", art: "☠", fx: { k: "target", n: 3 }, text: "Deal 3 damage to a unit." },
-  uk_bombard:     { f: "uk", name: "Barrage",        cost: 3, type: "order", art: "◉", fx: { k: "hq", n: 2 }, text: "Deal 2 damage to the enemy HQ." },
+  uk_bombard:     { f: "uk", name: "Barrage",        cost: 3, type: "order", art: "◉", fx: { k: "hq", n: 3 }, text: "Deal 3 damage to the enemy HQ." },
   uk_convoy:      { f: "uk", name: "Convoy Supply",  cost: 3, type: "order", art: "❋", fx: { k: "heal", n: 6 }, text: "Heal your HQ for 6." },
   uk_airstrike:   { f: "uk", name: "RAF Strike",     cost: 4, type: "order", art: "☄", fx: { k: "aoe", n: 3 }, text: "3 damage to all enemy units." },
   // ---- GERMANY ----
@@ -426,7 +426,7 @@ var DEFS = {
   de_blitz:       { f: "germany", name: "Blitzkrieg",   cost: 2, type: "order", art: "⚑", fx: { k: "rally" }, text: "All your units can attack again." },
   de_grenade:     { f: "germany", name: "Grenade",      cost: 1, type: "order", art: "✶", fx: { k: "target", n: 2 }, text: "Deal 2 damage to a unit." },
   de_artillery:   { f: "germany", name: "Artillery",    cost: 3, type: "order", art: "◉", fx: { k: "hq", n: 3 }, text: "Deal 3 damage to the enemy HQ." },
-  de_mobilize:    { f: "germany", name: "Mobilize",     cost: 1, type: "order", art: "◆", fx: { k: "res", n: 1 }, text: "Gain 1 resource." },
+  de_mobilize:    { f: "germany", name: "Mobilize",     cost: 0, type: "order", art: "◆", fx: { k: "res", n: 1 }, text: "Gain 1 resource." },
   de_supply:      { f: "germany", name: "Requisition",  cost: 2, type: "order", art: "✎", fx: { k: "draw", n: 2 }, text: "Draw 2 cards." },
   de_barrage:     { f: "germany", name: "Barrage",      cost: 4, type: "order", art: "✷", fx: { k: "aoe", n: 3 }, text: "3 damage to all enemy units." },
   // ---- USSR ----
@@ -443,7 +443,7 @@ var DEFS = {
   su_humanwave:    { f: "ussr", name: "Human Wave",   cost: 2, type: "order", art: "☷", fx: { k: "rally" }, text: "All your units can attack again." },
   su_molotovorder: { f: "ussr", name: "Molotov Hit",  cost: 1, type: "order", art: "✶", fx: { k: "target", n: 2 }, text: "Deal 2 damage to a unit." },
   su_rocket:       { f: "ussr", name: "Rocket Barrage", cost: 3, type: "order", art: "☄", fx: { k: "hq", n: 3 }, text: "Deal 3 damage to the enemy HQ." },
-  su_conscription: { f: "ussr", name: "Conscription", cost: 1, type: "order", art: "◆", fx: { k: "res", n: 1 }, text: "Gain 1 resource." },
+  su_conscription: { f: "ussr", name: "Conscription", cost: 0, type: "order", art: "◆", fx: { k: "res", n: 1 }, text: "Gain 1 resource." },
   su_lendlease:    { f: "ussr", name: "Lend-Lease",   cost: 2, type: "order", art: "✎", fx: { k: "draw", n: 2 }, text: "Draw 2 cards." },
   su_storm:        { f: "ussr", name: "Storm",        cost: 4, type: "order", art: "✷", fx: { k: "aoe", n: 3 }, text: "3 damage to all enemy units." },
   // ---- JAPAN ----
@@ -461,7 +461,7 @@ var DEFS = {
   jp_torpedo:     { f: "japan", name: "Torpedo",      cost: 1, type: "order", art: "✶", fx: { k: "target", n: 2 }, text: "Deal 2 damage to a unit." },
   jp_divebomb:    { f: "japan", name: "Dive Bombing", cost: 3, type: "order", art: "◉", fx: { k: "hq", n: 3 }, text: "Deal 3 damage to the enemy HQ." },
   jp_mobilize:    { f: "japan", name: "Mobilize",     cost: 0, type: "order", art: "◆", fx: { k: "res", n: 1 }, text: "Gain 1 resource." },
-  jp_recon:       { f: "japan", name: "Recon",        cost: 1, type: "order", art: "✎", fx: { k: "draw", n: 2 }, text: "Draw 2 cards." },
+  jp_recon:       { f: "japan", name: "Recon",        cost: 2, type: "order", art: "✎", fx: { k: "draw", n: 2 }, text: "Draw 2 cards." },
   jp_airstrike:   { f: "japan", name: "Air Raid",     cost: 4, type: "order", art: "☄", fx: { k: "aoe", n: 3 }, text: "3 damage to all enemy units." }
 };
 
@@ -892,6 +892,14 @@ function aiPlayOne(ai) {
     if (o.type !== "order") continue;
     if (o.cost > ai.res) continue;
     if (orderNeedsTarget(o.key) && S.players[0].board.length === 0) continue;
+    var ofx = fxOf(o.key) || {};
+    if (ofx.k === "rally") {
+      var canRally = false;
+      for (var r = 0; r < ai.board.length; r++) { if (!ai.board[r].canAttack) { canRally = true; break; } }
+      if (!canRally) continue;
+    }
+    if (ofx.k === "draw" && ai.hand.length >= MAX_HAND) continue;
+    if (ofx.k === "res" && ai.res >= MAX_RES) continue;
     ai.res -= o.cost;
     ai.hand.splice(j, 1);
     sfx("order");
