@@ -14,6 +14,7 @@ A single website that collects nine browser games in one place.
 | WWII Europe — interactive history | [`ww2-europe/`](ww2-europe/) | Ready |
 | The Backrooms — 3D survival horror | [`backrooms/`](backrooms/) | Ready |
 | Age of Discovery — 3D sailing adventure | [`age-of-discovery/`](age-of-discovery/) | Ready |
+| House Siege 3D — 5v5 FPS | [`house-siege-3d/`](house-siege-3d/) | Ready |
 
 ## Run locally
 
