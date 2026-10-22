@@ -681,6 +681,46 @@ function buildWorld() {
   ];
   for (const r of ramps) G.ramps.push(r);
 
+  /* The four stair ramps are solid bulkheads that swallow the two cells they run
+     through. A perfect DFS maze is a tree, so those cells can be the ONLY link
+     between regions — with them blocked, half the map (and a whole team's HQ)
+     gets walled off. Carve extra gaps until every non-ramp cell is reachable. */
+  {
+    const inRampCell = (i, j) => {
+      const c = cellCenter(i, j);
+      return G.ramps.some(r => c.x > r.minX - 0.3 && c.x < r.maxX + 0.3 && c.z > r.minZ - 0.3 && c.z < r.maxZ + 0.3);
+    };
+    const passable = (i, j) => i >= 0 && j >= 0 && i < N && j < N && !inRampCell(i, j);
+    for (let guard = 0; guard < 60; guard++) {
+      const comp = new Int16Array(N * N).fill(-1);
+      let nc = 0;
+      for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+        if (!passable(i, j) || comp[j * N + i] >= 0) continue;
+        const q = [[i, j]]; comp[j * N + i] = nc;
+        while (q.length) {
+          const [a, b] = q.shift();
+          const c = cells[b][a];
+          if (!c.W && passable(a - 1, b) && comp[b * N + a - 1] < 0) { comp[b * N + a - 1] = nc; q.push([a - 1, b]); }
+          if (!c.E && passable(a + 1, b) && comp[b * N + a + 1] < 0) { comp[b * N + a + 1] = nc; q.push([a + 1, b]); }
+          if (!c.N && passable(a, b - 1) && comp[(b - 1) * N + a] < 0) { comp[(b - 1) * N + a] = nc; q.push([a, b - 1]); }
+          if (!c.S && passable(a, b + 1) && comp[(b + 1) * N + a] < 0) { comp[(b + 1) * N + a] = nc; q.push([a, b + 1]); }
+        }
+        nc++;
+      }
+      if (nc <= 1) break;
+      let carved = false;
+      for (let j = 0; j < N && !carved; j++) for (let i = 0; i < N && !carved; i++) {
+        if (!passable(i, j)) continue;
+        if (i < N - 1 && passable(i + 1, j) && comp[j * N + i] !== comp[j * N + i + 1]) {
+          cells[j][i].E = false; cells[j][i + 1].W = false; carved = true;
+        } else if (j < N - 1 && passable(i, j + 1) && comp[j * N + i] !== comp[(j + 1) * N + i]) {
+          cells[j][i].S = false; cells[j + 1][i].N = false; carved = true;
+        }
+      }
+      if (!carved) break;
+    }
+  }
+
   /* --- maze walls: collinear runs merged so the collider list stays small --- */
   for (let i = 1; i < N; i++) {
     let run = -1;
@@ -1272,16 +1312,26 @@ function buildWaypoints() {
   const cells = G.maze, N = MAP.N, PY = MAP.platY, MH = MAP.mazeHalf;
   const D = (MH + MAP.B + MAP.outerT / 2) / 2;   // catwalk centreline
 
+  /* A stair ramp is a solid 9 m diagonal bulkhead: it swallows the two cells it
+     runs through, so those cells are NOT walkable floor. No nav nodes there —
+     otherwise paths route bots straight into the staircase and they grind. */
+  const inRamp = (x, z) => G.ramps.some(r =>
+    x > r.minX - 0.3 && x < r.maxX + 0.3 && z > r.minZ - 0.3 && z < r.maxZ + 0.3);
+
   /* one node per maze cell, linked through the gaps that actually exist */
   const grid = [];
   for (let j = 0; j < N; j++) {
     const row = [];
-    for (let i = 0; i < N; i++) { const c = cellCenter(i, j); row.push(addNode(c.x, c.z, 0)); }
+    for (let i = 0; i < N; i++) {
+      const c = cellCenter(i, j);
+      row.push(inRamp(c.x, c.z) ? null : addNode(c.x, c.z, 0));
+    }
     grid.push(row);
   }
   for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
-    if (i < N - 1 && !cells[j][i].E) link(grid[j][i], grid[j][i + 1]);
-    if (j < N - 1 && !cells[j][i].S) link(grid[j][i], grid[j + 1][i]);
+    if (!grid[j][i]) continue;
+    if (i < N - 1 && grid[j][i + 1] && !cells[j][i].E) link(grid[j][i], grid[j][i + 1]);
+    if (j < N - 1 && grid[j + 1][i] && !cells[j][i].S) link(grid[j][i], grid[j + 1][i]);
   }
 
   /* catwalk ring */
@@ -1292,15 +1342,20 @@ function buildWaypoints() {
   const E = xs.map(x => addNode(D, x, PY));
   const W = xs.map(x => addNode(-D, x, PY));
   for (const arr of [S, Nn, E, W]) for (let k = 0; k + 1 < arr.length; k++) link(arr[k], arr[k + 1]);
-  link(S[S.length - 1], E[E.length - 1]);
-  link(E[0], Nn[Nn.length - 1]);
-  link(Nn[0], W[W.length - 1]);
-  link(W[0], S[0]);
+  /* corners: the inner railings seal each corner, so route around them along the
+     deck midline via a corner node. (The old code linked the wrong ends of two
+     sides, creating 59 m "shortcuts" straight through the map — bots pathing on
+     them walked into walls and ground there.) */
+  const cSE = addNode(D, D, PY), cNE = addNode(D, -D, PY), cNW = addNode(-D, -D, PY), cSW = addNode(-D, D, PY);
+  link(S[S.length - 1], cSE); link(cSE, E[E.length - 1]);
+  link(E[0], cNE); link(cNE, Nn[Nn.length - 1]);
+  link(Nn[0], cNW); link(cNW, W[W.length - 1]);
+  link(W[0], cSW); link(cSW, S[0]);
 
   /* stairs: chain the four ramps to the floor and to the ring */
   const groundNodes = [];
-  for (const row of grid) for (const n of row) groundNodes.push(n);
-  const platNodes = S.concat(Nn, E, W);
+  for (const row of grid) for (const n of row) if (n) groundNodes.push(n);
+  const platNodes = S.concat(Nn, E, W, [cSE, cNE, cNW, cSW]);
   const nearestIn = (list, x, z) => {
     let best = null, bd = 1e9;
     for (const n of list) {
@@ -1358,6 +1413,8 @@ function connectLevel(list, isUpper) {
   }
 }
 function nearestNode(x, z, y) {
+  if (!isFinite(x) || !isFinite(z)) return null;
+  if (!isFinite(y)) y = 0;
   let best = null, bd = 1e9;
   for (const n of NODES) {
     const dy = Math.abs(n.y - y);
@@ -1535,8 +1592,12 @@ function eyePos(a, out) {
   return (out || new V3()).set(a.pos.x, a.pos.y + (a.isPlayer ? CFG.player.eye : 1.52), a.pos.z);
 }
 function dirFromAngles(yaw, pitch, out) {
-  const cp = Math.cos(pitch);
-  return (out || new V3()).set(-Math.sin(yaw) * cp, Math.sin(pitch), -Math.cos(yaw) * cp);
+  /* keep the direction finite and away from the exact poles: at |pitch| = PI/2
+     the horizontal basis collapses and the spread maths would divide by zero */
+  const p = isFinite(pitch) ? (pitch > 1.45 ? 1.45 : pitch < -1.45 ? -1.45 : pitch) : 0;
+  const y = isFinite(yaw) ? yaw : 0;
+  const cp = Math.cos(p);
+  return (out || new V3()).set(-Math.sin(y) * cp, Math.sin(p), -Math.cos(y) * cp);
 }
 function allActors() { return G.bots.concat(G.player ? [G.player] : []); }
 
@@ -1638,7 +1699,9 @@ function makeActor(team, name, isPlayer) {
     carrying: null, mesh: null, parts: null,
     target: null, lastSeen: new V3(), lastSeenT: 0,
     think: 0, reactT: 0, path: null, pathIdx: 0, goalPos: new V3(1e9, 0, 0),
+    goalKind: '', goalLock: 0, huntTarget: null, defendPost: null, postT: 0,
     strafe: 1, strafeT: 0, burstT: 0, aimYaw: 0, aimPitch: 0,
+    stuckX: 0, stuckZ: 0, stuckWin: 0, stuckT: 0, stuckStage: 0, nudgeT: 0, nudgeAng: 0, hopT: 0,
     animT: 0, np: null, diff: DIFF.normal, role: 'attack', hitFlash: 0
   };
 }
@@ -1667,7 +1730,7 @@ function createTeams() {
   for (let i = 0; i < CFG.botsPerTeam; i++) {
     const b = makeActor(mine, names[ni++], false);
     b.diff = DIFF[G.diff];
-    b.role = i < 2 ? 'attack' : 'defend';
+    b.role = i < 3 ? 'attack' : 'defend';
     finishSpawn(b, i);
     G.bots.push(b);
   }
@@ -1675,7 +1738,7 @@ function createTeams() {
   for (let i = 0; i < CFG.botsPerTeam + 1; i++) {
     const b = makeActor(foe, names[ni++ % names.length], false);
     b.diff = DIFF[G.diff];
-    b.role = i < 2 ? 'attack' : 'defend';
+    b.role = i < 3 ? 'attack' : 'defend';
     finishSpawn(b, i);
     G.bots.push(b);
   }
@@ -1717,6 +1780,10 @@ function finishSpawn(a, slot) {
   a.pos.y = groundAt(sp.x, sp.z, 1.2);
   a.yaw = a.team === 'red' ? 0 : Math.PI;
   a.pitch = 0;
+  // fresh navigation state: no stale stuck history or half-walked path
+  a.path = null; a.pathIdx = 0; a.goalPos.set(1e9, 0, 0); a.goalKind = ''; a.goalLock = 0;
+  a.defendPost = null; a.postT = 0; a.huntTarget = null;
+  a.stuckX = a.pos.x; a.stuckZ = a.pos.z; a.stuckWin = 0; a.stuckT = 0; a.stuckStage = 0; a.nudgeT = 0; a.hopT = 0;
   if (a.mesh) { a.mesh.visible = true; a.mesh.position.copy(a.pos); }
   if (a.np) a.np.style.opacity = '1';
 }
@@ -1779,7 +1846,7 @@ function killActor(victim, attacker, head, weaponName) {
 
   if (attacker && attacker !== victim) {
     attacker.kills++;
-    G.score[attacker.team]++;
+    if (G.mode !== 'flag') G.score[attacker.team]++;   // flag mode scores captures only
     if (attacker.isPlayer) {
       Snd.kill();
       addFeed(attacker.name, victim.name, weaponName || '', head, true);
@@ -1830,7 +1897,8 @@ function teamLabel(t) { return t === 'red' ? 'RED' : 'BLUE'; }
 
 function muzzlePos(a, out) {
   const d = dirFromAngles(a.yaw, a.pitch, new V3());
-  const right = new V3(-d.z, 0, d.x).normalize();
+  const right = new V3(-d.z, 0, d.x);
+  if (right.lengthSq() < 1e-6) right.set(1, 0, 0); else right.normalize();
   return (out || new V3()).copy(eyePos(a)).addScaledVector(d, 0.55).addScaledVector(right, 0.2).add(new V3(0, -0.12, 0));
 }
 
@@ -1903,9 +1971,12 @@ function tryFire(a) {
     const dir = baseDir.clone();
     const ang = Math.random() * Math.PI * 2;
     const mag = Math.sqrt(Math.random()) * spread;
-    const right = new V3(-dir.z, 0, dir.x).normalize();
-    const up = new V3().crossVectors(right, dir).normalize();
-    dir.addScaledVector(right, Math.cos(ang) * mag).addScaledVector(up, Math.sin(ang) * mag).normalize();
+    const right = new V3(-dir.z, 0, dir.x);
+    if (right.lengthSq() < 1e-6) right.set(1, 0, 0); else right.normalize();
+    const up = new V3().crossVectors(right, dir);
+    if (up.lengthSq() < 1e-6) up.set(0, 1, 0); else up.normalize();
+    dir.addScaledVector(right, Math.cos(ang) * mag).addScaledVector(up, Math.sin(ang) * mag);
+    if (dir.lengthSq() < 1e-6) dir.copy(baseDir); else dir.normalize();
 
     const wallT = rayWorld(origin.x, origin.y, origin.z, dir.x, dir.y, dir.z, w.range);
     const hit = rayActors(origin.x, origin.y, origin.z, dir.x, dir.y, dir.z, wallT < 0 ? w.range : wallT, a);
@@ -2295,34 +2366,49 @@ function botThink(b) {
     b.target = null;
   }
 
-  /* choose destination */
-  let goal = null;
+  /* choose destination — then COMMIT to it for a couple of seconds.
+     Re-rolling the goal every think tick made bots jitter in place,
+     bouncing between opposing destinations without going anywhere. */
+  let goal = null, kind = '';
   const p = G.player;
 
   if (G.mode === 'flag') {
     const enemyFlagTeam = b.team === 'red' ? 'blue' : 'red';
     const ef = G.flagState[enemyFlagTeam];
     const mf = G.flagState[b.team];
-
-    if (b.carrying) {
-      goal = flagBasePos(b.team);
-    } else if (mf.at === 'carried' && mf.carrier && (b.role === 'defend' || Math.random() < 0.6)) {
-      goal = mf.carrier.pos;
-    } else if (mf.at === 'dropped') {
-      goal = mf.pos;
-    } else if (ef.at === 'dropped') {
-      goal = ef.pos;
-    } else if (ef.at === 'base' && b.role === 'attack') {
-      goal = ef.pos;
-    } else {
-      // defend near own base / intercept
-      goal = new V3(rand(-9, 9), 0, flagBasePos(b.team).z * 0.62);
+    let escortCarrier = null;
+    if (!b.carrying && b.role === 'attack') {
+      for (const a of allActors()) {
+        if (a && a !== b && a.alive && a.team === b.team && a.carrying === enemyFlagTeam) { escortCarrier = a; break; }
+      }
     }
-    if (goal && b.role === 'defend' && !b.target && mf.at === 'base' && Math.random() < 0.3) {
-      goal = new V3(rand(-14, 14), 0, flagBasePos(b.team).z * 0.5);
+
+    if (b.carrying) { goal = flagBasePos(b.team); kind = 'carry'; }
+    else if (mf.at === 'carried' && mf.carrier) { goal = mf.carrier.pos; kind = 'hunt'; }
+    else if (mf.at === 'dropped') { goal = mf.pos; kind = 'return'; }
+    else if (ef.at === 'dropped') { goal = ef.pos; kind = 'grab'; }
+    else if (escortCarrier) {
+      // a team-mate has the enemy flag: run interference for them
+      goal = escortCarrier.pos; kind = 'escort';
+    }
+    else if (ef.at === 'base' && b.role === 'attack') { goal = ef.pos; kind = 'attack'; }
+    else {
+      // hold a post near own base (snapped to a walkable node — never aim into a wall).
+      // The post is chosen ONCE per commitment. It used to be re-rolled to a fresh
+      // random spot on every think tick, so `moved > 3.5` was always true, the bot
+      // replanned ~4x a second and ping-ponged between two random posts forever.
+      kind = 'defend';
+      const arrived = b.defendPost &&
+        Math.hypot(b.pos.x - b.defendPost.x, b.pos.z - b.defendPost.z) < 3.2;
+      if (!b.defendPost || (arrived && b.postT <= 0)) {
+        const dn = nearestNode(rand(-9, 9), flagBasePos(b.team).z * 0.62, 0);
+        b.defendPost = dn ? new V3(dn.x, 0, dn.z) : new V3(0, 0, 0);
+        b.postT = 3.5 + Math.random() * 3.5;
+      }
+      goal = b.defendPost;
     }
   } else {
-    // TDM: hunt nearest enemy, grab a better gun early
+    // TDM: hunt the enemy, grab a better gun early
     if (b.weapons.length < 3) {
       let bc = null, bcd = 1e9;
       for (const c of G.chests) {
@@ -2330,25 +2416,35 @@ function botThink(b) {
         const dd = b.pos.distanceTo(c.pos);
         if (dd < bcd) { bcd = dd; bc = c; }
       }
-      if (bc && bcd < 34 && (!b.target || bestD > 16)) goal = bc.pos;
+      if (bc && bcd < 34 && (!b.target || bestD > 16)) { goal = bc.pos; kind = 'chest'; }
     }
     if (!goal) {
+      kind = 'enemy';
       if (b.target) goal = b.target.pos;
       else {
+        // stick with the current hunt unless someone else is clearly closer
         let near = null, nd = 1e9;
         for (const e of allActors()) {
           if (e.team === b.team || !e.alive) continue;
           const dd = b.pos.distanceTo(e.pos);
           if (dd < nd) { nd = dd; near = e; }
         }
+        if (b.huntTarget && b.huntTarget.alive && b.huntTarget.team !== b.team &&
+            b.pos.distanceTo(b.huntTarget.pos) < nd + 5) near = b.huntTarget;
+        else b.huntTarget = near;
         goal = near ? near.pos : new V3(0, 0, 0);
       }
     }
   }
 
   if (goal) {
-    if (b.goalPos.distanceTo(goal) > 3.5 || !b.path || b.pathIdx >= b.path.length) {
+    const far = Math.hypot(b.pos.x - b.goalPos.x, b.pos.z - b.goalPos.z);
+    const moved = Math.hypot(goal.x - b.goalPos.x, goal.z - b.goalPos.z);
+    const exhausted = far > 2.5 && (!b.path || b.pathIdx >= b.path.length);
+    if (b.goalLock <= 0 || moved > 3.5 || far < 2.0 || exhausted || kind !== b.goalKind) {
       b.goalPos.copy(goal);
+      b.goalKind = kind;
+      b.goalLock = 1.8 + Math.random() * 1.4;
       planPath(b, goal);
     }
   }
@@ -2359,7 +2455,33 @@ function planPath(b, goal) {
   const to = nearestNode(goal.x, goal.z, goal.y);
   b.path = findPath(from, to);
   b.pathIdx = 0;
-  if (b.path.length) b.pathIdx = 1;
+  if (b.path.length > 1) {
+    /* Resume from where we actually ARE on the path, not from path[0].
+       Every replan used to restart at the node nearest the bot — usually one
+       it had already walked past — so the bot about-turned, shuffled back to
+       that node, advanced, got replanned, about-turned again... ping-ponging
+       between two nodes forever. Project the bot onto the polyline and start
+       at the node it is heading toward. */
+    let bi = 0, bd = 1e9, bt = 0;
+    for (let k = 0; k + 1 < b.path.length; k++) {
+      const n = b.path[k], m = b.path[k + 1];
+      const ex = m.x - n.x, ez = m.z - n.z;
+      const l2 = ex * ex + ez * ez;
+      if (l2 < 1e-6) continue;
+      let tp = ((b.pos.x - n.x) * ex + (b.pos.z - n.z) * ez) / l2;
+      tp = tp < 0 ? 0 : tp > 1 ? 1 : tp;
+      const d = Math.hypot(b.pos.x - (n.x + ex * tp), b.pos.z - (n.z + ez * tp));
+      if (d < bd) { bd = d; bi = k; bt = tp; }
+    }
+    /* Already on (or nearly on) that leg of the path -> carry on to the node
+       AHEAD, even if we are only a little way along it. Turning back to a node
+       we have already passed is what made bots shuttle between two nodes. */
+    b.pathIdx = (bt > 0.02 && bd < 1.5) ? bi + 1 : bi;
+  } else if (!b.path.length && from && from.nb.length) {
+    // goal unreachable from here — step to a neighbour instead of grinding into a wall
+    b.path = [from.nb[(Math.random() * from.nb.length) | 0]];
+    b.pathIdx = 0;
+  }
 }
 
 function updateBot(b, dt) {
@@ -2368,8 +2490,19 @@ function updateBot(b, dt) {
     // training dummy: no AI
     return;
   }
+  /* safety net: if anything ever pushes a non-finite value into a bot (a NaN
+     angle, a bad normalisation, a corrupt goal) it would otherwise be frozen
+     for the rest of the match. Re-seat it on a clean spawn instead. */
+  if (!isFinite(b.pos.x) || !isFinite(b.pos.y) || !isFinite(b.pos.z) ||
+      !isFinite(b.yaw) || !isFinite(b.pitch) || !isFinite(b.vel.x) || !isFinite(b.vel.z)) {
+    const slot = (Math.random() * 6) | 0;
+    finishSpawn(b, slot);
+    return;
+  }
   b.think -= dt;
   if (b.think <= 0) { b.think = 0.18 + Math.random() * 0.16; botThink(b); }
+  if (b.goalLock > 0) b.goalLock -= dt;
+  if (b.postT > 0) b.postT -= dt;
   if (b.reactT > 0) b.reactT -= dt;
   if (b.reloadT > 0) { b.reloadT -= dt; if (b.reloadT <= 0) finishReload(b); }
 
@@ -2399,6 +2532,26 @@ function updateBot(b, dt) {
     wx = nx * fwd + (-nz) * b.strafe * side;
     wz = nz * fwd + (nx) * b.strafe * side;
     sprint = dist > 18;
+    /* Keep the route ticking over while fighting. The path index used to be
+       advanced only by the pure-navigation branch, so a bot that spent a while
+       shooting froze at path[0] and then walked back to a stale waypoint. */
+    if (b.path && b.pathIdx < b.path.length) {
+      const n = b.path[b.pathIdx];
+      if (Math.hypot(n.x - b.pos.x, n.z - b.pos.z) < 1.6) b.pathIdx++;
+    }
+    /* Objective push: when the flag is the job (grab it, or carry it home),
+       keep advancing along the ROUTE even while trading fire — steering at the
+       flag in a straight line just grinds into the maze walls. Holding
+       mid-range short of the flag is why no flag was ever captured. */
+    if (b.goalKind === 'attack' || b.goalKind === 'carry' || b.goalKind === 'return' || b.goalKind === 'escort') {
+      let tx = b.goalPos.x, tz = b.goalPos.z;
+      if (b.path && b.pathIdx < b.path.length) { tx = b.path[b.pathIdx].x; tz = b.path[b.pathIdx].z; }
+      const gx = tx - b.pos.x, gz = tz - b.pos.z;
+      const gl = Math.hypot(gx, gz) || 1;
+      wx = wx * 0.35 + (gx / gl) * 0.65;
+      wz = wz * 0.35 + (gz / gl) * 0.65;
+      sprint = true;
+    }
   } else {
     // path following
     if (b.path && b.pathIdx < b.path.length) {
@@ -2414,15 +2567,100 @@ function updateBot(b, dt) {
     }
   }
 
-  // avoid crowding
+  /* avoid crowding — slide AROUND a teammate.
+     The old version blended 70% raw separation into the movement vector. Two
+     bots doing that to each other reach an equilibrium where each cancels the
+     other's travel and both stall on the spot. Instead: strip only the part of
+     our intent that walks into a neighbour, and step aside if we are heading
+     straight at one. Navigation always wins. */
+  let cx = 0, cz = 0;
   for (const o of G.bots) {
     if (o === b || !o.alive) continue;
     const dx = b.pos.x - o.pos.x, dz = b.pos.z - o.pos.z;
     const dd = Math.hypot(dx, dz);
-    if (dd < 1.4 && dd > 0.01) { wx += dx / dd * 0.7; wz += dz / dd * 0.7; }
+    if (dd < 1.25 && dd > 0.01) { cx += dx / dd; cz += dz / dd; }
+  }
+  if (cx || cz) {
+    const cl = Math.hypot(cx, cz);
+    const sx = cx / cl, sz = cz / cl;
+    const toward = wx * sx + wz * sz;          // >0 : our heading points at them
+    if (toward > 0.15) {
+      wx -= sx * toward; wz -= sz * toward;    // drop the colliding component
+      const wl = Math.hypot(wx, wz);
+      /* A weak residual is worse than none: the bot creeps at a fraction of
+         walking speed, never trips the stuck watchdog (its intent stays under
+         the threshold) and looks like it is grinding into a wall. Commit to a
+         full-speed sidestep instead. */
+      if (wl < 0.55) {
+        const side = (Math.random() < 0.5 ? -1 : 1);
+        wx = -sz * side; wz = sx * side;
+      } else {
+        wx = wx / wl; wz = wz / wl;
+      }
+    }
   }
 
-  moveActor(b, wx, wz, sprint, false, dt);
+  /* ---- wall-stuck recovery: a bot must never grind against a wall ----
+     Signal = how far the bot actually GOT over the last second, not how far it
+     flailed. A bot shuffling back and forth between two nodes moves plenty yet
+     goes nowhere, and that is exactly the "hitting the walls and doing nothing"
+     the player sees. Only while navigating — in a firefight the goal is a moving
+     enemy, so "not getting closer" is normal fighting, not a stuck bot. */
+  const goalD = Math.hypot(b.pos.x - b.goalPos.x, b.pos.z - b.goalPos.z);
+  if (!(visible && tgt && sameFloor)) {
+    b.stuckWin += dt;
+    if (b.stuckWin >= 1.0) {
+      const moved = Math.hypot(b.pos.x - b.stuckX, b.pos.z - b.stuckZ);
+      /* "Did it get anywhere?" is the only signal that matters. The old gate on
+         intent missed the worst case of all: a bot whose wish vector had been
+         whittled down to a crawl, which is immobile in every practical sense. */
+      if (moved < 0.6 && goalD > 2.5) {
+        b.stuckT += b.stuckWin;
+        if (b.stuckT >= 1.5) {
+          // badly stuck: abandon the goal, hop, and strike out for a node that at
+          // least points the way we were already heading
+          b.stuckT = 0; b.stuckStage = 0;
+          const gx = b.goalPos.x - b.pos.x, gz = b.goalPos.z - b.pos.z;
+          const gl = Math.hypot(gx, gz) || 1;
+          const near = NODES.filter(n =>
+            Math.hypot(n.x - b.pos.x, n.z - b.pos.z) < 16 && Math.abs(n.y - b.pos.y) < 2.5);
+          let n = null, bs = -1e9;
+          for (const c of near) {
+            const dx = c.x - b.pos.x, dz = c.z - b.pos.z;
+            const dd = Math.hypot(dx, dz) || 1;
+            const dot = (dx / dd) * (gx / gl) + (dz / dd) * (gz / gl);
+            const s = dot * 3 - dd * 0.12 + Math.random() * 1.5;
+            if (s > bs) { bs = s; n = c; }
+          }
+          if (!n) n = NODES[(Math.random() * NODES.length) | 0];
+          if (n) { b.goalPos.set(n.x, 0, n.z); planPath(b, b.goalPos); }
+          b.nudgeT = 1.0; b.nudgeAng = Math.random() * Math.PI * 2; b.hopT = 0.35;
+        } else if (b.stuckT >= 0.5 && b.stuckStage < 2) {
+          // gentle recovery: repath and sidestep around the obstacle
+          b.stuckStage++;
+          b.think = 0;
+          b.nudgeT = 0.5; b.nudgeAng = b.stuckStage === 1 ? -Math.PI / 2 : Math.PI / 2; b.hopT = 0.25;
+          if (b.goalPos) planPath(b, b.goalPos);
+        }
+      } else {
+        b.stuckT = 0; b.stuckStage = 0;
+      }
+      b.stuckX = b.pos.x; b.stuckZ = b.pos.z;
+      b.stuckWin = 0;
+    }
+  } else {
+    b.stuckX = b.pos.x; b.stuckZ = b.pos.z; b.stuckWin = 0; b.stuckT = 0; b.stuckStage = 0;
+  }
+  if (b.nudgeT > 0) {
+    b.nudgeT -= dt;
+    const c = Math.cos(b.nudgeAng), s = Math.sin(b.nudgeAng);
+    const nx = wx * c - wz * s, nz = wx * s + wz * c;
+    wx = nx; wz = nz;
+  }
+  let wantJump = false;
+  if (b.hopT > 0) { b.hopT -= dt; wantJump = true; }
+
+  moveActor(b, wx, wz, sprint, wantJump, dt);
 
   /* aim */
   let desiredYaw = b.yaw, desiredPitch = 0;
@@ -2430,7 +2668,8 @@ function updateBot(b, dt) {
     const tx = tgt.pos.x, ty = tgt.pos.y + (visible ? 1.15 : 1.0), tz = tgt.pos.z;
     const dx = tx - b.pos.x, dy = ty - eye, dz = tz - b.pos.z;
     desiredYaw = Math.atan2(-dx, -dz);
-    desiredPitch = Math.atan2(dy, Math.hypot(dx, dz));
+    const flat = Math.hypot(dx, dz);
+    desiredPitch = flat > 0.05 ? clamp(Math.atan2(dy, flat), -1.35, 1.35) : 0;
   } else if (b.path && b.pathIdx < b.path.length) {
     const n = b.path[b.pathIdx];
     desiredYaw = Math.atan2(-(n.x - b.pos.x), -(n.z - b.pos.z));
@@ -2897,7 +3136,7 @@ function endMatch() {
     '<div class="es"><b>' + p.kills + '</b><span>KILLS</span></div>' +
     '<div class="es"><b>' + p.deaths + '</b><span>DEATHS</span></div>' +
     '<div class="es"><b>' + acc + '%</b><span>ACCURACY</span></div>' +
-    '<div class="es"><b>' + (G.mode === 'flag' ? G.score.red : p.kills) + '</b><span>' + (G.mode === 'flag' ? 'CAPTURES' : 'SCORE') + '</span></div>';
+    '<div class="es"><b>' + (G.mode === 'flag' ? G.score[G.player.team] : p.kills) + '</b><span>' + (G.mode === 'flag' ? 'CAPTURES' : 'SCORE') + '</span></div>';
   $('end').classList.add('show');
   $('hud').classList.remove('show');
   $('nameplates').innerHTML = '';
@@ -3095,6 +3334,9 @@ function updateHUD(dt) {
   $('clock').classList.toggle('low', t < 30 && G.mode !== 'tutorial');
   $('scoreRed').textContent = G.score.red;
   $('scoreBlue').textContent = G.score.blue;
+  const capLabel = G.mode === 'flag' ? 'CAPTURES' : 'KILLS';
+  $('capRed').textContent = capLabel;
+  $('capBlue').textContent = capLabel;
 
   // health
   const hpPct = Math.max(0, p.hp / p.maxHp * 100);
@@ -3759,6 +4001,7 @@ function boot() {
 /* debug handle (used by the automated smoke test) */
 window.__wh = {
   G, startGame, groundAt, resolveHorizontal, moveActor,
+  NODES, findPath, nearestNode, planPath,
   get camera() { return camera; },
   get scene() { return scene; },
   get renderer() { return renderer; },
