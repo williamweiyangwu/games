@@ -158,6 +158,70 @@ h1{font-size:clamp(30px,7vw,64px);letter-spacing:.16em;font-weight:700;line-heig
   color:#7c7350;text-align:right;text-shadow:0 1px 3px #000}
 #invhint b{color:#a49a72;font-weight:400;border:1px solid rgba(216,194,124,.3);
   padding:1px 5px;margin-right:5px}
+
+/* ---------- operator mode ---------- */
+#ops{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;
+  background:rgba(1,4,3,.93);opacity:0;pointer-events:none;transition:opacity .25s}
+#ops.on{opacity:1;pointer-events:auto}
+#ops:before{content:'';position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,.22) 0 1px,transparent 1px 3px);opacity:.5}
+.opsbox{position:relative;width:min(1080px,95vw);height:min(680px,93vh);display:flex;flex-direction:column;
+  border:1px solid rgba(64,220,160,.38);background:rgba(4,10,8,.97);
+  box-shadow:0 0 90px rgba(0,0,0,.9),inset 0 0 90px rgba(64,220,160,.05)}
+.opshead{display:flex;justify-content:space-between;align-items:center;padding:13px 20px;
+  border-bottom:1px solid rgba(64,220,160,.3);font-size:12px;letter-spacing:5px;color:#7fe8c0;
+  text-shadow:0 0 16px rgba(64,220,160,.5)}
+.opshead .r{display:flex;gap:14px;align-items:center}
+.opshead .hold{font-size:9px;letter-spacing:2px;color:#e8c47f;text-shadow:0 0 12px rgba(232,196,127,.5)}
+.opshead .x{cursor:pointer;border:1px solid rgba(64,220,160,.42);padding:4px 12px;font-size:9px;
+  letter-spacing:2px;color:#7fe8c0;transition:.15s}
+.opshead .x:hover{background:rgba(64,220,160,.14)}
+.opsbody{flex:1;display:flex;min-height:0}
+.opsmap{flex:1;display:flex;flex-direction:column;border-right:1px solid rgba(64,220,160,.22);min-width:0}
+.opstabs{display:flex;border-bottom:1px solid rgba(64,220,160,.22)}
+.opstab{flex:1;padding:10px 4px;text-align:center;font-size:9.5px;letter-spacing:2.5px;
+  color:#3f7a64;cursor:pointer;transition:.15s;border-right:1px solid rgba(64,220,160,.14);white-space:nowrap;overflow:hidden}
+.opstab:last-child{border-right:none}
+.opstab.on{color:#06120d;background:rgba(64,220,160,.8)}
+.opstab:hover:not(.on){color:#7fe8c0;background:rgba(64,220,160,.08)}
+#opscanvas{flex:1;width:100%;min-height:0;display:block}
+.opsside{width:284px;flex:none;padding:14px;overflow:auto;display:flex;flex-direction:column;gap:11px}
+.opscard{border:1px solid rgba(64,220,160,.24);padding:11px 12px;background:rgba(64,220,160,.03)}
+.opscard h3{font-size:10px;letter-spacing:3px;color:#7fe8c0;margin-bottom:7px;
+  display:flex;justify-content:space-between;align-items:baseline;text-shadow:0 0 12px rgba(64,220,160,.4)}
+.opscard h3 small{font-size:8px;letter-spacing:1.5px;color:#3f7a64}
+.opscard .row{display:flex;justify-content:space-between;font-size:9.5px;letter-spacing:1px;
+  color:#4f8f78;padding:2.5px 0}
+.opscard .row b{color:#a8f0d4;font-weight:400}
+.opscard .row b.sealed{color:#e88a6a}
+.opscard .row b.open{color:#7fe8c0;text-shadow:0 0 10px rgba(64,220,160,.7)}
+.opsnote{font-size:8.5px;letter-spacing:1.5px;color:#2f5f4f;line-height:1.9}
+
+/* ---------- password gate ---------- */
+#pwbox{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;
+  background:rgba(1,4,3,.88);opacity:0;pointer-events:none;transition:opacity .2s}
+#pwbox.on{opacity:1;pointer-events:auto}
+.pwcard{width:min(400px,92vw);border:1px solid rgba(64,220,160,.4);background:rgba(4,10,8,.98);
+  padding:26px 28px;text-align:center;box-shadow:0 0 70px rgba(0,0,0,.9)}
+.pwcard.bad{animation:pwshake .35s}
+@keyframes pwshake{0%,100%{transform:translateX(0)}20%{transform:translateX(-9px)}
+  40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(4px)}}
+.pwhead{font-size:12px;letter-spacing:4px;color:#7fe8c0;text-shadow:0 0 14px rgba(64,220,160,.5)}
+.pwsub{margin-top:8px;font-size:9px;letter-spacing:2.5px;color:#3f7a64}
+#pwinput{width:100%;margin-top:18px;padding:10px 12px;background:rgba(64,220,160,.06);
+  border:1px solid rgba(64,220,160,.35);color:#a8f0d4;font-family:inherit;font-size:12px;
+  letter-spacing:2px;text-align:center;outline:none}
+#pwinput:focus{border-color:rgba(64,220,160,.8);box-shadow:0 0 22px rgba(64,220,160,.18)}
+#pwinput::placeholder{color:#2f5f4f}
+.pwerr{min-height:14px;margin-top:8px;font-size:9px;letter-spacing:2px;color:#e88a6a}
+.pwrow{margin-top:12px;display:flex;gap:10px;justify-content:center}
+.pwrow button{padding:9px 22px;background:transparent;cursor:pointer;font-family:inherit;
+  border:1px solid rgba(64,220,160,.42);color:#7fe8c0;font-size:10px;letter-spacing:3px;transition:.15s}
+.pwrow button:hover{background:rgba(64,220,160,.14)}
+.pwrow button.ghostbtn{border-color:rgba(64,220,160,.2);color:#3f7a64}
+.btn.ops{margin-top:14px;padding:9px 26px;font-size:10px;letter-spacing:3px;
+  border-color:rgba(64,220,160,.45);color:#7fe8c0}
+.btn.ops:hover{background:rgba(64,220,160,.12);border-color:#7fe8c0;box-shadow:0 0 30px rgba(64,220,160,.16)}
 </style>
 </head>
 <body>
@@ -207,6 +271,36 @@ h1{font-size:clamp(30px,7vw,64px);letter-spacing:.16em;font-weight:700;line-heig
   </div>
 </div>
 
+<div id="pwbox">
+  <div class="pwcard" id="pwcard">
+    <div class="pwhead">RESTRICTED — OPERATOR ACCESS</div>
+    <div class="pwsub">ENTER PASSPHRASE TO OPEN THE SURVEILLANCE MAP</div>
+    <input id="pwinput" type="text" autocomplete="off" spellcheck="false" placeholder="·······················">
+    <div class="pwerr" id="pwerr"></div>
+    <div class="pwrow"><button id="pwok">UNLOCK</button><button id="pwcancel" class="ghostbtn">CANCEL</button></div>
+  </div>
+</div>
+
+<div id="ops">
+  <div class="opsbox">
+    <div class="opshead">
+      <span>OPERATOR MODE — LEVEL SURVEILLANCE</span>
+      <span class="r"><span class="hold" id="opshold">TIME HELD</span><span class="x" id="opsclose">CLOSE</span></span>
+    </div>
+    <div class="opsbody">
+      <div class="opsmap">
+        <div class="opstabs">
+          <div class="opstab on" data-lv="0">LEVEL 0 · THE LOBBY</div>
+          <div class="opstab" data-lv="1">LEVEL 1 · WAREHOUSE</div>
+          <div class="opstab" data-lv="2">LEVEL 2 · PIPE DREAMS</div>
+        </div>
+        <canvas id="opscanvas"></canvas>
+      </div>
+      <div class="opsside" id="opsside"></div>
+    </div>
+  </div>
+</div>
+
 <div class="screen" id="title">
   <div class="ghost" style="top:26px;left:28px">LEVEL 0</div>
   <div class="ghost" style="bottom:26px;right:28px">NO CLIPPING OUT</div>
@@ -227,9 +321,11 @@ h1{font-size:clamp(30px,7vw,64px);letter-spacing:.16em;font-weight:700;line-heig
     <div><kbd>F</kbd>TORCH</div>
     <div><kbd>1 2 3</kbd>WEAPONS</div>
     <div><kbd>4 5 6</kbd>USE ITEM</div>
+    <div><kbd>O</kbd>OPERATOR MAP</div>
     <div><kbd>ESC</kbd>PAUSE</div>
   </div>
   <button class="btn" id="startbtn">DESCEND</button>
+  <button class="btn ops" id="opsbtn">OPERATOR MODE</button>
   <div class="warn">CONTAINS FLASHING LIGHTS &amp; SUDDEN LOUD NOISES · HEADPHONES RECOMMENDED</div>
 </div>
 
@@ -238,6 +334,7 @@ h1{font-size:clamp(30px,7vw,64px);letter-spacing:.16em;font-weight:700;line-heig
   <div class="sub">THE HALLS ARE WAITING</div>
   <div class="rule"></div>
   <button class="btn" id="resumebtn">RESUME</button>
+  <button class="btn ops" id="opsbtn2">OPERATOR MODE</button>
 </div>
 
 <div class="screen hide" id="death">
@@ -1079,6 +1176,29 @@ function bone(parent,geo,x,y,z,mat){
 }
 let skinMatCache=null;
 
+/* ══════════════════════════════════════════════════════════════
+   MONSTER ROSTER — one table drives stats, voices, silhouettes
+   def = fraction of incoming damage ignored (0 = none, .55 = soaks 55%)
+   ══════════════════════════════════════════════════════════════ */
+const MON_DEFS={
+  // tank — plods after you, soaks bullets, hits like a wet noodle
+  smiler :{hp:160,walk:.95,chase:2.55,dmg:7, def:.55,sight:17,rad:.78,hitY:1.35,
+           voice:.8, step:.7, lunge:.6, biped:true, label:'SMILER',  death:'THE SMILE FADES'},
+  // glass cannon — fast and lethal, but folds to a couple of good hits
+  hound  :{hp:55, walk:1.45,chase:4.7, dmg:26,def:0,  sight:15,rad:.60,hitY:.72,
+           voice:1.3,step:1.3,lunge:.45,biped:false,label:'HOUND',   death:'IT STOPS MOVING'},
+  // tall silent stalker — patient, tanky, sees you from very far away
+  clump  :{hp:130,walk:1.0, chase:2.2, dmg:13,def:.30,sight:23,rad:.55,hitY:1.9,
+           voice:.45,step:.5, lunge:.5, biped:true, label:'CLUMP',   death:'THE DARK COLLAPSES'},
+  // balanced humanoid — no tricks, no weaknesses, just relentless
+  wretch :{hp:85, walk:1.15,chase:3.4, dmg:15,def:.12,sight:16,rad:.55,hitY:1.0,
+           voice:1.0,step:.9, lunge:.5, biped:true, label:'WRETCH',  death:'IT FALLS SILENT'},
+  // flyer — fragile and erratic, but it does not walk where you expect
+  moth   :{hp:40, walk:1.6, chase:4.2, dmg:9, def:0,  sight:14,rad:.50,hitY:.9,
+           voice:1.5,step:1.5,lunge:.35,biped:false,fly:1.7,label:'DEATHMOTH',death:'THE WINGS FOLD'}
+};
+const MON_KINDS=Object.keys(MON_DEFS);
+
 function buildSmiler(){
   const g=new THREE.Group();
   skinMatCache=skinMat();
@@ -1192,19 +1312,167 @@ function buildHound(){
   return g;
 }
 
+/* ---- CLUMP: a 3.4m tower of limbs with no face at all ---- */
+function buildClump(){
+  const g=new THREE.Group();
+  skinMatCache=skinMat();
+  const sk=skinMatCache;
+  const legs=[];
+  for(const sx of[-1,1]){
+    const hip=new THREE.Group();hip.position.set(sx*.17,.9,0);
+    bone(hip,new THREE.CylinderGeometry(.075,.06,.55,6),0,-.27,0);
+    const knee=new THREE.Group();knee.position.y=-.55;hip.add(knee);
+    bone(knee,new THREE.CylinderGeometry(.06,.04,.5,6),0,-.25,0);
+    bone(knee,new THREE.BoxGeometry(.13,.06,.32),0,-.52,.06);
+    g.add(hip);legs.push(hip);
+  }
+  bone(g,new THREE.SphereGeometry(.22,12,9),0,1.0,0);                       // pelvis
+  bone(g,new THREE.CylinderGeometry(.2,.3,1.7,10),0,1.85,0);                // absurdly long torso
+  const arms=[];
+  for(const sx of[-1,1]){
+    const shoulder=new THREE.Group();shoulder.position.set(sx*.31,2.5,0);
+    bone(shoulder,new THREE.SphereGeometry(.13,10,8),0,0,0);
+    bone(shoulder,new THREE.CylinderGeometry(.06,.05,.75,6),0,-.37,0);
+    const elbow=new THREE.Group();elbow.position.y=-.75;shoulder.add(elbow);
+    bone(elbow,new THREE.CylinderGeometry(.05,.038,.68,6),0,-.34,0);
+    for(let f=-1;f<=1;f++){
+      const claw=bone(elbow,new THREE.ConeGeometry(.015,.24,5),f*.05,-.82,f*.03);
+      claw.rotation.x=-.3+f*.2;
+    }
+    g.add(shoulder);arms.push(shoulder);
+  }
+  bone(g,new THREE.CylinderGeometry(.08,.11,.3,8),0,3.28,0);                 // neck
+  const head=bone(g,new THREE.SphereGeometry(.26,14,10),0,3.62,0);          // head
+  head.scale.set(.85,1.1,.85);
+  // no face — just a shallow dent where one should be
+  const dent=new THREE.Mesh(new THREE.SphereGeometry(.17,12,8),
+    new THREE.MeshBasicMaterial({color:0x050505,fog:false}));
+  dent.position.set(0,3.62,.12);g.add(dent);
+  // cold eyes far above yours
+  const eyeMat=new THREE.MeshBasicMaterial({color:0xbfe8ff,fog:false});
+  for(const sx of[-1,1]){
+    const e=bone(g,new THREE.SphereGeometry(.032,8,6),sx*.09,3.76,.2,eyeMat);
+    const glow=eyeGlow(0x9fd4ff,.13);glow.position.copy(e.position);g.add(glow);
+  }
+  g.userData.arms=arms;
+  g.userData.legs=legs;
+  g.userData.height=3.62;
+  return g;
+}
+
+/* ---- WRETCH: hunched, bald, arms far too long ---- */
+function buildWretch(){
+  const g=new THREE.Group();
+  skinMatCache=skinMat();
+  const sk=skinMatCache;
+  const pale=new THREE.MeshStandardMaterial({color:0xa89a78,roughness:.95});
+  const legs=[];
+  for(const sx of[-1,1]){
+    const hip=new THREE.Group();hip.position.set(sx*.15,.62,0);
+    bone(hip,new THREE.CylinderGeometry(.07,.055,.34,6),0,-.17,0,pale);
+    const knee=new THREE.Group();knee.position.y=-.34;hip.add(knee);
+    bone(knee,new THREE.CylinderGeometry(.055,.04,.3,6),0,-.15,0,pale);
+    bone(knee,new THREE.BoxGeometry(.12,.055,.28),0,-.32,.05,pale);
+    g.add(hip);legs.push(hip);
+  }
+  bone(g,new THREE.SphereGeometry(.2,12,9),0,.7,0,pale);                    // pelvis
+  const torso=bone(g,new THREE.CylinderGeometry(.19,.28,1.05,10),0,1.2,0,pale);
+  torso.rotation.x=.22;                                                     // forward hunch
+  const arms=[];
+  for(const sx of[-1,1]){
+    const shoulder=new THREE.Group();shoulder.position.set(sx*.27,1.58,0);
+    bone(shoulder,new THREE.SphereGeometry(.11,10,8),0,0,0,pale);
+    bone(shoulder,new THREE.CylinderGeometry(.055,.045,.6,6),0,-.3,0,pale);  // long upper arm
+    const elbow=new THREE.Group();elbow.position.y=-.6;shoulder.add(elbow);
+    bone(elbow,new THREE.CylinderGeometry(.045,.035,.62,6),0,-.31,0,pale);   // longer forearm
+    for(let f=-1;f<=1;f++){
+      const claw=bone(elbow,new THREE.ConeGeometry(.015,.22,5),f*.05,-.74,f*.03,pale);
+      claw.rotation.x=-.3+f*.2;
+    }
+    g.add(shoulder);arms.push(shoulder);
+  }
+  bone(g,new THREE.CylinderGeometry(.07,.09,.2,8),0,1.82,0,pale);
+  const head=bone(g,new THREE.SphereGeometry(.22,12,9),0,2.05,0,pale);
+  head.scale.set(.92,1.08,.92);
+  // sunken eyes + a slack mouth
+  const eyeMat=new THREE.MeshBasicMaterial({color:0xffcf8a,fog:false});
+  for(const sx of[-1,1]){
+    const e=bone(g,new THREE.SphereGeometry(.03,8,6),sx*.08,2.1,.19,eyeMat);
+    const glow=eyeGlow(0xffc070,.1);glow.position.copy(e.position);g.add(glow);
+  }
+  const mouth=bone(g,new THREE.BoxGeometry(.11,.035,.05),0,1.94,.2,
+    new THREE.MeshBasicMaterial({color:0x2a1408,fog:false}));
+  g.userData.arms=arms;
+  g.userData.legs=legs;
+  g.userData.height=2.05;
+  return g;
+}
+
+/* ---- DEATHMOTH: airborne, wings always beating ---- */
+function buildMoth(){
+  const g=new THREE.Group();
+  const fur=new THREE.MeshStandardMaterial({color:0x4a4038,roughness:.95});
+  const dark=new THREE.MeshStandardMaterial({color:0x191410,roughness:.99});
+  const wingMat=new THREE.MeshStandardMaterial({color:0x8a7f70,roughness:.8,
+    transparent:true,opacity:.9,side:THREE.DoubleSide,emissive:0x2a221a,emissiveIntensity:.6});
+  bone(g,new THREE.SphereGeometry(.30,12,9),0,0,0,fur);                      // thorax
+  bone(g,new THREE.SphereGeometry(.2,10,8),0,.02,-.46,fur);                  // abdomen
+  bone(g,new THREE.SphereGeometry(.17,10,8),0,.06,.34,dark);                 // head
+  const eyeMat=new THREE.MeshBasicMaterial({color:0xff5a2a,fog:false});
+  for(const sx of[-1,1]){
+    const e=bone(g,new THREE.SphereGeometry(.05,8,6),sx*.1,.09,.46,eyeMat);
+    const glow=eyeGlow(0xff6a30,.22);glow.position.copy(e.position);g.add(glow);
+  }
+  for(const sx of[-1,1]){                                                    // antennae
+    const a=bone(g,new THREE.CylinderGeometry(.008,.008,.44,4),sx,.2,.5,dark);
+    a.rotation.set(.9,0,sx*.5);
+  }
+  // four wings, pivoted at the thorax so they can flap
+  const wings=[];
+  const wgeo=new THREE.PlaneGeometry(1.15,.55);
+  for(const sx of[-1,1])for(const sz of[1,-1]){
+    const pivot=new THREE.Group();
+    pivot.position.set(sx*.2,.02,sz*.12);
+    const w=bone(pivot,wgeo,0,0,sz*.55,wingMat);
+    w.rotation.x=sz>0?-.25:.25;
+    w.rotation.z=sx*.15;
+    g.add(pivot);wings.push({pivot,base:sz*.55,side:sx});
+  }
+  g.userData.wings=wings;
+  g.userData.height=0;
+  return g;
+}
+
+function buildMonsterMesh(kind){
+  if(kind==='smiler')return buildSmiler();
+  if(kind==='hound')return buildHound();
+  if(kind==='clump')return buildClump();
+  if(kind==='wretch')return buildWretch();
+  if(kind==='moth')return buildMoth();
+  return buildSmiler();
+}
+
+// weighted spawn roll across the roster
+const MON_WEIGHTS=[['smiler',30],['hound',25],['clump',15],['wretch',20],['moth',10]];
+function pickKind(){
+  let r=Math.random()*MON_WEIGHTS.reduce((a,w)=>a+w[1],0);
+  for(const[k,w]of MON_WEIGHTS){r-=w;if(r<=0)return k;}
+  return 'smiler';
+}
+
 class Monster{
   constructor(kind,ci,cj){
     this.kind=kind;
+    const D=MON_DEFS[kind]||MON_DEFS.smiler;
+    this.def=D;
     this.pos=new THREE.Vector3(cx(ci),0,cz(cj));
-    this.hp=kind==='smiler'?110:70;
-    this.maxHp=this.hp;
-    this.walkSpd=kind==='smiler'?1.05:1.3;
-    this.chaseSpd=kind==='smiler'?2.9:3.8;
-    this.dmg=kind==='smiler'?16:11;
-    this.sight=kind==='smiler'?17:14;
-    this.radius=kind==='smiler'?.5:.42;
-    this.mesh=kind==='smiler'?buildSmiler():buildHound();
+    this.hp=D.hp;this.maxHp=D.hp;
+    this.walkSpd=D.walk;this.chaseSpd=D.chase;
+    this.dmg=D.dmg;this.sight=D.sight;
+    this.radius=D.rad;
+    this.mesh=buildMonsterMesh(kind);
     this.mesh.position.copy(this.pos);
+    if(D.fly)this.mesh.position.y=D.fly;
     scene.add(this.mesh);
     this.state='wander';
     this.path=[];this.pathI=0;
@@ -1288,10 +1556,10 @@ class Monster{
         const dx=player.pos.x-this.pos.x,dz=player.pos.z-this.pos.z;
         const d=Math.hypot(dx,dz)||1;
         this.lungeDir.set(dx/d*8,0,dz/d);
-        AU.growl(clamp((this.pos.x-player.pos.x)*.08,-1,1),.6,this.kind==='smiler'?.7:1.3);
+        AU.growl(clamp((this.pos.x-player.pos.x)*.08,-1,1),.6,this.def.voice);
       }
     }else if(chasing&&this.seenT>0&&distP>2.2&&distP<5.5&&this.lungeCd<=0&&Math.random()<dt*.9){
-      this.windT=this.kind==='smiler'?.6:.45;
+      this.windT=this.def.lunge;
     }else{
       this.mesh.rotation.x=lerp(this.mesh.rotation.x,0,Math.min(1,dt*6));
     }
@@ -1323,7 +1591,7 @@ class Monster{
       if(this.growlCd<=0){
         this.growlCd=rand(2.5,5.5);
         const pan=Math.max(-1,Math.min(1,(this.pos.x-player.pos.x)*.08));
-        AU.growl(pan,clamp(.45-distP*.012,.05,.45),this.kind==='smiler'?.8:1.15);
+        AU.growl(pan,clamp(.45-distP*.012,.05,.45),this.def.voice);
       }
     }else if(this.lungeT<=0&&this.windT<=0){
       this.wanderT-=dt;
@@ -1385,7 +1653,8 @@ class Monster{
     resolveCollision(this.pos,this.radius);
 
     // face & animate
-    this.mesh.position.set(this.pos.x,0,this.pos.z);
+    const flyY=this.def.fly?this.def.fly+Math.sin(this.phase*1.4)*.18:0;
+    this.mesh.position.set(this.pos.x,flyY,this.pos.z);
     const vx=this.vel.x,vz=this.vel.z;
     if(Math.hypot(vx,vz)>.05){
       const target=Math.atan2(vx,vz);
@@ -1396,11 +1665,25 @@ class Monster{
     }
     this.phase+=dt*(chasing?9:4.2);
     const u=this.mesh.userData;
-    if(this.kind==='smiler'){
+    if(this.kind==='moth'){
+      // wings beat out of sync with the body bob; the moth drifts sideways as it flies
+      if(u.wings){
+        const f=Math.sin(this.phase*2.1);
+        u.wings.forEach((w,i)=>{
+          w.pivot.rotation.z=w.side*f*(i%2?.5:.8);
+          w.pivot.rotation.x=f*.18;
+        });
+      }
+      this.mesh.rotation.z=Math.sin(this.phase*1.1)*.12;
+      // erratic lateral weave
+      const weave=Math.sin(this.phase*.7)*1.1*dt;
+      this.pos.x+=-vz*weave;
+      this.pos.z+=vx*weave;
+    }else if(this.def.biped){
       const sw=Math.sin(this.phase)*.42;
       if(u.arms){u.arms[0].rotation.x=sw;u.arms[1].rotation.x=-sw;}
       if(u.legs){u.legs[0].rotation.x=Math.sin(this.phase)*.38;u.legs[1].rotation.x=-Math.sin(this.phase)*.38;}
-      this.mesh.position.y=Math.abs(Math.sin(this.phase*.5))*.04;
+      this.mesh.position.y=flyY+Math.abs(Math.sin(this.phase*.5))*.04;
       this.mesh.rotation.z=Math.sin(this.phase*.5)*.03;
     }else{
       if(u.legs){
@@ -1418,7 +1701,7 @@ class Monster{
     if(distP<13&&this.stepCd<=0&&Math.hypot(vx,vz)>.3){
       this.stepCd=chasing?.32:.55;
       const pan=clamp((this.pos.x-player.pos.x)*.1,-1,1);
-      AU.step(clamp(.16-distP*.006,.02,.16),this.kind==='smiler'?.7:1.3);
+      AU.step(clamp(.16-distP*.006,.02,.16),this.def.step);
     }
   }
   moveToward(tx,tz,dt,spd){
@@ -1433,13 +1716,13 @@ class Monster{
   }
   hurt(d){
     if(this.dead)return;
-    this.hp-=d;
+    this.hp-=d*(1-this.def.def);          // armor: the smiler just soaks it
     this.alert=6;
     if(this.hp<=0){
       this.dead=true;
       player.kills++;
       AU.growl(clamp((this.pos.x-player.pos.x)*.1,-1,1),.5,.6);
-      toast(this.kind==='smiler'?'THE SMILE FADES':'IT STOPS MOVING');
+      toast(this.def.death);
     }
   }
 }
@@ -1705,7 +1988,7 @@ function spawnMonsters(n){
     if(!pool||!pool.length)pool=far.length?far:near;
     let s=pool.length?pick(pool):[GX-2,GZ-2,10];
     bag.push(s);
-    const kind=k===0?'smiler':(Math.random()<.45?'smiler':'hound');
+    const kind=k===0?'smiler':pickKind();
     const mon=new Monster(kind,s[0],s[1]);
     // the nearest one is already on your trail from the start
     if(k===0)mon.alert=6;
@@ -1833,6 +2116,264 @@ function useItem(kind){
 }
 
 /* ══════════════════════════════════════════════════════════════
+   OPERATOR MODE — password-gated surveillance map of the whole
+   maze, with the exits of Level 0, 1 and 2 marked.
+   ══════════════════════════════════════════════════════════════ */
+const OPS_PW='bayern muss gewinnen';
+const OPS_LEVELS=[
+  {name:'LEVEL 0',sub:'THE LOBBY',cls:'SURVIVAL DIFFICULTY: CLASS 1',
+   bg:'#140f06',wall:'#c8a94e',dim:'#5a4a20',accent:'#e8c47f',live:true},
+  {name:'LEVEL 1',sub:'WAREHOUSE COMPLEX',cls:'SURVIVAL DIFFICULTY: CLASS 2',
+   bg:'#08110d',wall:'#5f9f7f',dim:'#28493c',accent:'#7fe8c0',live:false},
+  {name:'LEVEL 2',sub:'PIPE DREAMS',cls:'SURVIVAL DIFFICULTY: CLASS 3',
+   bg:'#080d14',wall:'#6f8fbf',dim:'#2c3c55',accent:'#9fc0f0',live:false}
+];
+let opUnlocked=false,opsOpen=false,pwOpen=false,opsLevel=0,opsFrom='menu';
+let LEVEL_EXITS=[];                       // [ [i,j] x3 ] level 0 / 1 / 2
+const opsCanvas=$('#opscanvas');
+const opsCtx=opsCanvas.getContext('2d');
+
+function sectorOf(i,j){return String.fromCharCode(65+i)+'-'+(j+1);}
+function exitStatus(lv){
+  if(lv===0){
+    const e=window.__BR&&window.__BR.exit;
+    if(e&&e.open)return['OPEN','open'];
+    return player.fuses>=3?['UNSEALED — APPROACH','open']:['SEALED · 3 FUSES','sealed'];
+  }
+  return['SURVEILLANCE ONLY','sealed'];
+}
+function requestOps(){
+  if(opUnlocked)openOps();
+  else openPw();
+}
+function openPw(){
+  if(pwOpen)return;
+  pwOpen=true;
+  $('#pwbox').classList.add('on');
+  $('#pwerr').textContent='';
+  $('#pwinput').value='';
+  setTimeout(()=>$('#pwinput').focus(),60);
+}
+function closePw(){
+  if(!pwOpen)return;
+  pwOpen=false;
+  $('#pwbox').classList.remove('on');
+  $('#pwinput').blur();
+}
+function tryUnlock(){
+  const v=$('#pwinput').value.trim().toLowerCase().replace(/\s+/g,' ');
+  if(v===OPS_PW){
+    opUnlocked=true;
+    closePw();
+    openOps();
+  }else{
+    $('#pwerr').textContent='PASSPHRASE REJECTED';
+    const c=$('#pwcard');
+    c.classList.remove('bad');void c.offsetWidth;c.classList.add('bad');
+  }
+}
+function openOps(){
+  if(opsOpen)return;
+  opsOpen=true;
+  opsFrom=state==='playing'?'playing':(state==='paused'?'pause':'menu');
+  $('#ops').classList.add('on');
+  $('#opshold').textContent=state==='playing'?'TIME HELD':'STANDBY';
+  document.exitPointerLock&&document.exitPointerLock();
+  drawOpsMap();
+  renderOpsSide();
+}
+function closeOps(){
+  if(!opsOpen)return;
+  opsOpen=false;
+  $('#ops').classList.remove('on');
+  if(opsFrom==='playing'&&state==='playing')requestLock();
+}
+$('#opsbtn').addEventListener('click',requestOps);
+$('#opsbtn2').addEventListener('click',requestOps);
+$('#opsclose').addEventListener('click',closeOps);
+$('#pwok').addEventListener('click',tryUnlock);
+$('#pwcancel').addEventListener('click',closePw);
+$('#pwinput').addEventListener('keydown',e=>{
+  if(e.code==='Enter')tryUnlock();
+  if(e.code==='Escape')closePw();
+  e.stopPropagation();
+});
+[...document.querySelectorAll('.opstab')].forEach(t=>{
+  t.addEventListener('click',()=>{
+    opsLevel=+t.dataset.lv;
+    document.querySelectorAll('.opstab').forEach(x=>x.classList.toggle('on',x===t));
+    drawOpsMap();
+    renderOpsSide();
+  });
+});
+
+/* ---- the map itself ---- */
+function drawOpsMap(){
+  const L=OPS_LEVELS[opsLevel];
+  const dpr=Math.min(2,devicePixelRatio||1);
+  const w=opsCanvas.clientWidth,h=opsCanvas.clientHeight;
+  if(!w||!h)return;
+  if(opsCanvas.width!==Math.round(w*dpr)||opsCanvas.height!==Math.round(h*dpr)){
+    opsCanvas.width=Math.round(w*dpr);opsCanvas.height=Math.round(h*dpr);
+  }
+  const c=opsCtx;
+  c.setTransform(dpr,0,0,dpr,0,0);
+  c.clearRect(0,0,w,h);
+  c.fillStyle=L.bg;c.fillRect(0,0,w,h);
+
+  const pad=22;
+  const size=Math.min(w-pad*2,h-pad*2);
+  const cell=size/GX;
+  const ox=(w-size)/2,oy=(h-size)/2;
+
+  // faint grid
+  c.strokeStyle=L.dim;c.globalAlpha=.25;c.lineWidth=1;
+  for(let i=0;i<=GX;i++){
+    c.beginPath();c.moveTo(ox+i*cell,oy);c.lineTo(ox+i*cell,oy+size);c.stroke();
+    c.beginPath();c.moveTo(ox,oy+i*cell);c.lineTo(ox+size,oy+i*cell);c.stroke();
+  }
+  c.globalAlpha=1;
+
+  // walls — vertical then horizontal, skipping the exit gap
+  c.strokeStyle=L.wall;c.lineWidth=Math.max(1.4,cell*.09);
+  c.lineCap='square';
+  c.beginPath();
+  for(let i=0;i<=GX;i++)for(let j=0;j<GZ;j++){
+    if(!vWall[i][j])continue;
+    if(exitSeg&&exitSeg.t==='v'&&exitSeg.i===i&&exitSeg.j===j)continue;
+    c.moveTo(ox+i*cell,oy+j*cell);c.lineTo(ox+i*cell,oy+(j+1)*cell);
+  }
+  for(let i=0;i<GX;i++)for(let j=0;j<=GZ;j++){
+    if(!hWall[i][j])continue;
+    if(exitSeg&&exitSeg.t==='h'&&exitSeg.i===i&&exitSeg.j===j)continue;
+    c.moveTo(ox+i*cell,oy+j*cell);c.lineTo(ox+(i+1)*cell,oy+j*cell);
+  }
+  c.stroke();
+
+  // outer frame
+  c.strokeStyle=L.accent;c.globalAlpha=.5;c.lineWidth=1.5;
+  c.strokeRect(ox,oy,size,size);
+  c.globalAlpha=1;
+
+  // sector labels
+  c.fillStyle=L.dim;c.font='9px monospace';c.textAlign='center';c.textBaseline='middle';
+  for(let i=0;i<GX;i++)c.fillText(String.fromCharCode(65+i),ox+i*cell+cell/2,oy-11);
+  for(let j=0;j<GZ;j++)c.fillText(String(j+1),ox-12,oy+j*cell+cell/2);
+
+  // supply lockers (level 0 only)
+  if(L.live){
+    for(const ch of chests){
+      if(ch.open)continue;
+      const lx=ox+(ch.x+HALF_W)/CELL*cell,ly=oy+(ch.z+HALF_D)/CELL*cell;
+      c.fillStyle='rgba(232,196,127,.55)';
+      c.fillRect(lx-cell*.2,ly-cell*.2,Math.max(2,cell*.4),Math.max(2,cell*.4));
+    }
+  }
+
+  // exit marker for this level
+  const ex=LEVEL_EXITS[opsLevel];
+  if(ex){
+    const[cx0,cz0]=[ex[0],ex[1]];
+    const x=ox+cx0*cell,y=oy+cz0*cell;
+    const[st,cls]=exitStatus(opsLevel);
+    const col=cls==='open'?'#7fe8c0':'#ff5a3c';
+    const pulse=.55+.45*Math.sin(performance.now()/300);
+    c.save();
+    c.shadowColor=col;c.shadowBlur=14*pulse;
+    c.strokeStyle=col;c.lineWidth=2;
+    c.strokeRect(x+1.5,y+1.5,cell-3,cell-3);
+    c.fillStyle=col;c.globalAlpha=.16+.1*pulse;
+    c.fillRect(x+1.5,y+1.5,cell-3,cell-3);
+    c.globalAlpha=1;
+    c.font='bold '+Math.max(9,cell*.42)+'px monospace';
+    c.fillStyle=col;c.fillText('EXIT',x+cell/2,y+cell/2+1);
+    c.restore();
+  }
+
+  // live entities (level 0 only)
+  if(L.live){
+    // player
+    const px=ox+(player.pos.x+HALF_W)/CELL*cell,py=oy+(player.pos.z+HALF_D)/CELL*cell;
+    c.save();
+    c.shadowColor='#ffffff';c.shadowBlur=10;
+    c.fillStyle='#ffffff';
+    c.beginPath();c.arc(px,py,Math.max(2.5,cell*.16),0,TAU);c.fill();
+    // facing tick
+    c.strokeStyle='#ffffff';c.lineWidth=1.5;
+    c.beginPath();
+    c.moveTo(px,py);
+    c.lineTo(px-Math.sin(player.yaw)*cell*.7,py-Math.cos(player.yaw)*cell*.7);
+    c.stroke();
+    c.restore();
+
+    // monsters
+    const MON_COL={smiler:'#ffb35c',hound:'#ff5a3c',clump:'#9fd4ff',wretch:'#c8e86a',moth:'#d98aff'};
+    for(const m of monsters){
+      if(m.dead)continue;
+      const mx=ox+(m.pos.x+HALF_W)/CELL*cell,my=oy+(m.pos.z+HALF_D)/CELL*cell;
+      c.save();
+      c.shadowColor=MON_COL[m.kind]||'#fff';c.shadowBlur=8;
+      c.fillStyle=MON_COL[m.kind]||'#fff';
+      c.beginPath();c.arc(mx,my,Math.max(2,cell*.12),0,TAU);c.fill();
+      c.restore();
+    }
+  }
+
+  // header strip inside the map
+  c.fillStyle=L.accent;c.font='10px monospace';c.textAlign='left';c.textBaseline='alphabetic';
+  c.globalAlpha=.85;
+  c.fillText(L.name+' · '+L.sub,ox+2,oy-20);
+  c.textAlign='right';
+  c.fillText(L.live?'LIVE FEED':'ARCHIVE — NO LIVE FEED',ox+size-2,oy-20);
+  c.globalAlpha=1;
+}
+
+/* ---- side panel ---- */
+function renderOpsSide(){
+  const L=OPS_LEVELS[opsLevel];
+  const ex=LEVEL_EXITS[opsLevel];
+  const[st,cls]=exitStatus(opsLevel);
+  const pcell=cellOf(player.pos.x,player.pos.z);
+  let distTxt='—';
+  if(ex){
+    const d=Math.hypot((ex[0]-pcell[0])*CELL,(ex[1]-pcell[1])*CELL);
+    distTxt=Math.round(d)+' m';
+  }
+  let h='';
+  h+=`<div class="opscard"><h3>${L.name}<small>${L.sub}</small></h3>`+
+     `<div class="row"><span>CLASSIFICATION</span><b>${L.cls.split(': ')[1]||L.cls}</b></div>`+
+     `<div class="row"><span>EXIT SECTOR</span><b>${ex?sectorOf(ex[0],ex[1]):'UNMAPPED'}</b></div>`+
+     `<div class="row"><span>EXIT STATUS</span><b class="${cls}">${st}</b></div>`+
+     `<div class="row"><span>DISTANCE</span><b>${distTxt}</b></div></div>`;
+  if(L.live){
+    const alive={};
+    for(const m of monsters)if(!m.dead)alive[m.kind]=(alive[m.kind]||0)+1;
+    const total=Object.values(alive).reduce((a,b)=>a+b,0);
+    h+=`<div class="opscard"><h3>SURVEILLANCE<small>LIVE</small></h3>`+
+       `<div class="row"><span>OPERATOR</span><b>SECTOR ${sectorOf(pcell[0],pcell[1])}</b></div>`+
+       `<div class="row"><span>ENTITIES TRACKED</span><b>${total}</b></div>`+
+       Object.entries(MON_DEFS).map(([k,d])=>
+         `<div class="row"><span>${d.label}</span><b>${alive[k]||0}</b></div>`).join('')+
+       `<div class="row"><span>FUSES RECOVERED</span><b>${player.fuses}/3</b></div></div>`;
+  }else{
+    h+=`<div class="opscard"><h3>ARCHIVE<small>NO LIVE FEED</small></h3>`+
+       `<div class="row"><span>LINK</span><b>CAMERA RELAY OFFLINE</b></div>`+
+       `<div class="row"><span>LAST SYNC</span><b>UNKNOWN</b></div></div>`;
+  }
+  h+=`<div class="opscard"><h3>LEGEND<small>MAP KEY</small></h3>`+
+     `<div class="row"><span>■ EXIT</span><b>${opsLevel===0?(exitStatus(0)[1]==='open'?'GREEN = OPEN':'RED = SEALED'):'PERIMETER GATE'}</b></div>`+
+     (L.live?`<div class="row"><span>● ENTITY</span><b>TRACKED LIVE</b></div>`+
+               `<div class="row"><span>■ LOCKER</span><b>UNSEARCHED</b></div>`:'')+
+     `</div>`;
+  h+=`<div class="opsnote">`+
+     (state==='playing'
+       ? 'SIMULATION HELD WHILE THIS CONSOLE IS OPEN — THE HALLS CANNOT REACH YOU HERE.<br>'
+       : 'TITLE-SCREEN CONSOLE — THE MAZE IS MAPPED BEFORE YOU DESCEND.<br>')+
+     `OPERATOR ACCESS IS LOGGED. THE EXIT DOES NOT OPEN WITHOUT 3 FUSES.</div>`;
+  $('#opsside').innerHTML=h;
+}
+
+/* ══════════════════════════════════════════════════════════════
    INPUT
    ══════════════════════════════════════════════════════════════ */
 const keys={};
@@ -1841,9 +2382,16 @@ let dragging=false,lastMX=0,lastMY=0;
 addEventListener('keydown',e=>{
   keys[e.code]=true;
   if(e.code==='Space')e.preventDefault();
+  // overlays own the keyboard first
+  if(e.code==='Escape'){
+    if(opsOpen){closeOps();return;}
+    if(pwOpen){closePw();return;}
+    if(invOpen){closeInv();return;}
+  }
   if(state==='playing'){
-    if(e.code==='KeyE'&&!e.repeat){invOpen?closeInv():openInv();}
+    if(e.code==='KeyE'&&!e.repeat&&!opsOpen&&!pwOpen){invOpen?closeInv():openInv();}
     if(e.code==='KeyF')toggleTorch();
+    if(e.code==='KeyO'&&!e.repeat&&!invOpen&&!pwOpen&&!opsOpen)requestOps();
     if(e.code==='Digit1')selectWeapon('pipe');
     if(e.code==='Digit2')selectWeapon('pistol');
     if(e.code==='Digit3')selectWeapon('shotgun');
@@ -1854,11 +2402,8 @@ addEventListener('keydown',e=>{
   }
   if(state==='dead'&&e.code==='KeyR')location.reload();
   if(state==='playing'&&e.code==='Escape'){
-    if(invOpen)closeInv();
-    else{
-      setState('paused');
-      if(document.exitPointerLock)document.exitPointerLock();
-    }
+    setState('paused');
+    if(document.exitPointerLock)document.exitPointerLock();
   }
 });
 addEventListener('keyup',e=>{
@@ -1901,7 +2446,7 @@ addEventListener('wheel',e=>{
 addEventListener('contextmenu',e=>e.preventDefault());
 
 document.addEventListener('pointerlockchange',()=>{
-  if(document.pointerLockElement!==canvas&&state==='playing'&&!invOpen){
+  if(document.pointerLockElement!==canvas&&state==='playing'&&!invOpen&&!opsOpen&&!pwOpen){
     setState('paused');
   }
 });
@@ -1983,12 +2528,13 @@ function attack(){
     let hit=null,hitT=1e9;
     for(const m of monsters){
       if(m.dead)continue;
-      const ox=m.pos.x-player.pos.x,oz=m.pos.z-player.pos.z,oy=(m.kind==='smiler'?1.35:.72)-1.62;
+      const ox=m.pos.x-player.pos.x,oz=m.pos.z-player.pos.z,
+            oy=((m.def.fly||0)+m.def.hitY)-1.62;
       const t=ox*dir.x+oy*dir.y+oz*dir.z;
       if(t<0||t>50)continue;
       const px=ox-dir.x*t,py=oy-dir.y*t,pz=oz-dir.z*t;
       const dist2=px*px+py*py+pz*pz;
-      const rad=m.kind==='smiler'?.78:.6;
+      const rad=m.def.rad;
       if(dist2<rad*rad&&t<wallD&&t<hitT){hitT=t;hit=m;}
     }
     if(hit)hit.hurt(w.dmg);
@@ -2064,7 +2610,7 @@ function powerExit(){
       let c=null,tries=0;
       do{c={i:randInt(0,GX-1),j:randInt(0,GZ-1)};tries++;}
       while(tries<40&&Math.hypot(cx(c.i)-player.pos.x,cz(c.j)-player.pos.z)<12);
-      monsters.push(new Monster(Math.random()<.5?'smiler':'hound',c.i,c.j));
+      monsters.push(new Monster(pickKind(),c.i,c.j));
     }
     toast('SOMETHING ELSE WOKE UP');
   },5000);
@@ -2199,6 +2745,8 @@ function die(){
   state='dying';
   player.dead=true;
   if(invOpen)closeInv();
+  if(opsOpen)closeOps();
+  if(pwOpen)closePw();
   AU.stinger();
   document.exitPointerLock&&document.exitPointerLock();
   el.static.style.transition='opacity 1.4s';
@@ -2214,6 +2762,8 @@ function win(){
   if(state!=='playing')return;
   state='winning';
   if(invOpen)closeInv();
+  if(opsOpen)closeOps();
+  if(pwOpen)closePw();
   document.exitPointerLock&&document.exitPointerLock();
   const t=((performance.now()-player.startTime)/1000);
   $('#winstats').innerHTML=
@@ -2440,8 +2990,9 @@ function tick(){
 
   if(state==='playing'){
     const nowW=performance.now();
-    // the inventory freezes time: the world renders, nothing simulates
-    if(!invOpen){
+    // the inventory and the operator console freeze time: the world
+    // renders, nothing simulates
+    if(!invOpen&&!opsOpen&&!pwOpen){
       playT+=Math.min(2,(nowW-lastTickW)/1000);
       updatePlayer(dt);
       for(const m of monsters)m.update(dt);
@@ -2468,7 +3019,7 @@ function tick(){
       }
       if(best){
         best.alert=1e9;hunterActive=true;nextHunt=playT+26;
-        AU.growl(clamp((best.pos.x-player.pos.x)*.08,-1,1),.55,best.kind==='smiler'?.8:1.15);
+        AU.growl(clamp((best.pos.x-player.pos.x)*.08,-1,1),.55,best.def.voice);
       }
     }
     // a hunt ends when the monster dies or the player breaks line of sight for a while
@@ -2488,7 +3039,7 @@ function tick(){
       let c=null,tries=0;
       do{c={i:randInt(0,GX-1),j:randInt(0,GZ-1)};tries++;}
       while(tries<60&&Math.hypot(cx(c.i)-player.pos.x,cz(c.j)-player.pos.z)<15);
-      monsters.push(new Monster(Math.random()<.5?'smiler':'hound',c.i,c.j));
+      monsters.push(new Monster(pickKind(),c.i,c.j));
     }
     }
     lastTickW=nowW;
@@ -2499,6 +3050,9 @@ function tick(){
     camera.rotation.x=Math.sin(elapsed*.13)*.05;
     updateLights(dt);
   }
+
+  // the operator map tracks live entities while it is open
+  if(opsOpen)drawOpsMap();
 
   renderer.render(scene,camera);
 }
@@ -2538,6 +3092,25 @@ function boot(){
   }
   spawnCell=bestCell;
   player.pos.set(cx(spawnCell[0]),0,cz(spawnCell[1]));
+
+  // operator map: level 0's exit is the real door; levels 1 and 2 get the
+  // next-farthest perimeter gates so the console can show all three
+  LEVEL_EXITS=[exitInfo.cell];
+  {
+    const dmap=bfs(spawnCell[0],spawnCell[1]).dist;
+    const border=[];
+    for(let i=0;i<GX;i++)for(let j=0;j<GZ;j++){
+      if(i===0||j===0||i===GX-1||j===GZ-1)border.push([i,j,dmap[i+j*GX]]);
+    }
+    border.sort((a,b)=>b[2]-a[2]);
+    const used=new Set([exitInfo.cell.join(',')]);
+    for(const b of border){
+      if(LEVEL_EXITS.length>=3)break;
+      const k=b[0]+','+b[1];
+      if(used.has(k)||b[2]<0)continue;
+      used.add(k);LEVEL_EXITS.push([b[0],b[1]]);
+    }
+  }
   // face the longest open corridor
   let bestYaw=rand(0,TAU),bestD=-1;
   for(let k=0;k<16;k++){
@@ -2573,6 +3146,15 @@ boot();
 window.__BR={player,get monsters(){return monsters;},get state(){return state;},startGame,
   get items(){return items;},get chests(){return chests;},get exit(){return exitInfo;},spawnHallu,openChest,get playT(){return playT;},get hunter(){return hunterActive;},los,solidAt,camera,scene,
   get chestTarget(){return chestTarget;},get invOpen(){return invOpen;},useItem,
+  get opsOpen(){return opsOpen;},get pwOpen(){return pwOpen;},
+  get levelExits(){return LEVEL_EXITS;},get opsLevel(){return opsLevel;},
+  requestOps,openOps,closeOps,
+  debugSpawn(kind,dx=3,dz=2){
+    const x=player.pos.x+dx,z=player.pos.z+dz;
+    const m=new Monster(kind,0,0);
+    m.pos.set(x,0,z);m.mesh.position.set(x,0,z);
+    monsters.push(m);return m;
+  },
   get info(){return{calls:renderer.info.render.calls,tris:renderer.info.render.triangles,geo:renderer.info.memory.geometries,tex:renderer.info.memory.textures};}};
 </script>
 </body>
