@@ -2,445 +2,355 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Age of Discovery</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Age of Discovery — A Life in Lisbon</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { overflow: hidden; background: #0a0a1a; font-family: 'Georgia', serif; color: #f0e6d0; }
-  canvas { display: block; }
-  #c { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: #0a1622; color: #e8dcc0;
+    font-family: Georgia, 'Times New Roman', serif;
+    user-select: none; -webkit-user-select: none;
+  }
+  #c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; }
+  .hidden { display: none !important; }
 
-  #ui {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    pointer-events: none; z-index: 10;
-    display: none;   /* revealed when the voyage starts */
-  }
-
-  /* HUD top bar */
-  #hud-top {
-    position: absolute; top: 0; left: 0; right: 0;
-    height: 52px; display: flex; align-items: center; justify-content: space-between;
-    padding: 0 20px;
-    background: linear-gradient(180deg, rgba(20,15,8,0.85), rgba(20,15,8,0));
-    pointer-events: none;
-  }
-  .hud-left { display: flex; gap: 22px; align-items: center; }
-  .hud-right { display: flex; gap: 22px; align-items: center; }
-
-  .stat {
-    display: flex; align-items: center; gap: 7px;
-    font-size: 15px; color: #f0e6d0;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-  }
-  .stat-icon { font-size: 18px; }
-  .stat-val { font-weight: bold; min-width: 20px; }
-
-  .gold { color: #ffd700; }
-  .discovery { color: #8bc34a; }
-  .crew { color: #ff9800; }
-  .supplies { color: #4fc3f7; }
-
-  /* Compass */
-  #compass {
-    position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
-    width: 110px; height: 110px;
-    pointer-events: none;
-  }
-  #compass svg { width: 100%; height: 100%; }
-
-  /* Minimap */
-  #minimap {
-    position: absolute; bottom: 16px; right: 16px;
-    width: 200px; height: 200px;
-    border-radius: 50%;
-    border: 3px solid rgba(80,60,30,0.8);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.6), inset 0 0 30px rgba(0,0,0,0.4);
-    background: radial-gradient(circle, #1a3a5a, #0a1a2a);
-    overflow: hidden;
-    pointer-events: none;
-  }
-  #minimapCanvas { width: 100%; height: 100%; }
-
-  /* Controls panel */
-  #controls {
-    position: absolute; bottom: 16px; left: 16px;
-    pointer-events: none;
-    font-size: 12px; color: rgba(240,230,208,0.6);
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-    line-height: 1.6;
-  }
-  #controls b { color: #ffd700; }
-
-  /* Discovery prompt */
-  #discoveryPrompt {
-    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
-    background: linear-gradient(135deg, rgba(30,25,15,0.95), rgba(15,12,8,0.95));
-    border: 2px solid rgba(200,170,80,0.6);
-    border-radius: 12px; padding: 28px 36px;
-    text-align: center; min-width: 320px;
-    box-shadow: 0 8px 40px rgba(0,0,0,0.7), 0 0 30px rgba(200,170,80,0.15);
-    pointer-events: auto; display: none;
-    animation: fadeIn 0.4s ease;
-  }
-  @keyframes fadeIn { from { opacity: 0; transform: translate(-50%,-45%); } to { opacity: 1; transform: translate(-50%,-50%); } }
-  #discoveryPrompt h2 { color: #ffd700; font-size: 24px; margin-bottom: 8px; }
-  #discoveryPrompt .sub { color: #8bc34a; font-size: 14px; margin-bottom: 16px; }
-  #discoveryPrompt .desc { color: #f0e6d0; font-size: 15px; margin-bottom: 20px; line-height: 1.5; }
-  #discoveryPrompt .btn {
-    display: inline-block; padding: 10px 28px; margin: 0 6px;
-    background: linear-gradient(180deg, #c8a850, #8a6a30);
-    color: #1a1408; border: none; border-radius: 6px;
-    font-size: 15px; font-weight: bold; cursor: pointer;
-    font-family: 'Georgia', serif;
-    transition: all 0.2s;
-  }
-  #discoveryPrompt .btn:hover { background: linear-gradient(180deg, #e0c070, #a08040); transform: translateY(-1px); }
-  #discoveryPrompt .btn.secondary { background: linear-gradient(180deg, #555, #333); color: #ccc; }
-
-  /* Trade panel */
-  #tradePanel {
-    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
-    background: linear-gradient(135deg, rgba(30,25,15,0.96), rgba(15,12,8,0.96));
-    border: 2px solid rgba(200,170,80,0.6);
-    border-radius: 12px; padding: 24px 32px;
-    min-width: 420px;
-    box-shadow: 0 8px 40px rgba(0,0,0,0.7);
-    pointer-events: auto; display: none;
-    animation: fadeIn 0.3s ease;
-  }
-  #tradePanel h2 { color: #ffd700; font-size: 20px; margin-bottom: 4px; text-align: center; }
-  #tradePanel .port-sub { color: #aaa; font-size: 13px; text-align: center; margin-bottom: 18px; }
-  .trade-item {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 0; border-bottom: 1px solid rgba(200,170,80,0.15);
-  }
-  .trade-item:last-child { border-bottom: none; }
-  .trade-item .name { font-size: 14px; flex: 1; }
-  .trade-item .price { color: #ffd700; font-size: 13px; margin: 0 16px; }
-  .trade-item .actions { display: flex; gap: 6px; }
-  .trade-btn {
-    padding: 5px 12px; border: none; border-radius: 4px;
-    font-size: 12px; font-weight: bold; cursor: pointer;
-    font-family: 'Georgia', serif; transition: all 0.15s;
-  }
-  .trade-btn.buy { background: #2d6a2d; color: #fff; }
-  .trade-btn.buy:hover { background: #3a8a3a; }
-  .trade-btn.sell { background: #8a3a3a; color: #fff; }
-  .trade-btn.sell:hover { background: #aa4a4a; }
-  .trade-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  #tradePanel .close-btn {
-    display: block; margin: 18px auto 0;
-    padding: 8px 24px; background: #444; color: #ccc;
-    border: none; border-radius: 6px; cursor: pointer;
-    font-family: 'Georgia', serif; font-size: 14px;
-  }
-  #tradePanel .close-btn:hover { background: #555; }
-  #tradePanel .inventory { margin-top: 12px; font-size: 12px; color: #aaa; text-align: center; }
-
-  /* Log panel */
-  #logPanel {
-    position: absolute; top: 130px; right: 16px;
-    width: 240px; max-height: 200px; overflow-y: auto;
-    background: rgba(20,15,8,0.6);
-    border-radius: 8px; padding: 10px 12px;
-    font-size: 12px; color: rgba(240,230,208,0.7);
-    pointer-events: none;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-    line-height: 1.6;
-  }
-  #logPanel .log-entry { margin-bottom: 4px; }
-  #logPanel .log-entry .time { color: #ffd700; }
-  #logPanel .log-entry.new-discovery { color: #8bc34a; }
-  #logPanel::-webkit-scrollbar { width: 4px; }
-  #logPanel::-webkit-scrollbar-thumb { background: rgba(200,170,80,0.3); border-radius: 2px; }
-
-  /* Speed indicator */
-  #speedBar {
-    position: absolute; bottom: 60px; left: 16px;
-    width: 160px; pointer-events: none;
-    font-size: 12px; color: rgba(240,230,208,0.6);
-  }
-  #speedBar .label { margin-bottom: 4px; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); }
-  #speedBar .bar {
-    height: 6px; background: rgba(20,15,8,0.6); border-radius: 3px; overflow: hidden;
-    border: 1px solid rgba(200,170,80,0.2);
-  }
-  #speedBar .fill {
-    height: 100%; background: linear-gradient(90deg, #8bc34a, #ffd700, #ff5722);
-    border-radius: 3px; transition: width 0.2s; width: 0%;
+  .panel {
+    background: linear-gradient(135deg, rgba(30,25,15,0.90), rgba(14,11,7,0.92));
+    border: 1px solid rgba(200,170,80,0.45);
+    border-radius: 8px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.55);
   }
 
-  /* Start screen */
-  #startScreen {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: radial-gradient(ellipse at 50% 45%,
-                rgba(6,10,20,0.55) 0%,
-                rgba(6,10,20,0.78) 50%,
-                rgba(4,7,14,0.95) 100%);
-    z-index: 100; display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    text-align: center; padding: 20px;
-  }
-  #startScreen h1 {
-    font-size: 56px; color: #ffd700;
-    text-shadow: 0 2px 20px rgba(255,215,0,0.3), 0 4px 4px rgba(0,0,0,0.5);
-    margin-bottom: 6px; letter-spacing: 3px;
-  }
-  #startScreen .subtitle {
-    font-size: 18px; color: #8bc34a; margin-bottom: 30px;
-    font-style: italic;
-  }
-  #startScreen .desc {
-    max-width: 520px; font-size: 15px; color: #d8d8d8; line-height: 1.8;
-    margin-bottom: 36px;
-    text-shadow: 0 1px 6px rgba(0,0,0,0.95), 0 0 20px rgba(0,0,0,0.8);
-  }
-  #startScreen .controls-info {
-    display: flex; gap: 30px; margin-bottom: 36px;
-    font-size: 13px; color: #999;
-    text-shadow: 0 1px 6px rgba(0,0,0,0.95);
-  }
-  #startScreen .controls-info span { display: block; }
-  #startScreen .controls-info b { color: #ffd700; font-size: 16px; display: block; margin-bottom: 2px; }
-  #startBtn {
-    padding: 14px 48px;
-    background: linear-gradient(180deg, #c8a850, #8a6a30);
-    color: #1a1408; border: none; border-radius: 8px;
-    font-size: 20px; font-weight: bold; cursor: pointer;
-    font-family: 'Georgia', serif; letter-spacing: 2px;
-    transition: all 0.2s;
-    box-shadow: 0 4px 20px rgba(200,170,80,0.3);
-  }
-  #startBtn:hover {
-    background: linear-gradient(180deg, #e0c070, #a08040);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 30px rgba(200,170,80,0.5);
-  }
-
-  /* Objective banner */
-  #objective {
-    position: absolute; top: 128px; left: 50%; transform: translateX(-50%);
-    background: rgba(20,15,8,0.5);
-    padding: 4px 18px; border-radius: 0 0 8px 8px;
-    font-size: 13px; color: rgba(240,230,208,0.6);
-    pointer-events: none;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-  }
-  #objective b { color: #ffd700; }
-
-  /* Toast */
-  #toast {
-    position: absolute; top: 120px; left: 50%; transform: translateX(-50%) translateY(-20px);
-    background: rgba(20,15,8,0.9);
-    border: 1px solid rgba(200,170,80,0.4);
-    border-radius: 8px; padding: 10px 24px;
-    font-size: 14px; color: #ffd700;
-    pointer-events: none; opacity: 0;
-    transition: all 0.3s;
-  }
-  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-  /* End screen */
-  #endScreen {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(10,10,26,0.95);
-    z-index: 100; display: none;
-    flex-direction: column; align-items: center; justify-content: center;
-    text-align: center; padding: 20px;
-  }
-  #endScreen h1 { font-size: 48px; color: #ffd700; margin-bottom: 16px; }
-  #endScreen .summary { font-size: 16px; color: #ccc; line-height: 2; margin-bottom: 30px; max-width: 480px; }
-  #endScreen .summary .big { font-size: 24px; color: #8bc34a; font-weight: bold; }
-  #endBtn {
-    padding: 12px 40px; background: linear-gradient(180deg, #c8a850, #8a6a30);
-    color: #1a1408; border: none; border-radius: 8px;
-    font-size: 18px; font-weight: bold; cursor: pointer;
-    font-family: 'Georgia', serif;
-  }
-
-  /* Loading / error overlay */
   #loading {
-    position: fixed; inset: 0; z-index: 300;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 16px; padding: 24px; text-align: center;
-    background: radial-gradient(ellipse at center, #16243a 0%, #070a14 100%);
-    color: #f0e6d0; font-size: 15px;
+    position: fixed; inset: 0; z-index: 100;
+    background: radial-gradient(ellipse at center, #16324a 0%, #0a1622 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
   }
-  #loading .spinner {
-    width: 36px; height: 36px; border-radius: 50%;
-    border: 3px solid rgba(200,170,80,0.22); border-top-color: #ffd700;
+  #loading h2 { color: #ffd700; font-size: 28px; letter-spacing: 3px; }
+  #loadingText { color: #b8a878; font-size: 14px; }
+  .spinner {
+    width: 46px; height: 46px; border-radius: 50%;
+    border: 3px solid rgba(200,170,80,0.25); border-top-color: #ffd700;
     animation: spin 0.9s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
-  #loading .err {
-    display: none; max-width: 440px; line-height: 1.8;
-    font-size: 14px; color: #ffb0a8;
-  }
-  #loading .err b { color: #ffd700; font-size: 16px; }
+  #loadErr { display: none; max-width: 420px; text-align: center; color: #e0b0b0; font-size: 14px; line-height: 1.6; }
 
-  /* On-screen sailing controls */
-  #touchControls {
-    position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%);
-    display: flex; align-items: center; gap: 10px;
-    pointer-events: auto;
-    user-select: none; -webkit-user-select: none;
+  .screen {
+    position: fixed; inset: 0; z-index: 60;
+    background: radial-gradient(ellipse at 50% 30%, rgba(22,50,74,0.94) 0%, rgba(8,14,22,0.97) 75%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 14px; padding: 24px; text-align: center;
   }
-  #touchControls button {
-    width: 50px; height: 50px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    background: rgba(20,15,8,0.55);
-    border: 1.5px solid rgba(200,170,80,0.45);
-    color: #ffd700; font-size: 17px; cursor: pointer;
-    -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
-    transition: background 0.12s, transform 0.12s;
-    touch-action: none;
+  .screen h1 { font-size: 46px; letter-spacing: 6px; color: #ffd700; text-shadow: 0 3px 14px rgba(0,0,0,0.8); }
+  .screen .subtitle { color: #9fb8cc; font-style: italic; font-size: 16px; margin-bottom: 6px; }
+  .screen .desc { max-width: 620px; color: #cfc0a0; font-size: 15px; line-height: 1.75; margin-bottom: 6px; }
+  .screen .controls-info {
+    display: flex; flex-wrap: wrap; gap: 8px 22px; justify-content: center;
+    color: #8fa4b5; font-size: 13px; margin-bottom: 12px;
   }
-  #touchControls button:active, #touchControls button.on {
-    background: rgba(200,170,80,0.4); transform: scale(0.93);
+  .screen .controls-info b { color: #e8dcc0; }
+  .bigbtn {
+    pointer-events: auto; cursor: pointer;
+    padding: 13px 38px; font-family: Georgia, serif; font-size: 17px; letter-spacing: 2px;
+    color: #1a1408; background: linear-gradient(180deg, #e8c860, #b8912e);
+    border: 1px solid #8a6a1e; border-radius: 6px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+    transition: transform .12s, filter .12s;
   }
-  #touchControls .vert { display: flex; flex-direction: column; gap: 7px; }
-  #touchControls .anchor { font-size: 20px; }
+  .bigbtn:hover { filter: brightness(1.12); transform: translateY(-1px); }
+  .bigbtn.secondary { background: linear-gradient(180deg, #4a4234, #2e2820); color: #d8c8a0; border-color: #6a5c40; }
+
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 20; }
+  #crosshair {
+    position: absolute; left: 50%; top: 50%; width: 5px; height: 5px;
+    margin: -2.5px 0 0 -2.5px; border-radius: 50%;
+    background: rgba(255,255,255,0.8); box-shadow: 0 0 5px rgba(0,0,0,0.9);
+  }
+  #stats { position: absolute; left: 14px; top: 14px; padding: 9px 13px; font-size: 13.5px; min-width: 178px; }
+  #stats .row { display: flex; justify-content: space-between; gap: 16px; line-height: 1.65; }
+  #stats .k { color: #b3a378; }
+  #stats .v { color: #ffd700; font-weight: bold; }
+  #stats .v.rep { color: #9fd8ff; }
+  #stats .title-line { color: #9fd8ff; font-style: italic; font-size: 12px; margin-top: 3px; }
+
+  #timerWrap { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); padding: 7px 20px; text-align: center; }
+  #lifeTimer { font-size: 25px; font-weight: bold; color: #ffd700; letter-spacing: 2px; font-variant-numeric: tabular-nums; }
+  #lifeTimer.low { color: #ff5a4a; animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity: 0.55; } }
+  #gameClock { font-size: 12px; color: #a9c0d0; margin-top: 1px; }
+
+  #minimapWrap { position: absolute; right: 14px; top: 14px; padding: 8px; }
+  #minimapCanvas { display: block; border-radius: 50%; }
+  #minimapLabel { text-align: center; font-size: 10px; letter-spacing: 2px; color: #8fa4b5; margin-top: 5px; }
+
+  #prompt {
+    position: absolute; left: 50%; bottom: 17%; transform: translateX(-50%);
+    padding: 8px 18px; font-size: 15px; color: #ffe9a8; white-space: nowrap;
+  }
+  #prompt b { color: #fff; border: 1px solid rgba(255,233,168,0.6); border-radius: 4px; padding: 0 6px; margin-right: 7px; }
+
+  #logPanel {
+    position: absolute; left: 14px; bottom: 14px; width: 300px; max-height: 132px;
+    overflow-y: auto; padding: 8px 11px; font-size: 12px; line-height: 1.55;
+    color: #c8b888; pointer-events: none;
+  }
+  .log-entry { margin-bottom: 2px; }
+  .log-entry .time { color: #7a8a96; margin-right: 6px; }
+  .log-entry.new-discovery { color: #ffd700; }
+  .log-entry.bad { color: #e89090; }
+  .log-entry.good { color: #9fe89f; }
+
+  #cargoBox { position: absolute; right: 14px; bottom: 14px; padding: 8px 12px; font-size: 12px; color: #c8b888; max-width: 210px; }
+  #cargoBox .ttl { color: #b3a378; font-size: 10px; letter-spacing: 2px; margin-bottom: 3px; }
+
+  #speedo { position: absolute; right: 18px; top: 46%; transform: translateY(-50%); padding: 10px 12px; text-align: center; width: 74px; }
+  #speedo .lbl { font-size: 10px; letter-spacing: 2px; color: #8fa4b5; }
+  #speedBarBg { width: 100%; height: 90px; background: rgba(0,0,0,0.45); border-radius: 4px; margin: 6px 0 4px; position: relative; overflow: hidden; }
+  #speedFill { position: absolute; bottom: 0; left: 0; right: 0; height: 0%; background: linear-gradient(180deg,#7ec8f0,#2f86b8); transition: height .15s; }
+  #speedVal { font-size: 15px; color: #ffd700; font-weight: bold; }
+  #helmHint { font-size: 10px; color: #8fa4b5; margin-top: 4px; line-height: 1.4; }
 </style>
 </head>
 <body>
+<style>
+  #dialog {
+    position: fixed; left: 50%; bottom: 8%; transform: translateX(-50%);
+    width: min(680px, calc(100% - 40px)); z-index: 50;
+    padding: 20px 24px 18px; pointer-events: auto;
+  }
+  #dlgHead { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+  #dlgPortrait {
+    width: 52px; height: 52px; border-radius: 50%; flex: none;
+    background: radial-gradient(circle at 35% 30%, #5a4c2e, #241d10);
+    border: 2px solid rgba(200,170,80,0.6);
+    display: flex; align-items: center; justify-content: center; font-size: 28px;
+  }
+  #dlgName { font-size: 18px; color: #ffd700; letter-spacing: 1px; }
+  #dlgRole { font-size: 12px; color: #8fa4b5; font-style: italic; margin-top: 1px; }
+  #dlgText { font-size: 15px; line-height: 1.65; color: #e0d4b4; margin-bottom: 14px; min-height: 24px; }
+  #dlgOptions { display: flex; flex-direction: column; gap: 7px; }
+  .dlg-opt {
+    pointer-events: auto; cursor: pointer; text-align: left;
+    padding: 10px 14px; font-family: Georgia, serif; font-size: 14.5px;
+    color: #e8dcc0; background: rgba(60,50,30,0.55);
+    border: 1px solid rgba(200,170,80,0.35); border-radius: 6px;
+    transition: background .12s, border-color .12s;
+  }
+  .dlg-opt:hover { background: rgba(96,80,44,0.7); border-color: rgba(230,200,110,0.75); }
+  .dlg-opt .req { display: block; font-size: 11.5px; color: #d98a8a; margin-top: 2px; }
+  .dlg-opt .hint { display: block; font-size: 11.5px; color: #93b8a0; margin-top: 2px; font-style: italic; }
+  .dlg-opt.disabled { opacity: 0.45; cursor: not-allowed; }
+  .dlg-opt.disabled:hover { background: rgba(60,50,30,0.55); border-color: rgba(200,170,80,0.35); }
 
-<!-- Loading / error overlay -->
+  #menuPanel, #savePanel { width: min(430px, calc(100% - 40px)); padding: 26px 30px; }
+  #menuPanel h2, #savePanel h2 { color: #ffd700; font-size: 22px; letter-spacing: 3px; text-align: center; margin-bottom: 18px; }
+  .menu-btn {
+    pointer-events: auto; display: block; width: 100%; cursor: pointer;
+    padding: 11px; margin-bottom: 9px; font-family: Georgia, serif; font-size: 15px;
+    color: #e8dcc0; background: rgba(60,50,30,0.55);
+    border: 1px solid rgba(200,170,80,0.4); border-radius: 6px;
+  }
+  .menu-btn:hover { background: rgba(96,80,44,0.7); }
+  .menu-btn.danger { color: #e8b0b0; border-color: rgba(160,80,80,0.5); }
+  .save-slot {
+    pointer-events: auto; cursor: pointer; width: 100%; text-align: left;
+    padding: 11px 14px; margin-bottom: 9px; font-family: Georgia, serif;
+    color: #e8dcc0; background: rgba(60,50,30,0.55);
+    border: 1px solid rgba(200,170,80,0.4); border-radius: 6px; font-size: 13.5px;
+  }
+  .save-slot:hover { background: rgba(96,80,44,0.7); }
+  .save-slot .slot-title { color: #ffd700; font-size: 15px; }
+  .save-slot .slot-meta { color: #8fa4b5; font-size: 12px; margin-top: 2px; }
+  .save-slot.empty { color: #7a8a96; font-style: italic; }
+
+  #toast {
+    position: fixed; left: 50%; top: 15%; transform: translateX(-50%) translateY(-8px);
+    padding: 11px 26px; font-size: 15.5px; color: #ffe9a8; z-index: 55;
+    opacity: 0; transition: opacity .25s, transform .25s; pointer-events: none;
+    max-width: 80vw; text-align: center;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  #deathFlash {
+    position: fixed; inset: 0; z-index: 58; pointer-events: none;
+    background: radial-gradient(ellipse at center, rgba(120,10,10,0) 40%, rgba(140,8,8,0.55) 100%);
+    opacity: 0; transition: opacity 1.2s;
+  }
+  #deathFlash.on { opacity: 1; }
+
+  #touchControls { position: fixed; inset: 0; z-index: 30; pointer-events: none; display: none; }
+  #touchControls.on { display: block; }
+  #stickBase {
+    position: absolute; left: 26px; bottom: 26px; width: 118px; height: 118px;
+    border-radius: 50%; border: 2px solid rgba(200,170,80,0.35);
+    background: rgba(20,16,10,0.35); pointer-events: auto;
+  }
+  #stickKnob {
+    position: absolute; left: 50%; top: 50%; width: 48px; height: 48px;
+    margin: -24px 0 0 -24px; border-radius: 50%;
+    background: rgba(230,200,110,0.4); border: 1px solid rgba(230,200,110,0.6);
+  }
+  .touch-btn {
+    position: absolute; pointer-events: auto; border-radius: 50%;
+    background: rgba(20,16,10,0.5); border: 2px solid rgba(200,170,80,0.4);
+    color: #ffe9a8; font-family: Georgia, serif; font-size: 17px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #btnE { right: 26px; bottom: 96px; width: 66px; height: 66px; }
+  #btnSpace { right: 100px; bottom: 40px; width: 56px; height: 56px; font-size: 12px; }
+
+  @media (max-width: 720px) {
+    #logPanel { width: 200px; max-height: 90px; font-size: 11px; }
+    #cargoBox { display: none; }
+    #stats { font-size: 12px; min-width: 150px; }
+    .screen h1 { font-size: 32px; }
+  }
+</style>
+
+<!-- ==================== LOADING ==================== -->
 <div id="loading">
+  <h2>AGE OF DISCOVERY</h2>
   <div class="spinner"></div>
-  <div id="loadingText">Charting the seas&hellip;</div>
-  <div class="err" id="loadErr">
+  <div id="loadingText">Fitting out your caravel&hellip;</div>
+  <div id="loadErr">
     <b>The 3D engine could not be loaded.</b><br><br>
     Your browser was unable to download the Three.js library.<br>
     Check your internet connection, then reload this page.
   </div>
 </div>
 
-<!-- Start Screen -->
-<div id="startScreen">
+<!-- ==================== START SCREEN ==================== -->
+<div id="startScreen" class="screen">
   <h1>AGE OF DISCOVERY</h1>
-  <div class="subtitle">~ Set sail for the unknown ~</div>
+  <div class="subtitle">~ A Life in Lisbon ~</div>
   <div class="desc">
-    The year is 1492. You command a caravel bound for uncharted waters.
-    Sail across the endless ocean and discover distant lands. Every island trades
-    one way only &mdash; buy their exotic goods there, then carry them home to Lisbon
-    to sell for fortune and glory. But beware &mdash; the sea is vast, supplies are finite,
-    and fortune favors the bold.
+    Lisbon, the year of our Lord 1498. You are a common citizen &mdash; no ship, no crew,
+    scarcely a coin to your name. You have one hour of life before you.
+    Haul cargo on the docks, commission a ship at the estaleiro, hire brave sailors
+    in the tavern, and sail beyond the edge of the known world.
+    Buy where goods are cheap, sell them at home, and carve your name into the age &mdash;
+    from unknown citizen to Fidalgo of the Realm.
+    But beware: the sea is vast, and a man can <i>die an unnatural death</i> upon it.
   </div>
   <div class="controls-info">
-    <div><b>W / S</b><span>Forward / Reverse</span></div>
-    <div><b>A / D</b><span>Turn Left / Right</span></div>
-    <div><b>Space</b><span>Anchor (stop)</span></div>
-    <div><b>Mouse</b><span>Look around</span></div>
+    <div><b>W A S D</b><span> Move / Sail</span></div>
+    <div><b>Mouse</b><span> Look</span></div>
+    <div><b>E</b><span> Interact / Helm</span></div>
+    <div><b>Space</b><span> Anchor</span></div>
+    <div><b>Esc</b><span> Menu &amp; Save</span></div>
   </div>
-  <button id="startBtn">SET SAIL</button>
+  <button id="beginBtn" class="bigbtn">BEGIN YOUR LIFE</button>
+  <button id="loadBtn" class="bigbtn secondary">LOAD A SAVED LIFE</button>
 </div>
 
-<!-- End Screen -->
-<div id="endScreen">
-  <h1 id="endTitle">Voyage Complete</h1>
-  <div class="summary" id="endSummary"></div>
-  <button id="endBtn">New Voyage</button>
-</div>
-
-<!-- 3D Canvas -->
 <canvas id="c"></canvas>
 
-<!-- UI Overlay -->
-<div id="ui">
-  <div id="hud-top">
-    <div class="hud-left">
-      <div class="stat"><span class="stat-icon gold">&#9881;</span><span>Gold:</span><span class="stat-val gold" id="goldVal">500</span></div>
-      <div class="stat"><span class="stat-icon discovery">&#9873;</span><span>Discovered:</span><span class="stat-val discovery" id="discoveryVal">0</span><span>/</span><span id="totalVal">8</span></div>
-    </div>
-    <div class="hud-right">
-      <div class="stat"><span class="stat-icon crew">&#9760;</span><span>Crew:</span><span class="stat-val crew" id="crewVal">30</span></div>
-      <div class="stat"><span class="stat-icon supplies">&#9881;</span><span>Supplies:</span><span class="stat-val supplies" id="suppliesVal">100</span></div>
-    </div>
+<!-- ==================== HUD ==================== -->
+<div id="hud" class="hidden">
+  <div id="crosshair"></div>
+
+  <div id="stats" class="panel">
+    <div class="row"><span class="k">Gold</span><span class="v" id="goldVal">40</span></div>
+    <div class="row"><span class="k">Reputation</span><span class="v rep" id="repVal">0</span></div>
+    <div class="row"><span class="k">Crew</span><span class="v" id="crewVal">0</span></div>
+    <div class="row"><span class="k">Supplies</span><span class="v" id="foodVal">20</span></div>
+    <div class="row"><span class="k">Ship</span><span class="v" id="shipVal">none</span></div>
+    <div class="title-line" id="titleVal">Unknown Citizen</div>
   </div>
 
-  <div id="objective">Objective: <b>Discover new lands</b> and return with riches</div>
-
-  <!-- Compass -->
-  <div id="compass">
-    <svg viewBox="0 0 100 100">
-      <circle cx="50" cy="50" r="45" fill="rgba(20,15,8,0.6)" stroke="rgba(200,170,80,0.5)" stroke-width="1.5"/>
-      <circle cx="50" cy="50" r="38" fill="none" stroke="rgba(200,170,80,0.2)" stroke-width="0.5"/>
-      <g id="compassRose">
-        <!-- N S E W markers -->
-        <text x="50" y="14" text-anchor="middle" fill="#ffd700" font-size="10" font-weight="bold" font-family="Georgia">N</text>
-        <text x="50" y="90" text-anchor="middle" fill="#f0e6d0" font-size="8" font-family="Georgia">S</text>
-        <text x="88" y="53" text-anchor="middle" fill="#f0e6d0" font-size="8" font-family="Georgia">E</text>
-        <text x="12" y="53" text-anchor="middle" fill="#f0e6d0" font-size="8" font-family="Georgia">W</text>
-        <!-- Needle -->
-        <polygon points="50,22 47,50 53,50" fill="#cc3333"/>
-        <polygon points="50,78 47,50 53,50" fill="#dddddd"/>
-        <circle cx="50" cy="50" r="2" fill="#ffd700"/>
-      </g>
-    </svg>
+  <div id="timerWrap" class="panel">
+    <div id="lifeTimer">60:00</div>
+    <div id="gameClock">Day 1 &middot; 06:00</div>
   </div>
 
-  <!-- Discovery Prompt -->
-  <div id="discoveryPrompt">
-    <h2 id="dpTitle">New Land Discovered!</h2>
-    <div class="sub" id="dpSub">Uncharted territory</div>
-    <div class="desc" id="dpDesc">You have reached the shores of an unknown land.</div>
-    <button class="btn" id="dpTrade">Trade with Locals</button>
-    <button class="btn secondary" id="dpLeave">Set Sail</button>
-  </div>
-
-  <!-- Trade Panel -->
-  <div id="tradePanel">
-    <h2 id="tpTitle">Trading Post</h2>
-    <div class="port-sub" id="tpSub"></div>
-    <div id="tradeItems"></div>
-    <div class="inventory" id="inventory"></div>
-    <button class="close-btn" id="tpClose">Set Sail</button>
-  </div>
-
-  <!-- Log -->
-  <div id="logPanel">
-    <div class="log-entry"><span class="time">--:--</span> Voyage begins...</div>
-  </div>
-
-  <!-- Speed bar -->
-  <div id="speedBar">
-    <div class="label">Speed</div>
-    <div class="bar"><div class="fill" id="speedFill"></div></div>
-  </div>
-
-  <!-- Minimap -->
-  <div id="minimap">
+  <div id="minimapWrap" class="panel">
     <canvas id="minimapCanvas" width="200" height="200"></canvas>
+    <div id="minimapLabel">CHART</div>
   </div>
 
-  <!-- Controls hint -->
-  <div id="controls">
-    <b>W/S</b> Throttle &nbsp; <b>A/D</b> Rudder &nbsp; <b>Space</b> Anchor &nbsp; <b>Mouse</b> Look
-  </div>
+  <div id="prompt" class="panel hidden"></div>
+  <div id="logPanel" class="panel"></div>
+  <div id="cargoBox" class="panel"><div class="ttl">CARGO HOLD</div><div id="cargoVal">empty</div></div>
 
-  <!-- Touch / click sailing controls -->
-  <div id="touchControls">
-    <button data-key="a" title="Turn left">&#9664;</button>
-    <div class="vert">
-      <button data-key="w" title="Full sail">&#9650;</button>
-      <button data-key="s" title="Reverse">&#9660;</button>
+  <div id="speedo" class="panel hidden">
+    <div class="lbl">SAIL</div>
+    <div id="speedBarBg"><div id="speedFill"></div></div>
+    <div id="speedVal">0 kn</div>
+    <div id="helmHint">W hoist &middot; S reef<br>A / D helm &middot; E step back</div>
+  </div>
+</div>
+
+<!-- ==================== DIALOG ==================== -->
+<div id="dialog" class="panel hidden">
+  <div id="dlgHead">
+    <div id="dlgPortrait">&#129489;</div>
+    <div>
+      <div id="dlgName">Someone</div>
+      <div id="dlgRole">Lisbon</div>
     </div>
-    <button data-key="d" title="Turn right">&#9654;</button>
-    <button data-key=" " class="anchor" title="Drop anchor">&#9875;</button>
   </div>
+  <div id="dlgText"></div>
+  <div id="dlgOptions"></div>
+</div>
 
-  <!-- Toast -->
-  <div id="toast"></div>
+<!-- ==================== PAUSE MENU ==================== -->
+<div id="menuPanel" class="screen hidden">
+  <div class="panel" style="padding:26px 30px; width:min(430px, calc(100% - 40px));">
+    <h2>YOUR LIFE</h2>
+    <button class="menu-btn" id="btnResume">Resume</button>
+    <button class="menu-btn" id="btnSave">Save Game</button>
+    <button class="menu-btn" id="btnLoadMenu">Load Game</button>
+    <button class="menu-btn danger" id="btnAbandon">Abandon This Life</button>
+  </div>
+</div>
+
+<!-- ==================== SAVE / LOAD ==================== -->
+<div id="savePanel" class="screen hidden">
+  <div class="panel" style="padding:26px 30px; width:min(430px, calc(100% - 40px));">
+    <h2 id="savePanelTitle">SAVE GAME</h2>
+    <div id="saveSlots"></div>
+    <button class="menu-btn" id="btnSaveBack">Back</button>
+  </div>
+</div>
+
+<!-- ==================== END SCREEN ==================== -->
+<div id="endScreen" class="screen hidden">
+  <h1 id="endTitle">Voyage Complete</h1>
+  <div class="subtitle" id="endSub"></div>
+  <div class="desc" id="endSummary"></div>
+  <button id="endBtn" class="bigbtn">NEW LIFE</button>
+  <button id="endLoadBtn" class="bigbtn secondary">LOAD SAVE</button>
+</div>
+
+<div id="toast" class="panel"></div>
+<div id="deathFlash"></div>
+
+<!-- ==================== TOUCH ==================== -->
+<div id="touchControls">
+  <div id="stickBase"><div id="stickKnob"></div></div>
+  <div id="btnE" class="touch-btn">E</div>
+  <div id="btnSpace" class="touch-btn">ANCHOR</div>
 </div>
 
 <script type="module">
 // ============================================================
-//  THREE.JS LOADER - bundled locally, no external requests
+//  THREE.JS LOADER - several CDNs, ESM first then classic UMD
 // ============================================================
 const ESM_CDNS = [
-  './three.module.min.js',   // bundled locally with the page
+  './three.module.min.js',
+  'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js',
+  'https://unpkg.com/three@0.160.0/build/three.module.js',
+  'https://cdn.staticfile.org/three.js/0.160.0/build/three.module.js',
+  'https://lib.baomitu.com/three.js/0.160.0/build/three.module.js',
+  'https://esm.sh/three@0.160.0',
 ];
 const UMD_CDNS = [
+  'https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js',
+  'https://cdn.staticfile.org/three.js/0.152.2/build/three.min.js',
+  'https://unpkg.com/three@0.152.2/build/three.min.js',
+  'https://lib.baomitu.com/three.js/0.152.2/build/three.min.js',
 ];
 
 function loadClassicScript(src) {
@@ -469,60 +379,17 @@ async function loadThree() {
   return null;
 }
 
-const loadingEl = document.getElementById('loading');
 const THREE = await loadThree();
 
 if (!THREE) {
   document.querySelector('#loading .spinner').style.display = 'none';
   document.getElementById('loadingText').style.display = 'none';
   document.getElementById('loadErr').style.display = 'block';
-  throw new Error('Three.js could not be loaded from ./three.module.min.js');
+  throw new Error('Three.js could not be loaded from any CDN');
 }
 
 // ============================================================
-//  GAME STATE
-// ============================================================
-const Game = {
-  gold: 500,
-  crew: 30,
-  supplies: 100,
-  discoveries: 0,
-  totalPorts: 8,
-  startTime: 0,
-  running: false,
-  anchored: false,
-  dialogOpen: false,
-  inventory: {},  // { spice: 0, silk: 0, ... }
-  discoveredPorts: new Set(),
-  currentPort: null,
-};
-
-const PORTS = [];
-const SEA_SIZE = 1200;
-
-// Port definitions - scattered across the open sea
-const PORT_DEFS = [
-  { name: "Lisbon",          x: -480, z: 420,  type: "home",    discovered: true,  color: 0xc8a850 },
-  { name: "Canary Islands",  x: -60,  z: 660,  type: "spice",   discovered: false, color: 0x8bc34a },
-  { name: "Cape Verde",      x: 420,  z: 560,  type: "ivory",   discovered: false, color: 0xf0e6d0 },
-  { name: "Gold Coast",      x: 720,  z: 120,  type: "gold_ore",discovered: false, color: 0xffd700 },
-  { name: "Cape of Storms",  x: 380,  z: -420, type: "gems",    discovered: false, color: 0x9c27b0 },
-  { name: "Madagascar",      x: -80,  z: -680, type: "spice",   discovered: false, color: 0x4caf50 },
-  { name: "Zanzibar",        x: -520, z: -520, type: "silk",    discovered: false, color: 0xe91e63 },
-  { name: "Calicut",         x: -740, z: 60,   type: "spice",   discovered: false, color: 0xff9800 },
-  { name: "Malacca",         x: -180, z: -140, type: "silk",    discovered: false, color: 0x00bcd4 },
-];
-
-const TRADE_GOODS = {
-  spice:    { name: "Spices",      buyPrice: 12,  sellPrice: 35,  icon: "&#127827;" },
-  silk:     { name: "Silk",        buyPrice: 25,  sellPrice: 60,  icon: "&#127925;" },
-  ivory:    { name: "Ivory",       buyPrice: 20,  sellPrice: 55,  icon: "&#129518;" },
-  gold_ore: { name: "Gold Ore",    buyPrice: 50,  sellPrice: 120, icon: "&#129682;" },
-  gems:     { name: "Precious Gems",buyPrice: 80, sellPrice: 200, icon: "&#128142;" },
-};
-
-// ============================================================
-//  THREE.JS SETUP
+//  RENDERER / SCENE
 // ============================================================
 const canvas = document.getElementById('c');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -534,13 +401,10 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
 
 const scene = new THREE.Scene();
-
-// Fog for atmosphere and to hide edges (matches the horizon haze in the ocean shader)
 const fogColor = new THREE.Color(0xb8d6ed);
-scene.fog = new THREE.Fog(fogColor, 220, 620);
+scene.fog = new THREE.Fog(fogColor, 220, 640);
 
-// Sky gradient
-const skyGeo = new THREE.SphereGeometry(600, 32, 16);
+// ---- Sky gradient dome (colours are driven by the time of day) ----
 const skyMat = new THREE.ShaderMaterial({
   uniforms: {
     topColor:    { value: new THREE.Color(0x2f74b8) },
@@ -568,32 +432,51 @@ const skyMat = new THREE.ShaderMaterial({
     }
   `,
   side: THREE.BackSide,
+  depthWrite: false,
 });
-const sky = new THREE.Mesh(skyGeo, skyMat);
+const sky = new THREE.Mesh(new THREE.SphereGeometry(600, 32, 16), skyMat);
 scene.add(sky);
 
-// Lights
+// ---- Stars (fade in at night) ----
+const starMat = new THREE.PointsMaterial({
+  color: 0xdfe8ff, size: 1.6, sizeAttenuation: false,
+  transparent: true, opacity: 0, fog: false, depthWrite: false,
+});
+const starGeo = new THREE.BufferGeometry();
+{
+  const pts = [];
+  for (let i = 0; i < 420; i++) {
+    const t = Math.random() * Math.PI * 2;
+    const p = Math.acos(Math.random() * 0.95);       // mostly upper sky
+    const r = 560;
+    pts.push(Math.sin(p) * Math.cos(t) * r, Math.cos(p) * r, Math.sin(p) * Math.sin(t) * r);
+  }
+  starGeo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+}
+const stars = new THREE.Points(starGeo, starMat);
+scene.add(stars);
+
+// ---- Lights ----
 const ambient = new THREE.AmbientLight(0xc8d8e8, 0.75);
 scene.add(ambient);
 
 const sunLight = new THREE.DirectionalLight(0xfff0d0, 2.1);
-sunLight.position.set(120, 180, 90);
 sunLight.castShadow = true;
 sunLight.shadow.mapSize.width = 2048;
 sunLight.shadow.mapSize.height = 2048;
 sunLight.shadow.camera.near = 10;
-sunLight.shadow.camera.far = 600;
-sunLight.shadow.camera.left = -120;
-sunLight.shadow.camera.right = 120;
-sunLight.shadow.camera.top = 120;
-sunLight.shadow.camera.bottom = -120;
+sunLight.shadow.camera.far = 620;
+sunLight.shadow.camera.left = -130;
+sunLight.shadow.camera.right = 130;
+sunLight.shadow.camera.top = 130;
+sunLight.shadow.camera.bottom = -130;
 sunLight.shadow.bias = -0.0006;
 scene.add(sunLight);
+scene.add(sunLight.target);
 
 const hemiLight = new THREE.HemisphereLight(0xbfe0ff, 0x2a5a7a, 0.7);
 scene.add(hemiLight);
 
-// Soft fill from the opposite side so the hull never goes black
 const fillLight = new THREE.DirectionalLight(0xcfe4ff, 0.7);
 fillLight.position.set(-120, 70, -110);
 scene.add(fillLight);
@@ -601,20 +484,20 @@ scene.add(fillLight);
 // ============================================================
 //  OCEAN
 // ============================================================
+const SEA_SIZE = 1200;
 const oceanGeo = new THREE.PlaneGeometry(SEA_SIZE * 3, SEA_SIZE * 3, 160, 160);
 const oceanMat = new THREE.ShaderMaterial({
   uniforms: {
-    time:    { value: 0 },
-    oceanColor:    { value: new THREE.Color(0x2f86b8) },
-    deepColor:     { value: new THREE.Color(0x11496e) },
-    foamColor:     { value: new THREE.Color(0xd6eeff) },
-    sunDir:        { value: new THREE.Vector3(120, 180, 90).normalize() },
+    time:        { value: 0 },
+    oceanColor:  { value: new THREE.Color(0x2f86b8) },
+    deepColor:   { value: new THREE.Color(0x11496e) },
+    foamColor:   { value: new THREE.Color(0xd6eeff) },
+    sunDir:      { value: new THREE.Vector3(120, 180, 90).normalize() },
   },
   vertexShader: `
     uniform float time;
     varying vec3 vWorldPos;
     varying float vWaveHeight;
-
     void main() {
       vec3 pos = position;
       float wave1 = sin(pos.x * 0.02 + time * 0.8) * cos(pos.y * 0.02 + time * 0.6) * 0.70;
@@ -636,7 +519,6 @@ const oceanMat = new THREE.ShaderMaterial({
     varying vec3 vWorldPos;
     varying float vWaveHeight;
 
-    // Detail ripples that catch the light
     vec3 waterNormal(vec2 p, float t) {
       float gx = cos(p.x * 0.33 + t * 1.7) * 0.55 * 0.33
                + cos((p.x + p.y) * 0.19 - t * 0.8) * 0.19
@@ -655,24 +537,19 @@ const oceanMat = new THREE.ShaderMaterial({
       vec3 normal = waterNormal(p, time);
       vec3 viewDir = normalize(cameraPosition - vWorldPos);
 
-      // Sky reflection (fresnel)
       float fres = pow(1.0 - max(dot(normal, viewDir), 0.0), 3.0);
       color = mix(color, vec3(0.62, 0.80, 0.94), fres * 0.65);
 
-      // Sun specular
       float spec = pow(max(dot(reflect(-sunDir, normal), viewDir), 0.0), 90.0);
       color += vec3(1.0, 0.97, 0.88) * spec * 1.6;
 
-      // Broad sun glitter path
       float glint = pow(max(dot(reflect(-sunDir, normal), viewDir), 0.0), 12.0);
       color += vec3(1.0, 0.95, 0.82) * glint * 0.18;
 
-      // Foam on wave crests
       float foam = smoothstep(0.85, 1.15, vWaveHeight) * 0.6;
       color = mix(color, foamColor, foam);
 
-      // Distance haze - measured from the camera, not the world origin,
-      // so it stays a horizon effect anywhere on the map
+      // Distance haze - camera relative, so the horizon fades anywhere on the map
       float dist = length(p - cameraPosition.xz);
       float fade = smoothstep(220.0, 640.0, dist);
       color = mix(color, vec3(0.74, 0.85, 0.93), fade);
@@ -686,23 +563,22 @@ ocean.rotation.x = -Math.PI / 2;
 ocean.receiveShadow = true;
 scene.add(ocean);
 
-// Sample the same wave function the ocean shader uses, so floating
-// objects sit exactly on the moving surface.
+// Same wave function as the shader, so floating objects sit on the surface
 function waveHeightAt(x, z, t) {
-  const py = -z;   // plane local Y maps to world -Z
+  const py = -z;
   const w1 = Math.sin(x * 0.02 + t * 0.8) * Math.cos(py * 0.02 + t * 0.6) * 0.70;
   const w2 = Math.sin(x * 0.05 + t * 1.2) * Math.cos(py * 0.04 + t * 0.9) * 0.35;
   const w3 = Math.sin(x * 0.1 + t * 1.5) * 0.15;
   return w1 + w2 + w3;
 }
 
-// ---- Soft foam sprite texture (canvas generated) ----
+// ---- Foam sprite texture ----
 function makeFoamTexture() {
   const size = 256;
   const cv = document.createElement('canvas');
   cv.width = cv.height = size;
   const ctx = cv.getContext('2d');
-  const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  const g = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
   g.addColorStop(0.0, 'rgba(255,255,255,0.95)');
   g.addColorStop(0.35, 'rgba(255,255,255,0.55)');
   g.addColorStop(0.65, 'rgba(255,255,255,0.18)');
@@ -714,10 +590,9 @@ function makeFoamTexture() {
   return tex;
 }
 
-// ---- Wake: foam hugging the hull + a trail astern ----
+// ---- Wake around the hull ----
 const wakeGroup = new THREE.Group();
 const foamTex = makeFoamTexture();
-
 const hullFoam = new THREE.Mesh(
   new THREE.PlaneGeometry(16, 22),
   new THREE.MeshBasicMaterial({ map: foamTex, transparent: true, opacity: 0.45, depthWrite: false })
@@ -725,7 +600,6 @@ const hullFoam = new THREE.Mesh(
 hullFoam.rotation.x = -Math.PI / 2;
 hullFoam.position.y = 0.08;
 wakeGroup.add(hullFoam);
-
 const wakeTrail = new THREE.Mesh(
   new THREE.PlaneGeometry(12, 60),
   new THREE.MeshBasicMaterial({ map: foamTex, transparent: true, opacity: 0.0, depthWrite: false })
@@ -733,7 +607,6 @@ const wakeTrail = new THREE.Mesh(
 wakeTrail.rotation.x = -Math.PI / 2;
 wakeTrail.position.set(0, 0.06, -34);
 wakeGroup.add(wakeTrail);
-
 scene.add(wakeGroup);
 
 // ---- Sun disc ----
@@ -742,7 +615,7 @@ const sunTex = (() => {
   const cv = document.createElement('canvas');
   cv.width = cv.height = s;
   const ctx = cv.getContext('2d');
-  const g = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+  const g = ctx.createRadialGradient(s/2, s/2, 0, s/2, s/2, s/2);
   g.addColorStop(0.0, 'rgba(255,255,245,1)');
   g.addColorStop(0.25, 'rgba(255,248,220,0.9)');
   g.addColorStop(0.55, 'rgba(255,235,190,0.25)');
@@ -751,65 +624,84 @@ const sunTex = (() => {
   ctx.fillRect(0, 0, s, s);
   return new THREE.CanvasTexture(cv);
 })();
-
 const sunSprite = new THREE.Sprite(new THREE.SpriteMaterial({
   map: sunTex, transparent: true, depthWrite: false, fog: false,
 }));
 sunSprite.scale.set(110, 110, 1);
-sunSprite.position.set(300, 380, 220);
 scene.add(sunSprite);
-
 // ============================================================
-//  SHIP (Procedural Caravel)
+//  SHIP (procedural caravel, built per-instance so the player
+//  can own anything from a skiff to a nau)
 // ============================================================
-const shipGroup = new THREE.Group();
+// ---- Canvas sail cloth: seams, bands and wear, so a sail reads as canvas
+//      instead of a flat white slab when you stand under it at the helm ----
+function makeSailTexture() {
+  const cv = document.createElement('canvas');
+  cv.width = 256; cv.height = 128;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = '#f3ead4';
+  ctx.fillRect(0, 0, 256, 128);
+  // horizontal cloth bands (reef bands)
+  for (let y = 0; y < 128; y += 32) {
+    ctx.fillStyle = 'rgba(120,104,76,0.22)';
+    ctx.fillRect(0, y, 256, 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.28)';
+    ctx.fillRect(0, y + 2, 256, 1);
+  }
+  // vertical seams between cloth widths
+  for (let x = 0; x <= 256; x += 32) {
+    ctx.fillStyle = 'rgba(120,104,76,0.18)';
+    ctx.fillRect(x, 0, 1.5, 128);
+  }
+  // stains and wear
+  for (let i = 0; i < 300; i++) {
+    ctx.fillStyle = `rgba(96,84,60,${(Math.random() * 0.08).toFixed(3)})`;
+    ctx.fillRect(Math.random() * 256, Math.random() * 128, 4 + Math.random() * 22, 2 + Math.random() * 7);
+  }
+  const tex = new THREE.CanvasTexture(cv);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(2.5, 1.5);
+  tex.anisotropy = 4;
+  if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+const SAIL_TEX = makeSailTexture();
 
-// Starting position: just outside Lisbon harbour, bow pointing out to sea
-const SPAWN = { x: PORT_DEFS[0].x, z: PORT_DEFS[0].z + 70, heading: 0 };
-
-// Inner model group: rotated 180 deg so the bow faces the ship's local +Z
-// (the direction of travel), keeping the cabin aft and the foremast forward.
-const shipModel = new THREE.Group();
-shipModel.rotation.y = Math.PI;
-
-// ---- Materials -------------------------------------------------
 const MAT = {
   hull:   new THREE.MeshStandardMaterial({ color: 0x7a4a22, roughness: 0.78, metalness: 0.05 }),
   trim:   new THREE.MeshStandardMaterial({ color: 0x2e1b0c, roughness: 0.85 }),
   deck:   new THREE.MeshStandardMaterial({ color: 0xc9a06a, roughness: 0.85 }),
   mast:   new THREE.MeshStandardMaterial({ color: 0x6b4a24, roughness: 0.9 }),
   sail:   new THREE.MeshStandardMaterial({
-            color: 0xfdf6e6, roughness: 0.92, side: THREE.DoubleSide,
-            emissive: 0x6a6250, emissiveIntensity: 0.5,
+            map: SAIL_TEX, color: 0xffffff, roughness: 0.95, side: THREE.DoubleSide,
+            emissive: 0x4a4436, emissiveIntensity: 0.16,
           }),
   gold:   new THREE.MeshStandardMaterial({ color: 0xd9b24a, roughness: 0.35, metalness: 0.7 }),
   flag:   new THREE.MeshStandardMaterial({ color: 0xb4262a, roughness: 0.9, side: THREE.DoubleSide }),
 };
 
 // Build a lofted hull from cross-section stations.
-// Each station: z (along keel), w (half beam), keelY, deckY
 function buildHullGeometry() {
   const stations = [
-    { z: -4.4, w: 0.55, keel: 0.15, deck: 1.55 },   // transom
+    { z: -4.4, w: 0.55, keel: 0.15, deck: 1.55 },
     { z: -3.4, w: 1.45, keel: -0.55, deck: 1.70 },
     { z: -2.0, w: 1.95, keel: -0.85, deck: 1.80 },
     { z:  0.0, w: 2.10, keel: -0.95, deck: 1.85 },
     { z:  1.8, w: 2.00, keel: -0.85, deck: 1.85 },
     { z:  3.2, w: 1.55, keel: -0.55, deck: 1.80 },
     { z:  4.3, w: 0.75, keel: -0.05, deck: 1.75 },
-    { z:  5.0, w: 0.10, keel: 0.55, deck: 1.70 },   // stem
+    { z:  5.0, w: 0.10, keel: 0.55, deck: 1.70 },
   ];
-  const SEG = 14;   // points across each cross-section
+  const SEG = 14;
   const positions = [];
   const indices = [];
 
   for (let i = 0; i < stations.length; i++) {
     const s = stations[i];
     for (let j = 0; j < SEG; j++) {
-      const u = j / (SEG - 1);              // 0 = port edge, 1 = starboard edge
+      const u = j / (SEG - 1);
       const x = (u * 2 - 1) * s.w;
-      // U-shaped section: flat-ish near deck, rounded to the keel
-      const t = Math.abs(u * 2 - 1);        // 1 at deck edge, 0 at keel
+      const t = Math.abs(u * 2 - 1);
       const y = s.keel + (s.deck - s.keel) * Math.pow(t, 1.7);
       positions.push(x, y, s.z);
     }
@@ -832,7 +724,6 @@ function buildHullGeometry() {
 }
 
 function buildDeckGeometry(stations) {
-  // A flat deck following the hull outline
   const positions = [];
   const indices = [];
   stations.forEach((s, i) => {
@@ -851,15 +742,16 @@ function buildDeckGeometry(stations) {
   return geo;
 }
 
-function buildShip() {
-  // ---------- Hull ----------
+// Returns a ship model group (bow along local +Z) with userData.sails / flag
+function buildShipModel(scale = 1) {
+  const shipModel = new THREE.Group();
+
   const { geo: hullGeo, stations } = buildHullGeometry();
   const hull = new THREE.Mesh(hullGeo, MAT.hull);
   hull.castShadow = true;
   hull.receiveShadow = true;
   shipModel.add(hull);
 
-  // Dark waterline stripe
   const stripe = new THREE.Mesh(hullGeo.clone(), new THREE.MeshStandardMaterial({
     color: 0x241408, roughness: 0.9, transparent: true, opacity: 0.85,
   }));
@@ -867,19 +759,16 @@ function buildShip() {
   stripe.position.y = -0.28;
   shipModel.add(stripe);
 
-  // ---------- Deck ----------
   const deck = new THREE.Mesh(buildDeckGeometry(stations), MAT.deck);
   deck.receiveShadow = true;
   shipModel.add(deck);
 
-  // Deck planking lines
   for (let i = -3; i <= 3; i++) {
     const plank = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.02, 7.6), MAT.trim);
     plank.position.set(i * 0.52, 1.80, 0.2);
     shipModel.add(plank);
   }
 
-  // Bulwark (raised rail around the deck edge)
   for (const side of [-1, 1]) {
     for (let i = 0; i < stations.length - 1; i++) {
       const s0 = stations[i], s1 = stations[i + 1];
@@ -894,7 +783,6 @@ function buildShip() {
     }
   }
 
-  // ---------- Masts ----------
   const mainMastH = 13;
   const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.22, mainMastH, 10), MAT.mast);
   mast.position.set(0, 1.85 + mainMastH / 2, 0.2);
@@ -907,14 +795,12 @@ function buildShip() {
   foremast.castShadow = true;
   shipModel.add(foremast);
 
-  // Mizzen (small, aft)
   const mizzenH = 7;
   const mizzen = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, mizzenH, 8), MAT.mast);
   mizzen.position.set(0, 1.85 + mizzenH / 2, 3.1);
   mizzen.castShadow = true;
   shipModel.add(mizzen);
 
-  // ---------- Yards (horizontal spars) ----------
   function addYard(y, z, halfWidth) {
     const yard = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, halfWidth * 2, 8), MAT.mast);
     yard.rotation.z = Math.PI / 2;
@@ -928,7 +814,6 @@ function buildShip() {
   addYard(1.85 + foreH * 0.42, -2.6, 2.6);
   addYard(1.85 + mizzenH * 0.75, 3.1, 1.6);
 
-  // ---------- Sails ----------
   const sails = [];
   function addSail(w, h, y, z, curve = 0.35) {
     const geo = new THREE.PlaneGeometry(w, h, 10, 10);
@@ -939,20 +824,18 @@ function buildShip() {
     sails.push({ mesh, geo, w, h });
     return mesh;
   }
-  addSail(5.9, 4.6, 1.85 + mainMastH * 0.60, 0.2);   // main course
-  addSail(5.0, 3.2, 1.85 + mainMastH * 0.90, 0.2);   // main topsail
-  addSail(4.5, 3.6, 1.85 + foreH * 0.60, -2.6);      // fore course
-  addSail(3.6, 2.4, 1.85 + foreH * 0.92, -2.6);      // fore topsail
-  addSail(3.0, 2.4, 1.85 + mizzenH * 0.55, 3.1);     // mizzen
+  addSail(5.9, 4.6, 1.85 + mainMastH * 0.60, 0.2);
+  addSail(5.0, 3.2, 1.85 + mainMastH * 0.90, 0.2);
+  addSail(4.5, 3.6, 1.85 + foreH * 0.60, -2.6);
+  addSail(3.6, 2.4, 1.85 + foreH * 0.92, -2.6);
+  addSail(3.0, 2.4, 1.85 + mizzenH * 0.55, 3.1);
 
-  // ---------- Bowsprit ----------
   const bowsprit = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.13, 4.2, 8), MAT.mast);
   bowsprit.position.set(0, 2.4, -5.6);
   bowsprit.rotation.x = -Math.PI / 2 - 0.32;
   bowsprit.castShadow = true;
   shipModel.add(bowsprit);
 
-  // ---------- Rigging ----------
   const rigMat = new THREE.LineBasicMaterial({ color: 0x1a1208, transparent: true, opacity: 0.55 });
   function rope(x1, y1, z1, x2, y2, z2) {
     const g = new THREE.BufferGeometry().setFromPoints([
@@ -962,15 +845,14 @@ function buildShip() {
   }
   const mainTop = 1.85 + mainMastH;
   const foreTop = 1.85 + foreH;
-  rope(0, mainTop, 0.2, 0, 2.0, -4.6);       // forestay
-  rope(0, mainTop, 0.2, 0, 2.0, 4.4);        // backstay
-  rope(0, mainTop, 0.2, -2.0, 1.9, 0.2);     // shrouds
+  rope(0, mainTop, 0.2, 0, 2.0, -4.6);
+  rope(0, mainTop, 0.2, 0, 2.0, 4.4);
+  rope(0, mainTop, 0.2, -2.0, 1.9, 0.2);
   rope(0, mainTop, 0.2, 2.0, 1.9, 0.2);
   rope(0, foreTop, -2.6, 0, 2.0, -5.4);
   rope(0, foreTop, -2.6, -1.6, 1.9, -2.6);
   rope(0, foreTop, -2.6, 1.6, 1.9, -2.6);
 
-  // ---------- Stern cabin ----------
   const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.9, 1.35, 2.4), MAT.trim);
   cabin.position.set(0, 2.5, 2.6);
   cabin.castShadow = true;
@@ -980,7 +862,6 @@ function buildShip() {
   cabinTop.position.set(0, 3.2, 2.6);
   shipModel.add(cabinTop);
 
-  // Cabin windows (warm glow)
   const winMat = new THREE.MeshBasicMaterial({ color: 0xffcc66 });
   for (let i = -1; i <= 1; i++) {
     const win = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.42), winMat);
@@ -988,7 +869,6 @@ function buildShip() {
     shipModel.add(win);
   }
 
-  // ---------- Figurehead + lantern ----------
   const figurehead = new THREE.Mesh(new THREE.ConeGeometry(0.3, 1.1, 8), MAT.gold);
   figurehead.position.set(0, 2.0, -5.15);
   figurehead.rotation.x = -Math.PI / 2.2;
@@ -998,43 +878,35 @@ function buildShip() {
   lantern.position.set(0, 3.55, 3.6);
   shipModel.add(lantern);
 
-  // ---------- Flag ----------
   const flagGeo = new THREE.PlaneGeometry(1.6, 0.85, 6, 4);
   const flag = new THREE.Mesh(flagGeo, MAT.flag);
   flag.position.set(0.85, mainTop + 0.2, 0.2);
   shipModel.add(flag);
-  shipGroup.userData.flag = flag;
-  shipGroup.userData.flagGeo = flagGeo;
+  shipModel.userData.flag = flag;
+  shipModel.userData.flagGeo = flagGeo;
+  shipModel.userData.sails = sails;
 
-  // ---------- Wheel ----------
   const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.06, 6, 14), MAT.trim);
   wheel.position.set(0, 2.35, 1.5);
   wheel.rotation.y = Math.PI / 2;
   shipModel.add(wheel);
 
-  // Sails reference for animation
-  shipGroup.userData.sails = sails;
+  // The hull is modelled with the bow toward -Z, but the game drives ships toward +Z
+  // (camera yaw = heading + PI looks along +Z). Turn the model round so the bow leads.
+  shipModel.rotation.y = Math.PI;
 
-  shipGroup.add(shipModel);
-  scene.add(shipGroup);
-  shipGroup.position.set(SPAWN.x, 0, SPAWN.z);
+  // Scale up: a skiff is small, a nau is a great ship
+  const outer = new THREE.Group();
+  outer.add(shipModel);
+  outer.scale.setScalar(scale);
+  // userData must live on the OUTER group - that is what the game drives
+  outer.userData.sails = shipModel.userData.sails;
+  outer.userData.flag = shipModel.userData.flag;
+  outer.userData.flagGeo = shipModel.userData.flagGeo;
+  return outer;
 }
-buildShip();
-
-// Ship physics
-const Ship = {
-  speed: 0,
-  maxSpeed: 0.7,
-  minSpeed: -0.3,
-  accel: 0.009,
-  drag: 0.985,
-  heading: SPAWN.heading,
-  turnSpeed: 0.02,
-  bobPhase: 0,
-};
-
 // ============================================================
-//  PORTS / ISLANDS
+//  ISLANDS / TERRAIN
 // ============================================================
 const ISLAND_MATS = {
   rock:  new THREE.MeshStandardMaterial({ color: 0x7d6f56, roughness: 0.95, flatShading: true }),
@@ -1045,6 +917,9 @@ const ISLAND_MATS = {
   palm:  new THREE.MeshStandardMaterial({ color: 0x3f7a2a, roughness: 0.95, flatShading: true, side: THREE.DoubleSide }),
   roof:  new THREE.MeshStandardMaterial({ color: 0x9a4030, roughness: 0.85 }),
   wall:  new THREE.MeshStandardMaterial({ color: 0xe8dcc0, roughness: 0.9 }),
+  wood:  new THREE.MeshStandardMaterial({ color: 0x8a6a42, roughness: 0.9 }),
+  stone: new THREE.MeshStandardMaterial({ color: 0xa89880, roughness: 0.95 }),
+  cloth: new THREE.MeshStandardMaterial({ color: 0xc8b078, roughness: 0.95, side: THREE.DoubleSide }),
 };
 
 function makePalm(x, y, z, scale, seed) {
@@ -1063,7 +938,7 @@ function makePalm(x, y, z, scale, seed) {
     frond.position.set(Math.cos(a) * 0.85 * scale, trunkH + 0.1 * scale, Math.sin(a) * 0.85 * scale);
     frond.rotation.order = 'YZX';
     frond.rotation.y = -a;
-    frond.rotation.z = Math.PI / 2.15 + 0.34;   // outward, drooping at the tip
+    frond.rotation.z = Math.PI / 2.15 + 0.34;
     frond.scale.set(0.5, 1, 0.16);
     frond.castShadow = true;
     g.add(frond);
@@ -1083,7 +958,6 @@ function makeRng(seed) {
   };
 }
 
-// Terrain palette
 const TERRAIN_COLORS = {
   wetSand:  new THREE.Color(0xd8c79b),
   sand:     new THREE.Color(0xefdfb4),
@@ -1095,18 +969,15 @@ const TERRAIN_COLORS = {
 
 const TERRAIN_MAT = new THREE.MeshStandardMaterial({
   vertexColors: true, flatShading: true, roughness: 0.96, metalness: 0.0,
-  side: THREE.DoubleSide,   // no see-through when the camera is low
+  side: THREE.DoubleSide,
 });
 
-// Build one irregular island.
-// The coastline is a sum of harmonics plus an elongation term, and the height
-// field adds ridges and valleys that fade out at the shore.
+// Build one irregular island: harmonic coastline + ridged height field.
 function buildIsland(def, seed) {
   const rng = makeRng(seed);
   const isHome = def.type === 'home';
-  const baseR = isHome ? 30 : 21 + rng() * 11;
+  const baseR = isHome ? 34 : 21 + rng() * 11;
 
-  // Coastline harmonics (lobes, bays, peninsulas)
   const harmonics = [];
   for (let i = 0; i < 5; i++) {
     harmonics.push({
@@ -1118,7 +989,6 @@ function buildIsland(def, seed) {
   const elongAmp = 0.06 + rng() * 0.16;
   const elongAngle = rng() * Math.PI * 2;
 
-  // Ridge / valley harmonics for the height field
   const ridge1 = { f: 3 + Math.floor(rng() * 3), p: rng() * 6.283 };
   const ridge2 = { f: 6 + Math.floor(rng() * 4), p: rng() * 6.283 };
   const valley = { f: 2 + Math.floor(rng() * 2), p: rng() * 6.283 };
@@ -1132,7 +1002,6 @@ function buildIsland(def, seed) {
     return baseR * Math.max(0.5, r);
   }
 
-  // Un-ramped height field: a rounded hill with angular ridges
   function rawHeight(theta, t) {
     const dome = Math.pow(Math.max(0, 1 - Math.pow(t, 2.2)), 1.25);
     const fade = Math.pow(Math.max(0, 1 - t), 0.8);
@@ -1143,21 +1012,16 @@ function buildIsland(def, seed) {
     return peak * dome * (1 + ridges * fade);
   }
 
-  // The outer band ramps down through the waterline at a steady slope, so the
-  // beach meets the sea cleanly instead of forming a flat shelf.
-  const SHORE_T0 = 0.80;
-  const SHORE_T1 = 1.06;
-  const SHORE_DEPTH = 1.7;
+  const SHORE_T0 = 0.80, SHORE_T1 = 1.06, SHORE_DEPTH = 1.7;
 
   function heightAtTheta(theta, t) {
     if (t <= SHORE_T0) return rawHeight(theta, t);
-
     const hEdge = rawHeight(theta, SHORE_T0);
     if (t <= SHORE_T1) {
       const k = (t - SHORE_T0) / (SHORE_T1 - SHORE_T0);
       return hEdge * (1 - k) - k * SHORE_DEPTH;
     }
-    return -SHORE_DEPTH - (t - SHORE_T1) * 14;   // steep drop to the sea floor
+    return -SHORE_DEPTH - (t - SHORE_T1) * 14;
   }
 
   function heightAt(x, z) {
@@ -1167,13 +1031,8 @@ function buildIsland(def, seed) {
     return heightAtTheta(theta, r / R);
   }
 
-  // ---- Build the radial mesh ----
-  const NA = 88;      // angular segments
-  const NR = 17;      // radial rings
-  const T_MAX = 1.38; // extends well below the waterline
-
+  const NA = 88, NR = 17, T_MAX = 1.38;
   const positions = [];
-  // apex
   positions.push(0, heightAtTheta(0, 0), 0);
 
   for (let i = 1; i <= NR; i++) {
@@ -1187,12 +1046,10 @@ function buildIsland(def, seed) {
   }
 
   const indices = [];
-  // fan from apex to first ring
   for (let j = 0; j < NA; j++) {
     const j2 = (j + 1) % NA;
     indices.push(0, 1 + j, 1 + j2);
   }
-  // quads between rings
   for (let i = 0; i < NR - 1; i++) {
     const ringA = 1 + i * NA;
     const ringB = 1 + (i + 1) * NA;
@@ -1208,7 +1065,6 @@ function buildIsland(def, seed) {
   geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   geo.setIndex(indices);
 
-  // Split into faces so each facet gets a single flat colour
   const flat = geo.toNonIndexed();
   geo.dispose();
 
@@ -1224,21 +1080,20 @@ function buildIsland(def, seed) {
     vc.fromBufferAttribute(pos, i + 2);
     e1.subVectors(vb, va);
     e2.subVectors(vc, va);
-    nrm.crossVectors(e1, e2).normalize();
+    nrm.cross(e1, e2).normalize();
 
     const h = (va.y + vb.y + vc.y) / 3;
     const cx = (va.x + vb.x + vc.x) / 3;
     const cz = (va.z + vb.z + vc.z) / 3;
-    const steep = Math.abs(nrm.y) < 0.55;   // cliff face
+    const steep = Math.abs(nrm.y) < 0.55;
 
     if (h < 0.2)              col.copy(TERRAIN_COLORS.wetSand);
     else if (h < 1.1)         col.copy(TERRAIN_COLORS.sand);
-    else if (steep)          col.copy(TERRAIN_COLORS.rock);
+    else if (steep)           col.copy(TERRAIN_COLORS.rock);
     else if (h > peak * 0.80) col.copy(TERRAIN_COLORS.rockDk);
     else if (h > peak * 0.42) col.copy(TERRAIN_COLORS.grassDk);
     else                      col.copy(TERRAIN_COLORS.grass);
 
-    // subtle per-face variation so large areas are not perfectly flat
     const v = 0.93 + (Math.abs(Math.sin(cx * 12.9898 + cz * 78.233) * 43758.5453) % 1) * 0.14;
     col.multiplyScalar(v);
 
@@ -1254,158 +1109,29 @@ function buildIsland(def, seed) {
   mesh.castShadow = true;
   mesh.receiveShadow = true;
 
-  // Widest possible coastline - used for the approach trigger and the glow ring
   let maxR = 0;
   for (let a = 0; a < 360; a++) maxR = Math.max(maxR, radiusAt(a * Math.PI / 180));
 
   return { mesh, heightAt, radiusAt, peak, baseR, maxR, rng };
 }
 
-function buildPorts() {
-  PORT_DEFS.forEach((def, i) => {
-    const group = new THREE.Group();
-    group.position.set(def.x, 0, def.z);
-
-    const island = buildIsland(def, 1337 + i * 7919);
-    const isHome = def.type === "home";
-    const islandRadius = island.maxR;
-    const rng = island.rng;
-
-    group.add(island.mesh);
-
-    // helper: a point on the island at angle a, at fraction t of the local radius
-    function pointAt(a, t) {
-      const R = island.radiusAt(a);
-      const x = Math.cos(a) * R * t;
-      const z = Math.sin(a) * R * t;
-      return { x, z, y: island.heightAt(x, z) };
-    }
-
-    // ---- Palm trees, on the flatter ground near the shore ----
-    const palmCount = isHome ? 5 : 7 + Math.floor(rng() * 6);
-    for (let p = 0; p < palmCount; p++) {
-      const a = (p / palmCount) * Math.PI * 2 + rng() * 0.8;
-      const t = 0.66 + rng() * 0.24;
-      const pt = pointAt(a, t);
-      if (pt.y < 0.9 || pt.y > island.peak * 0.7) continue;
-      group.add(makePalm(pt.x, pt.y - 0.15, pt.z, 0.75 + rng() * 0.55, rng() * 6));
-    }
-
-    // ---- Village, clustered on one flank like a real harbour town ----
-    const numBuildings = isHome ? 9 : 3 + Math.floor(rng() * 4);
-    const townAngle = rng() * Math.PI * 2;
-    for (let b = 0; b < numBuildings; b++) {
-      const spread = isHome ? 0.55 : 0.42;
-      const angle = townAngle + (rng() - 0.5) * spread;
-      const t = 0.52 + rng() * 0.26;
-      const pt = pointAt(angle, t);
-      if (pt.y < 0.6) continue;
-
-      const bw = 1.3 + rng() * 0.9;
-      const bh = 1.3 + rng() * 1.5;
-      const bd = 1.3 + rng() * 0.9;
-
-      const building = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), ISLAND_MATS.wall);
-      building.position.set(pt.x, pt.y + bh / 2 - 0.1, pt.z);
-      building.rotation.y = -angle + (rng() - 0.5) * 0.5;
-      building.castShadow = true;
-      building.receiveShadow = true;
-      group.add(building);
-
-      const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.max(bw, bd) * 0.8, 0.9, 4), ISLAND_MATS.roof);
-      roof.position.set(pt.x, pt.y + bh + 0.35, pt.z);
-      roof.rotation.y = building.rotation.y + Math.PI / 4;
-      roof.castShadow = true;
-      group.add(roof);
-    }
-
-    // ---- Lighthouse on the home island ----
-    if (isHome) {
-      const la = townAngle + 2.2;
-      const pt = pointAt(la, 0.62);
-      const baseY = Math.max(pt.y, 1.5);
-
-      const tower = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.5, 0.9, 6, 10),
-        new THREE.MeshStandardMaterial({ color: 0xf0eee6, roughness: 0.8 })
-      );
-      tower.position.set(pt.x, baseY + 3, pt.z);
-      tower.castShadow = true;
-      group.add(tower);
-
-      const lamp = new THREE.Mesh(
-        new THREE.SphereGeometry(0.55, 10, 8),
-        new THREE.MeshBasicMaterial({ color: 0xffdd88 })
-      );
-      lamp.position.set(pt.x, baseY + 6.4, pt.z);
-      group.add(lamp);
-
-      const cap = new THREE.Mesh(new THREE.ConeGeometry(0.75, 0.8, 10), ISLAND_MATS.roof);
-      cap.position.set(pt.x, baseY + 7.1, pt.z);
-      group.add(cap);
-    }
-
-    // ---- Port marker (glowing pillar for undiscovered) ----
-    if (!def.discovered) {
-      const markerTop = island.peak + 16;
-      const markerGeo = new THREE.CylinderGeometry(0.35, 0.35, markerTop, 8);
-      const markerMat = new THREE.MeshBasicMaterial({
-        color: def.color, transparent: true, opacity: 0.45,
-      });
-      const marker = new THREE.Mesh(markerGeo, markerMat);
-      marker.position.y = markerTop / 2;
-      group.add(marker);
-
-      // Glow ring on the water, following the widest coastline
-      const ringGeo = new THREE.RingGeometry(islandRadius + 4, islandRadius + 7, 48);
-      const ringMat = new THREE.MeshBasicMaterial({
-        color: def.color, transparent: true, opacity: 0.28, side: THREE.DoubleSide,
-        depthWrite: false,
-      });
-      const ring = new THREE.Mesh(ringGeo, ringMat);
-      ring.rotation.x = -Math.PI / 2;
-      ring.position.y = 0.6;
-      group.add(ring);
-
-      group.userData.marker = marker;
-      group.userData.ring = ring;
-    }
-
-    group.userData.def = def;
-    group.userData.discovered = def.discovered;
-    group.userData.inRange = false;
-    group.userData.islandRadius = islandRadius;
-    group.userData.peak = island.peak;
-    group.userData.coastRadius = island.radiusAt;   // for land collision
-    scene.add(group);
-    PORTS.push(group);
-  });
-}
-buildPorts();
-
 // ============================================================
-//  CLOUDS
+//  CLOUDS - a box of clouds that follows the camera
 // ============================================================
+const CLOUD_RANGE = 1300;
+const CLOUD_COUNT = 60;
 const clouds = [];
 const cloudMat = new THREE.MeshStandardMaterial({
   color: 0xffffff, transparent: true, opacity: 0.7,
   roughness: 1.0, flatShading: true,
 });
 
-// Clouds live in a box that follows the camera, so the sky is never
-// empty no matter how far from the origin the player sails.
-const CLOUD_RANGE = 1300;
-const CLOUD_COUNT = 60;
-
 for (let i = 0; i < CLOUD_COUNT; i++) {
   const cloudGroup = new THREE.Group();
   const numBlobs = 3 + Math.floor(Math.random() * 4);
   for (let j = 0; j < numBlobs; j++) {
     const size = 4 + Math.random() * 8;
-    const blob = new THREE.Mesh(
-      new THREE.SphereGeometry(size, 6, 5),
-      cloudMat
-    );
+    const blob = new THREE.Mesh(new THREE.SphereGeometry(size, 6, 5), cloudMat);
     blob.position.set(
       (Math.random() - 0.5) * 20,
       Math.random() * 3,
@@ -1415,46 +1141,479 @@ for (let i = 0; i < CLOUD_COUNT; i++) {
     cloudGroup.add(blob);
   }
   cloudGroup.position.set(
-    SPAWN.x + (Math.random() - 0.5) * CLOUD_RANGE * 2,
+    (Math.random() - 0.5) * CLOUD_RANGE * 2,
     60 + Math.random() * 40,
-    SPAWN.z + (Math.random() - 0.5) * CLOUD_RANGE * 2
+    (Math.random() - 0.5) * CLOUD_RANGE * 2
   );
-  const driftSpeed = 0.02 + Math.random() * 0.03;
-  cloudGroup.userData.driftSpeed = driftSpeed;
+  cloudGroup.userData.driftSpeed = 0.02 + Math.random() * 0.03;
   scene.add(cloudGroup);
   clouds.push(cloudGroup);
 }
+// ============================================================
+//  WORLD DATA
+// ============================================================
+const PORT_DEFS = [
+  { name: "Lisbon",          x: -480, z: 420,  type: "home",     discovered: true,  color: 0xc8a850 },
+  { name: "Canary Islands",  x: -60,  z: 660,  type: "spice",    color: 0x8bc34a },
+  { name: "Cape Verde",      x: 420,  z: 560,  type: "ivory",    color: 0xf0e6d0 },
+  { name: "Gold Coast",      x: 720,  z: 120,  type: "gold_ore", color: 0xffd700 },
+  { name: "Cape of Storms",  x: 380,  z: -420, type: "gems",     color: 0x9c27b0 },
+  { name: "Madagascar",      x: -80,  z: -680, type: "spice",    color: 0x4caf50 },
+  { name: "Zanzibar",        x: -520, z: -520, type: "silk",     color: 0xe91e63 },
+  { name: "Calicut",         x: -740, z: 60,   type: "spice",    color: 0xff9800 },
+  { name: "Malacca",         x: -180, z: -140, type: "silk",     color: 0x00bcd4 },
+];
+
+const TRADE_GOODS = {
+  spice:    { name: "Spices",       buyPrice: 12,  sellPrice: 35,  icon: "\u{1F336}️" },
+  silk:     { name: "Silk",         buyPrice: 25,  sellPrice: 60,  icon: "\u{1F9E5}" },
+  ivory:    { name: "Ivory",        buyPrice: 20,  sellPrice: 55,  icon: "\u{1F418}" },
+  gold_ore: { name: "Gold Ore",     buyPrice: 50,  sellPrice: 120, icon: "\u{1FA99}" },
+  gems:     { name: "Precious Gems",buyPrice: 80,  sellPrice: 200, icon: "\u{1F48E}" },
+};
+
+const SHIP_CLASSES = {
+  skiff: {
+    name: "Skiff", scale: 0.55, price: 180, instant: 290, buildMin: 20,
+    minCrew: 2, cargo: 10, maxSpeed: 9.5, turn: 1.5,
+    desc: "A small open boat. Cheap, quick to build, but it will not carry much.",
+  },
+  caravel: {
+    name: "Caravel", scale: 1.0, price: 800, instant: 1280, buildMin: 45,
+    minCrew: 6, cargo: 25, maxSpeed: 12.5, turn: 1.2,
+    desc: "The ship of the age — nimble, ocean-going, roomy enough for real cargo.",
+  },
+  nau: {
+    name: "Nau", scale: 1.55, price: 2000, instant: 3200, buildMin: 90,
+    minCrew: 12, cargo: 50, maxSpeed: 11, turn: 0.8,
+    desc: "A great merchant ship. Slow to turn, but it can swallow a hold full of treasure.",
+  },
+};
+
+const REP_TITLES = [
+  { at: 100, name: "Fidalgo of the Realm" },
+  { at: 85,  name: "Baron of the Seas" },
+  { at: 70,  name: "Navigator" },
+  { at: 55,  name: "Captain" },
+  { at: 40,  name: "Boatswain" },
+  { at: 25,  name: "Sailor" },
+  { at: 10,  name: "Dockhand" },
+  { at: 0,   name: "Unknown Citizen" },
+];
+function repTitle(rep) {
+  for (const t of REP_TITLES) if (rep >= t.at) return t.name;
+  return "Unknown Citizen";
+}
 
 // ============================================================
-//  CAMERA & CONTROLS
+//  BUILDING / PERSON HELPERS
 // ============================================================
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.set(0, 15, 25);
-camera.lookAt(0, 5, 0);
+function makeBuilding(w, h, d, wallMat, roofMat) {
+  const g = new THREE.Group();
+  const walls = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), wallMat);
+  walls.position.y = h / 2;
+  walls.castShadow = true;
+  walls.receiveShadow = true;
+  g.add(walls);
 
-// Mouse look
-let mouseX = 0, mouseY = 0;
-let targetCamAngle = 0, camAngle = 0;
-let camDistance = 34, camHeight = 21;
-let isMouseDown = false;
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.max(w, d) * 0.78, h * 0.55, 4), roofMat);
+  roof.position.y = h + h * 0.24;
+  roof.rotation.y = Math.PI / 4;
+  roof.castShadow = true;
+  g.add(roof);
 
-canvas.addEventListener('mousedown', (e) => { isMouseDown = true; });
-canvas.addEventListener('mouseup', () => { isMouseDown = false; });
-canvas.addEventListener('mousemove', (e) => {
-  if (isMouseDown) {
-    targetCamAngle += e.movementX * 0.005;
-    camHeight = Math.max(5, Math.min(40, camHeight - e.movementY * 0.1));
+  // door
+  const door = new THREE.Mesh(new THREE.BoxGeometry(w * 0.22, h * 0.45, 0.08),
+    new THREE.MeshStandardMaterial({ color: 0x4a3018, roughness: 0.9 }));
+  door.position.set(0, h * 0.225, d / 2 + 0.02);
+  g.add(door);
+  return g;
+}
+
+function makePerson(robeColor, hatColor) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.30, 0.44, 1.25, 8),
+    new THREE.MeshStandardMaterial({ color: robeColor, roughness: 0.95 })
+  );
+  body.position.y = 0.63;
+  body.castShadow = true;
+  g.add(body);
+
+  const head = new THREE.Mesh(
+    new THREE.SphereGeometry(0.23, 10, 8),
+    new THREE.MeshStandardMaterial({ color: 0xd8b08a, roughness: 0.9 })
+  );
+  head.position.y = 1.52;
+  head.castShadow = true;
+  g.add(head);
+
+  if (hatColor) {
+    const brim = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.30, 0.30, 0.05, 10),
+      new THREE.MeshStandardMaterial({ color: hatColor, roughness: 0.9 })
+    );
+    brim.position.y = 1.68;
+    g.add(brim);
+    const crown = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.16, 0.18, 0.20, 10),
+      new THREE.MeshStandardMaterial({ color: hatColor, roughness: 0.9 })
+    );
+    crown.position.y = 1.78;
+    g.add(crown);
   }
-});
-canvas.addEventListener('wheel', (e) => {
-  e.preventDefault();
-  camDistance = Math.max(12, Math.min(60, camDistance + e.deltaY * 0.02));
-}, { passive: false });
+  return g;
+}
+
+// A bobbing marker so NPCs are easy to spot in first person
+function makeMarker(color) {
+  const m = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.22),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 })
+  );
+  m.position.y = 2.3;
+  return m;
+}
+
+// ============================================================
+//  BUILD THE WORLD
+// ============================================================
+const PORTS = [];
+const interactables = [];   // { x, z, radius, label, onUse, hidden }
+let lisbonBerth = null;     // world position where the player's ship waits
+
+function addInteractable(worldX, worldZ, worldY, radius, label, onUse) {
+  interactables.push({ x: worldX, z: worldZ, y: worldY, radius, label, onUse, hidden: false });
+}
+
+function buildPorts() {
+  PORT_DEFS.forEach((def, i) => {
+    const group = new THREE.Group();
+    group.position.set(def.x, 0, def.z);
+
+    const island = buildIsland(def, 1337 + i * 7919);
+    const isHome = def.type === 'home';
+    group.add(island.mesh);
+
+    function pointAt(a, t) {
+      const R = island.radiusAt(a);
+      const x = Math.cos(a) * R * t;
+      const z = Math.sin(a) * R * t;
+      return { x, z, y: island.heightAt(x, z) };
+    }
+
+    // Palms
+    const palmCount = isHome ? 6 : 7 + Math.floor(island.rng() * 6);
+    for (let p = 0; p < palmCount; p++) {
+      const a = (p / palmCount) * Math.PI * 2 + island.rng() * 0.8;
+      const t = 0.66 + island.rng() * 0.24;
+      const pt = pointAt(a, t);
+      if (pt.y < 0.9 || pt.y > island.peak * 0.7) continue;
+      group.add(makePalm(pt.x, pt.y - 0.15, pt.z, 0.75 + island.rng() * 0.55, island.rng() * 6));
+    }
+
+    if (isHome) {
+      buildLisbon(group, island, pointAt);
+    } else {
+      buildTradePost(group, island, pointAt, def);
+    }
+
+    scene.add(group);
+
+    // world-space height sampler for this island
+    const worldHeightAt = (wx, wz) => island.heightAt(wx - def.x, wz - def.z);
+    const worldRadiusAt = (theta) => island.radiusAt(theta);
+
+    PORTS.push({
+      group, def, island,
+      position: group.position,
+      maxR: island.maxR,
+      heightAt: worldHeightAt,
+      radiusAt: worldRadiusAt,
+      discovered: !!def.discovered,
+    });
+  });
+}
+// The pier faces the open sea; the town sits just inland of it
+const LISBON_PIER_ANGLE = 0.85;
+
+function findFlat(island, angle, tMin, tMax, steps = 14) {
+  const R = island.radiusAt(angle);
+  for (let i = 0; i < steps; i++) {
+    const t = tMin + (tMax - tMin) * (i / (steps - 1));
+    const x = Math.cos(angle) * R * t;
+    const z = Math.sin(angle) * R * t;
+    const y = island.heightAt(x, z);
+    if (y > 1.1 && y < island.peak * 0.55) return { x, z, y };
+  }
+  const t = (tMin + tMax) / 2;
+  return { x: Math.cos(angle) * R * t, z: Math.sin(angle) * R * t, y: island.heightAt(Math.cos(angle) * R * t, Math.sin(angle) * R * t) };
+}
+
+function buildLisbon(group, island, pointAt) {
+  const A = LISBON_PIER_ANGLE;
+  const dx = Math.cos(A), dz = Math.sin(A);
+  const coastR = island.radiusAt(A);
+  // The ship rides just off the end of the pier, close enough to step aboard
+  const berthR = coastR + 7;
+  lisbonBerth = { x: group.position.x + dx * berthR, z: group.position.z + dz * berthR };
+
+  // ---- Pier: planks on pilings, reaching out to the ship ----
+  const pier = new THREE.Group();
+  const plankMat = ISLAND_MATS.wood;
+  const pierStart = coastR - 3;
+  const pierEnd = berthR + 2;
+  for (let i = 0; i <= 8; i++) {
+    const r = pierStart + (pierEnd - pierStart) * (i / 8);
+    const plank = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.22, 1.7), plankMat);
+    plank.position.set(dx * r, 1.5, dz * r);
+    plank.rotation.y = -A;
+    plank.castShadow = true;
+    plank.receiveShadow = true;
+    pier.add(plank);
+    if (i % 2 === 0) {
+      for (const side of [-1, 1]) {
+        const piling = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 3.2, 6), ISLAND_MATS.trunk);
+        piling.position.set(dx * r - dz * side * 1.7, 0.2, dz * r + dx * side * 1.7);
+        pier.add(piling);
+      }
+    }
+  }
+  group.add(pier);
+
+  // ---- Moored fishing boats for atmosphere ----
+  for (let i = 0; i < 3; i++) {
+    const boat = new THREE.Group();
+    const hullB = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.8, 5), ISLAND_MATS.wood);
+    hullB.castShadow = true;
+    boat.add(hullB);
+    const r = berthR - 6 - i * 7;
+    const a = A + (i - 1) * 0.18;
+    boat.position.set(group.position.x + Math.cos(a) * r, 0.2, group.position.z + Math.sin(a) * r);
+    boat.rotation.y = -a + Math.PI / 2;
+    scene.add(boat);
+  }
+
+  // ---- Town buildings ----
+  const spots = [
+    { key: 'shipyard', angle: A - 0.55, tMin: 0.42, tMax: 0.62, w: 7, h: 4.2, d: 6 },
+    { key: 'tavern',   angle: A - 1.35, tMin: 0.40, tMax: 0.62, w: 6, h: 4.6, d: 5.5 },
+    { key: 'merchant', angle: A - 2.15, tMin: 0.42, tMax: 0.62, w: 5, h: 3.4, d: 4.5 },
+    { key: 'palace',   angle: A + 1.15, tMin: 0.30, tMax: 0.55, w: 9, h: 6.5, d: 7 },
+    { key: 'home',     angle: A + 0.35, tMin: 0.45, tMax: 0.66, w: 4.5, h: 3.4, d: 4 },
+  ];
+
+  for (const s of spots) {
+    const p = findFlat(island, s.angle, s.tMin, s.tMax);
+    const b = makeBuilding(s.w, s.h, s.d, ISLAND_MATS.wall, ISLAND_MATS.roof);
+    b.position.set(p.x, p.y - 0.15, p.z);
+    b.rotation.y = -s.angle + Math.PI / 2;
+    group.add(b);
+    solidCircles.push({ x: group.position.x + p.x, z: group.position.z + p.z, r: Math.max(s.w, s.d) * 0.62 });
+
+    // a little plaza lantern so the town reads at night
+    if (s.key !== 'palace') {
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6),
+        new THREE.MeshBasicMaterial({ color: 0xffcc66 }));
+      lamp.position.set(p.x - Math.sin(s.angle) * (s.w * 0.8), p.y + 2.6, p.z + Math.cos(s.angle) * (s.w * 0.8));
+      group.add(lamp);
+    }
+  }
+
+  // ---- NPCs ----
+  const npc = (angle, t, robe, hat, markerColor, label, onUse, role) => {
+    const p = findFlat(island, angle, t, t + 0.001, 2);
+    const person = makePerson(robe, hat);
+    person.position.set(p.x, p.y - 0.05, p.z);
+    person.rotation.y = -angle + Math.PI;
+    group.add(person);
+    const marker = makeMarker(markerColor);
+    marker.position.set(p.x, p.y + 1.9, p.z);
+    group.add(marker);
+    person.userData.marker = marker;
+    addInteractable(group.position.x + p.x, group.position.z + p.z, p.y, 3.4, label, onUse);
+    return person;
+  };
+
+  npc(A - 0.55, 0.66, 0x6a4a2a, 0x3a2a18, 0xffd700, "Mestre Nuno, the shipwright", () => openDialog('shipwright'), "Master Shipwright");
+  npc(A - 1.35, 0.64, 0x7a2a3a, null, 0xffd700, "Dona Beatriz, tavern keeper", () => openDialog('tavern'), "Tavern Keeper");
+  npc(A - 2.15, 0.64, 0x2a4a7a, null, 0xffd700, "Tomé, the merchant", () => openDialog('merchant'), "Merchant of Lisbon");
+  npc(A + 1.15, 0.58, 0x4a2a6a, 0x2a1a3a, 0x9fd8ff, "Fra Diogo, royal herald", () => openDialog('herald'), "Royal Herald");
+  npc(A + 0.35, 0.70, 0x3a5a3a, null, 0xffd700, "Your house", () => openDialog('home'), "Your House");
+  npc(A + 0.05, 0.80, 0x5a5a4a, 0x2a2a1a, 0xffd700, "Zé Caolho, the dockmaster", () => openDialog('dockmaster'), "Dockmaster");
+
+  // Shipyard slip - where a commissioned ship appears
+  const slipP = findFlat(island, A - 0.15, 0.70, 0.74, 3);
+  const slip = new THREE.Group();
+  const cradle = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.5, 11), ISLAND_MATS.wood);
+  cradle.position.y = 0.25;
+  slip.add(cradle);
+  for (const side of [-1, 1]) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2.2, 0.4), ISLAND_MATS.wood);
+    post.position.set(side * 1.9, 1.1, -4.5);
+    slip.add(post);
+  }
+  slip.position.set(slipP.x, slipP.y - 0.1, slipP.z);
+  slip.rotation.y = -A + Math.PI / 2;
+  group.add(slip);
+  lisbonSlip = { x: group.position.x + slipP.x, z: group.position.z + slipP.z, angle: A };
+}
+
+let lisbonSlip = null;
+
+function buildTradePost(group, island, pointAt, def) {
+  // A native trading hut with a trader beside it
+  const a = island.rng() * Math.PI * 2;
+  const p = findFlat(island, a, 0.55, 0.75);
+  const hut = makeBuilding(3.4, 2.6, 3, new THREE.MeshStandardMaterial({ color: 0xa8895a, roughness: 0.95 }), ISLAND_MATS.cloth);
+  hut.position.set(p.x, p.y - 0.1, p.z);
+  hut.rotation.y = -a + Math.PI / 2;
+  group.add(hut);
+  solidCircles.push({ x: group.position.x + p.x, z: group.position.z + p.z, r: 2.4 });
+
+  // crates and bolts of cloth
+  for (let i = 0; i < 4; i++) {
+    const crate = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.9, 0.9), ISLAND_MATS.wood);
+    const aa = a + 0.7 + i * 0.35;
+    const rr = island.radiusAt(aa) * 0.62;
+    crate.position.set(Math.cos(aa) * rr, island.heightAt(Math.cos(aa) * rr, Math.sin(aa) * rr) + 0.45, Math.sin(aa) * rr);
+    crate.rotation.y = aa;
+    crate.castShadow = true;
+    group.add(crate);
+  }
+
+  const person = makePerson(0x8a5a2a, null);
+  person.position.set(p.x + Math.cos(a + 1.6) * 2.4, p.y - 0.05, p.z + Math.sin(a + 1.6) * 2.4);
+  person.rotation.y = -a - 1.6 + Math.PI;
+  group.add(person);
+  const marker = makeMarker(0x8bc34a);
+  marker.position.set(person.position.x, p.y + 1.9, person.position.z);
+  group.add(marker);
+
+  addInteractable(group.position.x + person.position.x, group.position.z + person.position.z, p.y, 3.6,
+    "Trade with the natives", () => openDialog('trade_post', { port: { def, group } }));
+}
+// ============================================================
+//  GAME STATE - one life
+// ============================================================
+const LIFE_SECONDS = 3600;      // your whole life is one hour
+const SEC_PER_GAME_MIN = 1;     // one real second = one game minute
+
+const Game = {
+  phase: 'start',               // start | play | dialog | menu | save | dead | end
+  gold: 40,
+  rep: 0,
+  food: 20,
+  crew: 0,
+  morale: 75,
+  inventory: {},                // cargo: { spice: 3, ... }
+  discovered: new Set(['Lisbon']),
+  charts: [],                   // islands charted but not yet reported
+  ship: null,                   // { cls, x, z, heading }
+  commissions: [],              // { cls, readyAt }  (game minutes)
+  gameMinutes: 6 * 60,          // day 1, 06:00
+  lifeLeft: LIFE_SECONDS,
+  quests: {},                   // id -> 'active' | 'done'
+  stats: { jobs: 0, voyages: 0, earned: 0, distance: 0 },
+  cause: '',
+};
+
+const Player = {
+  mode: 'foot',                 // foot | deck | helm
+  x: 0, z: 0, y: 0,
+  yaw: 0, pitch: 0,
+  lookYaw: 0, lookPitch: 0,
+  island: null,                 // PORTS entry while ashore
+  bob: 0,
+};
+
+const Ship = {
+  speed: 0, heading: 0,
+  maxSpeed: 12.5, turn: 1.2,
+  bobPhase: 0, anchored: false,
+};
+
+let playerShip = null;          // THREE.Group
+let dockedAt = null;            // PORTS entry while docked
+
+// ---- camera (first person) ----
+const camera = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerHeight, 0.1, 1200);
+camera.rotation.order = 'YXZ';
+
+// ---- solid circles (buildings) ----
+const solidCircles = [];
+
+// ---- build the world ----
+buildPorts();
+
+// ============================================================
+//  GROUND SAMPLING
+// ============================================================
+function groundInfo(wx, wz) {
+  let best = null;
+  for (const p of PORTS) {
+    const dx = wx - p.position.x, dz = wz - p.position.z;
+    const r = Math.hypot(dx, dz);
+    if (r > p.maxR + 45) continue;
+    const y = p.heightAt(wx, wz);
+    if (!best || r < best.r) best = { port: p, y, r };
+  }
+  return best;
+}
+
+function groundY(wx, wz) {
+  const g = groundInfo(wx, wz);
+  return g ? g.y : 0;
+}
+
+function canStand(wx, wz) {
+  const g = groundInfo(wx, wz);
+  if (!g || g.y < 0.25) return false;          // water
+  return g.r < g.port.maxR + 3;
+}
+
+// ============================================================
+//  PLAYER SHIP
+// ============================================================
+function spawnPlayerShip(cls, x, z, heading) {
+  removePlayerShip();
+  const def = SHIP_CLASSES[cls];
+  playerShip = buildShipModel(def.scale);
+  playerShip.position.set(x, 0, z);
+  playerShip.rotation.y = heading;
+  scene.add(playerShip);
+  Ship.maxSpeed = def.maxSpeed;
+  Ship.turn = def.turn;
+  Ship.heading = heading;
+  Ship.speed = 0;
+  Game.ship = { cls, x, z, heading };
+}
+
+function removePlayerShip() {
+  if (playerShip) {
+    scene.remove(playerShip);
+    playerShip.traverse(o => {
+      if (o.geometry) o.geometry.dispose();
+    });
+    playerShip = null;
+  }
+}
+
+function shipWorldPos() {
+  return { x: playerShip.position.x, z: playerShip.position.z };
+}
+
+// Spawn the player's ship at the Lisbon pier, ready to be boarded on foot
+function spawnShipInLisbon(cls) {
+  spawnPlayerShip(cls, lisbonBerth.x, lisbonBerth.z, Math.PI / 2 - LISBON_PIER_ANGLE);
+  dockedAt = PORTS[0];
+}
 
 // ============================================================
 //  INPUT
 // ============================================================
 const keys = {};
+const touch = { active: false, x: 0, y: 0 };
 
 function normKey(e) {
   if (e.key === 'ArrowUp') return 'w';
@@ -1462,501 +1621,1082 @@ function normKey(e) {
   if (e.key === 'ArrowLeft') return 'a';
   if (e.key === 'ArrowRight') return 'd';
   if (e.key === ' ') return ' ';
+  if (e.key === 'Shift') return 'shift';
   return e.key.toLowerCase();
 }
 
 window.addEventListener('keydown', (e) => {
   const k = normKey(e);
-  if (['w', 's', 'a', 'd', ' '].includes(k)) {
+  if (['w', 'a', 's', 'd', ' ', 'shift'].includes(k)) {
     keys[k] = true;
-    e.preventDefault();   // stop space from scrolling / buttons activating
+    if (Game.phase === 'play') e.preventDefault();
   }
-});
-window.addEventListener('keyup', (e) => {
-  keys[normKey(e)] = false;
-});
-
-// On-screen controls (also work with touch)
-document.querySelectorAll('#touchControls button').forEach(btn => {
-  const k = btn.dataset.key;
-  const press = (e) => {
+  if (k === 'e' && Game.phase === 'play') {
     e.preventDefault();
-    keys[k] = true;
-    btn.classList.add('on');
-  };
-  const release = () => {
-    keys[k] = false;
-    btn.classList.remove('on');
-  };
-  btn.addEventListener('pointerdown', press);
-  btn.addEventListener('pointerup', release);
-  btn.addEventListener('pointerleave', release);
-  btn.addEventListener('pointercancel', release);
-  btn.addEventListener('contextmenu', (e) => e.preventDefault());
+    tryInteract();
+  }
+  if (k === 'escape') {
+    if (Game.phase === 'play') openMenu();
+    else if (Game.phase === 'menu' || Game.phase === 'save') closeMenu();
+  }
+});
+window.addEventListener('keyup', (e) => { keys[normKey(e)] = false; });
+window.addEventListener('blur', () => { Object.keys(keys).forEach(k => keys[k] = false); });
+
+// Pointer lock mouse look
+canvas.addEventListener('click', () => {
+  if (Game.phase === 'play' && document.pointerLockElement !== canvas) {
+    canvas.requestPointerLock();
+  }
+});
+document.addEventListener('mousemove', (e) => {
+  if (document.pointerLockElement !== canvas || Game.phase !== 'play') return;
+  const sens = 0.0022;
+  Player.lookYaw -= e.movementX * sens;
+  Player.lookPitch -= e.movementY * sens;
+  Player.lookYaw = Math.max(-1.3, Math.min(1.3, Player.lookYaw));
+  Player.lookPitch = Math.max(-0.85, Math.min(0.85, Player.lookPitch));
 });
 
-// Releasing focus (e.g. alt-tab) should not leave the rudder stuck
-window.addEventListener('blur', () => {
-  Object.keys(keys).forEach(k => keys[k] = false);
-});
+// ---- touch controls ----
+const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+if (isTouch) {
+  document.getElementById('touchControls').classList.add('on');
+  const base = document.getElementById('stickBase');
+  const knob = document.getElementById('stickKnob');
+  let stickId = null;
+  base.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    stickId = e.changedTouches[0].identifier;
+    touch.active = true;
+  }, { passive: false });
+  window.addEventListener('touchmove', (e) => {
+    if (stickId === null) return;
+    for (const t of e.changedTouches) {
+      if (t.identifier !== stickId) continue;
+      const r = base.getBoundingClientRect();
+      let dx = (t.clientX - (r.left + r.width / 2)) / (r.width / 2);
+      let dy = (t.clientY - (r.top + r.height / 2)) / (r.height / 2);
+      const m = Math.hypot(dx, dy);
+      if (m > 1) { dx /= m; dy /= m; }
+      touch.x = dx; touch.y = dy;
+      knob.style.transform = `translate(${dx * 34}px, ${dy * 34}px)`;
+    }
+  }, { passive: false });
+  const endStick = (e) => {
+    for (const t of e.changedTouches) {
+      if (t.identifier === stickId) {
+        stickId = null; touch.active = false; touch.x = touch.y = 0;
+        knob.style.transform = '';
+      }
+    }
+  };
+  window.addEventListener('touchend', endStick);
+  window.addEventListener('touchcancel', endStick);
 
+  document.getElementById('btnE').addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (Game.phase === 'play') tryInteract();
+  });
+  document.getElementById('btnSpace').addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (Game.phase === 'play' && Player.mode !== 'foot') keys[' '] = true;
+    setTimeout(() => keys[' '] = false, 120);
+  });
+}
 // ============================================================
-//  GAME LOGIC
+//  DIALOG & EVENT ENGINE
 // ============================================================
-const logPanel = document.getElementById('logPanel');
-const toast = document.getElementById('toast');
+const dlgEl = document.getElementById('dialog');
+let currentDialog = null;
 
-function addLog(msg, isNew = false) {
-  const now = new Date();
-  const time = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
-  const entry = document.createElement('div');
-  entry.className = 'log-entry' + (isNew ? ' new-discovery' : '');
-  entry.innerHTML = `<span class="time">${time}</span> ${msg}`;
-  logPanel.appendChild(entry);
-  logPanel.scrollTop = logPanel.scrollHeight;
+function fmtClock() {
+  const day = 1 + Math.floor(Game.gameMinutes / (24 * 60));
+  const mins = Math.floor(Game.gameMinutes % (24 * 60));
+  const hh = String(Math.floor(mins / 60)).padStart(2, '0');
+  const mm = String(mins % 60).padStart(2, '0');
+  return `Day ${day} \u00B7 ${hh}:${mm}`;
 }
 
-function showToast(msg, duration = 2500) {
-  toast.textContent = msg;
-  toast.classList.add('show');
-  clearTimeout(toast._timer);
-  toast._timer = setTimeout(() => toast.classList.remove('show'), duration);
-}
-
-function updateHUD() {
-  document.getElementById('goldVal').textContent = Math.floor(Game.gold);
-  document.getElementById('discoveryVal').textContent = Game.discoveries;
-  document.getElementById('crewVal').textContent = Game.crew;
-  document.getElementById('suppliesVal').textContent = Math.floor(Game.supplies);
-
-  const speedPct = Math.abs(Ship.speed / Ship.maxSpeed) * 100;
-  document.getElementById('speedFill').style.width = speedPct + '%';
-}
-
-// Anchor helper - always stops the ship when docking
-function setAnchored(v) {
-  Game.anchored = v;
-  if (v) Ship.speed = 0;
-}
-
-function discoverPort(port) {
-  port.userData.discovered = true;
-  Game.discoveries++;
-  Game.discoveredPorts.add(port.userData.def.name);
-
-  if (port.userData.marker) {
-    port.remove(port.userData.marker);
-    port.userData.marker = null;
+function applyEffect(e) {
+  if (!e) return;
+  if (e.gold) Game.gold += e.gold;
+  if (e.gold < 0) Game.stats.earned += 0;
+  if (e.rep) Game.rep = Math.max(0, Game.rep + e.rep);
+  if (e.food) Game.food = Math.max(0, Math.min(200, Game.food + e.food));
+  if (e.crew) Game.crew = Math.max(0, Game.crew + e.crew);
+  if (e.morale) Game.morale = Math.max(0, Math.min(100, Game.morale + e.morale));
+  if (e.cargo) {
+    if (e.cargo === 'all') {
+      Game.inventory = {};
+    } else {
+      for (const k in e.cargo) {
+        Game.inventory[k] = Math.max(0, (Game.inventory[k] || 0) + e.cargo[k]);
+        if (Game.inventory[k] === 0) delete Game.inventory[k];
+      }
+    }
   }
-  if (port.userData.ring) {
-    port.remove(port.userData.ring);
-    port.userData.ring = null;
-  }
-
-  const def = port.userData.def;
-  addLog(`Discovered <b>${def.name}</b>!`, true);
-  showToast(`New land discovered: ${def.name}`);
+  if (e.time) Game.gameMinutes += e.time;
+  if (e.discover) discoverIsland(e.discover);
   updateHUD();
-  showDiscoveryPrompt(def, port);
+  updateCargoBox();
+  checkQuests();
 }
 
-// Port proximity - fires only on the EDGE of entering a port's radius,
-// so a closed dialog never reopens and the ship is never trapped.
-function checkPortProximity() {
-  if (Game.dialogOpen) return;
+function renderDialog(node) {
+  currentDialog = node;
+  document.getElementById('dlgPortrait').textContent = node.portrait || '\u{1F9D4}';
+  document.getElementById('dlgName').textContent = node.who || 'Someone';
+  document.getElementById('dlgRole').textContent = node.role || 'Lisbon';
+  document.getElementById('dlgText').innerHTML = node.text || '';
+  const box = document.getElementById('dlgOptions');
+  box.innerHTML = '';
 
-  for (const port of PORTS) {
-    const dist = distance2D(shipGroup.position, port.position);
-    const triggerDist = port.userData.islandRadius + 12;
-    const inRange = dist < triggerDist;
-    const wasInRange = !!port.userData.inRange;
-
-    if (inRange && !wasInRange) {
-      port.userData.inRange = true;
-      if (!port.userData.discovered) {
-        discoverPort(port);
-      } else {
-        Game.currentPort = port;
-        showTradePanel(port.userData.def);
-      }
-      return;
+  (node.options || []).forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'dlg-opt';
+    let reqOk = true, reqTxt = '';
+    if (opt.req) {
+      if (opt.req.gold && Game.gold < opt.req.gold) { reqOk = false; reqTxt = `Needs ${opt.req.gold}g`; }
+      if (opt.req.rep && Game.rep < opt.req.rep) { reqOk = false; reqTxt = `Needs reputation ${opt.req.rep}`; }
+      if (opt.req.ship && !Game.ship) { reqOk = false; reqTxt = 'Needs a ship'; }
+      if (opt.req.crew && Game.crew < opt.req.crew) { reqOk = false; reqTxt = `Needs ${opt.req.crew} crew`; }
+      if (opt.req.cargo && (Game.inventory[opt.req.cargo] || 0) < 1) { reqOk = false; reqTxt = 'Nothing to sell'; }
+      if (opt.req.cargoAny && Object.values(Game.inventory).reduce((a, b) => a + b, 0) < 1) { reqOk = false; reqTxt = 'Nothing to sell'; }
     }
-    if (!inRange && wasInRange) {
-      port.userData.inRange = false;
+    btn.innerHTML = opt.label + (reqOk && opt.hint ? `<span class="hint">${opt.hint}</span>` : '') +
+                    (!reqOk ? `<span class="req">${reqTxt}</span>` : '');
+    if (!reqOk) btn.classList.add('disabled');
+    else btn.onclick = () => chooseOption(opt);
+    box.appendChild(btn);
+  });
+
+  dlgEl.classList.remove('hidden');
+  Game.phase = 'dialog';
+  if (document.pointerLockElement === canvas) document.exitPointerLock();
+}
+
+function chooseOption(opt) {
+  if (opt.effect) applyEffect(opt.effect);
+
+  // probabilistic outcome
+  if (opt.roll) {
+    const good = Math.random() < opt.roll.chance;
+    const out = good ? opt.roll.good : opt.roll.bad;
+    if (out.effect) applyEffect(out.effect);
+    if (out.death) return die(out.death);
+    if (out.text) {
+      // show the outcome, then continue
+      const next = out.next ? DLG[out.next] : null;
+      return renderDialog({
+        who: currentDialog.who, role: currentDialog.role, portrait: currentDialog.portrait,
+        text: out.text,
+        options: next ? next().options : [{ label: '\u2026', effect: null }],
+      });
     }
   }
+
+  if (opt.death) return die(opt.death);
+  if (opt.action) opt.action();
+  if (opt.next) return renderDialog(DLG[opt.next]());
+  if (opt.stay) return renderDialog(currentDialog);
+  closeDialog();
 }
 
-function distance2D(a, b) {
-  const dx = a.x - b.x;
-  const dz = a.z - b.z;
-  return Math.sqrt(dx * dx + dz * dz);
+function openDialog(id, ctx) {
+  const builder = DLG[id];
+  if (!builder) return;
+  renderDialog(builder(ctx || {}));
 }
 
-function showDiscoveryPrompt(def, port) {
-  const prompt = document.getElementById('discoveryPrompt');
-  document.getElementById('dpTitle').textContent = def.name + ' Discovered!';
-  document.getElementById('dpSub').textContent = TRADE_GOODS[def.type] ? `Known for: ${TRADE_GOODS[def.type].name}` : 'Uncharted territory';
-  document.getElementById('dpDesc').textContent = `You have reached the shores of ${def.name}. The locals seem friendly and willing to trade.`;
-
-  prompt.style.display = 'block';
-  Game.dialogOpen = true;
-  setAnchored(true);
-
-  document.getElementById('dpTrade').onclick = () => {
-    prompt.style.display = 'none';
-    showTradePanel(def);
-  };
-  document.getElementById('dpLeave').onclick = () => {
-    prompt.style.display = 'none';
-    Game.dialogOpen = false;
-    Game.currentPort = port;
-    setAnchored(false);
-  };
+function closeDialog() {
+  dlgEl.classList.add('hidden');
+  currentDialog = null;
+  if (Game.phase === 'dialog') Game.phase = 'play';
+  if (Game.phase === 'play' && !isTouch) canvas.requestPointerLock();
 }
 
-function showTradePanel(def) {
-  const panel = document.getElementById('tradePanel');
-  // Every island trades in ONE direction only:
-  //   Lisbon (home)  -> SELL your cargo
-  //   foreign ports  -> BUY their goods
-  const isHome = def.type === 'home';
-  const mode = isHome ? 'sell' : 'buy';
+// ---------- effects helpers used by dialogs ----------
+function spendMinutes(min) { Game.gameMinutes += min; }
 
-  document.getElementById('tpTitle').textContent = def.name + ' Market';
-  const localName = TRADE_GOODS[def.type] ? TRADE_GOODS[def.type].name : 'General Goods';
-  document.getElementById('tpSub').innerHTML = isHome
-    ? `Home market &mdash; <span style="color:#4fc3f7;">sell your cargo here</span>`
-    : `Specialty: ${localName} &mdash; <span style="color:#8bc34a;">buy goods here</span>`;
+function cargoValue() {
+  let v = 0;
+  for (const k in Game.inventory) v += Game.inventory[k] * TRADE_GOODS[k].sellPrice;
+  return v;
+}
 
-  const itemsDiv = document.getElementById('tradeItems');
-  itemsDiv.innerHTML = '';
+function discoverIsland(port) {
+  if (!port || port.discovered) return;
+  port.discovered = true;
+  Game.discovered.add(port.def.name);
+  Game.charts.push(port.def.name);
+  addLog(`You are the first Christian to set foot on ${port.def.name}.`, true);
+  showToast(`Discovered: ${port.def.name}! Report it to the herald in Lisbon.`, 4200);
+  Game.rep += 8;
+  Game.gold += 25;
+  applyEffect({});
+}
 
-  Object.entries(TRADE_GOODS).forEach(([key, good]) => {
-    const isLocal = def.type === key;
-    const owned = Game.inventory[key] || 0;
-    const price = mode === 'buy'
-      ? (isLocal ? Math.floor(good.buyPrice * 0.8) : good.buyPrice)
-      : good.sellPrice;                       // the home market always pays full price
-    const disabled = mode === 'buy' ? Game.gold < price : owned === 0;
-
-    const item = document.createElement('div');
-    item.className = 'trade-item';
-    item.innerHTML = `
-      <span class="name">${good.icon} ${good.name}${isLocal ? ' <span style="color:#8bc34a;font-size:11px;">(local)</span>' : ''}</span>
-      <span class="price">${mode === 'buy' ? 'Buy' : 'Sell'}: ${price}g</span>
-      <div class="actions">
-        <button class="trade-btn ${mode}" data-action="${mode}" data-key="${key}" data-price="${price}" ${disabled ? 'disabled' : ''}>${mode === 'buy' ? 'Buy' : 'Sell (' + owned + ')'}</button>
-      </div>
-    `;
-    itemsDiv.appendChild(item);
-  });
-
-  // Nothing to trade here right now? Point the player at the trade loop.
-  const holdEmpty = Object.values(Game.inventory).every(v => !v);
-  if (mode === 'sell' && holdEmpty) {
-    const hint = document.createElement('div');
-    hint.className = 'trade-item';
-    hint.innerHTML = `<span class="name" style="color:#999;font-style:italic;">Your hold is empty &mdash; buy goods at the islands, then bring them home to sell.</span>`;
-    itemsDiv.appendChild(hint);
+// ---------- quests ----------
+function checkQuests() {
+  const q = Game.quests;
+  if (q.chart3 === 'active' && Game.discovered.size >= 4) {
+    q.chart3 = 'done'; Game.rep += 10; Game.gold += 100;
+    addLog('Herald: "Three new islands charted! The Crown rewards you."', 'good');
+    showToast('Quest complete: Three Islands (+10 reputation, +100g)');
   }
+  if (q.chart5 === 'active' && Game.discovered.size >= 6) {
+    q.chart5 = 'done'; Game.rep += 15; Game.gold += 150;
+    addLog('Herald: "Five islands! His Majesty is most pleased."', 'good');
+    showToast('Quest complete: Five Islands (+15 reputation, +150g)');
+  }
+  if (q.fortune === 'active' && Game.gold >= 1000) {
+    q.fortune = 'done'; Game.rep += 15;
+    addLog('A thousand in gold. Lisbon is starting to know your name.', 'good');
+    showToast('Quest complete: A Man of Means (+15 reputation)');
+  }
+  if (Game.rep >= 100 && !Game.won) {
+    Game.won = true;
+    victory();
+  }
+  updateHUD();
+}
+// ============================================================
+//  DIALOG CONTENT - the people and troubles of the age
+// ============================================================
+const RUMORS = [
+  "The Canary Islands are thick with spice and thin with sense.",
+  "Cape Verde, they say — ivory cheaper than Lisbon linen.",
+  "The Gold Coast needs no introduction. The name says it all, if you live.",
+  "South of the equator the storms grow teeth. Sail north when you can.",
+  "The herald in Lisbon pays well for a new chart. Better than fishing.",
+  "Zanzibar silk fetches a prince's ransom at home. So I'm told.",
+  "Madagascar — spice, yes, but the reefs there are hungry.",
+  "Calicut sits at the end of the world and the beginning of fortune.",
+  "A ship with no crew is a coffin with sails. Hire hands at the tavern.",
+  "Storms come quicker after dusk. So does death.",
+];
 
-  // Resupply row
-  const supplyRow = document.createElement('div');
-  supplyRow.className = 'trade-item';
-  const supplyCost = 50;
-  supplyRow.innerHTML = `
-    <span class="name">&#129517; Supplies (+25)</span>
-    <span class="price">${supplyCost}g</span>
-    <div class="actions">
-      <button class="trade-btn buy" id="buySuppliesBtn" ${Game.gold < supplyCost ? 'disabled' : ''}>Buy</button>
-    </div>
-  `;
-  itemsDiv.appendChild(supplyRow);
-
-  const buySuppliesBtn = supplyRow.querySelector('#buySuppliesBtn');
-  if (buySuppliesBtn) {
-    buySuppliesBtn.onclick = () => {
-      if (Game.gold >= supplyCost) {
-        Game.gold -= supplyCost;
-        Game.supplies = Math.min(100, Game.supplies + 25);
-        showToast('Supplies replenished (+25)');
-        showTradePanel(def);
-        updateHUD();
-      }
+const DLG = {
+  // ---------------- Lisbon: the shipwright ----------------
+  shipwright: () => {
+    const opts = [];
+    for (const key of ['skiff', 'caravel', 'nau']) {
+      const c = SHIP_CLASSES[key];
+      opts.push({
+        label: `Commission a ${c.name} — ${c.price}g (ready in ${c.buildMin} min)`,
+        hint: c.desc,
+        req: { gold: c.price },
+        action: () => {
+          Game.gold -= c.price;
+          Game.commissions.push({ cls: key, readyAt: Game.gameMinutes + c.buildMin });
+          addLog(`Mestre Nuno lays the keel of your ${c.name}. Ready in ${c.buildMin} minutes.`, 'good');
+          showToast(`${c.name} under construction — ${c.buildMin} minutes`);
+        },
+        stay: true,
+      });
+    }
+    for (const key of ['skiff', 'caravel', 'nau']) {
+      const c = SHIP_CLASSES[key];
+      opts.push({
+        label: `Buy a ${c.name} outright — ${c.instant}g (ready now)`,
+        req: { gold: c.instant },
+        action: () => {
+          if (Game.ship) { Game.gold += Math.floor(SHIP_CLASSES[Game.ship.cls].price * 0.25); addLog('Your old ship is broken up for timber and nails.'); }
+          Game.gold -= c.instant;
+          spawnShipInLisbon(key);
+          addLog(`The ${c.name} is yours. She waits at the pier.`, 'good');
+          showToast(`You now own a ${c.name}! Walk down the pier to board.`);
+        },
+        stay: true,
+      });
+    }
+    opts.push({
+      label: "How does your trade work?",
+      next: 'shipwright_lore',
+    });
+    opts.push({ label: "Maybe another day." });
+    return {
+      who: "Mestre Nuno", role: "Master Shipwright", portrait: "\u{1F528}",
+      text: Game.ship
+        ? `The estaleiro smells of tar and fresh-cut oak. "Back again? Your ${SHIP_CLASSES[Game.ship.cls].name} still floats, I hope. Bigger hull, bigger cargo — that's the whole of commerce."`
+        : "The estaleiro smells of tar and fresh-cut oak. Mestre Nuno wipes his hands on his apron. \"So — you want a ship, camarada? Everything here is built by hand. Commission one and I'll launch her when she's ready... or pay the premium and sail today.\"",
+      options: opts,
     };
-  }
+  },
 
-  itemsDiv.querySelectorAll('.trade-btn[data-action]').forEach(btn => {
-    btn.onclick = () => {
-      const action = btn.dataset.action;
-      const key = btn.dataset.key;
-      const price = parseInt(btn.dataset.price);
-      const owned = Game.inventory[key] || 0;
+  shipwright_lore: () => ({
+    who: "Mestre Nuno", role: "Master Shipwright", portrait: "\u{1F528}",
+    text: "\"Commissioning is cheaper — I build while you work the docks — but she takes time. Buying outright costs half again as much and she's in the water at once. A skiff needs two hands, a caravel six, a nau twelve. A ship without crew is a coffin with sails, understand?\"",
+    options: [{ label: "I understand.", next: 'shipwright' }],
+  }),
 
-      if (action === 'buy' && Game.gold >= price) {
-        Game.gold -= price;
-        Game.inventory[key] = owned + 1;
-        showToast(`Bought ${TRADE_GOODS[key].name} for ${price}g`);
-      } else if (action === 'sell' && owned > 0) {
-        Game.gold += price;
-        Game.inventory[key] = owned - 1;
-        showToast(`Sold ${TRADE_GOODS[key].name} for ${price}g`);
-      }
-      showTradePanel(def);
-      updateInventory();
-      updateHUD();
+  // ---------------- Lisbon: the tavern ----------------
+  tavern: () => ({
+    who: "Dona Beatriz", role: "Tavern Keeper", portrait: "\u{1F37A}",
+    text: "The tavern roars with sailors' songs. Dona Beatriz slides a jug across the bar. \"Thirsty? Or looking for hands? Half the men in here would follow you to the end of the world — for the right price.\"",
+    options: [
+      { label: "Hire 1 sailor — 8g", req: { gold: 8 }, effect: { gold: -8, crew: 1 }, stay: true, hint: "Every hand matters" },
+      { label: "Hire 3 sailors — 24g", req: { gold: 24 }, effect: { gold: -24, crew: 3 }, stay: true },
+      { label: "Hire 6 sailors — 48g", req: { gold: 48 }, effect: { gold: -48, crew: 6 }, stay: true },
+      { label: "Buy 10 provisions — 20g", req: { gold: 20 }, effect: { gold: -20, food: 10 }, stay: true },
+      { label: "Buy 25 provisions — 50g", req: { gold: 50 }, effect: { gold: -50, food: 25 }, stay: true },
+      { label: "Buy a round for the crew — 20g", req: { gold: 20, crew: 1 }, effect: { gold: -20, morale: 10 }, stay: true, hint: "Morale +10" },
+      { label: "Heard any rumors?", next: 'tavern_rumor' },
+      { label: "Nothing today." },
+    ],
+  }),
+
+  tavern_rumor: () => ({
+    who: "Dona Beatriz", role: "Tavern Keeper", portrait: "\u{1F37A}",
+    text: `She leans on the bar and lowers her voice. "${RUMORS[Math.floor(Math.random() * RUMORS.length)]}"`,
+    options: [{ label: "Useful to know.", next: 'tavern' }],
+  }),
+
+  // ---------------- Lisbon: the merchant ----------------
+  merchant: () => ({
+    who: "Tomé", role: "Merchant of Lisbon", portrait: "\u{1F4B0}",
+    text: `Tomé's stall is a fortress of crates and bolts of cloth. "Buy low, sell high, never trust the sea — that is the whole of commerce." Your cargo would fetch about ${cargoValue()}g in Lisbon.`,
+    options: [
+      {
+        label: `Sell your whole cargo in Lisbon (${cargoValue()}g)`,
+        req: { cargoAny: true },
+        hint: "The home market pays full price",
+        action: () => {
+          const v = cargoValue();
+          if (v <= 0) return;
+          Game.gold += v;
+          const repGain = Math.min(3, Math.floor(v / 250));
+          if (repGain > 0) Game.rep += repGain;
+          Game.inventory = {};
+          addLog(`Cargo sold in Lisbon for ${v}g.`, 'good');
+          showToast(`Sold your cargo for ${v}g`);
+          updateHUD(); updateCargoBox(); checkQuests();
+        },
+        stay: true,
+      },
+      { label: "Buy 10 provisions — 20g", req: { gold: 20 }, effect: { gold: -20, food: 10 }, stay: true },
+      { label: "Buy 25 provisions — 50g", req: { gold: 50 }, effect: { gold: -50, food: 25 }, stay: true },
+      { label: "What buys well these days?", next: 'merchant_hint' },
+      { label: "Nothing today." },
+    ],
+  }),
+
+  merchant_hint: () => ({
+    who: "Tomé", role: "Merchant of Lisbon", portrait: "\u{1F4B0}",
+    text: "\"Spices, always spices — Lisbon cannot get enough. Silk next. Ivory is steady. Gems and gold ore are for men with deep holds and shallow fear. Buy where a thing grows; sell where it doesn't.\"",
+    options: [{ label: "Sound advice.", next: 'merchant' }],
+  }),
+
+  // ---------------- Lisbon: the royal herald ----------------
+  herald: () => {
+    const charts = Game.charts.length;
+    const opts = [];
+    opts.push({
+      label: charts > 0
+        ? `Report ${charts} chart${charts > 1 ? 's' : ''} to the Crown (+${charts * 40}g, +${charts * 4} reputation)`
+        : "Report your charts (none yet)",
+      req: { rep: 0 },
+      action: () => {
+        if (Game.charts.length === 0) return;
+        const n = Game.charts.length;
+        Game.gold += n * 40;
+        Game.rep += n * 4;
+        Game.charts = [];
+        addLog(`The Crown rewards you for ${n} new chart${n > 1 ? 's' : ''}.`, 'good');
+        showToast(`Charts reported: +${n * 40}g, +${n * 4} reputation`);
+        updateHUD(); checkQuests();
+      },
+      stay: true,
+    });
+    if (Game.rep >= 15 && !Game.quests.chart3)
+      opts.push({ label: "Accept the commission: chart three islands", req: { rep: 15 }, hint: "+10 reputation, +100g",
+        action: () => { Game.quests.chart3 = 'active'; addLog('Commission accepted: chart three islands.', 'good'); }, stay: true });
+    if (Game.rep >= 25 && !Game.quests.chart5)
+      opts.push({ label: "Accept the commission: chart five islands", req: { rep: 25 }, hint: "+15 reputation, +150g",
+        action: () => { Game.quests.chart5 = 'active'; addLog('Commission accepted: chart five islands.', 'good'); }, stay: true });
+    if (Game.rep >= 35 && !Game.quests.fortune)
+      opts.push({ label: "Accept the challenge: amass 1,000 gold", req: { rep: 35 }, hint: "+15 reputation",
+        action: () => { Game.quests.fortune = 'active'; addLog('Challenge accepted: amass a thousand gold.', 'good'); }, stay: true });
+    opts.push({ label: "What is my standing in the city?", next: 'herald_status' });
+    opts.push({ label: "Nothing to declare." });
+    return {
+      who: "Fra Diogo", role: "Royal Herald", portrait: "\u{1F4DC}",
+      text: "Fra Diogo unrolls a parchment with ceremonial slowness. \"The Crown rewards those who extend the map of the world, citizen. Have you anything to declare?\"",
+      options: opts,
     };
-  });
+  },
 
-  updateInventory();
-  panel.style.display = 'block';
-  Game.dialogOpen = true;
-  setAnchored(true);
+  herald_status: () => ({
+    who: "Fra Diogo", role: "Royal Herald", portrait: "\u{1F4DC}",
+    text: `He studies you over the parchment. "Reputation ${Math.floor(Game.rep)}. In the city you are known as — ${repTitle(Game.rep)}. Keep discovering, keep trading, and the King himself will learn your name."`,
+    options: [{ label: "He will.", next: 'herald' }],
+  }),
 
-  document.getElementById('tpClose').onclick = () => {
-    panel.style.display = 'none';
-    Game.dialogOpen = false;
-    Game.currentPort = null;
-    setAnchored(false);
+  // ---------------- Lisbon: the dockmaster ----------------
+  dockmaster: () => ({
+    who: "Zé Caolho", role: "Dockmaster", portrait: "⚓",
+    text: "Zé spits into the water. \"Work? There's always work. Hauling cargo pays silver and ruins your back. You want work, or news?\"",
+    options: [
+      {
+        label: "Haul cargo on the docks (10 minutes)",
+        hint: "8–16g, mostly honest",
+        action: () => {
+          spendMinutes(10);
+          const r = Math.random();
+          if (r < 0.08) {
+            Game.gold = Math.max(0, Game.gold - 5);
+            addLog("A crate slipped. You paid for the damage out of your wage.", 'bad');
+            showToast("A crate slipped — you lost 5g");
+          } else if (r < 0.12) {
+            Game.rep += 1;
+            addLog("You worked twice as hard as any man on the quay. People noticed.", 'good');
+            showToast("An honest day's work — +1 reputation");
+          } else {
+            const pay = 8 + Math.floor(Math.random() * 9);
+            Game.gold += pay;
+            Game.stats.jobs++;
+            addLog(`You hauled cargo until your hands bled. +${pay}g`);
+            showToast(`Hauled cargo: +${pay}g`);
+          }
+          updateHUD();
+        },
+        stay: true,
+      },
+      { label: "What news from the sea?", next: 'dockmaster_news' },
+      { label: "Not today." },
+    ],
+  }),
+
+  dockmaster_news: () => ({
+    who: "Zé Caolho", role: "Dockmaster", portrait: "⚓",
+    text: `"Same as ever, camarada. ${RUMORS[Math.floor(Math.random() * RUMORS.length)]} And keep an eye on the sky — a green horizon means turn home."`,
+    options: [{ label: "I'll remember that.", next: 'dockmaster' }],
+  }),
+
+  // ---------------- Lisbon: your house ----------------
+  home: () => ({
+    who: "Your House", role: "Rua dos Douradores", portrait: "\u{1F3E0}",
+    text: "A chest, a straw mattress, a shelf of your mother's pottery. From here the whole city is yours to conquer — or to fail in.",
+    options: [
+      { label: "Save your life (open the save book)", action: () => { closeDialog(); openSavePanel('save'); } },
+      { label: "Look over your chart", next: 'home_chart' },
+      { label: "Step outside." },
+    ],
+  }),
+
+  home_chart: () => {
+    const names = [...Game.discovered];
+    return {
+      who: "Your Chart", role: "What you have seen", portrait: "\u{1F5FA}️",
+      text: names.length <= 1
+        ? "Your chart is nearly blank — Lisbon, and nothing else. The world is waiting."
+        : "Charted so far: " + names.join(", ") + ".",
+      options: [{ label: "Put it away.", next: 'home' }],
+    };
+  },
+
+  // ---------------- Foreign islands: the trade post ----------------
+  trade_post: (ctx) => {
+    const port = ctx && ctx.port;
+    if (!port || !port.def) {
+      return {
+        who: "Trading Post", role: "Empty shore", portrait: "\u{1F3DD}️",
+        text: "There is no one here to trade with. The sand is bare.",
+        options: [{ label: "Walk away." }],
+      };
+    }
+    const localKey = port.def.type;
+    const local = TRADE_GOODS[localKey];
+    const localPrice = Math.floor(local.buyPrice * 0.8);
+    const opts = [
+      { label: `Buy 1 ${local.name} — ${localPrice}g (local price)`, req: { gold: localPrice }, effect: { gold: -localPrice, cargo: { [localKey]: 1 } }, stay: true },
+      { label: `Buy 5 ${local.name} — ${localPrice * 5}g`, req: { gold: localPrice * 5 }, effect: { gold: -localPrice * 5, cargo: { [localKey]: 5 } }, stay: true },
+    ];
+    for (const key of Object.keys(TRADE_GOODS)) {
+      if (key === localKey) continue;
+      const g = TRADE_GOODS[key];
+      opts.push({ label: `Buy 1 ${g.name} — ${g.buyPrice}g`, req: { gold: g.buyPrice }, effect: { gold: -g.buyPrice, cargo: { [key]: 1 } }, stay: true });
+    }
+    opts.push({ label: "Trade is done." });
+    return {
+      who: "The Natives", role: port.def.name, portrait: "\u{1F9F1}",
+      text: `The people of ${port.def.name} spread bolts of cloth and baskets of ${local.name.toLowerCase()} on the sand, eyeing your ship with open curiosity. They trade gladly — ${local.name.toLowerCase()} is theirs to sell cheap, and they will take your silver for anything else you fancy.`,
+      options: opts,
+    };
+  },
+};
+// ============================================================
+//  SEA EVENTS - trouble finds you on the water
+// ============================================================
+const SEA_EVENTS = [
+  {
+    id: 'storm', weight: 3,
+    build: () => ({
+      who: "The Storm", role: "A green horizon", portrait: "⛈️",
+      text: "The sky turns green-black. Waves like cathedral walls. Your crew looks to you, and nobody says the word 'pray' out loud.",
+      options: [
+        { label: "Ride it out", roll: { chance: 0.55,
+            good: { effect: { food: -12, morale: -5 }, text: "You come through soaked, half-drowned and grinning. The ship holds." },
+            bad: { death: "Your ship was broken on the rocks in the storm." } } },
+        { label: "Reef the sails and run before it", effect: { food: -6, time: 40 },
+          roll: { chance: 0.85,
+            good: { effect: { morale: -3 }, text: "You run for hours until the sky clears. Costly — but alive." },
+            bad: { death: "A following sea pooped her, and the sea took the ship." } } },
+        { label: "Pray to São Vicente", roll: { chance: 0.6,
+            good: { effect: { morale: 5 }, text: "The patron saint of Lisbon hears you. The wind turns aside at dusk." },
+            bad: { effect: { food: -20 }, text: "The storm does not care for prayers. You lose a third of your provisions." } } },
+      ],
+    }),
+  },
+  {
+    id: 'disease', weight: 2,
+    build: () => ({
+      who: "Sickness", role: "In the hold", portrait: "\u{1F912}",
+      text: "Three men are down with the flux and a fourth's gums are bleeding. The surgeon shakes his head. Scurvy, if it goes unchecked.",
+      options: [
+        { label: "Ration the good food to the sick", roll: { chance: 1,
+            good: { effect: { food: -15, morale: 3 }, text: "You feed them citrus and ship's biscuit. The sickness breaks within the week." } } },
+        { label: "Press on regardless", roll: { chance: 0.65,
+            good: { effect: { crew: -1, morale: -10 }, text: "One man dies and is buried at sea. The rest sicken but live." },
+            bad: { death: "Scurvy took you before the shore did." } } },
+        { label: "Put in at the nearest island for fresh water", roll: { chance: 1,
+            good: { effect: { time: 35, morale: 5 }, text: "Three days ashore with fruit and clean water. The crew recovers." } } },
+      ],
+    }),
+  },
+  {
+    id: 'pirates', weight: 2, when: () => Game.rep >= 20,
+    build: () => {
+      const fight = Game.crew >= 10 ? 0.6 : Game.crew >= 5 ? 0.4 : 0.22;
+      return {
+        who: "Corsairs", role: "Sails on the horizon", portrait: "\u{1F3F4}",
+        text: "A black-hulled corsair, her rails thick with armed men, comes up fast from windward. Your crew seizes whatever is to hand.",
+        options: [
+          { label: "Fight", roll: { chance: fight,
+              good: { effect: { gold: 140, morale: 10 }, text: "You pour a broadside into her and she strikes her colours. Her strongbox is yours." },
+              bad: { death: "The corsairs boarded you. Lisbon never learned your fate." } } },
+          { label: "Show them your heels", roll: { chance: 0.6,
+              good: { text: "You run three hours before the wind and lose her in the dark." },
+              bad: { effect: { cargo: 'all' }, text: "They rake you from astern and take the cargo, but your ship is swift enough to live." } } },
+          { label: "Pay tribute — 90g", req: { gold: 90 }, effect: { gold: -90 },
+            roll: { chance: 1, good: { text: "They count the silver, jeer, and let you pass. Humiliation is cheaper than a coffin." } } },
+        ],
+      };
+    },
+  },
+  {
+    id: 'mutiny', weight: 3, when: () => Game.morale < 32 && Game.crew >= 3,
+    build: () => ({
+      who: "Mutiny", role: "On the forecastle", portrait: "\u{1F5E1}️",
+      text: "The hands are clustered aft with a man named Álvaro at their head. \"We've had our fill of empty holds and short rations, captain. Either share the fortune — or step into the boat.\"",
+      options: [
+        { label: "Give them the cargo", roll: { chance: 1,
+            good: { effect: { cargo: 'all', morale: 35 }, text: "They divide the cargo among themselves and, strangely, cheer you. You are poorer and alive." } } },
+        { label: "Fight it out", roll: { chance: 0.45,
+            good: { effect: { morale: -10 }, text: "You break the ring alone. Álvaro is clapped in irons, and the crew slinks back to work." },
+            bad: { death: "Your own crew put you in a boat with no oars and no water." } } },
+        { label: "Promise them shares — 100g", req: { gold: 100 }, effect: { gold: -100, morale: 25 },
+          roll: { chance: 1, good: { text: "You pay a month's wage in advance. The men grin, shrug, and take to the sheets." } } },
+      ],
+    }),
+  },
+  {
+    id: 'calm', weight: 2,
+    build: () => ({
+      who: "Dead Calm", role: "Not a breath of wind", portrait: "\u{1F32A}️",
+      text: "The sails hang like laundry. The sea is a mirror and the sun is a hammer. Nothing moves but the flies.",
+      options: [
+        { label: "Wait it out", roll: { chance: 1, good: { effect: { time: 30, food: -5 }, text: "An hour later the breeze returns, mocking you." } } },
+        { label: "Take to the boats and tow her", roll: { chance: 1, good: { effect: { time: 15, morale: -6 }, text: "The men row until their hands bleed. You make miserable progress." } } },
+        { label: "Tell stories and pass the wine", roll: { chance: 1, good: { effect: { morale: 8, time: 10 }, text: "For an hour your crew remembers they are men, not oars." } } },
+      ],
+    }),
+  },
+  {
+    id: 'birds', weight: 2,
+    build: () => {
+      const undisc = PORTS.filter(p => !p.discovered && p.def.type !== 'home');
+      const sx = playerShip ? playerShip.position.x : (Game.ship ? Game.ship.x : 0);
+      const sz = playerShip ? playerShip.position.z : (Game.ship ? Game.ship.z : 0);
+      let hint = "Nothing but gulls and empty water.";
+      if (undisc.length) {
+        let best = undisc[0], bd = 1e9;
+        for (const p of undisc) {
+          const d = Math.hypot(p.position.x - sx, p.position.z - sz);
+          if (d < bd) { bd = d; best = p; }
+        }
+        hint = `A flight of land birds crosses your bow to the ${bd < 900 ? 'south-west' : 'east'}. ${best.def.name} lies within a day's sail of here.`;
+      }
+      return {
+        who: "Landbirds", role: "A sign", portrait: "\u{1F426}",
+        text: `Birds and a plank of driftwood — sure signs of land. ${hint}`,
+        options: [{ label: "Mark it on the chart.", roll: { chance: 1, good: { text: "You note the bearing carefully. Every sailor knows: birds before landmarks." } } }],
+      };
+    },
+  },
+  {
+    id: 'derelict', weight: 1,
+    build: () => ({
+      who: "A Derelict", role: "Sails in rags", portrait: "\u{1F3F4}",
+      text: "A ship, abandoned, rolling in the swell. Her holds are shut and her name is painted over. No soul aboard — or so it seems.",
+      options: [
+        { label: "Board her", roll: { chance: 0.5,
+            good: { effect: { gold: 160, morale: 5 }, text: "Casks of wine, a chest of coin, and a spare mainsail. Providence, or piracy — you decide not to ask." },
+            bad: { death: "Plague sailed home in her timbers. It found you first." } } },
+        { label: "Leave her be", roll: { chance: 1, good: { effect: { morale: -2 }, text: "Some men say she is cursed. Your crew mutters, but you sail on." } } },
+      ],
+    }),
+  },
+  {
+    id: 'friendly', weight: 2,
+    build: () => ({
+      who: "A Portuguese Caravel", role: "Same flag as you", portrait: "⛵",
+      text: "A caravel under the royal standard hails you. Her master would swap news for news — and wine for wine.",
+      options: [
+        { label: "Share a round — 10g", req: { gold: 10 }, effect: { gold: -10, morale: 10 },
+          roll: { chance: 1, good: { text: "An hour of gossip, songs, and honest Portuguese wine. Your crew loves you for it." } } },
+        { label: "Buy his news — 25g", req: { gold: 25 }, effect: { gold: -25 },
+          roll: { chance: 1, good: { text: `He sketches a coast on your palm: "${RUMORS[Math.floor(Math.random() * RUMORS.length)]}"` } } },
+        { label: "Sail on", roll: { chance: 1, good: { text: "You dip your colours and keep your own company." } } },
+      ],
+    }),
+  },
+  {
+    id: 'waterspout', weight: 1,
+    build: () => ({
+      who: "Waterspout", role: "The sea reaching up", portrait: "\u{1F32A}️",
+      text: "A grey finger of water drops from the clouds half a league off, walking toward you across the swell.",
+      options: [
+        { label: "Put the helm hard over", roll: { chance: 0.65,
+            good: { effect: { morale: 5 }, text: "She spins away and the spout passes astern, close enough to hear it roar." },
+            bad: { death: "It took the mast, and the mast took the ship." } } },
+        { label: "Fire a shot across its path", roll: { chance: 0.5,
+            good: { text: "The gun breaks it, say the old sailors. The old sailors, for once, are right." },
+            bad: { death: "The shot did nothing, and the spout did everything." } } },
+      ],
+    }),
+  },
+];
+// ============================================================
+//  STREET EVENTS - Lisbon talks to you
+// ============================================================
+const STREET_EVENTS = [
+  {
+    id: 'beggar', weight: 3,
+    build: () => ({
+      who: "A Beggar", role: "At the church door", portrait: "\u{1F9D1}",
+      text: "A one-legged old soldier holds out a chipped bowl. \"For the love of God, citizen — a few réis. I carried a pike at Arzila once.\"",
+      options: [
+        { label: "Give him 5g", req: { gold: 5 }, effect: { gold: -5, rep: 1 },
+          roll: { chance: 1, good: { text: "He blesses you by three names. Two passers-by see your charity and remember it." } } },
+        { label: "Give him nothing", roll: { chance: 1, good: { text: "He spits — badly, and short. You walk on with your coin and a stain on your name." } } },
+        { label: "\"Arzila? Then you know how to fight.\" Offer him work at sea", req: { rep: 10 },
+          roll: { chance: 0.5, good: { effect: { crew: 1, morale: 3 }, text: "The old man laughs until he cries, and takes the wage. One more hand aboard." },
+                            bad: { text: "He declines, gently: \"The sea has had enough of me, and I of her.\"" } } },
+      ],
+    }),
+  },
+  {
+    id: 'priest', weight: 2,
+    build: () => ({
+      who: "A Dominican Friar", role: "Preaching at the corner", portrait: "\u{1F9D6}",
+      text: "\"The infidel holds the spice of the world while Christian men go hungry! Will you carry the faith, or only your goods?\"",
+      options: [
+        { label: "Ask for his blessing", roll: { chance: 1, good: { effect: { morale: 6 }, text: "He blesses you and your ship by name. The crew would have liked that, had they heard it." } } },
+        { label: "Argue that trade feeds more souls than sermons", roll: { chance: 0.5,
+            good: { effect: { rep: 1 }, text: "He blinks, then laughs and calls you a theologian. The crowd applauds." },
+            bad: { text: "He calls you a Pharisee and the crowd shuffles away, unimpressed." } } },
+        { label: "Walk on", roll: { chance: 1, good: { text: "Sermons are free, and so is the air. Neither fills a hold." } } },
+      ],
+    }),
+  },
+  {
+    id: 'pickpocket', weight: 2,
+    build: () => ({
+      who: "A Crowd", role: "The Rua Nova", portrait: "\u{1F46A}",
+      text: "The press of bodies at the fish stalls is thicker than usual. A shoulder bumps yours — hard. Your purse feels suddenly light.",
+      options: [
+        { label: "Seize the boy by the collar", roll: { chance: 0.6,
+            good: { effect: { gold: 8 }, text: "You catch a cutpurse of eleven summers, recover your purse and his day's takings. The crowd approves loudly." },
+            bad: { effect: { gold: -10 }, text: "He squirms free and a friend's knife opens your belt purse from behind. You lose 10g to the lesson." } } },
+        { label: "Let him go", roll: { chance: 1, good: { effect: { gold: -5 }, text: "He vanishes with 5g. You tell yourself it was the cost of wisdom." } } },
+        { label: "Shout for the watch", roll: { chance: 1, good: { effect: { rep: 1, time: 15 }, text: "The constable thanks you and the street feels safer for an hour. The thief is long gone." } } },
+      ],
+    }),
+  },
+  {
+    id: 'guard', weight: 2,
+    build: () => ({
+      who: "A Royal Guard", role: "At the city gate", portrait: "\u{1F6E1}️",
+      text: "\"Papers, citizen. And your business beyond the walls — if you have any. The Crown takes an interest in ships these days.\"",
+      options: [
+        { label: "Show your papers and chat", roll: { chance: 1, good: { effect: { time: 10 }, text: "He waves you through and complains about his feet. Everyone complains about their feet." } } },
+        { label: "Slip him 5g to look the other way about something", req: { gold: 5 }, effect: { gold: -5 },
+          roll: { chance: 0.75, good: { effect: { rep: 1 }, text: "He pockets it and tells you which merchant is dodging customs. Useful knowledge." },
+                            bad: { effect: { rep: -2 }, text: "He reports your bribery. It costs you standing in the quarter." } } },
+        { label: "Say you have nothing to declare", roll: { chance: 1, good: { text: "\"Nobody ever does,\" he mutters, and lets you pass." } } },
+      ],
+    }),
+  },
+  {
+    id: 'old_sailor', weight: 2,
+    build: () => ({
+      who: "An Old Sailor", role: "Mending nets on the quay", portrait: "\u{1F9D3}",
+      text: "\"You've the look of a man who's going to sea, or wishes he had. I sailed with Dias himself. For thirty pieces I'll tell you where the fish — and the fortune — run thick.\"",
+      options: [
+        { label: "Buy his knowledge — 30g", req: { gold: 30 }, effect: { gold: -30 },
+          roll: { chance: 1, good: { text: `He taps your chart with a tar-stained finger: "${RUMORS[Math.floor(Math.random() * RUMORS.length)]}"` } } },
+        { label: "Buy him a drink instead — 5g", req: { gold: 5 }, effect: { gold: -5, morale: 3 },
+          roll: { chance: 1, good: { text: "Wine loosens the same tongue as silver, and costs less. He talks for an hour." } } },
+        { label: "Thank him and move on", roll: { chance: 1, good: { text: "\"Cheap men die rich,\" he calls after you. \"Or alone.\"" } } },
+      ],
+    }),
+  },
+  {
+    id: 'errand', weight: 2,
+    build: () => ({
+      who: "A Merchant's Wife", role: "At the market", portrait: "\u{1F9D5}",
+      text: "\"You there — strong back, honest face. Carry this crate to my husband's stall at the customs house and there's eight réis in it for you.\"",
+      options: [
+        { label: "Carry the crate", roll: { chance: 1, good: { effect: { gold: 8, time: 10, rep: 1 }, text: "The crate is heavier than it looks. The husband pays, and the wife tells three people about your honesty." } } },
+        { label: "Say you're otherwise employed", roll: { chance: 1, good: { text: "\"Everyone is,\" she sighs, and hails another passer-by." } } },
+      ],
+    }),
+  },
+  {
+    id: 'child', weight: 1,
+    build: () => ({
+      who: "A Lost Child", role: "By the docks", portrait: "\u{1F476}",
+      text: "A girl of five, howling, clutching a wooden boat. \"Mama! MAMA!\" The docks are no place for a child alone.",
+      options: [
+        { label: "Find her mother", roll: { chance: 1, good: { effect: { rep: 2, time: 15 }, text: "You carry her from stall to stall until a fishwife snatches her up, weeping. Half the street saw your kindness." } } },
+        { label: "Walk away — not your affair", roll: { chance: 1, good: { effect: { rep: -1 }, text: "You tell yourself there are watches and priests for this. It sits with you all the same." } } },
+      ],
+    }),
+  },
+  {
+    id: 'fortune', weight: 1,
+    build: () => ({
+      who: "A Fortune Teller", role: "A curtained doorway", portrait: "\u{1F52E}",
+      text: "\"Cross my palm with silver and I'll read what the Fates spin for you, handsome.\" Her eyes are the wrong colours.",
+      options: [
+        { label: "Pay 10g for a reading", req: { gold: 10 }, effect: { gold: -10 },
+          roll: { chance: 0.5, good: { effect: { morale: 8 }, text: "\"You will die in bed, old and rich.\" The words warm you for days." },
+                            bad: { effect: { morale: -8 }, text: "\"You will die far from Lisbon, in water.\" She laughs when you flinch. Probably a lie. Probably." } } },
+        { label: "Refuse", roll: { chance: 1, good: { text: "\"Then the Fates will read you for free,\" she says, and shuts the curtain." } } },
+      ],
+    }),
+  },
+  {
+    id: 'recruiter', weight: 2, when: () => !Game.ship,
+    build: () => ({
+      who: "A Navy Recruiter", role: "Outside the tavern", portrait: "\u{1F3DB}️",
+      text: "\"The King's navy takes any man who can hold a pike. Room, salt pork, and glory — such as it is. Sign, and you'll never want for a ship.\"",
+      options: [
+        { label: "Sign on", roll: { chance: 1, good: { effect: { gold: 30, rep: 2, time: 60 }, text: "Three months as a rating on a royal carrack. You see the world and earn 30g — and your own plans wait." } } },
+        { label: "\"I mean to own my ship, not serve on another's.\"", roll: { chance: 1, good: { effect: { rep: 1, morale: 4 }, text: "He looks you up and down, then salutes. \"Then God help you, citizen. You'll need Him.\"" } } },
+      ],
+    }),
+  },
+];
+
+function triggerSeaEvent() {
+  if (Game.phase !== 'play' || !Game.ship || Player.mode === 'foot') return;
+  const pool = SEA_EVENTS.filter(e => !e.when || e.when());
+  const total = pool.reduce((s, e) => s + e.weight, 0);
+  let r = Math.random() * total;
+  for (const e of pool) { r -= e.weight; if (r <= 0) { renderDialog(e.build()); return; } }
+}
+
+function triggerStreetEvent() {
+  if (Game.phase !== 'play' || Player.mode !== 'foot') return;
+  if (!Player.island || Player.island.def.type !== 'home') return;
+  const pool = STREET_EVENTS.filter(e => !e.when || e.when());
+  const total = pool.reduce((s, e) => s + e.weight, 0);
+  let r = Math.random() * total;
+  for (const e of pool) { r -= e.weight; if (r <= 0) { renderDialog(e.build()); return; } }
+}
+// ============================================================
+//  INTERACTION - the [E] prompt
+// ============================================================
+function deckLocalToWorld(lx, lz) {
+  const h = Ship.heading;
+  const s = SHIP_CLASSES[Game.ship.cls].scale;
+  return {
+    x: playerShip.position.x + (lx * s) * Math.cos(h) + (lz * s) * Math.sin(h),
+    z: playerShip.position.z + -(lx * s) * Math.sin(h) + (lz * s) * Math.cos(h),
   };
 }
 
-function updateInventory() {
-  const invDiv = document.getElementById('inventory');
-  const entries = Object.entries(Game.inventory).filter(([k, v]) => v > 0);
-  if (entries.length === 0) {
-    invDiv.textContent = 'Cargo hold: empty';
+function currentTarget() {
+  if (Player.mode === 'helm') {
+    const near = nearestIslandWithin(70);
+    if (near && Math.abs(Ship.speed) < 1.2) {
+      return { label: `Put in to shore at ${near.def.name}`, use: () => goAshore(near) };
+    }
+    return { label: 'Step back from the wheel', use: () => {
+      Player.mode = 'deck';
+      Player.lookYaw = 0; Player.lookPitch = 0;
+      showToast('You leave the wheel — the ship drifts');
+    } };
+  }
+
+  if (Player.mode === 'deck') {
+    const wheel = deckLocalToWorld(0, -1.6);
+    if (Math.hypot(wheel.x - Player.x, wheel.z - Player.z) < 2.4) {
+      return { label: 'Take the helm', use: () => {
+        Player.mode = 'helm';
+        Player.lookYaw = 0; Player.lookPitch = 0;
+        showToast('At the helm — W hoists sail, A/D steers');
+      } };
+    }
+    if (dockedAt && Math.hypot(playerShip.position.x - Player.x, playerShip.position.z - Player.z) < 8) {
+      return { label: `Go ashore at ${dockedAt.def.name}`, use: () => goAshore(dockedAt) };
+    }
+    return null;
+  }
+
+  // On foot: boarding your ship
+  if (Game.ship && dockedAt) {
+    const d = Math.hypot(playerShip.position.x - Player.x, playerShip.position.z - Player.z);
+    if (d < 9) return { label: 'Board your ship', use: boardShip };
+  }
+
+  // On foot: nearest interactable
+  let best = null, bestD = 1e9;
+  for (const it of interactables) {
+    const d = Math.hypot(it.x - Player.x, it.z - Player.z);
+    if (d < it.radius && d < bestD) { best = it; bestD = d; }
+  }
+  if (best) return { label: best.label, use: best.onUse };
+  return null;
+}
+
+function tryInteract() {
+  const t = currentTarget();
+  if (t) t.use();
+}
+
+function nearestIslandWithin(dist) {
+  if (!playerShip) return null;
+  let best = null, bd = 1e9;
+  for (const p of PORTS) {
+    const d = Math.hypot(p.position.x - playerShip.position.x, p.position.z - playerShip.position.z);
+    if (d < p.maxR + dist && d < bd) { bd = d; best = p; }
+  }
+  return best;
+}
+
+function goAshore(port) {
+  dockedAt = port;
+  Player.island = port;
+  Player.mode = 'foot';
+  const dx = playerShip.position.x - port.position.x;
+  const dz = playerShip.position.z - port.position.z;
+  const d = Math.hypot(dx, dz) || 1;
+  const coast = port.radiusAt(Math.atan2(dz, dx)) + 5;
+  Player.x = port.position.x + (dx / d) * coast;
+  Player.z = port.position.z + (dz / d) * coast;
+  Player.y = Math.max(0.4, port.heightAt(Player.x, Player.z)) + 0.1;
+  Player.lookYaw = Math.atan2(dx / d, dz / d);
+  Player.lookPitch = 0;
+  Ship.speed = 0;
+  Ship.anchored = true;
+
+  if (!port.discovered) discoverIsland(port);
+  addLog(`You put in to shore at ${port.def.name}.`);
+  showToast(`Ashore at ${port.def.name}`);
+
+  if (port.def.type === 'home') {
+    deliverReadyCommissions();
+    autosave();
+  }
+  updateHUD();
+}
+
+function boardShip() {
+  Player.mode = 'deck';
+  Player.island = null;
+  dockedAt = null;
+  const p = deckLocalToWorld(0, 2.2);
+  Player.x = p.x;
+  Player.z = p.z;
+  Player.y = playerShip.position.y + SHIP_CLASSES[Game.ship.cls].scale * 1.85 + 1.7;
+  Player.lookYaw = Ship.heading + Math.PI;
+  Player.lookPitch = 0;
+  Ship.anchored = false;
+  showToast('Aboard your ship — find the wheel');
+  updateHUD();
+}
+
+function deliverReadyCommissions() {
+  if (Player.mode !== 'foot') return;
+  for (let i = Game.commissions.length - 1; i >= 0; i--) {
+    const c = Game.commissions[i];
+    if (!c.ready) continue;
+    Game.commissions.splice(i, 1);
+    if (Game.ship) {
+      Game.gold += Math.floor(SHIP_CLASSES[Game.ship.cls].price * 0.25);
+      addLog('Your old ship is broken up for timber and nails.');
+    }
+    spawnShipInLisbon(c.cls);
+    addLog(`Mestre Nuno launches your ${SHIP_CLASSES[c.cls].name}. She waits at the pier.`, 'good');
+    showToast(`Your ${SHIP_CLASSES[c.cls].name} is ready at the pier!`, 4000);
+  }
+  updateHUD();
+}
+// ============================================================
+//  MOVEMENT & SHIP PHYSICS
+// ============================================================
+let elapsed = 0;
+
+function moveInput() {
+  let f = (keys['w'] ? 1 : 0) - (keys['s'] ? 1 : 0);
+  let s = (keys['d'] ? 1 : 0) - (keys['a'] ? 1 : 0);
+  if (touch.active) { f = -touch.y; s = touch.x; }
+  return { f, s };
+}
+
+function updateFoot(dt) {
+  const { f, s } = moveInput();
+  const run = keys['shift'] ? 7.2 : 4.3;
+  const yaw = Player.lookYaw;
+  const fx = -Math.sin(yaw), fz = -Math.cos(yaw);
+  const rx = Math.cos(yaw), rz = -Math.sin(yaw);
+  const nx = Player.x + (fx * f + rx * s) * run * dt;
+  const nz = Player.z + (fz * f + rz * s) * run * dt;
+
+  if (canStand(nx, nz)) { Player.x = nx; Player.z = nz; }
+  else {
+    if (canStand(nx, Player.z)) Player.x = nx;
+    if (canStand(Player.x, nz)) Player.z = nz;
+  }
+
+  // building collision
+  for (const c of solidCircles) {
+    const dx = Player.x - c.x, dz = Player.z - c.z;
+    const d = Math.hypot(dx, dz);
+    if (d < c.r && d > 0.001) {
+      Player.x = c.x + (dx / d) * c.r;
+      Player.z = c.z + (dz / d) * c.r;
+    }
+  }
+
+  const moving = (f !== 0 || s !== 0);
+  Player.bob += dt * (moving ? 9 : 0);
+  Player.y = groundY(Player.x, Player.z) + 1.7 + (moving ? Math.sin(Player.bob) * 0.045 : 0);
+}
+
+function updateDeckWalk(dt) {
+  const { f, s } = moveInput();
+  const sc = SHIP_CLASSES[Game.ship.cls].scale;
+  const h = Ship.heading;
+  const yaw = h + Math.PI + Player.lookYaw;
+  const fx = -Math.sin(yaw), fz = -Math.cos(yaw);
+  const rx = Math.cos(yaw), rz = -Math.sin(yaw);
+  const speed = 2.1;
+  let nx = Player.x + (fx * f + rx * s) * speed * dt;
+  let nz = Player.z + (fz * f + rz * s) * speed * dt;
+
+  // clamp to the deck (ship-local space)
+  const dx = nx - playerShip.position.x, dz = nz - playerShip.position.z;
+  const lx = dx * Math.cos(h) - dz * Math.sin(h);
+  const lz = dx * Math.sin(h) + dz * Math.cos(h);
+  const clx = Math.max(-2.1 * sc, Math.min(2.1 * sc, lx));
+  const clz = Math.max(-4.4 * sc, Math.min(4.4 * sc, lz));
+  nx = playerShip.position.x + clx * Math.cos(h) + clz * Math.sin(h);
+  nz = playerShip.position.z + -clx * Math.sin(h) + clz * Math.cos(h);
+
+  Player.x = nx; Player.z = nz;
+  const moving = (f !== 0 || s !== 0);
+  Player.bob += dt * (moving ? 7 : 0);
+  Player.y = playerShip.position.y + 1.85 * sc + 1.7 + (moving ? Math.sin(Player.bob) * 0.04 : 0);
+}
+
+function updateShipPhysics(dt) {
+  if (!Game.ship || !playerShip) return;
+  const cls = SHIP_CLASSES[Game.ship.cls];
+
+  if (Player.mode === 'helm') {
+    if (keys[' ']) { Ship.speed = 0; Ship.anchored = true; }
+    else {
+      Ship.anchored = false;
+      if (keys['w']) Ship.speed = Math.min(cls.maxSpeed, Ship.speed + cls.maxSpeed * 0.4 * dt);
+      else if (keys['s']) Ship.speed = Math.max(-1.5, Ship.speed - cls.maxSpeed * 0.5 * dt);
+      else Ship.speed *= (1 - 0.3 * dt);
+      const authority = 0.3 + 0.7 * Math.min(1, Math.abs(Ship.speed) / cls.maxSpeed);
+      if (keys['a']) Ship.heading += cls.turn * authority * dt;
+      if (keys['d']) Ship.heading -= cls.turn * authority * dt;
+    }
   } else {
-    invDiv.innerHTML = 'Cargo: ' + entries.map(([k, v]) => `${TRADE_GOODS[k].name} x${v}`).join(', ');
-  }
-}
-
-// Check win/lose conditions
-function checkGameEnd() {
-  // Win: discover all ports and return to Lisbon
-  const returnedHome = distance2D(shipGroup.position, PORTS[0].position) < PORTS[0].userData.islandRadius + 15;
-
-  if (Game.discoveries >= Game.totalPorts && returnedHome && Game.discoveries > 0) {
-    endGame(true);
+    Ship.speed *= (1 - 0.35 * dt);
   }
 
-  // Lose: supplies or crew depleted
-  if (Game.supplies <= 0 || Game.crew <= 0) {
-    endGame(false);
-  }
-}
+  const prevX = playerShip.position.x, prevZ = playerShip.position.z;
+  playerShip.position.x += Math.sin(Ship.heading) * Ship.speed * dt;
+  playerShip.position.z += Math.cos(Ship.heading) * Ship.speed * dt;
+  Game.ship.x = playerShip.position.x;
+  Game.ship.z = playerShip.position.z;
+  Game.ship.heading = Ship.heading;
+  Game.stats.distance += Math.hypot(playerShip.position.x - prevX, playerShip.position.z - prevZ);
 
-function endGame(won) {
-  Game.running = false;
-  const endScreen = document.getElementById('endScreen');
-  const title = document.getElementById('endTitle');
-  const summary = document.getElementById('endSummary');
-  const elapsedMin = Math.floor((Date.now() - Game.startTime) / 60000);
-
-  if (won) {
-    title.textContent = 'Victory!';
-    title.style.color = '#8bc34a';
-    summary.innerHTML = `
-      You have circumnavigated the known world and returned triumphant!<br><br>
-      <span class="big">Discoveries: ${Game.discoveries}/${Game.totalPorts}</span><br>
-      <span class="big">Gold: ${Math.floor(Game.gold)}</span><br>
-      <span class="big">Crew: ${Game.crew}</span><br>
-      Voyage time: ${elapsedMin} minutes
-    `;
-  } else {
-    title.textContent = 'The Sea Claims Another...';
-    title.style.color = '#cc3333';
-    summary.innerHTML = `
-      Your voyage has ended in tragedy on the open seas.<br><br>
-      Discoveries: ${Game.discoveries}/${Game.totalPorts}<br>
-      Gold accumulated: ${Math.floor(Game.gold)}<br>
-      The ocean is merciless to the unprepared.
-    `;
-  }
-
-  endScreen.style.display = 'flex';
-
-  // Close any dialog that was open when the voyage ended
-  Game.dialogOpen = false;
-  document.getElementById('discoveryPrompt').style.display = 'none';
-  document.getElementById('tradePanel').style.display = 'none';
-}
-
-// ============================================================
-//  MINIMAP
-// ============================================================
-const minimapCanvas = document.getElementById('minimapCanvas');
-const mmCtx = minimapCanvas.getContext('2d');
-const MM_SCALE = 0.25;  // world units to minimap pixels
-
-function drawMinimap() {
-  const cx = 100, cy = 100;
-  mmCtx.clearRect(0, 0, 200, 200);
-
-  // Background
-  mmCtx.fillStyle = '#1a3a5a';
-  mmCtx.beginPath();
-  mmCtx.arc(cx, cy, 98, 0, Math.PI * 2);
-  mmCtx.fill();
-
-  // Grid lines
-  mmCtx.strokeStyle = 'rgba(255,255,255,0.05)';
-  mmCtx.lineWidth = 1;
-  for (let i = 0; i < 4; i++) {
-    mmCtx.beginPath();
-    mmCtx.arc(cx, cy, 25 * (i + 1), 0, Math.PI * 2);
-    mmCtx.stroke();
-  }
-
-  // Ports - only ones you have actually charted
-  PORTS.forEach(port => {
-    if (!port.userData.discovered) return;   // unexplored: stay off the chart
-
-    const def = port.userData.def;
-    const px = cx + def.x * MM_SCALE * 0.3;
-    const py = cy - def.z * MM_SCALE * 0.3;  // flip z for top-down
-
-    mmCtx.fillStyle = '#' + def.color.toString(16).padStart(6, '0');
-    mmCtx.beginPath();
-    mmCtx.arc(px, py, 4, 0, Math.PI * 2);
-    mmCtx.fill();
-
-    mmCtx.strokeStyle = 'rgba(0,0,0,0.45)';
-    mmCtx.lineWidth = 1;
-    mmCtx.stroke();
-
-    mmCtx.fillStyle = 'rgba(240,230,208,0.75)';
-    mmCtx.font = '7px Georgia';
-    mmCtx.textAlign = 'center';
-    mmCtx.textBaseline = 'middle';
-    mmCtx.fillText(def.name.substring(0, 9), px, py + 9);
-  });
-
-  // Ship
-  const sx = cx + shipGroup.position.x * MM_SCALE * 0.3;
-  const sy = cy - shipGroup.position.z * MM_SCALE * 0.3;
-  mmCtx.save();
-  mmCtx.translate(sx, sy);
-  mmCtx.rotate(-Ship.heading + Math.PI);
-  mmCtx.fillStyle = '#ff4444';
-  mmCtx.beginPath();
-  mmCtx.moveTo(0, -5);
-  mmCtx.lineTo(3, 4);
-  mmCtx.lineTo(-3, 4);
-  mmCtx.closePath();
-  mmCtx.fill();
-  mmCtx.restore();
-}
-
-// ============================================================
-//  COMPASS UPDATE
-// ============================================================
-function updateCompass() {
-  const rose = document.getElementById('compassRose');
-  const angle = Ship.heading * (180 / Math.PI);
-  rose.setAttribute('transform', `rotate(${-angle} 50 50)`);
-}
-
-// ============================================================
-//  ANIMATION LOOP
-// ============================================================
-const clock = new THREE.Clock();
-let logTimer = 0;
-
-function animate() {
-  requestAnimationFrame(animate);
-  const dt = Math.min(clock.getDelta(), 0.05);
-  const elapsed = clock.elapsedTime;
-
-  if (!Game.running) {
-    renderer.render(scene, camera);
-    return;
-  }
-
-  // Ocean shader update
-  oceanMat.uniforms.time.value = elapsed;
-
-  // Ship controls
-  if (!Game.anchored) {
-    if (keys['w']) Ship.speed = Math.min(Ship.maxSpeed, Ship.speed + Ship.accel);
-    else if (keys['s']) Ship.speed = Math.max(Ship.minSpeed, Ship.speed - Ship.accel);
-    else Ship.speed *= Ship.drag;
-
-    if (Math.abs(Ship.speed) < 0.001) Ship.speed = 0;
-
-    if (keys['a']) Ship.heading += Ship.turnSpeed * (Ship.speed > 0 ? 1 : -1) * (0.5 + Math.abs(Ship.speed));
-    if (keys['d']) Ship.heading -= Ship.turnSpeed * (Ship.speed > 0 ? 1 : -1) * (0.5 + Math.abs(Ship.speed));
-
-    if (keys[' ']) {
+  // coast collision
+  for (const p of PORTS) {
+    const dx = playerShip.position.x - p.position.x;
+    const dz = playerShip.position.z - p.position.z;
+    const d = Math.hypot(dx, dz);
+    if (d > p.maxR + 10) continue;
+    const coast = p.radiusAt(Math.atan2(dz, dx)) + 3.5;
+    if (d < coast) {
+      const nx = d > 0.001 ? dx / d : 1;
+      const nz = d > 0.001 ? dz / d : 0;
+      playerShip.position.x = p.position.x + nx * coast;
+      playerShip.position.z = p.position.z + nz * coast;
+      if (Ship.speed > 0.4) { showToast('The surf! Come about!'); addLog('You feel the bottom under the keel.', 'bad'); }
       Ship.speed = 0;
     }
-
-    // Apply movement
-    shipGroup.position.x += Math.sin(Ship.heading) * Ship.speed;
-    shipGroup.position.z += Math.cos(Ship.heading) * Ship.speed;
-    shipGroup.rotation.y = Ship.heading;
-
-    // Keep the hull off the shoreline (the coast is irregular, so test per island)
-    for (const port of PORTS) {
-      const dx = shipGroup.position.x - port.position.x;
-      const dz = shipGroup.position.z - port.position.z;
-      const d = Math.hypot(dx, dz);
-      if (d > port.userData.islandRadius + 6) continue;
-      const coast = port.userData.coastRadius(Math.atan2(dz, dx)) + 2.5;
-      if (d < coast) {
-        const nx = d > 0.001 ? dx / d : 1;
-        const nz = d > 0.001 ? dz / d : 0;
-        shipGroup.position.x = port.position.x + nx * coast;
-        shipGroup.position.z = port.position.z + nz * coast;
-        if (Ship.speed > 0) Ship.speed = 0;
-      }
-    }
-
-    // Constrain to sea
-    const limit = SEA_SIZE * 0.85;
-    shipGroup.position.x = Math.max(-limit, Math.min(limit, shipGroup.position.x));
-    shipGroup.position.z = Math.max(-limit, Math.min(limit, shipGroup.position.z));
   }
 
-  // Ship rides the actual ocean surface
-  // (mirrors the displacement in the ocean vertex shader, where local Y maps to -worldZ)
-  const wx = shipGroup.position.x;
-  const wz = shipGroup.position.z;
+  const limit = 1020;
+  playerShip.position.x = Math.max(-limit, Math.min(limit, playerShip.position.x));
+  playerShip.position.z = Math.max(-limit, Math.min(limit, playerShip.position.z));
+
+  // sailing away clears the docked state
+  if (dockedAt) {
+    const dd = Math.hypot(playerShip.position.x - dockedAt.position.x, playerShip.position.z - dockedAt.position.z);
+    if (dd > dockedAt.maxR + 70) dockedAt = null;
+  }
+
+  // ride the waves
+  const wx = playerShip.position.x, wz = playerShip.position.z;
   const wY = waveHeightAt(wx, wz, elapsed);
-
   Ship.bobPhase += dt * 1.5;
-  const bobY = Math.sin(Ship.bobPhase) * 0.06;
-
-  shipGroup.position.y = wY + bobY;
-
-  // Pitch and roll follow the local wave slope
+  playerShip.position.y = wY + Math.sin(Ship.bobPhase) * 0.06;
+  playerShip.rotation.y = Ship.heading;
   const slopeZ = (waveHeightAt(wx, wz + 1.4, elapsed) - waveHeightAt(wx, wz - 1.4, elapsed)) / 2.8;
   const slopeX = (waveHeightAt(wx + 1.4, wz, elapsed) - waveHeightAt(wx - 1.4, wz, elapsed)) / 2.8;
-  const turnRoll = (keys['a'] || keys['d'] ? -Ship.speed * 0.12 : 0);
-  shipGroup.rotation.z = slopeX * 0.9 + turnRoll + Math.sin(Ship.bobPhase * 0.7) * 0.015;
-  shipGroup.rotation.x = -slopeZ * 0.9 + Ship.speed * 0.015;
+  const roll = (keys['a'] || keys['d']) && Player.mode === 'helm' ? -Ship.speed * 0.02 : 0;
+  playerShip.rotation.z = slopeX * 0.9 + roll + Math.sin(Ship.bobPhase * 0.7) * 0.015;
+  playerShip.rotation.x = -slopeZ * 0.9 + Ship.speed * 0.012;
 
-  // Wake sits on the water surface
-  const spd = Math.min(1, Math.abs(Ship.speed) / Ship.maxSpeed);
+  // wake
+  const spd = Math.min(1, Math.abs(Ship.speed) / cls.maxSpeed);
   wakeGroup.position.set(wx, wY + 0.04, wz);
   wakeGroup.rotation.y = Ship.heading;
   hullFoam.material.opacity = 0.42 + spd * 0.35;
   wakeTrail.material.opacity = spd * 0.7;
   wakeTrail.scale.y = 0.55 + spd * 0.75;
 
-  // Sun stays at a fixed bearing from the camera
-  sunSprite.position.set(camera.position.x + 300, 380, camera.position.z + 220);
-
-  // Sail animation - billow grows with speed
-  const billow = Math.min(1, Math.abs(Ship.speed) / Ship.maxSpeed);
-  shipGroup.userData.sails.forEach((s, i) => {
+  // sails billow with speed
+  const billow = spd;
+  playerShip.userData.sails.forEach((s, i) => {
     const pos = s.geo.attributes.position;
     for (let v = 0; v < pos.count; v++) {
       const x = pos.getX(v);
       const y = pos.getY(v);
-      const nx = x / (s.w / 2);
-      const edge = 1 - Math.min(1, Math.abs(nx));      // 0 at the edges, 1 at centre
+      const nx2 = x / (s.w / 2);
+      const edge = 1 - Math.min(1, Math.abs(nx2));
       const ripple = Math.sin(y * 1.1 + elapsed * 2.6 + i * 1.7) * 0.055;
       pos.setZ(v, edge * edge * (0.30 + billow * 0.85) + ripple * (0.35 + billow));
     }
@@ -1964,10 +2704,10 @@ function animate() {
     s.geo.computeVertexNormals();
   });
 
-  // Flag wave
-  if (shipGroup.userData.flag) {
-    const flag = shipGroup.userData.flag;
-    const fg = shipGroup.userData.flagGeo;
+  // flag
+  const flag = playerShip.userData.flag;
+  if (flag) {
+    const fg = playerShip.userData.flagGeo;
     const fp = fg.attributes.position;
     for (let v = 0; v < fp.count; v++) {
       const x = fp.getX(v);
@@ -1980,175 +2720,607 @@ function animate() {
     flag.rotation.y = Math.sin(elapsed * 2.2) * 0.18;
   }
 
-  // Clouds drift + wrap into the box centred on the camera
-  clouds.forEach(c => {
-    c.position.x += c.userData.driftSpeed;
+  // wake only when moving
+  wakeGroup.visible = spd > 0.05;
+}
+// ============================================================
+//  CAMERA RIG (first person)
+// ============================================================
+function updateCameraRig(dt) {
+  if (Player.mode === 'helm' && playerShip) {
+    const h = Ship.heading;
+    const s = SHIP_CLASSES[Game.ship.cls].scale;
+    // the helmsman stands on the quarterdeck, a little to port of the wheel so the
+    // mainmast does not sit dead centre in his face; eye height stays human
+    const lx = -0.55 * s, lz = -2.4 * s;
+    const wx = playerShip.position.x + lx * Math.cos(h) + lz * Math.sin(h);
+    const wz = playerShip.position.z - lx * Math.sin(h) + lz * Math.cos(h);
+    const eyeY = Math.max(1.85 * s + 1.7, 3.28 * s + 1.15);
+    camera.position.set(wx, playerShip.position.y + eyeY, wz);
+    camera.rotation.y = h + Math.PI + Player.lookYaw;
+    camera.rotation.x = Player.lookPitch;
+    camera.rotation.z = playerShip.rotation.z * 0.35;
+  } else if (Player.mode === 'deck' && playerShip) {
+    camera.position.set(Player.x, Player.y, Player.z);
+    camera.rotation.y = Ship.heading + Math.PI + Player.lookYaw;
+    camera.rotation.x = Player.lookPitch;
+    camera.rotation.z = playerShip.rotation.z * 0.3;
+  } else {
+    camera.position.set(Player.x, Player.y, Player.z);
+    camera.rotation.y = Player.lookYaw;
+    camera.rotation.x = Player.lookPitch;
+    camera.rotation.z = 0;
+  }
+}
+
+// ============================================================
+//  DAY / NIGHT
+// ============================================================
+const DAY_TOP = new THREE.Color(0x2f74b8), NIGHT_TOP = new THREE.Color(0x060d1a);
+const DAY_BOT = new THREE.Color(0xc4dcee), NIGHT_BOT = new THREE.Color(0x1a2a3a);
+const DUSK = new THREE.Color(0xe8a05a);
+const tmpTop = new THREE.Color(), tmpBot = new THREE.Color();
+
+function updateDayNight() {
+  const hour24 = (Game.gameMinutes / 60) % 24;
+  const ang = ((hour24 - 6) / 24) * Math.PI * 2;
+  const sunH = Math.sin(ang);
+  const dayF = Math.max(0, sunH);
+
+  const R = 420;
+  sunLight.position.set(
+    camera.position.x + Math.cos(ang) * R * 0.55,
+    sunH * R,
+    camera.position.z + R * 0.3
+  );
+  sunLight.target.position.copy(camera.position);
+  sunLight.intensity = 0.12 + 2.0 * dayF;
+  ambient.intensity = 0.22 + 0.55 * dayF;
+  hemiLight.intensity = 0.18 + 0.55 * dayF;
+
+  starMat.opacity = Math.max(0, Math.min(1, -sunH * 1.6));
+  stars.position.copy(camera.position);
+
+  tmpTop.lerpColors(NIGHT_TOP, DAY_TOP, dayF);
+  tmpBot.lerpColors(NIGHT_BOT, DAY_BOT, dayF);
+  const dusk = Math.max(0, 1 - Math.abs(sunH) * 2.6);
+  tmpBot.lerp(DUSK, dusk * 0.5);
+  skyMat.uniforms.topColor.value.copy(tmpTop);
+  skyMat.uniforms.bottomColor.value.copy(tmpBot);
+  scene.fog.color.copy(tmpBot).lerp(new THREE.Color(0x9db8cc), 0.35);
+
+  sunSprite.position.set(
+    camera.position.x + Math.cos(ang) * 380,
+    sunH * 380 + 30,
+    camera.position.z + 220
+  );
+  sunSprite.material.opacity = sunH > -0.15 ? 1 : 0;
+}
+
+// ============================================================
+//  HUD / LOG / TOAST
+// ============================================================
+const logPanel = document.getElementById('logPanel');
+const toastEl = document.getElementById('toast');
+const promptEl = document.getElementById('prompt');
+
+function addLog(msg, cls) {
+  const entry = document.createElement('div');
+  entry.className = 'log-entry' + (cls ? ' ' + cls : '');
+  entry.innerHTML = `<span class="time">${fmtClock()}</span> ${msg}`;
+  logPanel.appendChild(entry);
+  while (logPanel.children.length > 40) logPanel.removeChild(logPanel.firstChild);
+  logPanel.scrollTop = logPanel.scrollHeight;
+}
+
+function showToast(msg, duration = 2600) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastEl._timer);
+  toastEl._timer = setTimeout(() => toastEl.classList.remove('show'), duration);
+}
+
+function updateCargoBox() {
+  const entries = Object.entries(Game.inventory).filter(([k, v]) => v > 0);
+  document.getElementById('cargoVal').textContent = entries.length === 0
+    ? 'empty'
+    : entries.map(([k, v]) => `${TRADE_GOODS[k].icon} ${TRADE_GOODS[k].name} ×${v}`).join(', ');
+}
+
+function fmtLife() {
+  const t = Math.max(0, Math.floor(Game.lifeLeft));
+  return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+}
+
+function updateHUD() {
+  document.getElementById('goldVal').textContent = Math.floor(Game.gold);
+  document.getElementById('repVal').textContent = Math.floor(Game.rep);
+  document.getElementById('crewVal').textContent = Game.crew;
+  document.getElementById('foodVal').textContent = Math.floor(Game.food);
+  document.getElementById('shipVal').textContent = Game.ship ? SHIP_CLASSES[Game.ship.cls].name : 'none';
+  document.getElementById('titleVal').textContent = repTitle(Game.rep);
+
+  const timer = document.getElementById('lifeTimer');
+  timer.textContent = fmtLife();
+  timer.classList.toggle('low', Game.lifeLeft < 600);
+  document.getElementById('gameClock').textContent = fmtClock();
+
+  const atSea = Player.mode !== 'foot';
+  document.getElementById('speedo').classList.toggle('hidden', !atSea);
+  if (atSea) {
+    const pct = Math.min(100, Math.abs(Ship.speed) / (Game.ship ? SHIP_CLASSES[Game.ship.cls].maxSpeed : 12) * 100);
+    document.getElementById('speedFill').style.height = pct + '%';
+    document.getElementById('speedVal').textContent = (Math.abs(Ship.speed) * 2.2).toFixed(1) + ' kn';
+  }
+}
+
+function updatePrompt() {
+  if (Game.phase !== 'play') { promptEl.classList.add('hidden'); return; }
+  const t = currentTarget();
+  if (t) {
+    promptEl.innerHTML = `<b>E</b>${t.label}`;
+    promptEl.classList.remove('hidden');
+  } else {
+    promptEl.classList.add('hidden');
+  }
+}
+
+// ============================================================
+//  MINIMAP (fog of war - only charted lands appear)
+// ============================================================
+const minimapCanvas = document.getElementById('minimapCanvas');
+const mmCtx = minimapCanvas.getContext('2d');
+
+function drawMinimap() {
+  const cx = 100, cy = 100;
+  mmCtx.clearRect(0, 0, 200, 200);
+  mmCtx.fillStyle = '#12283c';
+  mmCtx.beginPath();
+  mmCtx.arc(cx, cy, 98, 0, Math.PI * 2);
+  mmCtx.fill();
+
+  // player-centred view of ~900 units
+  const scale = 96 / 900;
+  const px = Player.x, pz = Player.z;
+  const toMap = (wx, wz) => ({
+    x: cx + (wx - px) * scale,
+    y: cy + (wz - pz) * scale,
+  });
+
+  // sea grid
+  mmCtx.strokeStyle = 'rgba(255,255,255,0.05)';
+  mmCtx.lineWidth = 1;
+  for (let r = 1; r <= 3; r++) {
+    mmCtx.beginPath();
+    mmCtx.arc(cx, cy, 32 * r, 0, Math.PI * 2);
+    mmCtx.stroke();
+  }
+
+  // charted islands only
+  for (const p of PORTS) {
+    if (!p.discovered) continue;
+    const m = toMap(p.position.x, p.position.z);
+    if (Math.hypot(m.x - cx, m.y - cy) > 96) continue;
+    const col = p.discovered ? '#' + p.def.color.toString(16).padStart(6, '0') : '#fff';
+    mmCtx.fillStyle = col;
+    mmCtx.beginPath();
+    mmCtx.arc(m.x, m.y, p.def.type === 'home' ? 6 : 4.5, 0, Math.PI * 2);
+    mmCtx.fill();
+    mmCtx.fillStyle = 'rgba(232,220,192,0.85)';
+    mmCtx.font = '9px Georgia';
+    mmCtx.textAlign = 'center';
+    mmCtx.fillText(p.def.name, m.x, m.y - 8);
+  }
+
+  // your ship
+  if (Game.ship && playerShip) {
+    const m = toMap(playerShip.position.x, playerShip.position.z);
+    if (Math.hypot(m.x - cx, m.y - cy) < 96) {
+      mmCtx.save();
+      mmCtx.translate(m.x, m.y);
+      mmCtx.rotate(-Ship.heading + Math.PI);
+      mmCtx.fillStyle = '#ffd700';
+      mmCtx.beginPath();
+      mmCtx.moveTo(0, -6); mmCtx.lineTo(4, 5); mmCtx.lineTo(-4, 5);
+      mmCtx.closePath();
+      mmCtx.fill();
+      mmCtx.restore();
+    }
+  }
+
+  // you
+  mmCtx.fillStyle = '#ffffff';
+  mmCtx.beginPath();
+  mmCtx.arc(cx, cy, 3, 0, Math.PI * 2);
+  mmCtx.fill();
+
+  // frame
+  mmCtx.strokeStyle = 'rgba(200,170,80,0.5)';
+  mmCtx.lineWidth = 2;
+  mmCtx.beginPath();
+  mmCtx.arc(cx, cy, 97, 0, Math.PI * 2);
+  mmCtx.stroke();
+}
+// ============================================================
+//  DEATH, VICTORY, END OF LIFE
+// ============================================================
+let endKind = 'death';
+
+function die(cause) {
+  if (Game.phase === 'dead' || Game.phase === 'end') return;
+  Game.cause = cause;
+  Game.phase = 'dead';
+  Game.stats.deaths++;
+  try { document.exitPointerLock(); } catch (e) {}
+  addLog(`You died an unnatural death: ${cause}`, 'bad');
+  document.getElementById('deathFlash').classList.add('on');
+  setTimeout(() => {
+    document.getElementById('deathFlash').classList.remove('on');
+    showEndScreen('death');
+  }, 1100);
+}
+
+function victory() {
+  Game.phase = 'end';
+  addLog('The King names you Fidalgo of the Realm. Lisbon sings your name.', 'good');
+  showEndScreen('victory');
+}
+
+function endStats() {
+  return `Gold: ${Math.floor(Game.gold)} &nbsp;·&nbsp; Reputation: ${Math.floor(Game.rep)} (${repTitle(Game.rep)})<br>` +
+         `Crew: ${Game.crew} &nbsp;·&nbsp; Islands charted: ${Game.discovered.size - 1} of 8<br>` +
+         `Sailed: ${Math.floor(Game.stats.distance)} leagues &nbsp;·&nbsp; Days worked the docks: ${Game.stats.jobs}`;
+}
+
+function showEndScreen(kind) {
+  endKind = kind;
+  Game.phase = 'end';
+  try { document.exitPointerLock(); } catch (e) {}
+  const title = document.getElementById('endTitle');
+  const sub = document.getElementById('endSub');
+  const sum = document.getElementById('endSummary');
+  const btn = document.getElementById('endBtn');
+
+  if (kind === 'death') {
+    title.textContent = 'YOU DIED AN UNNATURAL DEATH';
+    title.style.color = '#cc3333';
+    sub.textContent = Game.cause;
+    sum.innerHTML = `Lisbon will remember you as a warning, not a name.<br><br>${endStats()}`;
+    btn.textContent = 'BEGIN A NEW LIFE';
+  } else if (kind === 'time') {
+    title.textContent = 'YOUR HOUR IS DONE';
+    title.style.color = '#ffd700';
+    sub.textContent = 'The bell of São Jorge tolls the end of your life';
+    sum.innerHTML = `You lived as much as a man may in an hour.<br><br>${endStats()}`;
+    btn.textContent = 'BEGIN A NEW LIFE';
+  } else {
+    title.textContent = 'THE KING KNIGHTS YOU';
+    title.style.color = '#8bc34a';
+    sub.textContent = 'Fidalgo of the Realm — the Age of Discovery has your name upon it';
+    sum.innerHTML = `Your caravels have redrawn the map of the world.<br><br>${endStats()}<br><br>You may live out the remainder of your hour, or begin again.`;
+    btn.textContent = 'CONTINUE YOUR HOUR';
+  }
+  document.getElementById('endScreen').classList.remove('hidden');
+}
+
+// ============================================================
+//  SAVE / LOAD  (browser localStorage, 3 slots + autosave)
+// ============================================================
+const SAVE_KEY = 'aod_lisbon_saves_v1';
+const SAVE_SLOTS = ['auto', '1', '2', '3'];
+
+function getSaves() {
+  try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; }
+  catch (e) { return {}; }
+}
+
+function saveGame(slot) {
+  const saves = getSaves();
+  saves[slot] = {
+    ts: Date.now(),
+    gold: Game.gold, rep: Game.rep, food: Game.food, crew: Game.crew, morale: Game.morale,
+    inventory: { ...Game.inventory },
+    discovered: [...Game.discovered], charts: [...Game.charts],
+    ship: Game.ship ? { ...Game.ship } : null,
+    commissions: Game.commissions.map(c => ({ ...c })),
+    gameMinutes: Game.gameMinutes, lifeLeft: Game.lifeLeft,
+    quests: { ...Game.quests }, stats: { ...Game.stats }, won: !!Game.won,
+    player: { mode: Player.mode, x: Player.x, z: Player.z, lookYaw: Player.lookYaw },
+    dockedAt: dockedAt ? dockedAt.def.name : null,
+    island: Player.island ? Player.island.def.name : null,
+  };
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(saves));
+    showToast(slot === 'auto' ? 'Progress auto-saved' : `Life saved to slot ${slot}`);
+    return true;
+  } catch (e) {
+    showToast('Could not save — browser storage is full');
+    return false;
+  }
+}
+
+function autosave() { saveGame('auto'); }
+
+function loadGame(slot) {
+  const saves = getSaves();
+  const s = saves[slot];
+  if (!s) { showToast('That slot is empty'); return false; }
+
+  Object.assign(Game, {
+    gold: s.gold, rep: s.rep, food: s.food, crew: s.crew, morale: s.morale,
+    inventory: { ...s.inventory },
+    discovered: new Set(s.discovered), charts: [...s.charts],
+    commissions: s.commissions.map(c => ({ ...c })),
+    gameMinutes: s.gameMinutes, lifeLeft: s.lifeLeft,
+    quests: { ...s.quests }, stats: { ...s.stats }, won: !!s.won, cause: '',
+  });
+
+  PORTS.forEach(p => { p.discovered = s.discovered.includes(p.def.name); });
+
+  removePlayerShip();
+  if (s.ship) spawnPlayerShip(s.ship.cls, s.ship.x, s.ship.z, s.ship.heading);
+
+  dockedAt = s.dockedAt ? PORTS.find(p => p.def.name === s.dockedAt) : null;
+  Player.island = s.island ? PORTS.find(p => p.def.name === s.island) : null;
+  Player.mode = s.player.mode;
+  Player.x = s.player.x; Player.z = s.player.z;
+  Player.lookYaw = s.player.lookYaw; Player.lookPitch = 0;
+  if ((Player.mode === 'helm' || Player.mode === 'deck') && !playerShip) {
+    Player.mode = 'foot';
+    Player.island = PORTS[0];
+    Player.x = PORTS[0].position.x + 40;
+    Player.z = PORTS[0].position.z + 40;
+  }
+
+  document.getElementById('endScreen').classList.add('hidden');
+  document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('savePanel').classList.add('hidden');
+  document.getElementById('menuPanel').classList.add('hidden');
+  document.getElementById('hud').classList.remove('hidden');
+  Game.phase = 'play';
+  updateHUD(); updateCargoBox();
+  addLog('You take up your life where you left it.');
+  if (!isTouch) lockPointer();
+  return true;
+}
+
+function renderSaveSlots(mode) {
+  const box = document.getElementById('saveSlots');
+  box.innerHTML = '';
+  const saves = getSaves();
+  for (const slot of SAVE_SLOTS) {
+    const s = saves[slot];
+    const el = document.createElement('button');
+    el.className = 'save-slot' + (s ? '' : ' empty');
+    if (s) {
+      const d = new Date(s.ts);
+      const when = `${d.getDate()}/${d.getMonth() + 1} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      el.innerHTML = `<div class="slot-title">${slot === 'auto' ? 'Autosave' : 'Slot ' + slot} — ${repTitle(s.rep)}</div>` +
+        `<div class="slot-meta">${when} · ${Math.floor(s.gold)}g · rep ${Math.floor(s.rep)} · ${s.ship ? SHIP_CLASSES[s.ship.cls].name : 'no ship'}</div>`;
+    } else {
+      el.innerHTML = `<div class="slot-title">${slot === 'auto' ? 'Autosave' : 'Slot ' + slot}</div><div class="slot-meta">empty</div>`;
+    }
+    el.onclick = () => {
+      if (mode === 'save') { if (saveGame(slot)) renderSaveSlots('save'); }
+      else { loadGame(slot); }
+    };
+    box.appendChild(el);
+  }
+}
+
+// ============================================================
+//  MENUS
+// ============================================================
+function lockPointer() {
+  try {
+    const p = canvas.requestPointerLock();
+    if (p && p.catch) p.catch(() => {});
+  } catch (e) {}
+}
+
+function openMenu() {
+  if (Game.phase !== 'play') return;
+  Game.phase = 'menu';
+  document.getElementById('menuPanel').classList.remove('hidden');
+  try { document.exitPointerLock(); } catch (e) {}
+}
+
+function closeMenu() {
+  document.getElementById('menuPanel').classList.add('hidden');
+  document.getElementById('savePanel').classList.add('hidden');
+  if (Game.phase === 'menu' || Game.phase === 'save') {
+    Game.phase = 'play';
+    if (!isTouch) lockPointer();
+  }
+}
+
+function openSavePanel(mode) {
+  Game.phase = 'save';
+  document.getElementById('menuPanel').classList.add('hidden');
+  document.getElementById('savePanelTitle').textContent = mode === 'save' ? 'SAVE YOUR LIFE' : 'LOAD A LIFE';
+  renderSaveSlots(mode);
+  document.getElementById('savePanel').classList.remove('hidden');
+}
+
+// ============================================================
+//  LIFE SETUP
+// ============================================================
+function resetLife() {
+  Object.assign(Game, {
+    gold: 40, rep: 0, food: 20, crew: 0, morale: 75,
+    inventory: {}, discovered: new Set(['Lisbon']), charts: [],
+    ship: null, commissions: [], gameMinutes: 360, lifeLeft: LIFE_SECONDS,
+    quests: {}, stats: { jobs: 0, voyages: 0, earned: 0, distance: 0 },
+    cause: '', won: false,
+  });
+  removePlayerShip();
+  PORTS.forEach(p => { p.discovered = !!p.def.discovered; });
+  dockedAt = null;
+
+  const p0 = PORTS[0];
+  Player.island = p0;
+  Player.mode = 'foot';
+  const a = LISBON_PIER_ANGLE + 0.7;
+  const r = p0.radiusAt(a) * 0.45;
+  Player.x = p0.position.x + Math.cos(a) * r;
+  Player.z = p0.position.z + Math.sin(a) * r;
+  Player.y = p0.heightAt(Player.x, Player.z) + 0.1;
+  Player.lookYaw = Math.atan2(p0.position.x - Player.x, p0.position.z - Player.z);
+  Player.lookPitch = 0;
+  Player.bob = 0;
+
+  seaEventTimer = 50 + Math.random() * 30;
+  streetEventTimer = 70 + Math.random() * 50;
+  logPanel.innerHTML = '';
+  addLog('Dawn over Lisbon. You are a citizen with nothing but your name.');
+  updateHUD(); updateCargoBox(); drawMinimap();
+}
+
+function startPlay() {
+  document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('endScreen').classList.add('hidden');
+  document.getElementById('hud').classList.remove('hidden');
+  Game.phase = 'play';
+  if (!isTouch) lockPointer();
+}
+
+// ============================================================
+//  UI WIRING
+// ============================================================
+document.getElementById('beginBtn').onclick = () => { resetLife(); startPlay(); };
+document.getElementById('loadBtn').onclick = () => openSavePanel('load');
+document.getElementById('btnResume').onclick = closeMenu;
+document.getElementById('btnSave').onclick = () => openSavePanel('save');
+document.getElementById('btnLoadMenu').onclick = () => openSavePanel('load');
+document.getElementById('btnSaveBack').onclick = closeMenu;
+document.getElementById('btnAbandon').onclick = () => {
+  document.getElementById('menuPanel').classList.add('hidden');
+  document.getElementById('hud').classList.add('hidden');
+  Game.phase = 'start';
+  document.getElementById('startScreen').classList.remove('hidden');
+};
+document.getElementById('endBtn').onclick = () => {
+  if (endKind === 'victory') {
+    document.getElementById('endScreen').classList.add('hidden');
+    Game.phase = 'play';
+    if (!isTouch) lockPointer();
+  } else {
+    resetLife();
+    startPlay();
+  }
+};
+document.getElementById('endLoadBtn').onclick = () => {
+  document.getElementById('endScreen').classList.add('hidden');
+  openSavePanel('load');
+};
+
+// ============================================================
+//  MAIN LOOP
+// ============================================================
+const clock = new THREE.Clock();
+let seaEventTimer = 60, streetEventTimer = 90;
+let mmFrame = 0;
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(0.05, clock.getDelta());
+  elapsed += dt;
+  oceanMat.uniforms.time.value = elapsed;
+
+  if (Game.phase === 'play') {
+    Game.lifeLeft -= dt;
+    Game.gameMinutes += dt * SEC_PER_GAME_MIN;
+
+    // ---- provisions ----
+    const atSea = Player.mode !== 'foot';
+    const drain = atSea
+      ? 0.05 * Math.max(1, Game.crew) * (0.4 + Math.min(1, Math.abs(Ship.speed) / 12))
+      : 0.004;
+    Game.food = Math.max(0, Game.food - drain * dt);
+
+    if (Game.food <= 0) {
+      Game.crew = Math.max(0, Game.crew - dt * 0.08);
+      Game.morale = Math.max(0, Game.morale - dt * 1.5);
+      if (atSea && Game.crew <= 0) die("Your crew starved, and the sea took the ship.");
+      else if (atSea && Math.random() < dt * 0.03) die("Starvation took you on the open sea.");
+    }
+    if (atSea && Game.food < 10) Game.morale = Math.max(0, Game.morale - dt * 0.4);
+
+    // ---- commissions ----
+    for (const c of Game.commissions) {
+      if (!c.ready && Game.gameMinutes >= c.readyAt) {
+        c.ready = true;
+        addLog(`Mestre Nuno: your ${SHIP_CLASSES[c.cls].name} is built and waiting at the pier.`, 'good');
+        showToast(`Your ${SHIP_CLASSES[c.cls].name} is ready at the slip!`, 4200);
+        if (!Game.ship) deliverReadyCommissions();
+      }
+    }
+
+    // ---- events ----
+    if (Game.ship && Player.mode !== 'foot') {
+      seaEventTimer -= dt;
+      if (seaEventTimer <= 0) { seaEventTimer = 45 + Math.random() * 45; triggerSeaEvent(); }
+    } else if (Player.island && Player.island.def.type === 'home') {
+      streetEventTimer -= dt;
+      if (streetEventTimer <= 0) { streetEventTimer = 80 + Math.random() * 70; triggerStreetEvent(); }
+    }
+
+    // ---- movement ----
+    if (Player.mode === 'foot') {
+      updateFoot(dt);
+      wakeGroup.visible = false;
+    } else if (Player.mode === 'deck') {
+      updateDeckWalk(dt);
+      if (Game.ship) updateShipPhysics(dt);
+    } else if (Player.mode === 'helm' && Game.ship) {
+      updateShipPhysics(dt);
+    }
+
+    // a ship short of hands barely moves
+    if (Game.ship && Player.mode !== 'foot' && Game.crew < SHIP_CLASSES[Game.ship.cls].minCrew) {
+      Ship.speed *= (1 - 2 * dt);
+      if (Math.random() < dt * 0.2) showToast('Too few hands to work the ship!');
+    }
+
+    updateCameraRig(dt);
+    updateDayNight();
+    updatePrompt();
+    updateHUD();
+    if (mmFrame-- <= 0) { drawMinimap(); mmFrame = 6; }
+
+    if (Game.lifeLeft <= 0) showEndScreen('time');
+  }
+
+  // clouds drift around the camera
+  for (const c of clouds) {
+    c.position.x += c.userData.driftSpeed * dt * 10;
     if (c.position.x - camera.position.x >  CLOUD_RANGE) c.position.x -= CLOUD_RANGE * 2;
     if (c.position.x - camera.position.x < -CLOUD_RANGE) c.position.x += CLOUD_RANGE * 2;
     if (c.position.z - camera.position.z >  CLOUD_RANGE) c.position.z -= CLOUD_RANGE * 2;
     if (c.position.z - camera.position.z < -CLOUD_RANGE) c.position.z += CLOUD_RANGE * 2;
-  });
+  }
 
-  // Camera follows ship
-  // Camera follows ship, positioned BEHIND the bow and looking ahead.
-  // A small lateral offset keeps the masts from blocking the view forward.
-  camAngle += (targetCamAngle - camAngle) * 0.05;
-  const camDir = camAngle + Ship.heading;
-  const sideOffset = 7;
-  const camX = shipGroup.position.x
-             - Math.sin(camDir) * camDistance
-             + Math.cos(camDir) * sideOffset;
-  const camZ = shipGroup.position.z
-             - Math.cos(camDir) * camDistance
-             - Math.sin(camDir) * sideOffset;
-  camera.position.set(camX, camHeight + shipGroup.position.y * 0.5, camZ);
-
-  // Look slightly ahead of the ship so the horizon stays visible past the sails
-  const ahead = 18;
-  camera.lookAt(
-    shipGroup.position.x + Math.sin(camDir) * ahead,
-    shipGroup.position.y + 7,
-    shipGroup.position.z + Math.cos(camDir) * ahead
-  );
-
-  // Sky follows camera
   sky.position.copy(camera.position);
-
-  // Marker animation
-  PORTS.forEach(port => {
-    if (port.userData.marker) {
-      port.userData.marker.rotation.y += dt;
-      port.userData.marker.material.opacity = 0.3 + Math.sin(elapsed * 2) * 0.2;
-    }
-    if (port.userData.ring) {
-      port.userData.ring.rotation.z += dt * 0.5;
-      port.userData.ring.material.opacity = 0.2 + Math.sin(elapsed * 1.5) * 0.1;
-    }
-  });
-
-  // Supplies drain over time (slower when anchored)
-  // Tuned for the wider map - ports are much further apart now.
-  if (!Game.anchored) {
-    Game.supplies -= dt * 0.22 * (0.5 + Math.abs(Ship.speed));
-  } else {
-    Game.supplies -= dt * 0.04;
-  }
-
-  // Crew attrition when supplies very low
-  if (Game.supplies < 20) {
-    if (Math.random() < dt * 0.05) {
-      Game.crew -= 1;
-      addLog(`A crew member has perished...`);
-    }
-  }
-
-  // Discovery check
-  checkPortProximity();
-
-  // Game end check
-  checkGameEnd();
-
-  // Periodic HUD update
-  logTimer += dt;
-  if (logTimer > 0.5) {
-    updateHUD();
-    drawMinimap();
-    updateCompass();
-    logTimer = 0;
-  }
-
   renderer.render(scene, camera);
 }
+animate();
 
-// ============================================================
-//  START / RESTART
-// ============================================================
-function startGame() {
-  // Reset state
-  Game.gold = 500;
-  Game.crew = 30;
-  Game.supplies = 100;
-  Game.discoveries = 0;
-  Game.inventory = {};
-  Game.discoveredPorts.clear();
-  Game.currentPort = null;
-  Game.anchored = false;
-  Game.dialogOpen = false;
-  Game.startTime = Date.now();
-  Game.running = true;
+// hide the loading overlay now that the world exists
+document.getElementById('loading').style.display = 'none';
 
-  // Reset ship
-  Ship.speed = 0;
-  Ship.heading = SPAWN.heading;
-  shipGroup.position.set(SPAWN.x, 0, SPAWN.z);
-  shipGroup.rotation.set(0, SPAWN.heading, 0);
-
-  // Hide any open dialogs
-  document.getElementById('discoveryPrompt').style.display = 'none';
-  document.getElementById('tradePanel').style.display = 'none';
-
-  // Reset ports
-  PORTS.forEach((port, i) => {
-    port.userData.discovered = PORT_DEFS[i].discovered;
-    port.userData.inRange = false;
-    // Re-add markers if needed
-    if (!PORT_DEFS[i].discovered && !port.userData.marker) {
-      const def = PORT_DEFS[i];
-      const markerTop = (port.userData.peak || 10) + 16;
-      const markerGeo = new THREE.CylinderGeometry(0.35, 0.35, markerTop, 8);
-      const markerMat = new THREE.MeshBasicMaterial({ color: def.color, transparent: true, opacity: 0.45 });
-      const marker = new THREE.Mesh(markerGeo, markerMat);
-      marker.position.y = markerTop / 2;
-      port.add(marker);
-      port.userData.marker = marker;
-
-      const ringGeo = new THREE.RingGeometry(port.userData.islandRadius + 4, port.userData.islandRadius + 7, 48);
-      const ringMat = new THREE.MeshBasicMaterial({ color: def.color, transparent: true, opacity: 0.28, side: THREE.DoubleSide, depthWrite: false });
-      const ring = new THREE.Mesh(ringGeo, ringMat);
-      ring.rotation.x = -Math.PI / 2;
-      ring.position.y = 0.6;
-      port.add(ring);
-      port.userData.ring = ring;
-    }
-  });
-
-  // Clear log
-  logPanel.innerHTML = '<div class="log-entry"><span class="time">--:--</span> Voyage begins...</div>';
-
-  document.getElementById('startScreen').style.display = 'none';
-  document.getElementById('endScreen').style.display = 'none';
-  document.getElementById('ui').style.display = 'block';
-
-  updateHUD();
-  animate();
-}
-
-document.getElementById('startBtn').onclick = startGame;
-document.getElementById('endBtn').onclick = startGame;
-
-// Resize
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// Render once for start screen background (ship with Lisbon astern)
-shipGroup.position.set(SPAWN.x, 0, SPAWN.z);
-camera.position.set(SPAWN.x + 26, 26, SPAWN.z + 42);
-camera.lookAt(SPAWN.x, 8, SPAWN.z - 14);
-renderer.render(scene, camera);
-
-// Everything is ready - reveal the start screen
-loadingEl.style.display = 'none';
-
-// Debug handle (useful for testing from the console)
-window.__voyage = { Game, Ship, shipGroup, PORTS, keys, clouds, camera };
-
-// Safety net: if anything throws later, surface it instead of failing silently
-window.addEventListener('error', (e) => {
-  console.error(e.error || e.message);
-});
+// debug handle (handy in the console)
+window.__voyage = {
+  Game, Player, Ship, PORTS, camera, scene, interactables, keys, clouds,
+  DLG, SEA_EVENTS, STREET_EVENTS, renderDialog, closeDialog,
+  triggerSeaEvent, triggerStreetEvent, goAshore, die,
+  get ship() { return playerShip; }
+};
 </script>
 </body>
 </html>
