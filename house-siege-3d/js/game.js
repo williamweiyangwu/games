@@ -4413,6 +4413,9 @@ function reviveDummy(b) {
   b.alive = true;
   b.hp = b.maxHp;
   b.vel.set(0, 0, 0);
+  /* only real training dummies carry a home post; anything else falls back
+     to a normal respawn so a dummy flag can never crash the update loop */
+  if (!b.home) { respawnActor(b); return; }
   b.pos.set(b.home.x, groundAt(b.home.x, b.home.z, 1), b.home.z);
   if (b.mesh) { b.mesh.visible = true; b.mesh.position.copy(b.pos); }
   if (b.np) b.np.style.opacity = '1';
