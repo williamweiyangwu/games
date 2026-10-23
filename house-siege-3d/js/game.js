@@ -25,8 +25,7 @@ const CFG = {
   chestRespawn: 26,
   botsPerTeam: 4,          // + the human = 5v5
   playerHp: 140,           // you are tougher than a bot
-  regenDelay: 4.5,         // seconds without damage before health regenerates
-  regenRate: 18            // hp per second
+  slots: 5                 // hotbar slots: knife, pistol + three pickups
 };
 
 const DIFF = {
@@ -42,9 +41,26 @@ const WEAPONS = {
   smg:    { id:'smg',    name:'MP5 SMG',      dmg:17, rate:0.078, mag:30, reserve:210, reload:1.65, spread:0.030, auto:true,  range:70, tier:2, snd:'smg' },
   rifle:  { id:'rifle',  name:'AK-47 RIFLE',  dmg:31, rate:0.112, mag:30, reserve:180, reload:2.05, spread:0.018, auto:true,  range:120, tier:3, snd:'rifle' },
   shotgun:{ id:'shotgun',name:'SPAS-12',      dmg:12, pellets:8, rate:0.85, mag:6, reserve:42, reload:2.35, spread:0.070, auto:false, range:34, tier:2, snd:'shotgun' },
-  sniper: { id:'sniper', name:'AWP SNIPER',   dmg:115, rate:1.30, mag:5, reserve:25, reload:2.85, spread:0.0015, auto:false, range:220, tier:3, snd:'sniper', scope:true }
+  sniper: { id:'sniper', name:'AWP SNIPER',   dmg:115, rate:1.30, mag:5, reserve:25, reload:2.85, spread:0.0015, auto:false, range:220, tier:3, snd:'sniper', scope:true },
+  /* slow, short-ranged and lethal: three seconds of draw for one bolt */
+  crossbow:{ id:'crossbow', name:'CROSSBOW',  dmg:105, rate:0.55, mag:3, reserve:12, reload:2.40, spread:0.004, auto:false, range:30, tier:3, snd:'bow',
+             draw:3.0, boltSpeed:72, boltGravity:4.5, botOk:false }
 };
-const CHEST_POOL = ['smg','rifle','shotgun','sniper'];
+
+/* Consumables and throwables share the hotbar with guns. An entry in
+   actor.weapons is either { id, mag, res } (a gun) or { id, count } (an item);
+   always look the id up through defOf() so both shapes work. */
+const ITEMS = {
+  aid:     { id:'aid',     name:'FIELD AID',    item:true, kind:'aid',  stack:3, heal:40 },
+  grenade: { id:'grenade', name:'FRAG GRENADE', item:true, kind:'nade', stack:3, speed:17.5, fuse:2.4, radius:5.2, dmg:125 },
+  ammo:    { id:'ammo',    name:'AMMO BOX',     item:true, kind:'ammo', stack:2 },
+  stim:    { id:'stim',    name:'STIM SHOT',    item:true, kind:'stim', stack:2, dur:8, mul:1.34 }
+};
+const defOf = id => WEAPONS[id] || ITEMS[id] || null;
+
+const CHEST_POOL = ['smg','rifle','shotgun','sniper','crossbow'];
+/* weighted: aid and grenades show up most often */
+const ITEM_POOL  = ['aid','aid','aid','grenade','grenade','ammo','stim'];
 
 /* ------------------------------------------------------------
    SMALL UTILS
@@ -120,7 +136,14 @@ const Snd = {
   pickup() { this.tone(600, 1100, 0.14, 0.18, 'triangle'); },
   slash()  { this.noise(0.14, 1600, 1.4, 0.3, 'bandpass'); },
   chest()  { this.tone(320, 520, 0.16, 0.2, 'sine'); setTimeout(() => this.tone(520, 780, 0.18, 0.16, 'sine'), 90); },
-  flag()   { this.tone(520, 780, 0.18, 0.2, 'triangle'); setTimeout(() => this.tone(780, 1040, 0.22, 0.18, 'triangle'), 110); }
+  flag()   { this.tone(520, 780, 0.18, 0.2, 'triangle'); setTimeout(() => this.tone(780, 1040, 0.22, 0.18, 'triangle'), 110); },
+  heal()   { this.tone(520, 880, 0.16, 0.16, 'sine'); setTimeout(() => this.tone(880, 1180, 0.2, 0.13, 'sine'), 120); },
+  stim()   { this.tone(300, 900, 0.22, 0.16, 'sawtooth'); },
+  bow()    { this.noise(0.09, 1400, 1.6, 0.4, 'bandpass'); this.tone(260, 90, 0.12, 0.2, 'triangle'); },
+  draw()   { this.tone(180, 260, 0.3, 0.06, 'sine'); },
+  throwNade() { this.noise(0.12, 900, 1.1, 0.24, 'bandpass'); },
+  bounce() { this.tone(700, 420, 0.05, 0.09, 'square'); },
+  boom()   { this.noise(0.55, 700, 0.5, 0.9); this.tone(90, 24, 0.5, 0.5, 'sawtooth'); }
 };
 
 /* ------------------------------------------------------------
@@ -130,7 +153,8 @@ const G = {
   scene: null, camera: null, renderer: null, clock: null,
   mode: 'tdm', diff: 'normal', team: 'red', state: 'menu',
   colliders: [], ramps: [], bots: [], chests: [], flags: null,
-  player: null, effects: [], tracers: [], particles: [],
+  player: null, effects: [], tracers: [], particles: [], projectiles: [], blasts: [],
+  shake: 0, aimLine: null, aimPts: null,
   timeLeft: CFG.matchTime, score: { red: 0, blue: 0 },
   sensitivity: 1, started: false, lastHud: 0, t: 0,
   flagState: { red: { at:'base', carrier:null, dropT:0, pos:new THREE.Vector3(0,0,30) },
@@ -1702,7 +1726,9 @@ function makeActor(team, name, isPlayer) {
     goalKind: '', goalLock: 0, huntTarget: null, defendPost: null, postT: 0,
     strafe: 1, strafeT: 0, burstT: 0, aimYaw: 0, aimPitch: 0,
     stuckX: 0, stuckZ: 0, stuckWin: 0, stuckT: 0, stuckStage: 0, nudgeT: 0, nudgeAng: 0, hopT: 0,
-    animT: 0, np: null, diff: DIFF.normal, role: 'attack', hitFlash: 0
+    arriveT: 0,
+    animT: 0, np: null, diff: DIFF.normal, role: 'attack', hitFlash: 0,
+    drawT: 0, stimT: 0, itemT: -99
   };
 }
 
@@ -1770,6 +1796,10 @@ function finishSpawn(a, slot) {
   a.capT = 0;
   a.reloadT = 0;
   a.lastHurtT = 0;
+  a.drawT = 0;
+  a.stimT = 0;
+  a.itemT = -99;
+  a.speedMul = 1;
   a.weapons = [
     { id: 'knife', mag: 0, res: 0 },
     { id: 'pistol', mag: WEAPONS.pistol.mag, res: WEAPONS.pistol.reserve }
@@ -1784,6 +1814,7 @@ function finishSpawn(a, slot) {
   a.path = null; a.pathIdx = 0; a.goalPos.set(1e9, 0, 0); a.goalKind = ''; a.goalLock = 0;
   a.defendPost = null; a.postT = 0; a.huntTarget = null;
   a.stuckX = a.pos.x; a.stuckZ = a.pos.z; a.stuckWin = 0; a.stuckT = 0; a.stuckStage = 0; a.nudgeT = 0; a.hopT = 0;
+  a.arriveT = 0;
   if (a.mesh) { a.mesh.visible = true; a.mesh.position.copy(a.pos); }
   if (a.np) a.np.style.opacity = '1';
 }
@@ -1903,26 +1934,437 @@ function muzzlePos(a, out) {
 }
 
 function startReload(a) {
-  const st = a.weapons[a.cur], w = WEAPONS[st.id];
-  if (!w || w.melee || a.reloadT > 0) return;
+  const st = a.weapons[a.cur], w = defOf(st.id);
+  if (!w || w.melee || w.item || a.reloadT > 0) return;
   if (st.mag >= w.mag || st.res <= 0) return;
   a.reloadT = (a.isPlayer ? w.reload : a.diff.reload);
   if (a.isPlayer) Snd.reload();
 }
 
 function finishReload(a) {
-  const st = a.weapons[a.cur], w = WEAPONS[st.id];
-  if (!w || w.melee) return;
+  const st = a.weapons[a.cur], w = defOf(st.id);
+  if (!w || w.melee || w.item) return;
   const need = w.mag - st.mag;
   const take = Math.min(need, st.res);
   st.mag += take; st.res -= take;
 }
 
+/* ------------------------------------------------------------
+   ITEMS, THROWABLES AND PROJECTILES
+   ------------------------------------------------------------ */
+function pointSolid(x, y, z) {
+  for (let i = 0; i < G.colliders.length; i++) {
+    const c = G.colliders[i];
+    if (x > c.minX && x < c.maxX && y > c.minY && y < c.maxY && z > c.minZ && z < c.maxZ) return true;
+  }
+  return false;
+}
+
+/* --- FIELD AID: the only way to get health back --- */
+function useAid(a) {
+  const st = a.weapons[a.cur];
+  if (!st || st.id !== 'aid' || st.count <= 0) return;
+  if (a.hp >= a.maxHp - 0.01) {
+    banner('HEALTH IS ALREADY FULL', 1.1);
+    Snd.empty();
+    return;
+  }
+  const before = a.hp;
+  a.hp = Math.min(a.maxHp, a.hp + ITEMS.aid.heal);
+  a.itemT = G.t;
+  st.count--;
+  Snd.heal();
+  banner('+ ' + Math.round(a.hp - before) + ' HP', 0.9);
+  if (st.count <= 0) consumeSlot(a, a.cur);
+}
+
+/* --- AMMO BOX: tops up every reserve you are carrying --- */
+function useAmmo(a) {
+  const st = a.weapons[a.cur];
+  if (!st || st.id !== 'ammo' || st.count <= 0) return;
+  let filled = 0;
+  for (const s of a.weapons) {
+    const w = WEAPONS[s.id];
+    if (!w || w.melee) continue;
+    if (s.res < w.reserve) { s.res = w.reserve; filled++; }
+  }
+  if (!filled) { banner('ALL RESERVES ALREADY FULL', 1.1); Snd.empty(); return; }
+  st.count--;
+  a.itemT = G.t;
+  Snd.reload();
+  banner('AMMO RESUPPLIED', 1.2);
+  if (st.count <= 0) consumeSlot(a, a.cur);
+}
+
+/* --- STIM SHOT: a short burst of speed --- */
+function useStim(a) {
+  const st = a.weapons[a.cur];
+  if (!st || st.id !== 'stim' || st.count <= 0) return;
+  st.count--;
+  a.itemT = G.t;
+  a.stimT = ITEMS.stim.dur;
+  Snd.stim();
+  banner('STIM ACTIVE — FASTER FOR ' + ITEMS.stim.dur + 's', 1.4);
+  if (st.count <= 0) consumeSlot(a, a.cur);
+}
+
+/* --- GRENADE -------------------------------------------------
+   The arc is simulated with the same gravity and the same collider set the
+   real grenade uses, so what you see is what you get. */
+const NADE_STEPS = 90;
+const NADE_DT = 0.045;
+
+function grenadeDir(a, out) {
+  /* same convention the camera uses (YXZ from yaw/pitch), so the preview and
+     the real throw agree even before the camera matrix is refreshed */
+  return dirFromAngles(a.yaw, a.pitch, out || new V3());
+}
+function grenadeOrigin(a, out) {
+  return (out || new V3()).copy(eyePos(a)).addScaledVector(grenadeDir(a, new V3()), 0.5);
+}
+function grenadeVelocity(a, out) {
+  const v = (out || new V3()).copy(grenadeDir(a, new V3())).multiplyScalar(ITEMS.grenade.speed);
+  v.y += 1.2;                       // a little loft so a level aim still lobs
+  return v;
+}
+
+function grenadeTrajectory(from, vel) {
+  const pts = [from.clone()];
+  const pos = from.clone(), v = vel.clone();
+  let impact = from.clone();
+  for (let i = 0; i < NADE_STEPS; i++) {
+    v.y -= CFG.gravity * NADE_DT;
+    const nx = pos.x + v.x * NADE_DT, ny = pos.y + v.y * NADE_DT, nz = pos.z + v.z * NADE_DT;
+    if (pointSolid(nx, ny, nz)) { impact = pos.clone(); break; }
+    pos.set(nx, ny, nz);
+    const g = groundAt(pos.x, pos.z, pos.y + 0.4);
+    if (pos.y <= g + 0.06) { pos.y = g + 0.06; pts.push(pos.clone()); impact = pos.clone(); break; }
+    pts.push(pos.clone());
+    impact = pos.clone();
+  }
+  return { pts, impact };
+}
+
+function ensureAimLine() {
+  if (G.aimLine) return G.aimLine;
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(NADE_STEPS * 3 + 3), 3));
+  const mat = new THREE.LineBasicMaterial({ color: 0xffcc55, transparent: true, opacity: 0.95, depthTest: false });
+  const line = new THREE.Line(geo, mat);
+  line.frustumCulled = false;
+  line.renderOrder = 998;
+  line.visible = false;
+  scene.add(line);
+  G.aimLine = line;
+
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(0.42, 0.58, 20),
+    new THREE.MeshBasicMaterial({ color: 0xffcc55, transparent: true, opacity: 0.75, depthTest: false, side: THREE.DoubleSide })
+  );
+  ring.rotation.x = -Math.PI / 2;
+  ring.visible = false;
+  ring.renderOrder = 999;
+  scene.add(ring);
+  G.aimMark = ring;
+  return line;
+}
+
+function hideAimLine() {
+  if (G.aimLine) G.aimLine.visible = false;
+  if (G.aimMark) G.aimMark.visible = false;
+}
+
+/* True when the arc or its blast would catch an enemy. */
+function arcThreatensEnemy(pts, impact, owner) {
+  if (!owner) return false;
+  const r = ITEMS.grenade.radius;
+  for (const a of allActors()) {
+    if (!a || !a.alive || a === owner || a.team === owner.team) continue;
+    const chest = new V3(a.pos.x, a.pos.y + 0.9, a.pos.z);
+    /* an enemy on the far side of a wall is not in the blast */
+    if (Math.hypot(a.pos.x - impact.x, a.pos.z - impact.z) < r * 0.9 &&
+        Math.abs(chest.y - impact.y) < r && hasBlastLine(impact, chest)) return true;
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i];
+      if (Math.abs(p.y - chest.y) < 1.2 &&
+          Math.hypot(p.x - a.pos.x, p.z - a.pos.z) < 1.1) return true;
+    }
+  }
+  return false;
+}
+
+function updateGrenadeAim(p) {
+  const st = p.weapons[p.cur];
+  const want = firing && G.state === 'playing' && p.alive && st && st.id === 'grenade' && st.count > 0;
+  if (!want) { hideAimLine(); return; }
+  const line = ensureAimLine();
+  const from = grenadeOrigin(p, new V3());
+  const vel = grenadeVelocity(p, new V3());
+  const { pts, impact } = grenadeTrajectory(from, vel);
+
+  const pos = line.geometry.attributes.position;
+  const arr = pos.array;
+  const n = Math.min(pts.length, NADE_STEPS + 1);
+  for (let i = 0; i < n; i++) {
+    arr[i * 3] = pts[i].x; arr[i * 3 + 1] = pts[i].y; arr[i * 3 + 2] = pts[i].z;
+  }
+  pos.needsUpdate = true;
+  line.geometry.setDrawRange(0, n);
+  line.geometry.computeBoundingSphere();
+
+  const danger = arcThreatensEnemy(pts, impact, p);
+  const col = danger ? 0xff3b28 : 0xffcc55;
+  line.material.color.setHex(col);
+  line.visible = true;
+
+  const mark = G.aimMark;
+  mark.material.color.setHex(col);
+  mark.position.set(impact.x, impact.y + 0.03, impact.z);
+  mark.visible = true;
+}
+
+function spawnProjectile(type, pos, vel, owner) {
+  let mesh;
+  if (type === 'nade') {
+    mesh = new THREE.Mesh(
+      new THREE.SphereGeometry(0.115, 10, 8),
+      new THREE.MeshStandardMaterial({ color: 0x3f5a3c, roughness: 0.65, metalness: 0.35, emissive: 0x0d1409 })
+    );
+  } else {
+    mesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.024, 0.024, 0.52, 6),
+      new THREE.MeshStandardMaterial({ color: 0x7a5c34, roughness: 0.55, metalness: 0.45 })
+    );
+    const d = vel.clone().normalize();
+    mesh.quaternion.setFromUnitVectors(new V3(0, 1, 0), d);
+  }
+  mesh.position.copy(pos);
+  scene.add(mesh);
+
+  const pr = {
+    type, pos: pos.clone(), vel: vel.clone(), mesh, owner,
+    gravity: type === 'nade' ? CFG.gravity : WEAPONS.crossbow.boltGravity,
+    life: type === 'nade' ? ITEMS.grenade.fuse + 0.1 : 2.5,
+    fuse: type === 'nade' ? ITEMS.grenade.fuse : 0,
+    travelled: 0, bounces: 0
+  };
+  G.projectiles.push(pr);
+  return pr;
+}
+
+function throwGrenade(a) {
+  const st = a.weapons[a.cur];
+  if (!st || st.id !== 'grenade' || st.count <= 0) return false;
+  st.count--;
+  a.lastShot = G.t;
+  spawnProjectile('nade', grenadeOrigin(a, new V3()), grenadeVelocity(a, new V3()), a);
+  Snd.throwNade();
+  hideAimLine();
+  if (st.count <= 0) consumeSlot(a, a.cur);
+  return true;
+}
+
+function fireCrossbow(p) {
+  const st = p.weapons[p.cur];
+  const w = WEAPONS.crossbow;
+  if (!st || st.id !== 'crossbow' || st.mag <= 0 || p.reloadT > 0) return;
+  st.mag--;
+  p.lastShot = G.t;
+  const from = eyePos(p, new V3());
+  const d = dirFromAngles(p.yaw, p.pitch, new V3());
+  /* a whisper of spread so it is not a laser */
+  d.x += rand(-w.spread, w.spread); d.y += rand(-w.spread, w.spread); d.z += rand(-w.spread, w.spread);
+  d.normalize();
+  spawnProjectile('bolt', from.clone().addScaledVector(d, 0.55), d.multiplyScalar(w.boltSpeed), p);
+  Snd.bow();
+  VM.kick = 0.85;
+  VM.recoilV += 0.035;
+  p.pitch = clamp(p.pitch + 0.012, -1.35, 1.35);
+  if (st.mag <= 0) startReload(p);
+}
+
+function hasBlastLine(from, to) {
+  const dx = to.x - from.x, dy = to.y - from.y, dz = to.z - from.z;
+  const len = Math.hypot(dx, dy, dz);
+  if (len < 0.001) return true;
+  const t = rayWorld(from.x, from.y, from.z, dx / len, dy / len, dz / len, len);
+  return t < 0 || t > len - 0.35;
+}
+
+function explodeGrenade(pos, owner) {
+  const spec = ITEMS.grenade;
+  Snd.boom();
+
+  /* fireball */
+  const ball = new THREE.Mesh(
+    new THREE.SphereGeometry(1, 12, 10),
+    new THREE.MeshBasicMaterial({ color: 0xffb35a, transparent: true, opacity: 0.9, depthWrite: false })
+  );
+  ball.position.copy(pos);
+  ball.scale.setScalar(0.6);
+  scene.add(ball);
+  const light = new THREE.PointLight(0xffa040, 6, 18);
+  light.position.copy(pos);
+  scene.add(light);
+  G.blasts.push({ mesh: ball, light, life: 0.42, max: 0.42 });
+
+  for (let i = 0; i < 22; i++) {
+    const g = new THREE.SphereGeometry(0.05, 4, 3);
+    const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: i % 3 ? 0xffa040 : 0xffe08a, transparent: true }));
+    m.position.copy(pos);
+    scene.add(m);
+    G.particles.push({
+      mesh: m, life: 0.35,
+      vel: new V3(rand(-7, 7), rand(0.5, 8), rand(-7, 7))
+    });
+  }
+
+  /* damage falls off with distance; a wall between you and the blast saves you */
+  for (const a of allActors()) {
+    if (!a || !a.alive) continue;
+    if (owner && a !== owner && a.team === owner.team) continue;
+    const dx = a.pos.x - pos.x, dy = (a.pos.y + 0.9) - pos.y, dz = a.pos.z - pos.z;
+    const d = Math.hypot(dx, dy, dz);
+    if (d > spec.radius) continue;
+    if (!hasBlastLine(pos, new V3(a.pos.x, a.pos.y + 0.9, a.pos.z))) continue;
+    let dmg = spec.dmg * (1 - d / spec.radius);
+    if (a === owner) dmg *= 0.4;
+    damage(a, dmg, owner === a ? null : owner, false, 'GRENADE');
+  }
+
+  if (G.player && G.player.alive) {
+    const pd = Math.hypot(G.player.pos.x - pos.x, G.player.pos.y + 0.9 - pos.y, G.player.pos.z - pos.z);
+    G.shake = Math.max(G.shake, clamp(1 - pd / 24, 0, 1) * 0.5);
+  }
+}
+
+function bounceGrenade(pr) {
+  const ax = Math.abs(pr.vel.x), ay = Math.abs(pr.vel.y), az = Math.abs(pr.vel.z);
+  if (ax >= ay && ax >= az) pr.vel.x *= -0.42;
+  else if (ay >= ax && ay >= az) pr.vel.y *= -0.42;
+  else pr.vel.z *= -0.42;
+  pr.vel.x *= 0.78; pr.vel.z *= 0.78;
+  pr.bounces++;
+  if (pr.bounces < 4) Snd.bounce();
+}
+
+function updateProjectiles(dt) {
+  for (let i = G.projectiles.length - 1; i >= 0; i--) {
+    const pr = G.projectiles[i];
+    pr.life -= dt;
+    if (pr.type === 'nade') pr.fuse -= dt;
+
+    let dead = false, boom = false;
+    const steps = pr.type === 'bolt' ? 4 : 2;
+    const h = dt / steps;
+
+    for (let s = 0; s < steps && !dead; s++) {
+      const prev = pr.pos.clone();
+      pr.vel.y -= pr.gravity * h;
+      pr.pos.addScaledVector(pr.vel, h);
+      pr.travelled += prev.distanceTo(pr.pos);
+
+      /* actors */
+      const dir = pr.pos.clone().sub(prev);
+      const len = dir.length();
+      if (len > 1e-4) {
+        dir.divideScalar(len);
+        const hit = rayActors(prev.x, prev.y, prev.z, dir.x, dir.y, dir.z, len + 0.12, pr.owner);
+        if (hit) {
+          if (pr.type === 'bolt') {
+            const head = pr.pos.y > hit.actor.pos.y + 1.42;
+            damage(hit.actor, WEAPONS.crossbow.dmg * (head ? 1.6 : 1), pr.owner, head, 'BOLT');
+            spark(pr.pos, 0xffe0a0, 6);
+            dead = true;
+          } else { boom = true; dead = true; }
+          break;
+        }
+      }
+
+      /* walls */
+      if (pointSolid(pr.pos.x, pr.pos.y, pr.pos.z)) {
+        if (pr.type === 'bolt') { spark(pr.pos, 0xd8d2c0, 4); dead = true; break; }
+        pr.pos.copy(prev);
+        bounceGrenade(pr);
+        break;
+      }
+
+      /* floor */
+      const g = groundAt(pr.pos.x, pr.pos.z, pr.pos.y + 0.4);
+      if (pr.pos.y <= g + 0.07) {
+        if (pr.type === 'bolt') { spark(pr.pos, 0xd8d2c0, 3); dead = true; break; }
+        pr.pos.y = g + 0.07;
+        if (Math.abs(pr.vel.y) < 1.4) { pr.vel.y = 0; pr.vel.x *= 0.72; pr.vel.z *= 0.72; }
+        else { pr.vel.y = Math.abs(pr.vel.y) * 0.36; pr.vel.x *= 0.74; pr.vel.z *= 0.74; }
+        pr.bounces++;
+        if (pr.bounces < 4) Snd.bounce();
+        break;
+      }
+
+      if (pr.type === 'bolt' && pr.travelled > WEAPONS.crossbow.range) { dead = true; break; }
+    }
+
+    if (pr.type === 'nade') {
+      if (pr.fuse <= 0) boom = true;
+      if (boom) { explodeGrenade(pr.pos, pr.owner); dead = true; }
+    }
+    if (pr.life <= 0) {
+      if (pr.type === 'nade') explodeGrenade(pr.pos, pr.owner);
+      dead = true;
+    }
+
+    if (dead) {
+      scene.remove(pr.mesh);
+      pr.mesh.geometry.dispose();
+      pr.mesh.material.dispose();
+      G.projectiles.splice(i, 1);
+    }
+  }
+}
+
+function clearProjectiles() {
+  for (const pr of G.projectiles) {
+    scene.remove(pr.mesh);
+    pr.mesh.geometry.dispose();
+    pr.mesh.material.dispose();
+  }
+  G.projectiles.length = 0;
+  for (const b of G.blasts) {
+    scene.remove(b.mesh);
+    b.mesh.geometry.dispose();
+    b.mesh.material.dispose();
+    if (b.light) scene.remove(b.light);
+  }
+  G.blasts.length = 0;
+  hideAimLine();
+}
+
 function tryFire(a) {
+  if (!a.alive) return;                 // a corpse cannot shoot or patch up
   const st = a.weapons[a.cur];
   if (!st) return;
-  const w = WEAPONS[st.id];
+  const w = defOf(st.id);
+  if (!w) return;
   const t = G.t;
+
+  /* --- consumables: one click, one charge --- */
+  if (w.item) {
+    if (!a.isPlayer) return;
+    /* items keep their own cooldown so a gunshot does not swallow the click */
+    if (t - a.itemT < 0.35) return;
+    if (w.kind === 'aid') { useAid(a); return; }
+    if (w.kind === 'ammo') { useAmmo(a); return; }
+    if (w.kind === 'stim') { useStim(a); return; }
+    return;                       // grenade is thrown on mouse release
+  }
+
+  /* --- crossbow: the bolt leaves when the draw is complete, not on click --- */
+  if (w.draw) {
+    if (a.reloadT > 0) return;
+    if (st.mag <= 0) { if (a.isPlayer) startReload(a); return; }
+    return;
+  }
+
   if (a.reloadT > 0 || t - a.lastShot < w.rate) return;
 
   if (w.melee) {
@@ -2042,6 +2484,21 @@ function updateEffects(dt) {
     p.mesh.scale.setScalar(Math.max(0.2, p.life / 0.35));
     if (p.life <= 0) { scene.remove(p.mesh); p.mesh.geometry.dispose(); p.mesh.material.dispose(); G.particles.splice(i, 1); }
   }
+  /* grenade fireballs */
+  for (let i = G.blasts.length - 1; i >= 0; i--) {
+    const b = G.blasts[i];
+    b.life -= dt;
+    const k = 1 - Math.max(0, b.life) / b.max;
+    b.mesh.scale.setScalar(0.6 + k * 5.2);
+    b.mesh.material.opacity = Math.max(0, b.life / b.max) * 0.85;
+    if (b.light) b.light.intensity = Math.max(0, b.life / b.max) * 6;
+    if (b.life <= 0) {
+      scene.remove(b.mesh); b.mesh.geometry.dispose(); b.mesh.material.dispose();
+      if (b.light) scene.remove(b.light);
+      G.blasts.splice(i, 1);
+    }
+  }
+  if (G.shake > 0) G.shake = Math.max(0, G.shake - dt * 1.6);
 }
 
 /* ------------------------------------------------------------
@@ -2094,8 +2551,25 @@ function buildChest(x, y, z) {
   scene.add(grp);
   return {
     grp, lidPivot, ring, glow, beam, mark, beamMat,
-    pos: new V3(x, y, z), weapon: null, available: true, respawnT: 0, openT: 0
+    pos: new V3(x, y, z), content: null, label: '', available: true, respawnT: 0, openT: 0
   };
+}
+
+/* Every crate holds either a gun or a consumable. Rolled with a floor on the
+   number of item crates so the map always offers healing somewhere. */
+function rollChestContent() {
+  const isItem = Math.random() < 0.5;
+  return isItem ? { id: pick(ITEM_POOL), item: true } : { id: pick(CHEST_POOL), item: false };
+}
+
+function applyChestContent(c) {
+  const def = defOf(c.content.id);
+  const col = c.content.item ? 0x59e0c8 : 0xffb43a;
+  if (c.ring) c.ring.material.color.setHex(col);
+  if (c.mark) c.mark.material.color.setHex(col);
+  if (c.beamMat) c.beamMat.color.setHex(col);
+  if (c.glow) c.glow.color.setHex(col);
+  c.label = def ? def.name : '';
 }
 
 function createChests() {
@@ -2104,9 +2578,16 @@ function createChests() {
   G.chests.length = 0;
   for (const s of chestSpots()) {
     const c = buildChest(s[0], s[1], s[2]);
-    c.weapon = pick(CHEST_POOL);
+    c.content = rollChestContent();
     G.chests.push(c);
   }
+  /* guarantee a few item crates even on an unlucky roll */
+  let need = 3 - G.chests.filter(c => c.content.item).length;
+  for (const c of G.chests) {
+    if (need <= 0) break;
+    if (!c.content.item) { c.content = { id: pick(ITEM_POOL), item: true }; need--; }
+  }
+  for (const c of G.chests) applyChestContent(c);
 }
 
 /* Keep bodies from occupying the same space. Bots yield most of the overlap to
@@ -2145,7 +2626,8 @@ function updateChests(dt) {
       c.respawnT -= dt;
       if (c.respawnT <= 0) {
         c.available = true;
-        c.weapon = pick(CHEST_POOL);
+        c.content = rollChestContent();
+        applyChestContent(c);
         c.ring.visible = true; c.glow.visible = true;
       }
     }
@@ -2166,26 +2648,46 @@ function updateChests(dt) {
       const d = Math.hypot(p.pos.x - c.pos.x, p.pos.z - c.pos.z) + Math.abs(p.pos.y - c.pos.y) * 2;
       if (d < 2.3 && (!near || d < near.d)) near = { c, d };
     }
-    // bots grab weapons on their own
-    if (c.available) {
-      for (const b of G.bots) {
-        if (!b.alive || b.dummy) continue;
-        const d = Math.hypot(b.pos.x - c.pos.x, b.pos.z - c.pos.z) + Math.abs(b.pos.y - c.pos.y) * 2;
-        if (d < 1.6 && b.weapons.length < 4) {
-          takeChest(c, b);
-          break;
+    // bots grab guns on their own — never consumables, and never the crossbow
+    if (c.available && c.content && !c.content.item) {
+      const cw = WEAPONS[c.content.id];
+      if (cw && cw.botOk !== false) {
+        for (const b of G.bots) {
+          if (!b.alive || b.dummy) continue;
+          const d = Math.hypot(b.pos.x - c.pos.x, b.pos.z - c.pos.z) + Math.abs(b.pos.y - c.pos.y) * 2;
+          if (d < 1.6 && b.weapons.length < CFG.slots) {
+            takeChest(c, b);
+            break;
+          }
         }
       }
     }
   }
   G.nearChest = near ? near.c : null;
-  $('prompt').classList.toggle('show', !!near && G.state === 'playing');
+  const promptEl = $('prompt');
+  promptEl.classList.toggle('show', !!near && G.state === 'playing');
+  if (near && G.state === 'playing') {
+    const txt = '<b>E</b> TAKE ' + (near.c.label || 'CRATE');
+    if (promptEl.dataset.txt !== txt) { promptEl.innerHTML = txt; promptEl.dataset.txt = txt; }
+  }
 }
 
 function takeChest(c, a) {
   if (!c.available) return;
-  const id = c.weapon;
-  giveWeapon(a, id);
+  const id = c.content ? c.content.id : c.weapon;
+  const isItem = !!(c.content && c.content.item);
+  const def = defOf(id);
+  if (!def) return;
+
+  const res = isItem ? giveItem(a, id) : giveWeapon(a, id);
+  if (!res.added) {
+    if (res.full && a.isPlayer) {
+      banner('ALREADY CARRYING MAX <span class="hl">' + def.name + '</span>', 1.4);
+      Snd.empty();
+    }
+    return;                         // leave the crate closed, it is not wasted
+  }
+
   c.available = false;
   c.respawnT = CFG.chestRespawn;
   c.ring.visible = false;
@@ -2194,18 +2696,72 @@ function takeChest(c, a) {
   if (a.isPlayer) {
     Snd.chest(); Snd.pickup();
     if (G.tutorial.active) G.tutorial.chests++;
-    banner('PICKED UP <span class="hl">' + WEAPONS[id].name + '</span>', 1.6);
+    let msg = 'PICKED UP <span class="hl">' + def.name + '</span>';
+    if (res.dropped) {
+      const d = defOf(res.dropped.id);
+      if (d) msg += ' — DROPPED ' + d.name;
+    }
+    banner(msg, 1.8);
   }
+}
+
+/* --- inventory ---------------------------------------------------------
+   Slots 1 and 2 are the knife and the pistol. Anything picked up goes into
+   slots 3-5. When the bag is full the slot you are HOLDING is swapped out
+   (the genre convention: you trade what is in your hands), and the banner
+   names what you lost. */
+function addSlot(a, st) {
+  const MAX = CFG.slots;
+  let dropped = null;
+  if (a.weapons.length < MAX) a.weapons.push(st);
+  else {
+    let idx = (a.cur >= 2 && a.cur < a.weapons.length) ? a.cur : a.weapons.length - 1;
+    dropped = a.weapons[idx];
+    a.weapons[idx] = st;
+  }
+  if (a.isPlayer) {
+    a.cur = a.weapons.indexOf(st);
+    a.reloadT = 0; a.drawT = 0;
+  }
+  return dropped;
 }
 
 function giveWeapon(a, id) {
   const w = WEAPONS[id];
+  if (!w) return { added: false, full: false, dropped: null };
   const ex = a.weapons.find(x => x.id === id);
-  if (ex) { ex.res = Math.min(w.reserve, ex.res + Math.ceil(w.mag * 1.5)); if (a.isPlayer) a.cur = a.weapons.indexOf(ex); return; }
-  const st = { id, mag: w.mag, res: w.reserve };
-  if (a.weapons.length < 4) a.weapons.push(st);
-  else a.weapons[a.cur >= 2 ? a.cur : 2] = st;
-  if (a.isPlayer) a.cur = a.weapons.indexOf(st);
+  if (ex) {
+    ex.res = Math.min(w.reserve, ex.res + Math.ceil(w.mag * 1.5));
+    if (a.isPlayer) a.cur = a.weapons.indexOf(ex);
+    return { added: true, full: false, dropped: null };
+  }
+  return { added: true, full: false, dropped: addSlot(a, { id, mag: w.mag, res: w.reserve }) };
+}
+
+function giveItem(a, id) {
+  const it = ITEMS[id];
+  if (!it) return { added: false, full: false, dropped: null };
+  const ex = a.weapons.find(x => x.id === id);
+  if (ex) {
+    if (ex.count >= it.stack) return { added: false, full: true, dropped: null };
+    ex.count++;
+    if (a.isPlayer) a.cur = a.weapons.indexOf(ex);
+    return { added: true, full: false, dropped: null };
+  }
+  return { added: true, full: false, dropped: addSlot(a, { id, count: 1 }) };
+}
+
+/* Drop a slot that has run out and fall back to the pistol. */
+function consumeSlot(a, idx) {
+  const st = a.weapons[idx];
+  if (!st) return;
+  a.weapons.splice(idx, 1);
+  if (a.isPlayer) {
+    if (a.cur >= a.weapons.length) a.cur = Math.max(0, a.weapons.length - 1);
+    if (a.cur === idx) a.cur = a.weapons.length > 1 ? 1 : 0;
+    a.reloadT = 0; a.drawT = 0;
+    bagSig = '';                    // force the panel to redraw
+  }
 }
 
 /* ------------------------------------------------------------
@@ -2412,7 +2968,9 @@ function botThink(b) {
     if (b.weapons.length < 3) {
       let bc = null, bcd = 1e9;
       for (const c of G.chests) {
-        if (!c.available) continue;
+        if (!c.available || !c.content || c.content.item) continue;  // bots cannot use items
+        const cw = WEAPONS[c.content.id];
+        if (!cw || cw.botOk === false) continue;                     // nor the crossbow
         const dd = b.pos.distanceTo(c.pos);
         if (dd < bcd) { bcd = dd; bc = c; }
       }
@@ -2651,6 +3209,24 @@ function updateBot(b, dt) {
   } else {
     b.stuckX = b.pos.x; b.stuckZ = b.pos.z; b.stuckWin = 0; b.stuckT = 0; b.stuckStage = 0;
   }
+
+  /* A bot standing ON its goal is invisible to the watchdog above, because that
+     only fires when the goal is still far away. If the goal cannot be completed
+     (a crate someone else emptied, a post that is no longer useful) it would
+     stand there for the rest of the match, so force a fresh decision. */
+  if (b.goalKind && !(visible && tgt && sameFloor)) {
+    const gd = Math.hypot(b.pos.x - b.goalPos.x, b.pos.z - b.goalPos.z);
+    if (gd < 2.2) {
+      b.arriveT = (b.arriveT || 0) + dt;
+      if (b.arriveT > 1.1) {
+        b.arriveT = 0; b.think = 0; b.goalLock = 0; b.goalKind = ''; b.path = null; b.pathIdx = 0;
+      }
+    } else {
+      b.arriveT = 0;
+    }
+  } else {
+    b.arriveT = 0;
+  }
   if (b.nudgeT > 0) {
     b.nudgeT -= dt;
     const c = Math.cos(b.nudgeAng), s = Math.sin(b.nudgeAng);
@@ -2685,10 +3261,10 @@ function updateBot(b, dt) {
   /* shooting */
   if (visible && tgt && b.reactT <= 0 && sameFloor) {
     const st = b.weapons[b.cur];
-    const w = WEAPONS[st.id];
+    const w = st ? defOf(st.id) : null;
     const dist = b.pos.distanceTo(tgt.pos);
     const facing = Math.abs(dyaw) < 0.22;
-    if (facing && dist < (w.range || 30)) {
+    if (w && facing && dist < (w.range || 30)) {
       if (st.mag > 0) {
         tryFire(b);
         // burst discipline: stop firing occasionally
@@ -2697,8 +3273,9 @@ function updateBot(b, dt) {
     }
   }
   // reload when idle
-  const st = b.weapons[b.cur];
-  if (st && !WEAPONS[st.id].melee && st.mag <= 0 && b.reloadT <= 0) startReload(b);
+  const st2 = b.weapons[b.cur];
+  const w2 = st2 ? defOf(st2.id) : null;
+  if (st2 && w2 && !w2.melee && !w2.item && st2.mag <= 0 && b.reloadT <= 0) startReload(b);
 
   /* bots upgrade guns from chests they walk over (handled in updateChests) */
 
@@ -2734,6 +3311,7 @@ function createPlayer() {
 function updatePlayer(dt) {
   const p = G.player;
   if (!p.alive) {
+    hideAimLine();
     p.respawnT -= dt;
     $('rsNum').textContent = Math.max(0, Math.ceil(p.respawnT));
     if (p.respawnT <= 0) {
@@ -2747,10 +3325,32 @@ function updatePlayer(dt) {
     if (p.reloadT <= 0) finishReload(p);
   }
 
-  /* out-of-combat regeneration — the maze punishes you enough already */
-  if (G.t - (p.lastHurtT || 0) > CFG.regenDelay && p.hp < p.maxHp) {
-    p.hp = Math.min(p.maxHp, p.hp + CFG.regenRate * dt);
+  /* No passive regeneration: a FIELD AID is the only way back up. */
+
+  /* stim boost */
+  if (p.stimT > 0) {
+    p.stimT -= dt;
+    p.speedMul = ITEMS.stim.mul;
+  } else if (p.speedMul !== 1) {
+    p.speedMul = 1;
   }
+
+  /* crossbow: hold the trigger, three seconds of draw, then the bolt flies */
+  const curSt = p.weapons[p.cur];
+  const curDef = curSt ? defOf(curSt.id) : null;
+  if (curDef && curDef.draw) {
+    if (firing && p.reloadT <= 0 && curSt.mag > 0) {
+      if (p.drawT === 0) Snd.draw();
+      p.drawT = Math.min(curDef.draw, p.drawT + dt);
+      if (p.drawT >= curDef.draw) { p.drawT = 0; fireCrossbow(p); }
+    } else if (p.drawT > 0) {
+      p.drawT = Math.max(0, p.drawT - dt * 2.5);
+    }
+  } else if (p.drawT) {
+    p.drawT = 0;
+  }
+
+  updateGrenadeAim(p);
 
   let wx = 0, wz = 0;
   if (keys['w'] || keys['arrowup']) wz -= 1;
@@ -2774,6 +3374,12 @@ function updatePlayer(dt) {
   const sway = p.onGround ? Math.cos(p.bobT * 0.5) * Math.min(0.03, speed * 0.005) : 0;
   camera.position.set(p.pos.x, p.pos.y + CFG.player.eye + bob, p.pos.z);
   camera.rotation.set(p.pitch, p.yaw, sway * 0.4);
+  if (G.shake > 0.001) {
+    camera.position.x += rand(-1, 1) * G.shake * 0.24;
+    camera.position.y += rand(-1, 1) * G.shake * 0.24;
+    camera.position.z += rand(-1, 1) * G.shake * 0.24;
+    camera.rotation.z += rand(-1, 1) * G.shake * 0.05;
+  }
 
   // weapon switch keys handled in keydown
   updateViewModel(dt, speed);
@@ -2990,6 +3596,91 @@ function buildViewModel() {
       leftHand(grp, -0.005, -0.02, -0.34);
     });
 
+  /* ---------------- CROSSBOW ---------------- */
+  mk('crossbow',
+    { p: [0.2, -0.2, -0.46], r: [0.02, 0.1, 0.02] },
+    { p: [0, -0.05, -0.42], r: [0, 0, 0] },
+    grp => {
+      const wood = new THREE.MeshStandardMaterial({ color: 0x6d4a26, roughness: 0.75, metalness: 0.05 });
+      b(grp, 0.05, 0.055, 0.46, 0, 0, -0.16, wood);                 // stock
+      b(grp, 0.058, 0.055, 0.13, 0, -0.012, 0.07, wood);            // butt
+      b(grp, 0.034, 0.08, 0.055, 0, -0.072, -0.03, GM.dark, 0.22);  // grip
+      b(grp, 0.42, 0.026, 0.05, 0, 0.032, -0.34, GM.steel);         // crossbar
+      b(grp, 0.1, 0.022, 0.04, -0.235, 0.032, -0.36, GM.steel, 0, 0.35, 0);
+      b(grp, 0.1, 0.022, 0.04, 0.235, 0.032, -0.36, GM.steel, 0, -0.35, 0);
+      b(grp, 0.36, 0.005, 0.005, 0, 0.032, -0.29, GM.dark);         // string
+      cyl(grp, 0.009, 0.009, 0.36, 0, 0.058, -0.26, GM.steel);      // bolt shaft
+      b(grp, 0.014, 0.014, 0.06, 0, 0.058, -0.45, GM.brass);        // bolt head
+      b(grp, 0.026, 0.022, 0.1, 0, 0.052, -0.06, GM.dark);          // rail
+      rightHand(grp, 0.004, -0.075, 0.03, 0.24);
+      leftHand(grp, -0.004, -0.02, -0.3);
+    });
+
+  /* ---------------- FIELD AID ---------------- */
+  mk('aid',
+    { p: [0.19, -0.21, -0.44], r: [0.05, 0.16, 0.03] },
+    { p: [0, -0.06, -0.4], r: [0, 0, 0] },
+    grp => {
+      const white = new THREE.MeshStandardMaterial({ color: 0xeef2f4, roughness: 0.55, metalness: 0.05 });
+      const red = new THREE.MeshStandardMaterial({ color: 0xc8352f, roughness: 0.6, metalness: 0.05 });
+      b(grp, 0.24, 0.15, 0.16, 0, 0, 0, white);                     // case
+      b(grp, 0.26, 0.028, 0.17, 0, 0.045, 0, GM.dark);              // lid seam
+      b(grp, 0.13, 0.035, 0.02, 0, 0.005, -0.086, red);             // cross —
+      b(grp, 0.035, 0.11, 0.02, 0, 0.005, -0.086, red);             // cross |
+      b(grp, 0.07, 0.022, 0.05, 0, 0.092, 0.03, GM.dark);           // handle
+      rightHand(grp, 0.1, -0.06, 0.06, 0.3);
+      leftHand(grp, -0.1, -0.06, 0.06);
+    });
+
+  /* ---------------- FRAG GRENADE ---------------- */
+  mk('grenade',
+    { p: [0.2, -0.2, -0.44], r: [0.05, 0.12, 0.02] },
+    { p: [0, -0.05, -0.4], r: [0, 0, 0] },
+    grp => {
+      const olive = new THREE.MeshStandardMaterial({ color: 0x3f5a3c, roughness: 0.65, metalness: 0.35 });
+      const ball = new THREE.Mesh(new THREE.SphereGeometry(0.085, 12, 10), olive);
+      ball.scale.set(1, 1.16, 1);
+      grp.add(ball);
+      const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.055, 8), GM.steel);
+      neck.position.y = 0.115;
+      grp.add(neck);
+      b(grp, 0.048, 0.048, 0.02, 0.028, 0.145, 0, GM.dark);         // spoon
+      b(grp, 0.075, 0.012, 0.012, 0, 0.03, 0, GM.steel);            // band
+      rightHand(grp, 0.02, -0.03, 0.02, 0.2);
+    });
+
+  /* ---------------- AMMO BOX ---------------- */
+  mk('ammo',
+    { p: [0.19, -0.21, -0.44], r: [0.05, 0.15, 0.02] },
+    { p: [0, -0.06, -0.4], r: [0, 0, 0] },
+    grp => {
+      const olive = new THREE.MeshStandardMaterial({ color: 0x4a5a3a, roughness: 0.8, metalness: 0.1 });
+      b(grp, 0.24, 0.13, 0.15, 0, 0, 0, olive);
+      b(grp, 0.25, 0.022, 0.16, 0, 0.05, 0, GM.brass);
+      b(grp, 0.03, 0.09, 0.02, 0, -0.005, -0.078, GM.brass);
+      rightHand(grp, 0.1, -0.05, 0.05, 0.3);
+      leftHand(grp, -0.1, -0.05, 0.05);
+    });
+
+  /* ---------------- STIM SHOT ---------------- */
+  mk('stim',
+    { p: [0.19, -0.2, -0.42], r: [0.1, 0.2, -0.08] },
+    { p: [0, -0.06, -0.38], r: [0, 0, 0] },
+    grp => {
+      const glass = new THREE.MeshStandardMaterial({ color: 0x9fe8c8, roughness: 0.2, metalness: 0.1, transparent: true, opacity: 0.85 });
+      const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.036, 0.19, 10), glass);
+      grp.add(tube);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.042, 0.03, 10), GM.steel);
+      cap.position.y = 0.11; grp.add(cap);
+      const plunger = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.1, 8), GM.dark);
+      plunger.position.y = 0.17; grp.add(plunger);
+      const flange = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.012, 10), GM.dark);
+      flange.position.y = 0.222; grp.add(flange);
+      const needle = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.001, 0.1, 6), GM.steel);
+      needle.position.y = -0.145; grp.add(needle);
+      rightHand(grp, 0.02, -0.02, 0.03, 0.2);
+    });
+
   /* muzzle flash */
   const flashMat = new THREE.MeshBasicMaterial({ color: 0xffd97a, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false });
   VM.flash = new THREE.Mesh(new THREE.SphereGeometry(0.055, 6, 5), flashMat);
@@ -3036,7 +3727,7 @@ function setViewModel(id) {
 
 function addRecoil(w) {
   VM.recoilV += 0.05 + (w.dmg / 900);
-  G.player.pitch = clamp(G.player.pitch + 0.004 + Math.random() * 0.003, -1.4, 1.4);
+  G.player.pitch = clamp(G.player.pitch + 0.004 + Math.random() * 0.003, -1.35, 1.35);
   G.player.yaw += rand(-0.002, 0.002);
 }
 
@@ -3044,8 +3735,8 @@ function swingKnife() {
   VM.kick = 1;
 }
 
-const MUZZLE = { knife: [0, 0.01, -0.36], pistol: [0, 0.035, -0.22], smg: [0, 0.025, -0.46], rifle: [0, 0.028, -0.6], shotgun: [0, 0.035, -0.68], sniper: [0, 0.03, -0.82] };
-const ADS_FOV = { pistol: 58, smg: 55, rifle: 50, shotgun: 60, sniper: 24, knife: 74 };
+const MUZZLE = { knife: [0, 0.01, -0.36], pistol: [0, 0.035, -0.22], smg: [0, 0.025, -0.46], rifle: [0, 0.028, -0.6], shotgun: [0, 0.035, -0.68], sniper: [0, 0.03, -0.82], crossbow: [0, 0.058, -0.5] };
+const ADS_FOV = { pistol: 58, smg: 55, rifle: 50, shotgun: 60, sniper: 24, knife: 74, crossbow: 50 };
 
 function updateViewModel(dt, speed) {
   const p = G.player;
@@ -3055,10 +3746,11 @@ function updateViewModel(dt, speed) {
   const m = VM.models[st.id];
   if (!m) return;
 
-  const w = WEAPONS[st.id];
+  const w = defOf(st.id);
+  if (!w) return;
 
-  /* ADS blend */
-  VM.adsTarget = (VM.adsOn && !w.melee) ? 1 : 0;
+  /* ADS blend — items and the crossbow have no aimed pose */
+  VM.adsTarget = (VM.adsOn && !w.melee && !w.item && !w.draw) ? 1 : 0;
   VM.ads = lerp(VM.ads, VM.adsTarget, Math.min(1, dt * 12));
 
   /* recoil / kick */
@@ -3076,9 +3768,11 @@ function updateViewModel(dt, speed) {
   const py = lerp(hip.p[1] + bobY, ads.p[1], t) - reloadProg * 0.14;
   const pz = lerp(hip.p[2], ads.p[2], t) + VM.recoilV * 0.5;
 
-  m.position.set(px, py, pz);
+  /* the crossbow eases back into the shoulder as the draw builds */
+  const drawK = (w.draw && p.drawT > 0) ? Math.min(1, p.drawT / w.draw) : 0;
+  m.position.set(px - drawK * 0.02, py - drawK * 0.012, pz + drawK * 0.06);
   m.rotation.set(
-    lerp(hip.r[0], ads.r[0], t) + VM.recoilV * 0.5 - VM.kick * 1.1 - reloadProg * 0.55,
+    lerp(hip.r[0], ads.r[0], t) + VM.recoilV * 0.5 - VM.kick * 1.1 - reloadProg * 0.55 - drawK * 0.06,
     lerp(hip.r[1], ads.r[1], t) + VM.kick * 0.55,
     lerp(hip.r[2], ads.r[2], t) + VM.kick * 0.45
   );
@@ -3093,7 +3787,7 @@ function updateViewModel(dt, speed) {
   const scopeEl = $('scope');
   if (scopeEl) scopeEl.classList.toggle('show', sniperScoped);
   m.visible = !sniperScoped;
-  VM.flash.visible = VM.recoilV > 0.055 && !sniperScoped;
+  VM.flash.visible = VM.recoilV > 0.055 && !sniperScoped && !w.item;
   VM.flash2.visible = VM.flash.visible;
 
   if (VM.flash.visible) {
@@ -3284,7 +3978,7 @@ function drawMinimap() {
     g.beginPath();
     g.moveTo(x, y - r); g.lineTo(x + r, y); g.lineTo(x, y + r); g.lineTo(x - r, y);
     g.closePath();
-    g.fillStyle = '#ffd166';
+    g.fillStyle = (c.content && c.content.item) ? '#59e0c8' : '#ffd166';
     g.fill();
     g.strokeStyle = 'rgba(0,0,0,0.55)'; g.lineWidth = 0.8; g.stroke();
   }
@@ -3348,9 +4042,21 @@ function updateHUD(dt) {
   // weapon
   const st = p.weapons[p.cur];
   if (st) {
-    const w = WEAPONS[st.id];
+    const w = defOf(st.id);
     $('gName').textContent = w.name;
-    if (w.melee) {
+    if (w.item) {
+      $('gMag').textContent = '×' + st.count;
+      $('gRes').textContent = '';
+      $('gMag').parentElement.classList.remove('empty');
+      const hints = {
+        aid: 'LMB — PATCH UP 40 HP',
+        grenade: 'HOLD LMB TO AIM · RELEASE TO THROW',
+        ammo: 'LMB — REFILL RESERVES',
+        stim: 'LMB — SPEED BOOST'
+      };
+      $('gHint').textContent = hints[w.kind] || 'LMB TO USE';
+      $('gHint').classList.toggle('warn', w.kind === 'aid' && p.hp < p.maxHp * 0.5);
+    } else if (w.melee) {
       $('gMag').textContent = '∞'; $('gRes').textContent = '';
       $('gHint').textContent = 'MELEE';
       $('gHint').classList.remove('warn');
@@ -3358,22 +4064,44 @@ function updateHUD(dt) {
       $('gMag').textContent = st.mag;
       $('gRes').textContent = st.res;
       $('gMag').parentElement.classList.toggle('empty', st.mag === 0);
-      $('gHint').textContent = p.reloadT > 0 ? 'RELOADING…' : (st.mag === 0 ? 'PRESS R TO RELOAD' : (st.mag / w.mag < 0.3 ? 'LOW AMMO — R' : 'R RELOAD'));
+      if (w.draw && p.drawT > 0) {
+        $('gHint').textContent = 'DRAWING ' + Math.round(p.drawT / w.draw * 100) + '%';
+      } else {
+        $('gHint').textContent = p.reloadT > 0 ? 'RELOADING…' : (st.mag === 0 ? 'PRESS R TO RELOAD' : (st.mag / w.mag < 0.3 ? 'LOW AMMO — R' : 'R RELOAD'));
+      }
       $('gHint').classList.toggle('warn', st.mag === 0 || p.reloadT > 0);
     }
-    const names = p.weapons.map((x, i) => (i + 1) + ' ' + WEAPONS[x.id].name.split(' ')[0]);
+    const names = p.weapons.map((x, i) => {
+      const d = defOf(x.id);
+      const nm = d ? d.name.split(' ')[0] : x.id;
+      return (i + 1) + ' ' + (d && d.item ? nm + '×' + x.count : nm);
+    });
     $('vSub').textContent = names.join('   ');
   }
 
   // crosshair spread
   const sp = Math.hypot(p.vel.x, p.vel.z);
-  const spread = 4 + sp * 1.6 + (st && !WEAPONS[st.id].melee ? WEAPONS[st.id].spread * 320 : 0);
+  const cdef = st ? defOf(st.id) : null;
+  const spread = 4 + sp * 1.6 + (cdef && cdef.spread ? cdef.spread * 320 : 0);
   const ch = $('crosshair');
   ch.style.width = ch.style.height = (34 + spread) + 'px';
   ch.querySelector('.t').style.top = '0px';
   ch.querySelector('.b').style.bottom = '0px';
   ch.querySelector('.l').style.left = '0px';
   ch.querySelector('.r').style.right = '0px';
+
+  // crossbow draw bar
+  const chargeWrap = $('chargeWrap');
+  if (chargeWrap) {
+    if (cdef && cdef.draw && p.drawT > 0) {
+      const pct = Math.min(100, p.drawT / cdef.draw * 100);
+      $('chargeFill').style.width = pct + '%';
+      $('chargeLabel').textContent = pct >= 99.5 ? 'LOOSE!' : 'DRAWING ' + Math.round(pct) + '%';
+      chargeWrap.classList.add('show');
+    } else {
+      chargeWrap.classList.remove('show');
+    }
+  }
 
   updateRoster(dt);
   camera.updateMatrixWorld();
@@ -3405,15 +4133,19 @@ function updateBag() {
   let sig = '';
   let html = '';
   p.weapons.forEach((st, i) => {
-    const w = WEAPONS[st.id];
-    const ammo = w.melee ? '∞' : (st.mag + '<i>/</i>' + st.res);
-    sig += st.id + ':' + st.mag + ':' + st.res + ':' + p.cur;
-    html += '<div class="bag-row' + (i === p.cur ? ' cur' : '') + '">' +
+    const w = defOf(st.id);
+    if (!w) return;
+    let ammo;
+    if (w.melee) ammo = '∞';
+    else if (w.item) ammo = '×' + st.count;
+    else ammo = st.mag + '<i>/</i>' + st.res;
+    sig += st.id + ':' + (st.mag || 0) + ':' + (st.res || 0) + ':' + (st.count || 0) + ':' + p.cur;
+    html += '<div class="bag-row' + (i === p.cur ? ' cur' : '') + (w.item ? ' item' : '') + '">' +
       '<span class="bag-slot">' + (i + 1) + '</span>' +
       '<span class="bag-name">' + w.name + '</span>' +
       '<span class="bag-ammo">' + ammo + '</span></div>';
   });
-  for (let i = p.weapons.length; i < 4; i++) {
+  for (let i = p.weapons.length; i < CFG.slots; i++) {
     html += '<div class="bag-row empty"><span class="bag-slot">' + (i + 1) + '</span>' +
       '<span class="bag-name">— EMPTY —</span><span class="bag-ammo"></span></div>';
   }
@@ -3427,7 +4159,7 @@ const TUT_TASKS = [
   { id: 'move', text: 'Move with <b>W A S D</b> — cover 12 m' },
   { id: 'jump', text: 'Jump with <b>SPACE</b>' },
   { id: 'shoot', text: 'Aim with the mouse and <b>ELIMINATE</b> a practice dummy' },
-  { id: 'chest', text: 'Walk to a crate and press <b>E</b> to take a weapon' },
+  { id: 'chest', text: 'Walk to a crate and press <b>E</b> to take what is inside' },
   { id: 'more', text: 'Eliminate 2 more dummies with your new gun' }
 ];
 
@@ -3494,9 +4226,12 @@ function initInput() {
     if (k === 'r') startReload(G.player);
     if (k === 'e') { if (G.nearChest) takeChest(G.nearChest, G.player); }
     if (k === 'q') { VM.adsOn = !VM.adsOn; Snd.tone(VM.adsOn ? 520 : 380, VM.adsOn ? 520 : 380, 0.04, 0.05, 'square'); }
-    if (k === '1' || k === '2' || k === '3' || k === '4') {
-      const i = parseInt(k) - 1;
-      if (G.player.weapons[i]) { G.player.cur = i; G.player.reloadT = 0; Snd.tone(700, 700, 0.03, 0.06, 'square'); }
+    if (k === '1' || k === '2' || k === '3' || k === '4' || k === '5') {
+      const i = parseInt(k, 10) - 1;
+      if (G.player.weapons[i]) {
+        G.player.cur = i; G.player.reloadT = 0; G.player.drawT = 0;
+        Snd.tone(700, 700, 0.03, 0.06, 'square');
+      }
     }
     if (k === ' ' && G.tutorial.active && G.player.onGround) G.tutorial.jumps++;
     if (k === 'tab') showScoreboard(true);
@@ -3511,13 +4246,21 @@ function initInput() {
     if (G.state !== 'playing') return;
     if (!document.pointerLockElement) requestLock();
     if (e.button === 0) {
+      if (!G.player || !G.player.alive) return;
       firing = true;
       const st = G.player.weapons[G.player.cur];
-      if (st && !WEAPONS[st.id].auto) tryFire(G.player);
+      const w = st ? defOf(st.id) : null;
+      if (w && !w.auto) tryFire(G.player);
     }
   });
   window.addEventListener('mouseup', e => {
-    if (e.button === 0) firing = false;
+    if (e.button !== 0) return;
+    /* releasing the trigger is what actually throws a grenade */
+    if (firing && G.state === 'playing' && G.player && G.player.alive) {
+      const st = G.player.weapons[G.player.cur];
+      if (st && st.id === 'grenade') throwGrenade(G.player);
+    }
+    firing = false;
   });
 
   document.addEventListener('mousemove', e => {
@@ -3589,6 +4332,8 @@ function startGame(mode) {
   // clear actors
   for (const b of G.bots) if (b.mesh) G._botGroup.remove(b.mesh);
   G.bots.length = 0;
+  clearProjectiles();
+  G.shake = 0;
 
   createPlayer();
   if (mode === 'tutorial') { ensureBotGroup(); spawnTutorialDummies(); }
@@ -3691,6 +4436,7 @@ function pauseGame() {
   if (G.state !== 'playing') return;
   G.state = 'paused';
   firing = false;
+  hideAimLine();
   $('pause').classList.add('show');
   $('pauseScore').textContent = 'RED ' + G.score.red + '  —  ' + G.score.blue + ' BLUE   ·   ' + $('clock').textContent;
   document.exitPointerLock && document.exitPointerLock();
@@ -3734,13 +4480,15 @@ function update(dt) {
     }
   }
   separateActors();
+  updateProjectiles(dt);
   updateChests(dt);
   updateFlags(dt);
   updateEffects(dt);
   updateHUD(dt);
   if (firing && p.alive) {
     const st = p.weapons[p.cur];
-    if (st && WEAPONS[st.id].auto) tryFire(p);
+    const w = st ? defOf(st.id) : null;
+    if (w && w.auto) tryFire(p);
   }
 }
 
@@ -3796,7 +4544,8 @@ const HT_PAGES = [
     <h4>YOUR LOADOUT</h4>
     <p>You always start with a <span class="accent">knife</span> and a <span class="accent">pistol</span>.
     Everything else is found in crates. Pick your fights early — a pistol loses to a rifle at range.
-    You have <span class="accent">140 HP</span> and regenerate out of combat, so disengaging is a real option.</p>`
+    You have <span class="accent">140 HP</span> and <b>no regeneration</b>: a <span class="accent">FIELD AID</span>
+    from a crate is the only way to get health back, so a fight you cannot win is a fight you should leave.</p>`
   },
   {
     t: 'CONTROLS',
@@ -3804,13 +4553,13 @@ const HT_PAGES = [
       <tr><th>INPUT</th><th>ACTION</th></tr>
       <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td><td>Move</td></tr>
       <tr><td><kbd>MOUSE</kbd></td><td>Look / aim</td></tr>
-      <tr><td><kbd>LEFT CLICK</kbd></td><td>Fire (hold for automatic weapons)</td></tr>
+      <tr><td><kbd>LEFT CLICK</kbd></td><td>Fire · use an item · <b>hold</b> to draw the crossbow or aim a grenade</td></tr>
       <tr><td><kbd>Q</kbd></td><td>Aim down sights — tighter spread, zoom, slower turn (toggle)</td></tr>
       <tr><td><kbd>R</kbd></td><td>Reload</td></tr>
-      <tr><td><kbd>E</kbd></td><td>Open a weapon crate</td></tr>
+      <tr><td><kbd>E</kbd></td><td>Take what is in a crate</td></tr>
       <tr><td><kbd>SHIFT</kbd></td><td>Sprint (forward)</td></tr>
       <tr><td><kbd>SPACE</kbd></td><td>Jump</td></tr>
-      <tr><td><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd></td><td>Select weapon slot</td></tr>
+      <tr><td><kbd>1</kbd>–<kbd>5</kbd></td><td>Select a bag slot</td></tr>
       <tr><td><kbd>TAB</kbd></td><td>Scoreboard (kills / deaths / HP)</td></tr>
       <tr><td><kbd>ESC</kbd></td><td>Pause</td></tr>
     </table>
@@ -3818,7 +4567,7 @@ const HT_PAGES = [
   },
   {
     t: 'WEAPONS & CRATES',
-    h: `<h3>Six weapons, two of them yours from the start</h3>
+    h: `<h3>Seven weapons, two of them yours from the start</h3>
     <table>
       <tr><th>WEAPON</th><th>DMG</th><th>MAG</th><th>NOTES</th></tr>
       <tr><td>Combat Knife</td><td>58</td><td>—</td><td>Always equipped, silent, 2.5 m reach</td></tr>
@@ -3827,11 +4576,24 @@ const HT_PAGES = [
       <tr><td>AK-47 Rifle</td><td>31</td><td>30</td><td>Best all-rounder</td></tr>
       <tr><td>SPAS-12</td><td>12×8</td><td>6</td><td>One-shot at close range</td></tr>
       <tr><td>AWP Sniper</td><td>115</td><td>5</td><td>Body-shot kill, punishing reload</td></tr>
+      <tr><td>Crossbow</td><td>105</td><td>3</td><td><b>3 s draw</b> per bolt, only 30 m of range — a duelling weapon</td></tr>
     </table>
+    <h4>ITEMS — the teal crates</h4>
+    <table>
+      <tr><th>ITEM</th><th>USE</th></tr>
+      <tr><td><b>Field Aid</b></td><td>Click to patch up <b>40 HP</b>. Nothing else heals you.</td></tr>
+      <tr><td><b>Frag Grenade</b></td><td>Hold to aim: a gold arc shows where it lands, and it turns <b>red</b> when an enemy is caught in the blast. Release to throw.</td></tr>
+      <tr><td><b>Ammo Box</b></td><td>Refills the reserve of every gun you carry.</td></tr>
+      <tr><td><b>Stim Shot</b></td><td>+34% movement speed for 8 seconds.</td></tr>
+    </table>
+    <p>Grenades hurt <b>enemies and yourself</b> — never teammates — and a wall between you and the blast saves you.
+    Their damage falls off with distance, so land one at someone's feet rather than at their silhouette.</p>
     <h4>CRATES</h4>
-    <p>Eight wooden crates sit in open ground — one in each HQ plaza, four spread over maze junctions, two up on the catwalk. Every one throws a <span class="accent">column of gold light</span>
-    into the air, shows a spinning gold marker, and is drawn as a gold diamond on the tactical map — you should never have to hunt for one.
-    Walk up and press <kbd>E</kbd> to take the weapon inside. A used crate refills after ~26 seconds with a random gun, so camp it or beat the enemy to it.</p>
+    <p>Eight wooden crates sit in open ground — one in each HQ plaza, four spread over maze junctions, two up on the catwalk. Every one throws a <span class="accent">column of light</span>
+    into the air, shows a spinning marker, and is drawn as a diamond on the tactical map — you should never have to hunt for one.
+    <b>Gold</b> crates hold a gun, <b>teal</b> crates hold an item; the prompt tells you what is inside before you take it.</p>
+    <p>Walk up and press <kbd>E</kbd> to take it. A used crate refills after ~26 seconds with something new, so camp it or beat the enemy to it.
+    Your bag has <b>five slots</b>: knife, pistol and three pickups. When the last three are full, a new pickup replaces the last one.</p>
     <p><span class="accent">Headshots deal double damage</span> — the AK and AWP kill in one headshot.</p>`
   },
   {
@@ -4005,6 +4767,24 @@ window.__wh = {
   get camera() { return camera; },
   get scene() { return scene; },
   get renderer() { return renderer; },
+  /* test hooks for the item system */
+  setFiring(v) { firing = v; },
+  get firing() { return firing; },
+  addItem(id, n) { for (let i = 0; i < (n || 1); i++) giveItem(G.player, id); },
+  addWeapon(id) { giveWeapon(G.player, id); },
+  useSlot() { tryFire(G.player); },
+  throwGrenade() { return throwGrenade(G.player); },
+  aimInfo() {
+    const st = G.player.weapons[G.player.cur];
+    return {
+      id: st ? st.id : null,
+      drawT: G.player.drawT,
+      aimVisible: !!(G.aimLine && G.aimLine.visible),
+      aimColor: G.aimLine ? '#' + G.aimLine.material.color.getHexString() : null,
+      projectiles: G.projectiles.length,
+      blasts: G.blasts.length
+    };
+  },
   teleport(x, y, z) {
     const p = G.player;
     p.pos.set(x, y, z); p.vel.set(0, 0, 0);
