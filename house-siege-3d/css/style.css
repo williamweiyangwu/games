@@ -237,6 +237,22 @@ b{font-weight:700}
 .bag-row.cur .bag-ammo{color:var(--gold)}
 .bag-row.empty{opacity:.42}
 .bag-row.empty .bag-name{letter-spacing:.14em;font-size:9px}
+.bag-row.item .bag-name{color:#7fe6d2}
+.bag-row.item .bag-ammo{color:#59e0c8}
+.bag-row.item.cur{background:rgba(89,224,200,.14)}
+.bag-row.item.cur .bag-slot{border-color:#59e0c8;color:#59e0c8}
+.bag-row.item.cur .bag-name{color:#b6fff2}
+.bag-row.item.cur .bag-ammo{color:#59e0c8}
+
+/* crossbow draw meter */
+#chargeWrap{position:absolute;left:50%;top:calc(50% + 46px);transform:translateX(-50%);
+  width:150px;height:5px;background:rgba(8,11,17,.72);border:1px solid rgba(255,255,255,.18);
+  border-radius:3px;opacity:0;transition:opacity .12s;overflow:visible}
+#chargeWrap.show{opacity:1}
+#chargeFill{height:100%;width:0%;background:linear-gradient(90deg,#ffc44d,#ffe9a8);border-radius:2px;
+  transition:width .04s linear}
+#chargeLabel{position:absolute;left:50%;top:8px;transform:translateX(-50%);font-size:8px;
+  letter-spacing:.18em;color:#ffd98a;white-space:nowrap;font-weight:700}
 
 /* prompt */
 #prompt{position:absolute;left:50%;top:60%;transform:translateX(-50%);font-size:11px;letter-spacing:.16em;
