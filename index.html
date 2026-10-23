@@ -92,6 +92,28 @@
   a.card:hover .arrow{transform:translateX(4px)}
   footer{text-align:center;color:#5b667c;font-size:12.5px;margin-top:56px;letter-spacing:.4px}
   footer a{color:#8b96ad}
+
+  /* ---------- Backrooms records (read from the game's own save) ---------- */
+  .stats{
+    margin-top:56px;padding:26px 28px 24px;
+    background:linear-gradient(180deg,var(--panel),var(--panel2));
+    border:1px solid var(--line);border-radius:16px;
+  }
+  .stats h2{margin:0;font-size:12px;letter-spacing:3px;color:var(--dim);font-weight:700}
+  .stats .slead{margin:8px 0 20px;font-size:13px;color:var(--dim)}
+  .stats .slead b{color:#e8dc9a;font-weight:600}
+  .sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+  .stat{
+    padding:16px 18px;border-radius:12px;background:rgba(255,255,255,.03);
+    border:1px solid var(--line);text-align:center;
+  }
+  .stat b{display:block;font-size:24px;letter-spacing:1px;color:#e8dc9a;line-height:1.1}
+  .stat span{display:block;margin-top:8px;font-size:10px;letter-spacing:1.6px;color:var(--dim)}
+  .stat.dead b{color:#6d7ba0}
+  .stats .sfoot{margin-top:18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    font-size:12px;color:var(--dim)}
+  .stats .sfoot a{color:#e8dc9a;text-decoration:none;border-bottom:1px solid rgba(232,220,154,.4)}
+  .stats .sfoot a:hover{color:#fff;border-color:#fff}
 </style>
 </head>
 <body>
@@ -113,8 +135,8 @@
       <div class="thumb c7"><span class="glyph">&#9647;</span></div>
       <span class="tag">HORROR</span>
       <h2>THE BACKROOMS</h2>
-      <p>3D first-person survival horror. Wander the endless yellow halls, pry open supply lockers for weapons and food, fight or outrun what lives in there — and find the hidden exit.</p>
-      <div class="meta">Survival horror <span class="arrow">&#8594;</span></div>
+      <p>3D first-person survival horror across three floors. Pry open supply lockers for weapons and food, work the action on your magazines, fight or outrun what lives in there — and find the gate.</p>
+      <div class="meta">Three floors · survival horror <span class="arrow">&#8594;</span></div>
     </a>
 
     <a class="card" href="house-siege-3d/">
@@ -175,9 +197,53 @@
     </a>
   </div>
 
+  <section class="stats" id="brstats">
+    <h2>YOUR RECORD — THE BACKROOMS</h2>
+    <p class="slead" id="brlead">No runs logged yet. Three floors, nine fuses, one way out.</p>
+    <div class="sgrid">
+      <div class="stat"><b id="br-achs">0/14</b><span>ACHIEVEMENTS</span></div>
+      <div class="stat"><b id="br-depth">—</b><span>DEEPEST FLOOR</span></div>
+      <div class="stat"><b id="br-time">—</b><span>FASTEST ESCAPE</span></div>
+      <div class="stat"><b id="br-kills">—</b><span>MOST KILLS</span></div>
+      <div class="stat"><b id="br-runs">0</b><span>RUNS</span></div>
+    </div>
+    <div class="sfoot">
+      <span id="brsave"></span>
+      <a href="backrooms/">OPEN THE BACKROOMS</a>
+      <a href="backrooms/" onclick="localStorage.removeItem('br_rec_v1');localStorage.removeItem('br_achs_v1')">WIPE MY RECORD</a>
+    </div>
+  </section>
+
   <footer>
     Built by <a href="https://github.com/williamweiyangwu">William</a> &middot; hosted on GitHub Pages
   </footer>
 </div>
+<script>
+// The Backrooms keeps its own progress in localStorage on this domain,
+// so the arcade can show the record without any backend.
+(function(){
+  var NAMES=['THE LOBBY','WAREHOUSE','PIPE DREAMS'];
+  function read(k){try{return JSON.parse(localStorage.getItem(k)||'null');}catch(e){return null;}}
+  function fmt(s){s=Math.round(s||0);var m=Math.floor(s/60);return m+':'+String(s%60).padStart(2,'0');}
+  var achs=read('br_achs_v1')||[],rec=read('br_rec_v1')||{},save=read('br_save_v1');
+  function set(id,v,dead){var el=document.getElementById(id);if(!el)return;
+    el.textContent=v;if(dead)el.parentNode.classList.add('dead');}
+  set('br-achs',achs.length+'/14');
+  set('br-depth',rec.deepest==null?'—':'LEVEL '+rec.deepest,rec.deepest==null);
+  set('br-time',rec.bestTime==null?'—':fmt(rec.bestTime),rec.bestTime==null);
+  set('br-kills',rec.bestKills==null?'—':rec.bestKills,rec.bestKills==null);
+  set('br-runs',rec.runs||0,!(rec.runs>0));
+  var lead=document.getElementById('brlead');
+  if(lead){
+    if(rec.runs>0){
+      lead.innerHTML='You have spent <b>'+(rec.runs)+'</b> run'+(rec.runs>1?'s':'')+
+        ' in the halls and climbed out <b>'+(rec.escapes||0)+'</b> time'+
+        ((rec.escapes||0)===1?'':'s')+'.';
+    }
+  }
+  var sv=document.getElementById('brsave');
+  if(sv)sv.innerHTML=save?'<b>A RUN IS WAITING</b> — the halls kept it for you.':'';
+})();
+</script>
 </body>
 </html>
