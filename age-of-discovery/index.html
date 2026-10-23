@@ -917,6 +917,369 @@ function buildShipModel(scale = 1) {
   return outer;
 }
 // ============================================================
+//  CITY KIT - real facades, tiled roofs, paving, colliders
+// ============================================================
+const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+const sstep = (t) => { t = clamp01(t); return t * t * (3 - 2 * t); };
+
+function makeCanvasTex(w, h, draw) {
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const ctx = cv.getContext('2d');
+  draw(ctx, w, h);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = 8;
+  if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+// One bay of a Lisbon townhouse: plaster wall, shuttered window, iron balcony.
+// Tile it (repeat) across a facade - that is what makes a street read as a street.
+function texFacade(plaster, shutter, azulejo) {
+  return makeCanvasTex(128, 128, (c, w, h) => {
+    c.fillStyle = plaster;
+    c.fillRect(0, 0, w, h);
+
+    // lime-wash mottling
+    for (let i = 0; i < 320; i++) {
+      c.fillStyle = `rgba(120,100,70,${(Math.random() * 0.05).toFixed(3)})`;
+      c.fillRect(Math.random() * w, Math.random() * h, 2 + Math.random() * 20, 2 + Math.random() * 9);
+    }
+    // damp staining rising from the floor band
+    const damp = c.createLinearGradient(0, h - 30, 0, h);
+    damp.addColorStop(0, 'rgba(90,80,60,0)');
+    damp.addColorStop(1, 'rgba(90,80,60,0.18)');
+    c.fillStyle = damp;
+    c.fillRect(0, h - 30, w, 30);
+
+    // azulejo plinth (blue tiles) on some houses
+    if (azulejo) {
+      c.fillStyle = '#e9eef2';
+      c.fillRect(0, h - 16, w, 12);
+      for (let x = 0; x < w; x += 8) {
+        c.fillStyle = x % 16 === 0 ? 'rgba(46,92,150,0.85)' : 'rgba(70,120,175,0.55)';
+        c.fillRect(x + 1, h - 15, 6, 10);
+        c.fillStyle = 'rgba(255,255,255,0.6)';
+        c.fillRect(x + 3, h - 12, 2, 2);
+      }
+    }
+
+    // stone lintel + sill
+    c.fillStyle = 'rgba(238,232,214,0.92)';
+    c.fillRect(30, 24, 68, 7);
+    c.fillRect(28, 94, 72, 8);
+    c.fillStyle = 'rgba(120,108,86,0.35)';
+    c.fillRect(28, 101, 72, 2);
+
+    // shutters (painted louvres)
+    for (const sx of [34, 78]) {
+      c.fillStyle = shutter;
+      c.fillRect(sx, 31, 16, 63);
+      c.fillStyle = 'rgba(0,0,0,0.22)';
+      for (let y = 34; y < 92; y += 4) c.fillRect(sx + 1, y, 14, 1.5);
+      c.fillStyle = 'rgba(255,255,255,0.16)';
+      c.fillRect(sx, 31, 2, 63);
+    }
+
+    // the window itself: dark room, glazing bars, reflection
+    const glass = c.createLinearGradient(50, 31, 50, 92);
+    glass.addColorStop(0, '#2b3440');
+    glass.addColorStop(0.45, '#4a5b6b');
+    glass.addColorStop(1, '#1d2530');
+    c.fillStyle = glass;
+    c.fillRect(50, 31, 28, 61);
+    c.strokeStyle = 'rgba(238,232,214,0.85)';
+    c.lineWidth = 2;
+    c.strokeRect(50, 31, 28, 61);
+    c.beginPath();
+    c.moveTo(64, 31); c.lineTo(64, 92);
+    c.moveTo(50, 60); c.lineTo(78, 60);
+    c.stroke();
+    c.fillStyle = 'rgba(255,255,255,0.10)';
+    c.beginPath();
+    c.moveTo(52, 33); c.lineTo(64, 33); c.lineTo(52, 74);
+    c.closePath(); c.fill();
+
+    // wrought-iron balcony
+    c.fillStyle = 'rgba(38,34,30,0.9)';
+    c.fillRect(30, 90, 68, 3);
+    c.fillRect(30, 104, 68, 3);
+    for (let x = 31; x < 98; x += 5) c.fillRect(x, 90, 1.4, 14);
+  });
+}
+
+// Ground floor: door, shop window, stone base
+function texGroundFloor(plaster, shutter, shop) {
+  return makeCanvasTex(128, 128, (c, w, h) => {
+    c.fillStyle = plaster;
+    c.fillRect(0, 0, w, h);
+    for (let i = 0; i < 220; i++) {
+      c.fillStyle = `rgba(110,92,66,${(Math.random() * 0.06).toFixed(3)})`;
+      c.fillRect(Math.random() * w, Math.random() * h, 3 + Math.random() * 18, 2 + Math.random() * 8);
+    }
+    // stone plinth
+    c.fillStyle = '#cfc6b2';
+    c.fillRect(0, h - 22, w, 22);
+    c.fillStyle = 'rgba(90,80,62,0.25)';
+    for (let x = 0; x < w; x += 32) c.fillRect(x, h - 22, 2, 22);
+    c.fillRect(0, h - 12, w, 2);
+
+    // shop / tavern opening with a timber frame
+    c.fillStyle = shop ? '#3a2b1c' : '#4a3626';
+    c.fillRect(30, 44, 68, h - 66);
+    c.fillStyle = shop ? 'rgba(255,196,110,0.35)' : 'rgba(20,16,12,0.75)';
+    c.fillRect(34, 48, 60, h - 74);
+    c.strokeStyle = '#5c4128';
+    c.lineWidth = 5;
+    c.strokeRect(32, 46, 64, h - 70);
+    c.beginPath();
+    c.moveTo(64, 46); c.lineTo(64, h - 24);
+    c.stroke();
+    if (shop) {
+      // awning stripes over the shop
+      for (let x = 28; x < 100; x += 12) {
+        c.fillStyle = (x / 12) % 2 ? 'rgba(178,72,58,0.85)' : 'rgba(238,228,204,0.85)';
+        c.fillRect(x, 30, 12, 12);
+      }
+      c.fillStyle = 'rgba(0,0,0,0.18)';
+      c.fillRect(28, 42, 72, 2);
+    } else {
+      c.fillStyle = 'rgba(238,232,214,0.9)';
+      c.fillRect(28, 34, 72, 7);
+    }
+    // iron grille over the lower opening
+    c.fillStyle = 'rgba(30,26,22,0.55)';
+    for (let x = 36; x < 94; x += 7) c.fillRect(x, h - 34, 2, 12);
+  });
+}
+
+// Arcade bay for the great square: a stone arch you can actually walk under
+function texArcade(plaster) {
+  return makeCanvasTex(128, 160, (c, w, h) => {
+    c.fillStyle = plaster;
+    c.fillRect(0, 0, w, h);
+    for (let i = 0; i < 260; i++) {
+      c.fillStyle = `rgba(110,92,66,${(Math.random() * 0.05).toFixed(3)})`;
+      c.fillRect(Math.random() * w, Math.random() * h, 3 + Math.random() * 20, 2 + Math.random() * 10);
+    }
+    // rusticated stone piers
+    c.fillStyle = '#ded5c0';
+    c.fillRect(0, 0, 18, h);
+    c.fillRect(w - 18, 0, 18, h);
+    c.fillStyle = 'rgba(96,86,66,0.28)';
+    for (let y = 0; y < h; y += 16) {
+      c.fillRect(0, y, 18, 2);
+      c.fillRect(w - 18, y, 18, 2);
+    }
+    // the arch: dark opening with a stone voussoir ring
+    c.fillStyle = '#efe7d2';
+    c.beginPath();
+    c.moveTo(18, h);
+    c.lineTo(18, 74);
+    c.quadraticCurveTo(64, 8, 110, 74);
+    c.lineTo(110, h);
+    c.closePath();
+    c.fill();
+    c.fillStyle = '#1b1712';
+    c.beginPath();
+    c.moveTo(26, h);
+    c.lineTo(26, 78);
+    c.quadraticCurveTo(64, 24, 102, 78);
+    c.lineTo(102, h);
+    c.closePath();
+    c.fill();
+    // keystone
+    c.fillStyle = '#f4ecd8';
+    c.fillRect(58, 14, 12, 18);
+  });
+}
+
+function texRoofTiles() {
+  return makeCanvasTex(128, 128, (c, w, h) => {
+    c.fillStyle = '#a85238';
+    c.fillRect(0, 0, w, h);
+    for (let y = 0; y < h; y += 16) {
+      for (let x = 0; x < w; x += 16) {
+        const shade = 0.82 + ((x * 7 + y * 13) % 11) / 40;
+        c.fillStyle = `rgb(${Math.round(168 * shade)},${Math.round(82 * shade)},${Math.round(56 * shade)})`;
+        c.beginPath();
+        c.moveTo(x, y + 16);
+        c.lineTo(x, y + 6);
+        c.quadraticCurveTo(x + 8, y - 4, x + 16, y + 6);
+        c.lineTo(x + 16, y + 16);
+        c.closePath();
+        c.fill();
+        c.strokeStyle = 'rgba(70,32,22,0.45)';
+        c.lineWidth = 1;
+        c.stroke();
+      }
+    }
+    // moss and age
+    for (let i = 0; i < 90; i++) {
+      c.fillStyle = `rgba(${70 + Math.random() * 30 | 0},${70 + Math.random() * 40 | 0},40,${(Math.random() * 0.14).toFixed(3)})`;
+      c.fillRect(Math.random() * w, Math.random() * h, 3 + Math.random() * 10, 2 + Math.random() * 6);
+    }
+  });
+}
+
+function texStone() {
+  return makeCanvasTex(128, 128, (c, w, h) => {
+    c.fillStyle = '#cbbfa4';
+    c.fillRect(0, 0, w, h);
+    for (let y = 0; y < h; y += 21) {
+      const off = (y / 21) % 2 ? 24 : 0;
+      for (let x = -32; x < w; x += 48) {
+        const s = 0.9 + ((x + y) % 7) / 24;
+        c.fillStyle = `rgb(${Math.round(203 * s)},${Math.round(191 * s)},${Math.round(164 * s)})`;
+        c.fillRect(x + off + 1, y + 1, 46, 19);
+        c.strokeStyle = 'rgba(120,108,86,0.5)';
+        c.strokeRect(x + off + 1, y + 1, 46, 19);
+      }
+    }
+  });
+}
+
+// Portuguese calçada: small irregular basalt/limestone setts
+function texCobble() {
+  return makeCanvasTex(128, 128, (c, w, h) => {
+    c.fillStyle = '#b9b2a2';
+    c.fillRect(0, 0, w, h);
+    for (let i = 0; i < 420; i++) {
+      const x = Math.random() * w, y = Math.random() * h, s = 3 + Math.random() * 5;
+      const v = 150 + Math.random() * 70;
+      c.fillStyle = `rgb(${v | 0},${(v - 6) | 0},${(v - 16) | 0})`;
+      c.beginPath();
+      c.ellipse(x, y, s, s * 0.72, Math.random() * 3, 0, Math.PI * 2);
+      c.fill();
+      c.strokeStyle = 'rgba(80,74,64,0.35)';
+      c.stroke();
+    }
+  });
+}
+
+// Big slabs for the palace square, laid in a fan pattern
+function texSlab() {
+  return makeCanvasTex(128, 128, (c, w, h) => {
+    c.fillStyle = '#d9d2c0';
+    c.fillRect(0, 0, w, h);
+    c.strokeStyle = 'rgba(120,112,96,0.45)';
+    c.lineWidth = 1.5;
+    for (let y = 0; y < h; y += 32) {
+      for (let x = 0; x < w; x += 32) {
+        c.strokeRect(x + ((y / 32) % 2 ? 16 : 0) - 16, y, 32, 32);
+      }
+    }
+    for (let i = 0; i < 120; i++) {
+      c.fillStyle = `rgba(150,140,120,${(Math.random() * 0.16).toFixed(3)})`;
+      c.fillRect(Math.random() * w, Math.random() * h, 4 + Math.random() * 14, 3 + Math.random() * 8);
+    }
+  });
+}
+
+const CITY_TEX = {
+  roof: texRoofTiles(),
+  stone: texStone(),
+  cobble: texCobble(),
+  slab: texSlab(),
+};
+
+const CITY_MAT = {
+  stone:  new THREE.MeshStandardMaterial({ map: CITY_TEX.stone, roughness: 0.92 }),
+  roof:   new THREE.MeshStandardMaterial({ map: CITY_TEX.roof, roughness: 0.9, side: THREE.DoubleSide }),
+  cobble: new THREE.MeshStandardMaterial({ map: CITY_TEX.cobble, roughness: 0.95 }),
+  slab:   new THREE.MeshStandardMaterial({ map: CITY_TEX.slab, roughness: 0.9 }),
+  timber: new THREE.MeshStandardMaterial({ color: 0x5b4228, roughness: 0.9 }),
+  dark:   new THREE.MeshStandardMaterial({ color: 0x2a241d, roughness: 0.9 }),
+  iron:   new THREE.MeshStandardMaterial({ color: 0x33302b, roughness: 0.6, metalness: 0.45 }),
+  bronze: new THREE.MeshStandardMaterial({ color: 0x6b6244, roughness: 0.45, metalness: 0.65 }),
+  glass:  new THREE.MeshStandardMaterial({ color: 0x2a3a46, roughness: 0.25, metalness: 0.2 }),
+  water:  new THREE.MeshStandardMaterial({ color: 0x2b6d86, roughness: 0.15, metalness: 0.3 }),
+  sail:   new THREE.MeshStandardMaterial({ color: 0xefe6cf, roughness: 0.9, side: THREE.DoubleSide }),
+};
+
+// Facade palettes: Lisbon plaster, ochre, rose, azulejo
+const FACADE_STYLES = [
+  { wall: '#e7d7b6', shutter: '#5c7a58', azulejo: false },
+  { wall: '#e3c294', shutter: '#7c4636', azulejo: false },
+  { wall: '#dfd6c8', shutter: '#46608a', azulejo: true  },
+  { wall: '#d9a066', shutter: '#584030', azulejo: false },
+  { wall: '#ece0c8', shutter: '#6b5a38', azulejo: false },
+  { wall: '#cfd8d2', shutter: '#3e5a4a', azulejo: true  },
+  { wall: '#e8c9c0', shutter: '#5a4a3a', azulejo: false },
+];
+
+const FACADE_MATS = FACADE_STYLES.map((s) => ({
+  upper: new THREE.MeshStandardMaterial({ map: texFacade(s.wall, s.shutter, s.azulejo), roughness: 0.92 }),
+  ground: new THREE.MeshStandardMaterial({ map: texGroundFloor(s.wall, s.shutter, true), roughness: 0.92 }),
+  plain: new THREE.MeshStandardMaterial({ map: texGroundFloor(s.wall, s.shutter, false), roughness: 0.92 }),
+}));
+
+const ARCADE_MAT = new THREE.MeshStandardMaterial({ map: texArcade('#e9dcc2'), roughness: 0.9 });
+
+// ---- collision / walkable surfaces ----
+const COLLIDERS = [];   // { x0, x1, z0, z1, top }  (world space, axis aligned)
+const PLATFORMS = [];   // { x0, x1, z0, z1, top }  (walkable tops: quay, pier, steps)
+
+function addColliderBox(x, z, w, d, top, rot = 0) {
+  // rotated boxes are approximated by their footprint - the city is on a grid
+  const c = Math.abs(Math.cos(rot)), s = Math.abs(Math.sin(rot));
+  const hw = (w * c + d * s) / 2, hd = (w * s + d * c) / 2;
+  COLLIDERS.push({ x0: x - hw, x1: x + hw, z0: z - hd, z1: z + hd, top });
+}
+function addPlatform(x, z, w, d, top) {
+  PLATFORMS.push({ x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2, top });
+}
+
+// A wall box whose side UVs tile by bay / floor, so windows line up floor to floor
+function facadeBox(w, h, d, mat, bay = 3.3, floorH = 3.35) {
+  const g = new THREE.BoxGeometry(w, h, d);
+  const uv = g.attributes.uv;
+  const scaleFace = (f, su, sv) => {
+    for (let i = f * 4; i < f * 4 + 4; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
+  };
+  scaleFace(0, Math.max(1, Math.round(d / bay)), Math.max(1, Math.round(h / floorH)));
+  scaleFace(1, Math.max(1, Math.round(d / bay)), Math.max(1, Math.round(h / floorH)));
+  scaleFace(4, Math.max(1, Math.round(w / bay)), Math.max(1, Math.round(h / floorH)));
+  scaleFace(5, Math.max(1, Math.round(w / bay)), Math.max(1, Math.round(h / floorH)));
+  uv.needsUpdate = true;
+  const m = new THREE.Mesh(g, mat);
+  m.castShadow = true;
+  m.receiveShadow = true;
+  return m;
+}
+
+// Proper gabled roof: two slopes, two gable ends, overhanging eaves
+function makeGableRoof(w, d, h, mat, ov = 0.5, ridgeAlongX = true) {
+  const W = w + ov * 2, D = d + ov * 2;
+  const pos = [], uvs = [];
+  const push = (a, b, c, ua, ub, uc) => {
+    pos.push(...a, ...b, ...c);
+    uvs.push(...ua, ...ub, ...uc);
+  };
+  const A = [-W / 2, 0, D / 2], B = [W / 2, 0, D / 2], C = [W / 2, 0, -D / 2], Dd = [-W / 2, 0, -D / 2];
+  const R1 = [-W / 2, h, 0], R2 = [W / 2, h, 0];
+  const tileU = W / 1.6, tileV = Math.hypot(h, D / 2) / 1.6;
+  // south slope
+  push(A, B, R2, [0, 0], [tileU, 0], [tileU, tileV]);
+  push(A, R2, R1, [0, 0], [tileU, tileV], [0, tileV]);
+  // north slope
+  push(C, Dd, R1, [0, 0], [tileU, 0], [tileU, tileV]);
+  push(C, R1, R2, [0, 0], [tileU, tileV], [0, tileV]);
+  // gable ends (plaster/stone, no tiles)
+  push(Dd, A, R1, [0, 0], [1, 0], [0.5, 1]);
+  push(B, C, R2, [0, 0], [1, 0], [0.5, 1]);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  g.computeVertexNormals();
+  const m = new THREE.Mesh(g, mat);
+  m.castShadow = true;
+  m.receiveShadow = true;
+  return m;
+}
+
+// ============================================================
 //  ISLANDS / TERRAIN
 // ============================================================
 const ISLAND_MATS = {
@@ -983,8 +1346,112 @@ const TERRAIN_MAT = new THREE.MeshStandardMaterial({
   side: THREE.DoubleSide,
 });
 
+// ---- Lisbon: a coastal plain for the city, with the castle hill behind it ----
+// Local frame: +Z is the river, -Z is inland. The Baixa sits on a flat shelf at
+// y = 3 so streets and houses are level, and the ground climbs to the castle.
+const LIS_SHORE = 8;
+
+function lisbonHeightAt(x, z) {
+  if (x < -240 || x > 240 || z < -390 || z > 150) return -14;   // open water
+  if (z > LIS_SHORE) {
+    const d = z - LIS_SHORE;
+    return -1.6 - Math.min(1, d / 20) * 12;          // river bed
+  }
+  const inland = LIS_SHORE - z;
+  let h = -1.6 + 4.6 * sstep(inland / 7);            // quay shelf at y = 3
+  // castle hill (Castelo de Sao Jorge) rising behind the town
+  const hx = (x + 6) / 108, hz = (z + 268) / 120;
+  h += 58 * Math.exp(-0.5 * (hx * hx + hz * hz)) * sstep((-208 - z) / 44);
+  // ridges flanking the city so it sits in a valley
+  const side = sstep((Math.abs(x) - 128) / 48);
+  h += side * (16 + 9 * Math.sin(z * 0.019) + 5 * Math.cos(x * 0.03));
+  return h;
+}
+
+function buildLisbonTerrain(seed) {
+  const rng = makeRng(seed);
+  const X0 = -250, X1 = 250, Z0 = -400, Z1 = 160, CELL = 3.2;
+  const NX = Math.round((X1 - X0) / CELL), NZ = Math.round((Z1 - Z0) / CELL);
+
+  const verts = [];
+  const heights = new Float32Array((NX + 1) * (NZ + 1));
+  for (let j = 0; j <= NZ; j++) {
+    for (let i = 0; i <= NX; i++) {
+      const x = X0 + i * CELL, z = Z0 + j * CELL;
+      heights[j * (NX + 1) + i] = lisbonHeightAt(x, z);
+    }
+  }
+
+  const pos = [], colors = [];
+  const cWet = new THREE.Color(0xd6c69c), cSand = new THREE.Color(0xe6d6ae);
+  const cDust = new THREE.Color(0xb3a68c), cGrass = new THREE.Color(0x7ea34f);
+  const cGrassDk = new THREE.Color(0x5b7f3c), cRock = new THREE.Color(0x93856c);
+  const tmp = new THREE.Color();
+  const inCity = (x, z) => z < 8 && z > -204 && Math.abs(x) < 128;
+
+  const tri = (ax, az, bx, bz, cx, cz) => {
+    const ay = lisbonHeightAt(ax, az), by = lisbonHeightAt(bx, bz), cy = lisbonHeightAt(cx, cz);
+    pos.push(ax, ay, az, bx, by, bz, cx, cy, cz);
+    // face normal y for slope shading
+    const e1x = bx - ax, e1y = by - ay, e1z = bz - az;
+    const e2x = cx - ax, e2y = cy - ay, e2z = cz - az;
+    const nx = e1y * e2z - e1z * e2y, ny = e1z * e2x - e1x * e2z, nz = e1x * e2y - e1y * e2x;
+    const steep = Math.abs(ny) / Math.max(1e-6, Math.hypot(nx, ny, nz)) < 0.62;
+    const h = (ay + by + cy) / 3;
+    const mx = (ax + bx + cx) / 3, mz = (az + bz + cz) / 3;
+    if (h < 0.3) tmp.copy(cWet);
+    else if (h < 1.7) tmp.copy(cSand);
+    else if (inCity(mx, mz)) tmp.copy(cDust);
+    else if (steep) tmp.copy(cRock);
+    else if (h > 44) tmp.copy(cRock);
+    else if (h > 22) tmp.copy(cGrassDk);
+    else tmp.copy(cGrass);
+    const v = 0.92 + (Math.abs(Math.sin(mx * 12.9898 + mz * 78.233) * 43758.5453) % 1) * 0.16;
+    tmp.multiplyScalar(v);
+    for (let k = 0; k < 3; k++) colors.push(tmp.r, tmp.g, tmp.b);
+  };
+
+  for (let j = 0; j < NZ; j++) {
+    for (let i = 0; i < NX; i++) {
+      const x0 = X0 + i * CELL, x1 = x0 + CELL;
+      const z0 = Z0 + j * CELL, z1 = z0 + CELL;
+      tri(x0, z0, x0, z1, x1, z0);
+      tri(x1, z0, x0, z1, x1, z1);
+    }
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  geo.computeVertexNormals();
+  const mesh = new THREE.Mesh(geo, TERRAIN_MAT);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+
+  // numeric coastline: march out from the centre along a bearing
+  const radiusCache = new Map();
+  function radiusAt(theta) {
+    const key = Math.round(theta * 200) / 200;
+    if (radiusCache.has(key)) return radiusCache.get(key);
+    const dx = Math.cos(theta), dz = Math.sin(theta);
+    let r = 2, last = 2;
+    for (let s = 2; s < 420; s += 1.5) {
+      if (lisbonHeightAt(dx * s, dz * s) < 0) { last = s; break; }
+      r = s; last = s;
+    }
+    radiusCache.set(key, last);
+    return last;
+  }
+
+  let maxR = 0;
+  for (let a = 0; a < 360; a += 3) maxR = Math.max(maxR, radiusAt(a * Math.PI / 180));
+
+  return { mesh, heightAt: lisbonHeightAt, radiusAt, peak: 58, baseR: 200, maxR, rng };
+}
+
 // Build one irregular island: harmonic coastline + ridged height field.
 function buildIsland(def, seed) {
+  if (def.type === 'home') return buildLisbonTerrain(seed);
   const rng = makeRng(seed);
   const isHome = def.type === 'home';
   const baseR = isHome ? 34 : 21 + rng() * 11;
@@ -1173,6 +1640,11 @@ const PORT_DEFS = [
   { name: "Zanzibar",        x: -520, z: -520, type: "silk",     color: 0xe91e63 },
   { name: "Calicut",         x: -740, z: 60,   type: "spice",    color: 0xff9800 },
   { name: "Malacca",         x: -180, z: -140, type: "silk",     color: 0x00bcd4 },
+  { name: "Goa",             x: -860, z: -430, type: "silk",     color: 0xff7043 },
+  { name: "Hormuz",          x: -320, z: -250, type: "gems",     color: 0x7e57c2 },
+  { name: "Elmina",          x: 620,  z: -170, type: "gold_ore", color: 0xd4a017 },
+  { name: "Timor",           x: 880,  z: -470, type: "spice",    color: 0xcddc39 },
+  { name: "St. Helena",      x: -620, z: 630,  type: "ivory",    color: 0xffffff },
 ];
 
 const TRADE_GOODS = {
@@ -1227,51 +1699,124 @@ function makeBuilding(w, h, d, wallMat, roofMat) {
   walls.receiveShadow = true;
   g.add(walls);
 
-  const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.max(w, d) * 0.78, h * 0.55, 4), roofMat);
-  roof.position.y = h + h * 0.24;
-  roof.rotation.y = Math.PI / 4;
-  roof.castShadow = true;
+  // proper gable roof with eaves instead of a pyramid hat
+  const roof = makeGableRoof(w, d, Math.max(1.1, Math.min(w, d) * 0.34), roofMat, 0.45);
+  roof.position.y = h;
   g.add(roof);
 
-  // door
-  const door = new THREE.Mesh(new THREE.BoxGeometry(w * 0.22, h * 0.45, 0.08),
-    new THREE.MeshStandardMaterial({ color: 0x4a3018, roughness: 0.9 }));
-  door.position.set(0, h * 0.225, d / 2 + 0.02);
+  // door with a stone surround
+  const door = new THREE.Mesh(new THREE.BoxGeometry(w * 0.22, Math.min(2.1, h * 0.6), 0.1), CITY_MAT.timber);
+  door.position.set(0, Math.min(2.1, h * 0.6) / 2, d / 2 + 0.04);
   g.add(door);
+  const lintel = new THREE.Mesh(new THREE.BoxGeometry(w * 0.3, 0.16, 0.22), CITY_MAT.stone);
+  lintel.position.set(0, Math.min(2.1, h * 0.6) + 0.08, d / 2 + 0.04);
+  g.add(lintel);
+
+  // two shuttered windows
+  for (const sx of [-w * 0.28, w * 0.28]) {
+    const win = new THREE.Mesh(new THREE.BoxGeometry(w * 0.17, 0.85, 0.08), CITY_MAT.glass);
+    win.position.set(sx, h * 0.62, d / 2 + 0.04);
+    g.add(win);
+    const sill = new THREE.Mesh(new THREE.BoxGeometry(w * 0.22, 0.08, 0.2), CITY_MAT.stone);
+    sill.position.set(sx, h * 0.62 - 0.48, d / 2 + 0.06);
+    g.add(sill);
+  }
+  return g;
+}
+
+// A Lisbon townhouse: stone ground floor, plastered upper floors, tiled roof
+function makeHouse(w, d, floors, styleIdx, shop) {
+  const g = new THREE.Group();
+  const st = FACADE_MATS[styleIdx % FACADE_MATS.length];
+  const groundH = 4.2, floorH = 3.3;
+  const upperH = floors * floorH;
+
+  const ground = facadeBox(w, groundH, d, shop ? st.ground : st.plain, 3.3, groundH);
+  ground.position.y = groundH / 2;
+  g.add(ground);
+
+  const upper = facadeBox(w, upperH, d, st.upper, 3.3, floorH);
+  upper.position.y = groundH + upperH / 2;
+  g.add(upper);
+
+  // cornice under the eaves
+  const cornice = new THREE.Mesh(new THREE.BoxGeometry(w + 0.5, 0.34, d + 0.5), CITY_MAT.stone);
+  cornice.position.y = groundH + upperH + 0.17;
+  cornice.castShadow = true;
+  g.add(cornice);
+
+  const roofH = Math.max(1.3, Math.min(w, d) * 0.30);
+  const roof = makeGableRoof(w, d, roofH, CITY_MAT.roof, 0.55);
+  roof.position.y = groundH + upperH + 0.34;
+  g.add(roof);
+
+  // chimney stack - the Lisbon skyline is full of them
+  const ch = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.5, 0.9), CITY_MAT.stone);
+  ch.position.set((w / 2 - 1.3) * (w > 6 ? 1 : 0.6), groundH + upperH + roofH * 0.55 + 0.7, -d * 0.18);
+  ch.castShadow = true;
+  g.add(ch);
+  const cap = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.16, 1.15), CITY_MAT.stone);
+  cap.position.copy(ch.position).y += 0.8;
+  g.add(cap);
+
+  g.userData.height = groundH + upperH + roofH;
   return g;
 }
 
 function makePerson(robeColor, hatColor) {
   const g = new THREE.Group();
-  const body = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.30, 0.44, 1.25, 8),
-    new THREE.MeshStandardMaterial({ color: robeColor, roughness: 0.95 })
-  );
-  body.position.y = 0.63;
-  body.castShadow = true;
-  g.add(body);
+  const cloth = new THREE.MeshStandardMaterial({ color: robeColor, roughness: 0.95 });
+  const skin = new THREE.MeshStandardMaterial({ color: 0xd8b08a, roughness: 0.9 });
 
-  const head = new THREE.Mesh(
-    new THREE.SphereGeometry(0.23, 10, 8),
-    new THREE.MeshStandardMaterial({ color: 0xd8b08a, roughness: 0.9 })
-  );
-  head.position.y = 1.52;
+  // legs
+  for (const sx of [-0.11, 0.11]) {
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.075, 0.82, 6), CITY_MAT.dark);
+    leg.position.set(sx, 0.41, 0);
+    leg.castShadow = true;
+    g.add(leg);
+  }
+  // tunic / coat: shoulders wider than hem, period silhouette
+  const tunic = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.30, 0.92, 8), cloth);
+  tunic.position.y = 1.12;
+  tunic.castShadow = true;
+  g.add(tunic);
+  const shoulders = new THREE.Mesh(new THREE.SphereGeometry(0.27, 8, 6), cloth);
+  shoulders.scale.set(1, 0.55, 0.8);
+  shoulders.position.y = 1.55;
+  g.add(shoulders);
+
+  // arms
+  for (const sx of [-0.28, 0.28]) {
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.06, 0.72, 6), cloth);
+    arm.position.set(sx, 1.24, 0);
+    arm.rotation.z = sx > 0 ? -0.09 : 0.09;
+    arm.castShadow = true;
+    g.add(arm);
+  }
+
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.1, 6), skin);
+  neck.position.y = 1.62;
+  g.add(neck);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.145, 10, 8), skin);
+  head.scale.set(0.92, 1.1, 0.95);
+  head.position.y = 1.76;
   head.castShadow = true;
   g.add(head);
 
   if (hatColor) {
-    const brim = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.30, 0.30, 0.05, 10),
-      new THREE.MeshStandardMaterial({ color: hatColor, roughness: 0.9 })
-    );
-    brim.position.y = 1.68;
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.035, 12),
+      new THREE.MeshStandardMaterial({ color: hatColor, roughness: 0.9 }));
+    brim.position.y = 1.86;
     g.add(brim);
-    const crown = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.16, 0.18, 0.20, 10),
-      new THREE.MeshStandardMaterial({ color: hatColor, roughness: 0.9 })
-    );
-    crown.position.y = 1.78;
+    const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.155, 0.17, 10),
+      new THREE.MeshStandardMaterial({ color: hatColor, roughness: 0.9 }));
+    crown.position.y = 1.95;
     g.add(crown);
+  } else {
+    const hair = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.55),
+      new THREE.MeshStandardMaterial({ color: 0x3a2a1c, roughness: 0.95 }));
+    hair.position.y = 1.80;
+    g.add(hair);
   }
   return g;
 }
@@ -1314,7 +1859,7 @@ function buildPorts() {
     }
 
     // Palms
-    const palmCount = isHome ? 6 : 7 + Math.floor(island.rng() * 6);
+    const palmCount = isHome ? 0 : 7 + Math.floor(island.rng() * 6);
     for (let p = 0; p < palmCount; p++) {
       const a = (p / palmCount) * Math.PI * 2 + island.rng() * 0.8;
       const t = 0.66 + island.rng() * 0.24;
@@ -1346,7 +1891,18 @@ function buildPorts() {
   });
 }
 // The pier faces the open sea; the town sits just inland of it
-const LISBON_PIER_ANGLE = 0.85;
+// The quay faces the river: +Z is water, -Z is inland.
+const LISBON_PIER_ANGLE = Math.PI / 2;
+const LIS_CITY = {
+  Y: 3.0,                 // pavement level of the Baixa
+  halfX: 122,
+  quayZ0: 0.5, quayZ1: 26,
+  pierHalfW: 5.5, pierZ1: 56,
+  berthZ: 59,
+  square: { x0: -52, x1: 52, z0: -36, z1: 20 },
+};
+const walkers = [];
+let lisbonSpawn = { x: 0, z: 12 };
 
 function findFlat(island, angle, tMin, tMax, steps = 14) {
   const R = island.radiusAt(angle);
@@ -1360,150 +1916,762 @@ function findFlat(island, angle, tMin, tMax, steps = 14) {
   const t = (tMin + tMax) / 2;
   return { x: Math.cos(angle) * R * t, z: Math.sin(angle) * R * t, y: island.heightAt(Math.cos(angle) * R * t, Math.sin(angle) * R * t) };
 }
+let lisbonDock = { x: 0, z: 44 };
 
 function buildLisbon(group, island, pointAt) {
-  const A = LISBON_PIER_ANGLE;
-  const dx = Math.cos(A), dz = Math.sin(A);
-  const coastR = island.radiusAt(A);
-  // The ship rides just off the end of the pier, close enough to step aboard
-  const berthR = coastR + 7;
-  lisbonBerth = { x: group.position.x + dx * berthR, z: group.position.z + dz * berthR };
+  const OX = group.position.x, OZ = group.position.z;
+  const Y = LIS_CITY.Y;
+  const add = (m, x, y, z, ry = 0) => {
+    m.position.set(x, y, z);
+    if (ry) m.rotation.y = ry;
+    group.add(m);
+    return m;
+  };
+  const coll = (x, z, w, d, top) => addColliderBox(x + OX, z + OZ, w, d, top);
+  const plat = (x, z, w, d, top) => addPlatform(x + OX, z + OZ, w, d, top);
 
-  // ---- Pier: planks on pilings, reaching out to the ship ----
-  const pier = new THREE.Group();
-  const plankMat = ISLAND_MATS.wood;
-  const pierStart = coastR - 3;
-  const pierEnd = berthR + 2;
-  for (let i = 0; i <= 8; i++) {
-    const r = pierStart + (pierEnd - pierStart) * (i / 8);
-    const plank = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.22, 1.7), plankMat);
-    plank.position.set(dx * r, 1.5, dz * r);
-    plank.rotation.y = -A;
-    plank.castShadow = true;
-    plank.receiveShadow = true;
-    pier.add(plank);
-    if (i % 2 === 0) {
-      for (const side of [-1, 1]) {
-        const piling = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 3.2, 6), ISLAND_MATS.trunk);
-        piling.position.set(dx * r - dz * side * 1.7, 0.2, dz * r + dx * side * 1.7);
-        pier.add(piling);
+  // ---------------------------------------------------------
+  //  THE QUAY  (Cais da Ribeira)
+  // ---------------------------------------------------------
+  const quayW = 246, quayD = LIS_CITY.quayZ1 - LIS_CITY.quayZ0;
+  const quayCZ = (LIS_CITY.quayZ0 + LIS_CITY.quayZ1) / 2;
+  const quay = new THREE.Mesh(new THREE.BoxGeometry(quayW, 7, quayD), CITY_MAT.stone);
+  quay.receiveShadow = true;
+  add(quay, 0, Y - 3.5, quayCZ);
+  plat(0, quayCZ, quayW, quayD, Y);
+  coll(0, quayCZ, quayW, quayD, Y);
+
+  // kerb along the water's edge
+  const kerb = new THREE.Mesh(new THREE.BoxGeometry(quayW, 0.3, 1.2), CITY_MAT.slab);
+  add(kerb, 0, Y + 0.12, LIS_CITY.quayZ1 - 0.6);
+
+  // iron rings for mooring
+  for (let x = -110; x <= 110; x += 14) {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.05, 5, 10), CITY_MAT.iron);
+    add(ring, x, Y + 0.34, LIS_CITY.quayZ1 - 0.5);
+  }
+
+  // stone stairs down into the water (two of them, so you can climb out)
+  for (const sx of [-46, 46]) {
+    const steps = 12, rise = 0.33, tread = 0.9;
+    for (let i = 0; i < steps; i++) {
+      const top = Y - rise * (i + 1);
+      const z = LIS_CITY.quayZ1 + tread * (i + 0.5);
+      const step = new THREE.Mesh(new THREE.BoxGeometry(9, 0.36, tread + 0.02), CITY_MAT.stone);
+      add(step, sx, top - 0.18, z);
+      plat(sx, z, 9, tread, top);
+    }
+    // side walls
+    for (const side of [-1, 1]) {
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(0.7, 4.2, steps * tread), CITY_MAT.stone);
+      add(wall, sx + side * 4.85, Y - 1.8, LIS_CITY.quayZ1 + steps * tread / 2);
+    }
+  }
+
+  // ---------------------------------------------------------
+  //  THE PIER
+  // ---------------------------------------------------------
+  const pz0 = LIS_CITY.quayZ1, pz1 = LIS_CITY.pierZ1, pw = LIS_CITY.pierHalfW * 2;
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(pw, 0.4, pz1 - pz0), CITY_MAT.timber);
+  deck.receiveShadow = true;
+  add(deck, 0, Y - 0.2, (pz0 + pz1) / 2);
+  plat(0, (pz0 + pz1) / 2, pw, pz1 - pz0, Y);
+  coll(0, (pz0 + pz1) / 2, pw, pz1 - pz0, Y);
+  for (let z = pz0 + 2.5; z <= pz1; z += 5.5) {
+    for (const sx of [-1, 1]) {
+      const pile = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.32, 7, 6), CITY_MAT.timber);
+      add(pile, sx * (pw / 2 - 0.55), Y - 3.6, z);
+    }
+  }
+  // capstans and crates at the pier head
+  for (const sx of [-3.4, 3.4]) {
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.42, 1.0, 8), CITY_MAT.timber);
+    add(cap, sx, Y + 0.5, pz1 - 1.6);
+  }
+  // a swimming ladder hanging off the pier head, so a man overboard can get back
+  {
+    const lx = 3.7;
+    for (let i = 0; i < 9; i++) {
+      const top = 2.6 - i * 0.44;
+      const lz = LIS_CITY.pierZ1 + 0.9 + i * 0.9;
+      const rung = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.09, 0.8), CITY_MAT.iron);
+      add(rung, lx, top, lz);
+      plat(lx, lz, 0.75, 0.8, top);
+    }
+    for (const sx of [-0.46, 0.46]) {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.07, 4.4, 8.6), CITY_MAT.iron);
+      add(rail, lx + sx, 0.5, LIS_CITY.pierZ1 + 5.2);
+    }
+  }
+
+  lisbonBerth = { x: OX, z: OZ + LIS_CITY.berthZ };
+  lisbonSlip = { x: OX, z: OZ + LIS_CITY.berthZ, angle: LISBON_PIER_ANGLE };
+  lisbonSpawn = { x: OX, z: OZ + 12 };
+  lisbonDock = { x: OX, z: OZ + 30 };
+
+  // ---------------------------------------------------------
+  //  PAVING
+  // ---------------------------------------------------------
+  const streetTex = texCobble();
+  streetTex.repeat.set(62, 56);
+  const pave = new THREE.Mesh(new THREE.PlaneGeometry(246, 212),
+    new THREE.MeshStandardMaterial({ map: streetTex, roughness: 0.96 }));
+  pave.rotation.x = -Math.PI / 2;
+  pave.receiveShadow = true;
+  add(pave, 0, Y + 0.03, (26 - 186) / 2);
+
+  const sq = LIS_CITY.square;
+  const sqTex = texSlab();
+  sqTex.repeat.set(14, 8);
+  const slab = new THREE.Mesh(new THREE.PlaneGeometry(sq.x1 - sq.x0, sq.z1 - sq.z0),
+    new THREE.MeshStandardMaterial({ map: sqTex, roughness: 0.9 }));
+  slab.rotation.x = -Math.PI / 2;
+  slab.receiveShadow = true;
+  add(slab, (sq.x0 + sq.x1) / 2, Y + 0.06, (sq.z0 + sq.z1) / 2);
+
+  // ---------------------------------------------------------
+  //  PRACA DO COMERCIO - three arcaded wings round the square
+  // ---------------------------------------------------------
+  function arcadeWing(cx, cz, w, d, ry) {
+    const g = new THREE.Group();
+    g.position.set(cx, Y, cz);
+    g.rotation.y = ry;
+    group.add(g);
+    const groundH = 7.2, upperH = 10.4, recess = 4.4;
+
+    const upper = facadeBox(w, upperH, d, FACADE_MATS[0].upper, 3.4, 3.45);
+    upper.position.y = groundH + upperH / 2;
+    g.add(upper);
+
+    const back = facadeBox(w, groundH, d - recess, ARCADE_MAT, 5.2, groundH);
+    back.position.set(0, groundH / 2, -recess / 2);
+    g.add(back);
+
+    const roof = makeGableRoof(w, d, 3.4, CITY_MAT.roof, 0.8);
+    roof.position.y = groundH + upperH;
+    g.add(roof);
+
+    // stone columns along the open front, capitals under the entablature
+    const cols = Math.max(2, Math.round(w / 7.2));
+    for (let i = 0; i <= cols; i++) {
+      const lx = -w / 2 + (w * i) / cols;
+      const col = new THREE.Mesh(new THREE.BoxGeometry(0.95, groundH, 0.95), CITY_MAT.stone);
+      col.position.set(lx, groundH / 2, d / 2 - 0.7);
+      col.castShadow = true;
+      g.add(col);
+      const cap = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.34, 1.35), CITY_MAT.stone);
+      cap.position.set(lx, groundH - 0.3, d / 2 - 0.7);
+      g.add(cap);
+      const base = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.3, 1.25), CITY_MAT.stone);
+      base.position.set(lx, 0.15, d / 2 - 0.7);
+      g.add(base);
+
+      const c = Math.cos(ry), s = Math.sin(ry);
+      const wx = cx + lx * c + (d / 2 - 0.7) * s;
+      const wz = cz - lx * s + (d / 2 - 0.7) * c;
+      addColliderBox(wx + OX, wz + OZ, 1.25, 1.25, Y + groundH);
+    }
+    const c = Math.cos(ry), s = Math.sin(ry);
+    const bx = cx + (-recess / 2) * s, bz = cz + (-recess / 2) * c;
+    addColliderBox(bx + OX, bz + OZ, w, d - recess, Y + groundH, ry);
+  }
+
+  // north wing, split so the Arco da Rua Augusta can open through it
+  arcadeWing(-34, -42, 52, 12, 0);
+  arcadeWing(34, -42, 52, 12, 0);
+  // east wing: front faces -x
+  arcadeWing(58, -8, 56, 12, -Math.PI / 2);
+  // west wing: front faces +x
+  arcadeWing(-58, -8, 56, 12, Math.PI / 2);
+
+  // ---------------------------------------------------------
+  //  ARCO DA RUA AUGUSTA
+  // ---------------------------------------------------------
+  {
+    const az = -36, aw = 3.2;
+    for (const sx of [-7, 7]) {
+      const pier = new THREE.Mesh(new THREE.BoxGeometry(aw, 17, 6), CITY_MAT.stone);
+      add(pier, sx, Y + 8.5, az);
+      coll(sx, az, aw, 6, Y + 17);
+      for (let k = 0; k < 3; k++) {
+        const band = new THREE.Mesh(new THREE.BoxGeometry(aw + 0.35, 0.35, 6.35), CITY_MAT.slab);
+        add(band, sx, Y + 4 + k * 4.6, az);
+      }
+    }
+    const entab = new THREE.Mesh(new THREE.BoxGeometry(20, 3.4, 6.4), CITY_MAT.stone);
+    add(entab, 0, Y + 18.7, az);
+    const attic = new THREE.Mesh(new THREE.BoxGeometry(17.5, 4.4, 5.6), CITY_MAT.stone);
+    add(attic, 0, Y + 22.6, az);
+    const cornice = new THREE.Mesh(new THREE.BoxGeometry(19.5, 0.5, 6.2), CITY_MAT.slab);
+    add(cornice, 0, Y + 20.6, az);
+    // three allegorical figures on the attic
+    for (const sx of [-5.2, 0, 5.2]) {
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 1.0, 3.4, 8), CITY_MAT.stone);
+      add(body, sx, Y + 26.4, az);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.62, 8, 6), CITY_MAT.stone);
+      add(head, sx, Y + 28.4, az);
+    }
+  }
+
+  // ---------------------------------------------------------
+  //  STATUE OF JOSE I  (bronze horse on a stepped plinth)
+  // ---------------------------------------------------------
+  {
+    const sx = 0, sz = -8;
+    const b1 = new THREE.Mesh(new THREE.BoxGeometry(9, 0.5, 6), CITY_MAT.slab);
+    add(b1, sx, Y + 0.25, sz);
+    const b2 = new THREE.Mesh(new THREE.BoxGeometry(7, 1.2, 4.4), CITY_MAT.stone);
+    add(b2, sx, Y + 1.1, sz);
+    const b3 = new THREE.Mesh(new THREE.BoxGeometry(5, 2.4, 3.2), CITY_MAT.stone);
+    add(b3, sx, Y + 2.9, sz);
+    coll(sx, sz, 7, 4.4, Y + 4.1);
+
+    const br = CITY_MAT.bronze;
+    const horse = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.7, 2.9, 8), br);
+    body.rotation.z = Math.PI / 2;
+    body.position.y = 1.7;
+    horse.add(body);
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.52, 1.5, 7), br);
+    neck.position.set(1.15, 2.35, 0);
+    neck.rotation.z = -0.5;
+    horse.add(neck);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.42, 0.4), br);
+    head.position.set(1.75, 2.95, 0);
+    head.rotation.z = -0.2;
+    horse.add(head);
+    for (const lx of [-1.0, 1.0]) {
+      for (const lz of [-0.28, 0.28]) {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.1, 1.3, 5), br);
+        leg.position.set(lx, 0.65, lz);
+        horse.add(leg);
+      }
+    }
+    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.16, 1.1, 5), br);
+    tail.position.set(-1.5, 1.9, 0);
+    tail.rotation.z = 0.5;
+    horse.add(tail);
+    const rider = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.36, 1.2, 7), br);
+    rider.position.set(0.05, 2.9, 0);
+    horse.add(rider);
+    const rhead = new THREE.Mesh(new THREE.SphereGeometry(0.24, 8, 6), br);
+    rhead.position.set(0.05, 3.65, 0);
+    horse.add(rhead);
+    horse.traverse(o => { if (o.isMesh) o.castShadow = true; });
+    horse.position.set(sx, Y + 4.1, sz);
+    horse.rotation.y = -Math.PI / 2;
+    group.add(horse);
+  }
+
+  // ---------------------------------------------------------
+  //  STREET FURNITURE: lanterns, bollards, market stalls
+  // ---------------------------------------------------------
+  function lantern(x, z) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 3.6, 6), CITY_MAT.iron);
+    add(post, x, Y + 1.8, z);
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.08, 0.08), CITY_MAT.iron);
+    add(arm, x + 0.3, Y + 3.55, z);
+    const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.44, 0.34),
+      new THREE.MeshStandardMaterial({ color: 0xffe0a0, emissive: 0xffb347, emissiveIntensity: 1.6 }));
+    add(lamp, x + 0.62, Y + 3.3, z);
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.22, 4), CITY_MAT.iron);
+    add(cap, x + 0.62, Y + 3.6, z);
+  }
+  for (let z = 12; z > -160; z -= 22) {
+    lantern(-6.4, z);
+    lantern(6.4, z - 11);
+  }
+  for (const x of [-30, 30]) { lantern(x, 18); lantern(x, -30); }
+
+  // bollards along the quay
+  for (let x = -100; x <= 100; x += 20) {
+    const b = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.3, 1.0, 8), CITY_MAT.iron);
+    add(b, x, Y + 0.5, LIS_CITY.quayZ1 - 3.2);
+  }
+
+  // fish market stalls on the quay
+  for (let i = 0; i < 4; i++) {
+    const sx = -74 + i * 5.5, sz = 8;
+    const table = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.12, 1.4), CITY_MAT.timber);
+    add(table, sx, Y + 0.9, sz);
+    for (const lx of [-1.5, 1.5]) for (const lz of [-0.55, 0.55]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.9, 0.1), CITY_MAT.timber);
+      add(leg, sx + lx, Y + 0.45, sz + lz);
+    }
+    const awning = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.08, 2.0),
+      new THREE.MeshStandardMaterial({ color: 0xb2483a, roughness: 0.9 }));
+    add(awning, sx, Y + 2.5, sz);
+    for (const lx of [-1.6, 1.6]) {
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.5, 5), CITY_MAT.timber);
+      add(pole, sx + lx, Y + 1.25, sz);
+    }
+  }
+  // ---- citizens, harbour, the rest of the town ----
+
+  // ---------------------------------------------------------
+  //  THE BAIXA - Pombaline blocks on a grid of streets
+  // ---------------------------------------------------------
+  // rows run inland from the square; each block is a terrace of narrow houses
+  const ROWS = [[-48, -70], [-79, -101], [-110, -132], [-141, -163]];
+  const COLS = [[7, 41], [50, 84], [93, 121]];
+
+  let bi = 0;
+  for (let r = 0; r < ROWS.length; r++) {
+    const [z0, z1] = ROWS[r];
+    for (let c = 0; c < COLS.length; c++) {
+      for (const sgn of [1, -1]) {
+        // the cathedral stands where this block would be
+        if (sgn === -1 && r === 2 && c === 1) continue;
+        const [a, b] = COLS[c];
+        const x0 = sgn > 0 ? a : -b;
+        const x1 = sgn > 0 ? b : -a;
+        const w = x1 - x0 - 0.6, d = Math.abs(z1 - z0) - 0.6;
+        const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+        const floors = [4, 5, 4, 3, 5, 4][(r * 6 + c * 2 + (sgn > 0 ? 0 : 1)) % 6];
+        const style = (r * 3 + c + (sgn > 0 ? 0 : 2)) % FACADE_STYLES.length;
+        const h = makeHouse(w, d, floors, style, (r + c) % 3 === 0);
+        h.position.set(cx, Y, cz);
+        group.add(h);
+        coll(cx, cz, w, d, Y + h.userData.height);
+        bi++;
+
+        // an awning or two over the shopfronts
+        if ((r + c) % 3 === 0) {
+          const aw = new THREE.Mesh(new THREE.BoxGeometry(w * 0.9, 0.1, 1.6),
+            new THREE.MeshStandardMaterial({ color: (c % 2 ? 0xb2483a : 0x2f6a58), roughness: 0.9 }));
+          add(aw, cx, Y + 3.4, cz + d / 2 + 0.7);
+          aw.rotation.x = 0.16;
+        }
       }
     }
   }
-  group.add(pier);
 
-  // ---- Moored fishing boats for atmosphere ----
-  for (let i = 0; i < 3; i++) {
-    const boat = new THREE.Group();
-    const hullB = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.8, 5), ISLAND_MATS.wood);
-    hullB.castShadow = true;
-    boat.add(hullB);
-    const r = berthR - 6 - i * 7;
-    const a = A + (i - 1) * 0.18;
-    boat.position.set(group.position.x + Math.cos(a) * r, 0.2, group.position.z + Math.sin(a) * r);
-    boat.rotation.y = -a + Math.PI / 2;
-    scene.add(boat);
+  // ---------------------------------------------------------
+  //  ROSSO - the second great square, with a fountain
+  // ---------------------------------------------------------
+  {
+    const rz0 = -196, rz1 = -168;
+    const t = texSlab(); t.repeat.set(9, 3.4);
+    const p = new THREE.Mesh(new THREE.PlaneGeometry(88, rz1 - rz0),
+      new THREE.MeshStandardMaterial({ map: t, roughness: 0.9 }));
+    p.rotation.x = -Math.PI / 2;
+    add(p, 0, Y + 0.05, (rz0 + rz1) / 2);
+
+    const fz = -182;
+    const basin = new THREE.Mesh(new THREE.CylinderGeometry(5.2, 5.6, 1.0, 20), CITY_MAT.stone);
+    add(basin, 0, Y + 0.5, fz);
+    coll(0, fz, 11, 11, Y + 1.0);
+    const water = new THREE.Mesh(new THREE.CylinderGeometry(4.7, 4.7, 0.16, 20), CITY_MAT.water);
+    add(water, 0, Y + 0.95, fz);
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 1.1, 3.2, 10), CITY_MAT.stone);
+    add(stem, 0, Y + 2.6, fz);
+    const bowl = new THREE.Mesh(new THREE.CylinderGeometry(2.1, 0.8, 0.8, 14), CITY_MAT.stone);
+    add(bowl, 0, Y + 4.4, fz);
+    const finial = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 8), CITY_MAT.stone);
+    add(finial, 0, Y + 5.2, fz);
   }
 
-  // ---- Town buildings ----
-  const spots = [
-    { key: 'shipyard', angle: A - 0.55, tMin: 0.42, tMax: 0.62, w: 7, h: 4.2, d: 6 },
-    { key: 'tavern',   angle: A - 1.35, tMin: 0.40, tMax: 0.62, w: 6, h: 4.6, d: 5.5 },
-    { key: 'merchant', angle: A - 2.15, tMin: 0.42, tMax: 0.62, w: 5, h: 3.4, d: 4.5 },
-    { key: 'palace',   angle: A + 1.15, tMin: 0.30, tMax: 0.55, w: 9, h: 6.5, d: 7 },
-    { key: 'home',     angle: A + 0.35, tMin: 0.45, tMax: 0.66, w: 4.5, h: 3.4, d: 4 },
-  ];
+  // the royal palace closing the north side of Rossio (the herald's stair)
+  {
+    const pw = 62, pd = 13, ph = 13.5;
+    const body = facadeBox(pw, ph, pd, FACADE_MATS[2].upper, 3.4, 3.4);
+    add(body, 0, Y + ph / 2, -203);
+    const ground = facadeBox(pw, 4.4, pd + 0.4, ARCADE_MAT, 5.4, 4.4);
+    add(ground, 0, Y + 2.2, -203);
+    const roof = makeGableRoof(pw, pd, 3.0, CITY_MAT.roof, 0.9);
+    add(roof, 0, Y + ph, -203);
+    coll(0, -203, pw, pd, Y + ph);
+    // steps
+    for (let i = 0; i < 3; i++) {
+      const st = new THREE.Mesh(new THREE.BoxGeometry(14, 0.3, 1.2), CITY_MAT.slab);
+      add(st, 0, Y + 0.15 + i * 0.3, -195.2 - i * 1.2);
+    }
+    // flagpole
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 6, 6), CITY_MAT.iron);
+    add(pole, -18, Y + ph + 4, -203);
+    const flag = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 1.8),
+      new THREE.MeshStandardMaterial({ color: 0xb4262a, side: THREE.DoubleSide, roughness: 0.9 }));
+    add(flag, -16.3, Y + ph + 6, -203);
+  }
 
-  for (const s of spots) {
-    const p = findFlat(island, s.angle, s.tMin, s.tMax);
-    const b = makeBuilding(s.w, s.h, s.d, ISLAND_MATS.wall, ISLAND_MATS.roof);
-    b.position.set(p.x, p.y - 0.15, p.z);
-    b.rotation.y = -s.angle + Math.PI / 2;
-    group.add(b);
-    solidCircles.push({ x: group.position.x + p.x, z: group.position.z + p.z, r: Math.max(s.w, s.d) * 0.62 });
+  // ---------------------------------------------------------
+  //  SE CATHEDRAL - twin towers, rose window, fortress walls
+  // ---------------------------------------------------------
+  {
+    const cx = -70, cz = -120;
+    const naveW = 26, naveD = 40, naveH = 19;
+    const nave = facadeBox(naveW, naveH, naveD, CITY_MAT.stone, 4.2, 4.2);
+    add(nave, cx, Y + naveH / 2, cz);
+    coll(cx, cz, naveW, naveD, Y + naveH);
 
-    // a little plaza lantern so the town reads at night
-    if (s.key !== 'palace') {
-      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6),
-        new THREE.MeshBasicMaterial({ color: 0xffcc66 }));
-      lamp.position.set(p.x - Math.sin(s.angle) * (s.w * 0.8), p.y + 2.6, p.z + Math.cos(s.angle) * (s.w * 0.8));
-      group.add(lamp);
+    const roof = makeGableRoof(naveW, naveD, 4.6, CITY_MAT.roof, 0.5);
+    add(roof, cx, Y + naveH, cz);
+
+    // west front facing the river (+z)
+    const front = new THREE.Mesh(new THREE.BoxGeometry(naveW + 2, naveH + 3, 2), CITY_MAT.stone);
+    add(front, cx, Y + (naveH + 3) / 2, cz + naveD / 2 + 0.6);
+
+    // twin towers
+    for (const sx of [-1, 1]) {
+      const tx = cx + sx * 9.2;
+      const tw = new THREE.Mesh(new THREE.BoxGeometry(6.4, 30, 6.4), CITY_MAT.stone);
+      add(tw, tx, Y + 15, cz + naveD / 2 - 1.5);
+      coll(tx, cz + naveD / 2 - 1.5, 6.4, 6.4, Y + 30);
+      const belfry = new THREE.Mesh(new THREE.BoxGeometry(7.0, 0.6, 7.0), CITY_MAT.slab);
+      add(belfry, tx, Y + 30, cz + naveD / 2 - 1.5);
+      const spire = new THREE.Mesh(new THREE.ConeGeometry(4.2, 7, 4), CITY_MAT.roof);
+      add(spire, tx, Y + 33.6, cz + naveD / 2 - 1.5);
+      // belfry openings
+      for (const dz of [-2, 2]) {
+        const op = new THREE.Mesh(new THREE.BoxGeometry(1.5, 3.2, 0.3), CITY_MAT.dark);
+        add(op, tx, Y + 26.5, cz + naveD / 2 - 1.5 + dz);
+      }
+    }
+
+    // rose window
+    const rose = new THREE.Mesh(new THREE.CircleGeometry(3.0, 20), CITY_MAT.glass);
+    add(rose, cx, Y + 14.5, cz + naveD / 2 + 1.65);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(3.1, 0.35, 8, 22), CITY_MAT.stone);
+    add(ring, cx, Y + 14.5, cz + naveD / 2 + 1.7);
+    // portal
+    const portal = new THREE.Mesh(new THREE.BoxGeometry(5.2, 8.5, 0.6), CITY_MAT.dark);
+    add(portal, cx, Y + 4.2, cz + naveD / 2 + 1.7);
+    const arch = new THREE.Mesh(new THREE.TorusGeometry(2.6, 0.45, 8, 18, Math.PI), CITY_MAT.stone);
+    add(arch, cx, Y + 8.5, cz + naveD / 2 + 1.8);
+    // cross on the ridge
+    const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.28, 3.2, 0.28), CITY_MAT.stone);
+    add(crossV, cx, Y + naveH + 6.4, cz - 6);
+    const crossH = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.28, 0.28), CITY_MAT.stone);
+    add(crossH, cx, Y + naveH + 7.1, cz - 6);
+    // steps up to the door
+    for (let i = 0; i < 3; i++) {
+      const st = new THREE.Mesh(new THREE.BoxGeometry(12, 0.28, 1.1), CITY_MAT.slab);
+      add(st, cx, Y + 0.14 + i * 0.28, cz + naveD / 2 + 2.2 + i * 1.1);
     }
   }
 
-  // ---- NPCs ----
-  const npc = (angle, t, robe, hat, markerColor, label, onUse, role) => {
-    const p = findFlat(island, angle, t, t + 0.001, 2);
+  // ---------------------------------------------------------
+  //  CASTELO DE SAO JORGE on the hill
+  // ---------------------------------------------------------
+  {
+    const cx = -6, cz = -266;
+    const baseY = 59.5;
+    // level platform cut into the hill
+    const plat0 = new THREE.Mesh(new THREE.BoxGeometry(86, 8, 72), CITY_MAT.stone);
+    add(plat0, cx, baseY - 4, cz);
+    coll(cx, cz, 86, 72, baseY);
+
+    const wallH = 11, wallT = 2.4;
+    const hw = 40, hd = 32;
+    // the south wall is split so the gate is a real opening you can walk through
+    const walls = [
+      { x: cx - 17.5, z: cz + hd, w: hw - 11.5, d: wallT },
+      { x: cx + 25.5, z: cz + hd, w: hw - 8.5, d: wallT },
+      { x: cx, z: cz - hd, w: hw * 2, d: wallT },
+      { x: cx - hw, z: cz, w: wallT, d: hd * 2 },
+      { x: cx + hw, z: cz, w: wallT, d: hd * 2 },
+    ];
+    for (const wl of walls) {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(wl.w, wallH, wl.d), CITY_MAT.stone);
+      add(m, wl.x, baseY + wallH / 2, wl.z);
+      // wall walk
+      const walk = new THREE.Mesh(new THREE.BoxGeometry(wl.w + 0.8, 0.5, wl.d + 0.8), CITY_MAT.slab);
+      add(walk, wl.x, baseY + wallH + 0.25, wl.z);
+      // merlons
+      const n = Math.floor((wl.w > wl.d ? wl.w : wl.d) / 3.2);
+      for (let i = 0; i < n; i++) {
+        const off = -((n - 1) / 2) * 3.2 + i * 3.2;
+        const mer = new THREE.Mesh(new THREE.BoxGeometry(
+          wl.w > wl.d ? 1.6 : wallT, 1.5, wl.w > wl.d ? wallT : 1.6), CITY_MAT.stone);
+        add(mer, wl.x + (wl.w > wl.d ? off : 0), baseY + wallH + 1.2, wl.z + (wl.w > wl.d ? 0 : off));
+      }
+      coll(wl.x, wl.z, wl.w, wl.d, baseY + wallH + 2);
+    }
+    // corner towers with conical roofs
+    for (const sx of [-1, 1]) {
+      for (const sz of [-1, 1]) {
+        const tx = cx + sx * hw, tz = cz + sz * hd;
+        const tower = new THREE.Mesh(new THREE.CylinderGeometry(4.2, 4.6, 16, 12), CITY_MAT.stone);
+        add(tower, tx, baseY + 8, tz);
+        coll(tx, tz, 8.4, 8.4, baseY + 16);
+        const tr = new THREE.Mesh(new THREE.ConeGeometry(4.9, 6, 12), CITY_MAT.roof);
+        add(tr, tx, baseY + 19, tz);
+      }
+    }
+    // keep
+    const keep = new THREE.Mesh(new THREE.BoxGeometry(18, 22, 16), CITY_MAT.stone);
+    add(keep, cx - 4, baseY + 11, cz - 6);
+    coll(cx - 4, cz - 6, 18, 16, baseY + 22);
+    const keepRoof = makeGableRoof(18, 16, 4, CITY_MAT.roof, 0.6);
+    add(keepRoof, cx - 4, baseY + 22, cz - 6);
+    // gate: a real opening in the south wall, with a lintel above
+    for (const sx of [-1, 1]) {
+      const jamb = new THREE.Mesh(new THREE.BoxGeometry(1.6, 10, wallT + 1.6), CITY_MAT.stone);
+      add(jamb, cx + 14 + sx * 3.7, baseY + 5, cz + hd);
+    }
+    const lintel = new THREE.Mesh(new THREE.BoxGeometry(9.4, 3.2, wallT + 1.4), CITY_MAT.stone);
+    add(lintel, cx + 14, baseY + 11.4, cz + hd);
+    // steps up from the hill path to the gate
+    for (let i = 0; i < 4; i++) {
+      const top = baseY - 0.45 * (3 - i);
+      const st = new THREE.Mesh(new THREE.BoxGeometry(9, 0.5, 1.4), CITY_MAT.stone);
+      add(st, cx + 14, top - 0.25, cz + hd + 5.6 - i * 1.4);
+      plat(cx + 14, cz + hd + 5.6 - i * 1.4, 9, 1.4, top);
+    }
+  }
+
+  // ---------------------------------------------------------
+  //  HARBOUR: cranes, barrels, moored boats
+  // ---------------------------------------------------------
+  {
+    // two timber cranes on the quay
+    for (const cx of [-34, 52]) {
+      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.34, 9, 7), CITY_MAT.timber);
+      add(mast, cx, Y + 4.5, 20);
+      const boom = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 9), CITY_MAT.timber);
+      add(boom, cx, Y + 8.4, 15.5);
+      boom.rotation.x = -0.55;
+      for (const sx of [-1, 1]) {
+        const brace = new THREE.Mesh(new THREE.BoxGeometry(0.22, 6.5, 0.22), CITY_MAT.timber);
+        add(brace, cx + sx * 1.9, Y + 3.2, 20.6);
+        brace.rotation.z = sx * 0.26;
+      }
+      const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 7, 4), CITY_MAT.dark);
+      add(rope, cx, Y + 5.2, 12.2);
+    }
+    // barrels and crates
+    for (let i = 0; i < 14; i++) {
+      const x = -92 + (i * 37) % 180;
+      const z = 6 + (i * 13) % 12;
+      if (i % 2) {
+        const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.36, 0.95, 9), CITY_MAT.timber);
+        add(barrel, x, Y + 0.48, z);
+      } else {
+        const crate = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.8, 0.9), CITY_MAT.timber);
+        add(crate, x, Y + 0.4, z);
+        crate.rotation.y = i * 0.3;
+      }
+    }
+    // moored boats alongside the quay
+    for (let i = 0; i < 4; i++) {
+      const bx = -80 + i * 46, bz = 34 + (i % 2) * 4;
+      const hull = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.75, 6.6), CITY_MAT.timber);
+      add(hull, bx, 0.35, bz);
+      const bow = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.7, 1.6), CITY_MAT.timber);
+      add(bow, bx, 0.35, bz + 4.0);
+      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 5.5, 6), CITY_MAT.timber);
+      add(mast, bx, 3.2, bz);
+    }
+  }
+
+  // ---------------------------------------------------------
+  //  PEOPLE
+  // ---------------------------------------------------------
+  const npc = (x, z, robe, hat, markerColor, label, onUse, facing = 0) => {
     const person = makePerson(robe, hat);
-    person.position.set(p.x, p.y - 0.05, p.z);
-    person.rotation.y = -angle + Math.PI;
-    group.add(person);
+    add(person, x, Y, z, facing);
     const marker = makeMarker(markerColor);
-    marker.position.set(p.x, p.y + 1.9, p.z);
-    group.add(marker);
+    add(marker, x, Y + 1.55, z);
     person.userData.marker = marker;
-    addInteractable(group.position.x + p.x, group.position.z + p.z, p.y, 3.4, label, onUse);
+    addInteractable(OX + x, OZ + z, Y, 3.6, label, onUse);
     return person;
   };
 
-  npc(A - 0.55, 0.66, 0x6a4a2a, 0x3a2a18, 0xffd700, "Mestre Nuno, the shipwright", () => openDialog('shipwright'), "Master Shipwright");
-  npc(A - 1.35, 0.64, 0x7a2a3a, null, 0xffd700, "Dona Beatriz, tavern keeper", () => openDialog('tavern'), "Tavern Keeper");
-  npc(A - 2.15, 0.64, 0x2a4a7a, null, 0xffd700, "Tomé, the merchant", () => openDialog('merchant'), "Merchant of Lisbon");
-  npc(A + 1.15, 0.58, 0x4a2a6a, 0x2a1a3a, 0x9fd8ff, "Fra Diogo, royal herald", () => openDialog('herald'), "Royal Herald");
-  npc(A + 0.35, 0.70, 0x3a5a3a, null, 0xffd700, "Your house", () => openDialog('home'), "Your House");
-  npc(A + 0.05, 0.80, 0x5a5a4a, 0x2a2a1a, 0xffd700, "Zé Caolho, the dockmaster", () => openDialog('dockmaster'), "Dockmaster");
-
-  // Shipyard slip - where a commissioned ship appears
-  const slipP = findFlat(island, A - 0.15, 0.70, 0.74, 3);
-  const slip = new THREE.Group();
-  const cradle = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.5, 11), ISLAND_MATS.wood);
-  cradle.position.y = 0.25;
-  slip.add(cradle);
-  for (const side of [-1, 1]) {
-    const post = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2.2, 0.4), ISLAND_MATS.wood);
-    post.position.set(side * 1.9, 1.1, -4.5);
-    slip.add(post);
+  // shipyard on the west quay
+  {
+    const shed = facadeBox(26, 9, 14, FACADE_MATS[3].ground, 4.2, 4.5);
+    add(shed, -78, Y + 4.5, -4);
+    const roof = makeGableRoof(26, 14, 4.2, CITY_MAT.roof, 0.8);
+    add(roof, -78, Y + 9, -4);
+    coll(-78, -4, 26, 14, Y + 9);
+    const slipway = new THREE.Mesh(new THREE.BoxGeometry(16, 0.4, 22), CITY_MAT.timber);
+    add(slipway, -78, Y - 0.2, 14);
   }
-  slip.position.set(slipP.x, slipP.y - 0.1, slipP.z);
-  slip.rotation.y = -A + Math.PI / 2;
-  group.add(slip);
-  lisbonSlip = { x: group.position.x + slipP.x, z: group.position.z + slipP.z, angle: A };
+  npc(-78, 8, 0x6a4a2a, 0x3a2a18, 0xffd700, "Mestre Nuno, the shipwright", () => openDialog('shipwright'), Math.PI);
+
+  // tavern on the west side of Augusta
+  npc(-9.6, -62, 0x7a2a3a, null, 0xffd700, "Dona Beatriz, tavern keeper", () => openDialog('tavern'), Math.PI / 2);
+
+  // merchant under the arcade of the great square
+  npc(44, -32, 0x2a4a7a, null, 0xffd700, "Tomé, the merchant", () => openDialog('merchant'), Math.PI);
+
+  // royal herald at the palace steps on Rossio
+  npc(0, -196, 0x4a2a6a, 0x2a1a3a, 0x9fd8ff, "Fra Diogo, royal herald", () => openDialog('herald'), Math.PI);
+
+  // your own door on Rua Augusta
+  npc(9.6, -104, 0x3a5a3a, null, 0xffd700, "Your house", () => openDialog('home'), -Math.PI / 2);
+
+  // dockmaster at the pier root
+  npc(8.2, 24, 0x5a5a4a, 0x2a2a1a, 0xffd700, "Zé Caolho, the dockmaster", () => openDialog('dockmaster'), Math.PI);
+
+  // ---------------------------------------------------------
+  //  AMBIENT CITIZENS
+  // ---------------------------------------------------------
+  const WALK_PATHS = [
+    [{ x: 0, z: 8 }, { x: 0, z: -30 }, { x: -3, z: -60 }, { x: -3, z: -140 }, { x: 3, z: -160 }, { x: 3, z: -60 }, { x: 0, z: -20 }],
+    [{ x: -30, z: -14 }, { x: 30, z: -14 }, { x: 30, z: -28 }, { x: -30, z: -28 }],
+    [{ x: -20, z: -70 }, { x: 20, z: -70 }, { x: 20, z: -92 }, { x: -20, z: -92 }],
+    [{ x: 46, z: 10 }, { x: 46, z: -32 }, { x: 8, z: -32 }, { x: 8, z: 10 }],
+    [{ x: -60, z: -180 }, { x: 60, z: -180 }, { x: 60, z: -192 }, { x: -60, z: -192 }],
+    [{ x: -70, z: 10 }, { x: -40, z: 10 }, { x: -40, z: 22 }, { x: -70, z: 22 }],
+  ];
+  const ROBES = [0x6b5a3a, 0x3a4a5a, 0x7a4a3a, 0x4a5a3a, 0x5a3a4a, 0x6a6a5a];
+  for (let i = 0; i < WALK_PATHS.length; i++) {
+    const p = makePerson(ROBES[i], i % 2 ? 0x2a2a1a : null);
+    const start = WALK_PATHS[i][0];
+    add(p, start.x, Y, start.z, Math.random() * 6.28);
+    walkers.push({ obj: p, path: WALK_PATHS[i], seg: 0, phase: Math.random() * 6.28, speed: 1.0 + Math.random() * 0.5 });
+  }
+
+  // a few gulls over the harbour
+  for (let i = 0; i < 6; i++) {
+    const g = new THREE.Group();
+    const wingMat = new THREE.MeshStandardMaterial({ color: 0xf4f4ee, roughness: 0.9, side: THREE.DoubleSide });
+    const wl = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.28), wingMat);
+    wl.position.x = -0.5;
+    const wr = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.28), wingMat);
+    wr.position.x = 0.5;
+    g.add(wl, wr);
+    g.position.set(-60 + i * 24, 14 + (i % 3) * 4, 30 + (i % 2) * 10);
+    g.userData = { cx: g.position.x, cz: g.position.z, r: 12 + i * 3, a: i * 1.1, spd: 0.25 + i * 0.04 };
+    group.add(g);
+    walkers.push({ gull: g, phase: i });
+  }
 }
 
 let lisbonSlip = null;
 
 function buildTradePost(group, island, pointAt, def) {
-  // A native trading hut with a trader beside it
+  // A native village: huts, a jetty, drying racks, canoes
   const a = island.rng() * Math.PI * 2;
-  const p = findFlat(island, a, 0.55, 0.75);
-  const hut = makeBuilding(3.4, 2.6, 3, new THREE.MeshStandardMaterial({ color: 0xa8895a, roughness: 0.95 }), ISLAND_MATS.cloth);
-  hut.position.set(p.x, p.y - 0.1, p.z);
-  hut.rotation.y = -a + Math.PI / 2;
-  group.add(hut);
-  solidCircles.push({ x: group.position.x + p.x, z: group.position.z + p.z, r: 2.4 });
+  const R = island.radiusAt(a);
+  const sandMat = new THREE.MeshStandardMaterial({ color: 0xc9ab74, roughness: 0.95 });
+  const thatchMat = new THREE.MeshStandardMaterial({ color: 0x8a7a44, roughness: 0.95 });
+  const hutMat = new THREE.MeshStandardMaterial({ color: 0xb0905c, roughness: 0.95 });
+  const OX = group.position.x, OZ = group.position.z;
+  const add = (m, x, y, z, ry = 0) => { m.position.set(x, y, z); if (ry) m.rotation.y = ry; group.add(m); return m; };
 
-  // crates and bolts of cloth
-  for (let i = 0; i < 4; i++) {
-    const crate = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.9, 0.9), ISLAND_MATS.wood);
-    const aa = a + 0.7 + i * 0.35;
-    const rr = island.radiusAt(aa) * 0.62;
-    crate.position.set(Math.cos(aa) * rr, island.heightAt(Math.cos(aa) * rr, Math.sin(aa) * rr) + 0.45, Math.sin(aa) * rr);
-    crate.rotation.y = aa;
-    crate.castShadow = true;
-    group.add(crate);
+  // ---- huts: round walls with a conical thatch roof ----
+  const huts = 4 + Math.floor(island.rng() * 3);
+  const plaza = [];
+  for (let i = 0; i < huts; i++) {
+    const ha = a + (i / huts) * Math.PI * 2 + 0.4;
+    const ht = 0.58 + (i % 3) * 0.05;
+    const hx = Math.cos(ha) * R * ht, hz = Math.sin(ha) * R * ht;
+    const hy = island.heightAt(hx, hz);
+    const rad = 1.9 + island.rng() * 0.7;
+
+    const walls = new THREE.Mesh(new THREE.CylinderGeometry(rad, rad * 1.05, 2.0, 9), hutMat);
+    add(walls, hx, hy + 1.0, hz);
+    walls.castShadow = true; walls.receiveShadow = true;
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(rad * 1.5, 1.9, 9), thatchMat);
+    add(roof, hx, hy + 2.9, hz);
+    roof.castShadow = true;
+    // door frame
+    const door = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.3, 0.16), CITY_MAT.dark);
+    const da = ha + Math.PI;
+    add(door, hx + Math.cos(da) * (rad - 0.1), hy + 0.65, hz + Math.sin(da) * (rad - 0.1), -da);
+    // a post and beam for drying nets
+    if (i % 2 === 0) {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.4, 6), CITY_MAT.timber);
+      add(post, hx + Math.cos(ha + 1.2) * 2.2, hy + 1.2, hz + Math.sin(ha + 1.2) * 2.2);
+    }
+    addColliderBox(OX + hx, OZ + hz, rad * 2, rad * 2, hy + 2);
+    plaza.push({ x: hx, y: hy, z: hz });
   }
 
-  const person = makePerson(0x8a5a2a, null);
-  person.position.set(p.x + Math.cos(a + 1.6) * 2.4, p.y - 0.05, p.z + Math.sin(a + 1.6) * 2.4);
-  person.rotation.y = -a - 1.6 + Math.PI;
-  group.add(person);
-  const marker = makeMarker(0x8bc34a);
-  marker.position.set(person.position.x, p.y + 1.9, person.position.z);
-  group.add(marker);
+  // ---- jetty out into the lagoon ----
+  const ja = a + 2.4;
+  const jx = Math.cos(ja), jz = Math.sin(ja);
+  const start = R * 0.78;
+  const deckY = island.heightAt(jx * start, jz * start) + 0.35;
+  const deckLen = 13;
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.28, deckLen), CITY_MAT.timber);
+  const deckCz = start + deckLen / 2;
+  add(deck, jx * (start + deckLen / 2), deckY, jz * (start + deckLen / 2), -ja);
+  deck.castShadow = true; deck.receiveShadow = true;
+  addPlatform(OX + jx * (start + deckLen / 2), OZ + jz * (start + deckLen / 2), deckLen, 3.0, deckY + 0.14);
+  addColliderBox(OX + jx * (start + deckLen / 2), OZ + jz * (start + deckLen / 2), deckLen, 3.0, deckY + 0.14, -ja);
+  for (let i = 0; i <= 3; i++) {
+    const t = start + 1.5 + i * ((deckLen - 3) / 3);
+    for (const side of [-1, 1]) {
+      const px = jx * t - jz * side * 1.2, pz = jz * t + jx * side * 1.2;
+      const pile = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 3.4, 6), CITY_MAT.timber);
+      add(pile, px, deckY - 1.7, pz);
+    }
+  }
+  // moored canoes
+  for (let i = 0; i < 2; i++) {
+    const side = i === 0 ? -1 : 1;
+    const cx = jx * (start + deckLen - 1) - jz * side * 3.4;
+    const cz = jz * (start + deckLen - 1) + jx * side * 3.4;
+    const hull = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.16, 5.2, 7, 1, false, 0, Math.PI), CITY_MAT.timber);
+    hull.rotation.set(0, -ja, 0);
+    hull.scale.set(1, 1, 0.6);
+    add(hull, cx, 0.25, cz);
+  }
 
-  addInteractable(group.position.x + person.position.x, group.position.z + person.position.z, p.y, 3.6,
+  // ---- drying racks with fish ----
+  for (let i = 0; i < 3; i++) {
+    const ra = a + 1.1 + i * 0.9;
+    const rx = Math.cos(ra) * R * 0.7, rz = Math.sin(ra) * R * 0.7;
+    const ry = island.heightAt(rx, rz);
+    for (const side of [-1, 1]) {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 1.7, 5), CITY_MAT.timber);
+      add(post, rx + Math.cos(ra + side * 1.2) * 1.4, ry + 0.85, rz + Math.sin(ra + side * 1.2) * 1.4);
+    }
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.09, 0.12), CITY_MAT.timber);
+    add(bar, rx, ry + 1.6, rz, -ra);
+    for (let f = 0; f < 4; f++) {
+      const fish = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.5, 4), CITY_MAT.dark);
+      add(fish, rx + Math.cos(ra + Math.PI / 2) * (1.1 - f * 0.7), ry + 1.3, rz + Math.sin(ra + Math.PI / 2) * (1.1 - f * 0.7));
+    }
+  }
+
+  // ---- cooking fire with stones ----
+  const fa = a + 3.4;
+  const fx = Math.cos(fa) * R * 0.62, fz = Math.sin(fa) * R * 0.62;
+  const fy = island.heightAt(fx, fz);
+  for (let i = 0; i < 7; i++) {
+    const ang = (i / 7) * Math.PI * 2;
+    const stone = new THREE.Mesh(new THREE.DodecahedronGeometry(0.22), CITY_MAT.stone);
+    add(stone, fx + Math.cos(ang) * 0.55, fy + 0.1, fz + Math.sin(ang) * 0.55);
+  }
+  const flame = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.8, 6),
+    new THREE.MeshBasicMaterial({ color: 0xff8c2a, transparent: true, opacity: 0.9 }));
+  add(flame, fx, fy + 0.45, fz);
+  plaza.push({ x: fx, y: fy, z: fz });
+
+  // ---- crates and barrels near the jetty ----
+  for (let i = 0; i < 5; i++) {
+    const cx = jx * (start - 2) - jz * (i - 2) * 1.6;
+    const cz = jz * (start - 2) + jx * (i - 2) * 1.6;
+    const cy = island.heightAt(cx, cz);
+    if (i % 2) {
+      const crate = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.8, 0.85), CITY_MAT.timber);
+      add(crate, cx, cy + 0.4, cz, i * 0.4);
+    } else {
+      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.34, 0.9, 8), CITY_MAT.timber);
+      add(barrel, cx, cy + 0.45, cz);
+    }
+  }
+
+  // ---- the trader ----
+  const tp = plaza[0];
+  const person = makePerson(0x8a5a2a, null);
+  add(person, tp.x + Math.cos(a + 1.6) * 2.2, tp.y - 0.02, tp.z + Math.sin(a + 1.6) * 2.2, -a - 1.6 + Math.PI);
+  const marker = makeMarker(0x8bc34a);
+  add(marker, person.position.x, tp.y + 1.6, person.position.z);
+
+  // a second villager for company
+  const other = makePerson(0x6a5a3a, null);
+  const op = plaza[1] || tp;
+  add(other, op.x + Math.cos(a - 1.2) * 2.0, op.y - 0.02, op.z + Math.sin(a - 1.2) * 2.0, -a + 1.2 + Math.PI);
+
+  addInteractable(OX + person.position.x, OZ + person.position.z, tp.y, 3.6,
     "Trade with the natives", () => openDialog('trade_post', { port: { def, group } }));
 }
+
 // ============================================================
 //  GAME STATE - one life
 // ============================================================
@@ -1531,8 +2699,10 @@ const Game = {
 
 const Player = {
   mode: 'foot',                 // foot | deck | helm
-  x: 0, z: 0, y: 0,
-  yaw: 0, pitch: 0,
+  x: 0, y: 0, z: 0,             // y is the FEET height
+  vx: 0, vy: 0, vz: 0,          // real velocity
+  onGround: true,
+  inWater: false, wetT: 0,
   lookYaw: 0, lookPitch: 0,
   island: null,                 // PORTS entry while ashore
   bob: 0,
@@ -1565,7 +2735,7 @@ function groundInfo(wx, wz) {
   for (const p of PORTS) {
     const dx = wx - p.position.x, dz = wz - p.position.z;
     const r = Math.hypot(dx, dz);
-    if (r > p.maxR + 45) continue;
+    if (r > p.maxR + 70) continue;
     const y = p.heightAt(wx, wz);
     if (!best || r < best.r) best = { port: p, y, r };
   }
@@ -1574,13 +2744,24 @@ function groundInfo(wx, wz) {
 
 function groundY(wx, wz) {
   const g = groundInfo(wx, wz);
-  return g ? g.y : 0;
+  return g ? g.y : -30;
+}
+
+// Highest walkable surface at a point: terrain, or a quay / pier / step you can
+// reach from your current foot height (that is what makes stairs work).
+function supportY(wx, wz, feetY, stepUp) {
+  const lim = (stepUp === undefined ? STEP_UP : stepUp);
+  let h = groundY(wx, wz);
+  for (let i = 0; i < PLATFORMS.length; i++) {
+    const p = PLATFORMS[i];
+    if (wx < p.x0 || wx > p.x1 || wz < p.z0 || wz > p.z1) continue;
+    if (p.top > h && p.top <= feetY + lim) h = p.top;
+  }
+  return h;
 }
 
 function canStand(wx, wz) {
-  const g = groundInfo(wx, wz);
-  if (!g || g.y < 0.25) return false;          // water
-  return g.r < g.port.maxR + 3;
+  return supportY(wx, wz, 1e6) > 0.25;
 }
 
 // ============================================================
@@ -1590,6 +2771,7 @@ function spawnPlayerShip(cls, x, z, heading) {
   removePlayerShip();
   const def = SHIP_CLASSES[cls];
   playerShip = buildShipModel(def.scale);
+  playerShip.rotation.order = 'YXZ';
   playerShip.position.set(x, 0, z);
   playerShip.rotation.y = heading;
   scene.add(playerShip);
@@ -1597,6 +2779,9 @@ function spawnPlayerShip(cls, x, z, heading) {
   Ship.turn = def.turn;
   Ship.heading = heading;
   Ship.speed = 0;
+  Ship.pitch = 0; Ship.roll = 0;
+  SHIP_PHYS.vf = 0; SHIP_PHYS.vl = 0; SHIP_PHYS.yawRate = 0;
+  SHIP_PHYS.pitch = 0; SHIP_PHYS.roll = 0;
   Game.ship = { cls, x, z, heading };
 }
 
@@ -1616,7 +2801,7 @@ function shipWorldPos() {
 
 // Spawn the player's ship at the Lisbon pier, ready to be boarded on foot
 function spawnShipInLisbon(cls) {
-  spawnPlayerShip(cls, lisbonBerth.x, lisbonBerth.z, Math.PI / 2 - LISBON_PIER_ANGLE);
+  spawnPlayerShip(cls, lisbonBerth.x, lisbonBerth.z, 0);   // bow to the river
   dockedAt = PORTS[0];
 }
 
@@ -2503,15 +3688,25 @@ function goAshore(port) {
   dockedAt = port;
   Player.island = port;
   Player.mode = 'foot';
-  const dx = playerShip.position.x - port.position.x;
-  const dz = playerShip.position.z - port.position.z;
-  const d = Math.hypot(dx, dz) || 1;
-  const coast = port.radiusAt(Math.atan2(dz, dx)) + 5;
-  Player.x = port.position.x + (dx / d) * coast;
-  Player.z = port.position.z + (dz / d) * coast;
-  Player.y = Math.max(0.4, port.heightAt(Player.x, Player.z)) + 0.1;
-  Player.lookYaw = Math.atan2(dx / d, dz / d);
+  if (port.def.type === 'home') {
+    // step off onto the pier
+    Player.x = lisbonDock.x;
+    Player.z = lisbonDock.z;
+    Player.lookYaw = 0;
+  } else {
+    const dx = playerShip.position.x - port.position.x;
+    const dz = playerShip.position.z - port.position.z;
+    const d = Math.hypot(dx, dz) || 1;
+    const coast = port.radiusAt(Math.atan2(dz, dx)) + 5;
+    Player.x = port.position.x + (dx / d) * coast;
+    Player.z = port.position.z + (dz / d) * coast;
+    Player.lookYaw = Math.atan2(dx / d, dz / d);
+  }
+  Player.vx = Player.vy = Player.vz = 0;
+  Player.y = supportY(Player.x, Player.z, 12);
+  Player.onGround = true;
   Player.lookPitch = 0;
+  SHIP_PHYS.vf = 0; SHIP_PHYS.vl = 0; SHIP_PHYS.yawRate = 0;
   Ship.speed = 0;
   Ship.anchored = true;
 
@@ -2530,6 +3725,7 @@ function boardShip() {
   Player.mode = 'deck';
   Player.island = null;
   dockedAt = null;
+  Player.vx = Player.vy = Player.vz = 0;
   const p = deckLocalToWorld(0, 2.2);
   Player.x = p.x;
   Player.z = p.z;
@@ -2561,6 +3757,8 @@ function deliverReadyCommissions() {
 //  MOVEMENT & SHIP PHYSICS
 // ============================================================
 let elapsed = 0;
+const GRAVITY = 22;
+const STEP_UP = 0.62;
 
 function moveInput() {
   let f = (keys['w'] ? 1 : 0) - (keys['s'] ? 1 : 0);
@@ -2569,34 +3767,103 @@ function moveInput() {
   return { f, s };
 }
 
+// Push a circle out of every solid box it overlaps (2 passes handles corners)
+function resolveXZ(pos, radius, feetY) {
+  for (let iter = 0; iter < 2; iter++) {
+    let moved = false;
+    for (let i = 0; i < COLLIDERS.length; i++) {
+      const c = COLLIDERS[i];
+      if (c.top <= feetY + 0.05) continue;         // you are standing on top of it
+      const nx = pos.x < c.x0 ? c.x0 : (pos.x > c.x1 ? c.x1 : pos.x);
+      const nz = pos.z < c.z0 ? c.z0 : (pos.z > c.z1 ? c.z1 : pos.z);
+      const dx = pos.x - nx, dz = pos.z - nz;
+      const d2 = dx * dx + dz * dz;
+      if (d2 > radius * radius) continue;
+      if (d2 > 1e-6) {
+        const d = Math.sqrt(d2);
+        pos.x = nx + (dx / d) * radius;
+        pos.z = nz + (dz / d) * radius;
+      } else {
+        // centre inside the box: eject through the nearest face
+        const dl = pos.x - c.x0, dr = c.x1 - pos.x, dt2 = pos.z - c.z0, db = c.z1 - pos.z;
+        const m = Math.min(dl, dr, dt2, db);
+        if (m === dl) pos.x = c.x0 - radius;
+        else if (m === dr) pos.x = c.x1 + radius;
+        else if (m === dt2) pos.z = c.z0 - radius;
+        else pos.z = c.z1 + radius;
+      }
+      moved = true;
+    }
+    if (!moved) break;
+  }
+  return pos;
+}
+
 function updateFoot(dt) {
   const { f, s } = moveInput();
-  const run = keys['shift'] ? 7.2 : 4.3;
   const yaw = Player.lookYaw;
   const fx = -Math.sin(yaw), fz = -Math.cos(yaw);
   const rx = Math.cos(yaw), rz = -Math.sin(yaw);
-  const nx = Player.x + (fx * f + rx * s) * run * dt;
-  const nz = Player.z + (fz * f + rz * s) * run * dt;
+  let wx = fx * f + rx * s, wz = fz * f + rz * s;
+  const len = Math.hypot(wx, wz);
+  if (len > 1e-4) { wx /= len; wz /= len; }
 
-  if (canStand(nx, nz)) { Player.x = nx; Player.z = nz; }
-  else {
-    if (canStand(nx, Player.z)) Player.x = nx;
-    if (canStand(Player.x, nz)) Player.z = nz;
-  }
+  const runSpeed = keys['shift'] ? 7.2 : 4.4;
+  const support = supportY(Player.x, Player.z, Player.y);
+  const swimming = support < -1.25 && Player.y < 0.55;
+  // in the water you can haul yourself onto a step you could never climb on foot
+  const stepLim = swimming ? 1.7 : STEP_UP;
+  Player.inWater = swimming;
 
-  // building collision
-  for (const c of solidCircles) {
-    const dx = Player.x - c.x, dz = Player.z - c.z;
-    const d = Math.hypot(dx, dz);
-    if (d < c.r && d > 0.001) {
-      Player.x = c.x + (dx / d) * c.r;
-      Player.z = c.z + (dz / d) * c.r;
+  const target = swimming ? 2.4 : runSpeed;
+  const grip = swimming ? 2.6 : (Player.onGround ? 14 : 2.2);
+  const k = Math.min(1, grip * dt);
+  Player.vx += (wx * target - Player.vx) * k;
+  Player.vz += (wz * target - Player.vz) * k;
+
+  // ---- vertical: gravity, or buoyancy when you are in the river ----
+  if (swimming) {
+    const floatY = -1.02 + Math.sin(elapsed * 1.7) * 0.05;
+    Player.vy += (floatY - Player.y) * 26 * dt;
+    Player.vy *= Math.max(0, 1 - 5.5 * dt);
+    Player.vy = Math.max(-4.5, Math.min(3.2, Player.vy));
+    Player.wetT = (Player.wetT || 0) + dt;
+    if (Player.wetT > 26) { die('The river closed over your head.'); return; }
+    if (Player.wetT > 4 && !Player.warnedWater) {
+      Player.warnedWater = true;
+      showToast('You are in the water — swim for the stairs!', 3200);
     }
+  } else {
+    Player.vy -= GRAVITY * dt;
+    Player.wetT = 0; Player.warnedWater = false;
   }
 
-  const moving = (f !== 0 || s !== 0);
+  // ---- horizontal move + solid collision ----
+  const pos = { x: Player.x + Player.vx * dt, z: Player.z + Player.vz * dt };
+  resolveXZ(pos, 0.36, Player.y);
+  Player.x = pos.x; Player.z = pos.z;
+
+  // ---- vertical move + landing ----
+  Player.y += Player.vy * dt;
+  const sup = supportY(Player.x, Player.z, Player.y, stepLim);
+  if (Player.vy <= 0.02 && Player.y <= sup + 0.02) {
+    const wasAir = !Player.onGround;
+    const impact = Player.vy;
+    Player.y = sup;
+    Player.vy = 0;
+    Player.onGround = true;
+    if (wasAir) {
+      if (impact < -22) { die('You fell from the heights of Lisbon.'); return; }
+      if (impact < -10) showToast('You land hard on the stones.', 1800);
+    }
+  } else {
+    Player.onGround = false;
+  }
+
+  const moving = Math.hypot(Player.vx, Player.vz) > 0.6;
   Player.bob += dt * (moving ? 9 : 0);
-  Player.y = groundY(Player.x, Player.z) + 1.7 + (moving ? Math.sin(Player.bob) * 0.045 : 0);
+  Player.y += (moving && Player.onGround ? Math.sin(Player.bob) * 0.045 : 0);
+  if (Player.y < -30) die('The sea took you.');
 }
 
 function updateDeckWalk(dt) {
@@ -2606,72 +3873,128 @@ function updateDeckWalk(dt) {
   const yaw = h + Math.PI + Player.lookYaw;
   const fx = -Math.sin(yaw), fz = -Math.cos(yaw);
   const rx = Math.cos(yaw), rz = -Math.sin(yaw);
-  const speed = 2.1;
-  let nx = Player.x + (fx * f + rx * s) * speed * dt;
-  let nz = Player.z + (fz * f + rz * s) * speed * dt;
 
-  // clamp to the deck (ship-local space)
+  let wx = fx * f + rx * s, wz = fz * f + rz * s;
+  const len = Math.hypot(wx, wz);
+  if (len > 1e-4) { wx /= len; wz /= len; }
+
+  const k = Math.min(1, 9 * dt);
+  Player.vx += (wx * 2.4 - Player.vx) * k;
+  Player.vz += (wz * 2.4 - Player.vz) * k;
+
+  let nx = Player.x + Player.vx * dt;
+  let nz = Player.z + Player.vz * dt;
+
+  // the bulwarks keep you aboard (ship-local clamp)
   const dx = nx - playerShip.position.x, dz = nz - playerShip.position.z;
   const lx = dx * Math.cos(h) - dz * Math.sin(h);
   const lz = dx * Math.sin(h) + dz * Math.cos(h);
-  const clx = Math.max(-2.1 * sc, Math.min(2.1 * sc, lx));
-  const clz = Math.max(-4.4 * sc, Math.min(4.4 * sc, lz));
+  const clx = Math.max(-2.05 * sc, Math.min(2.05 * sc, lx));
+  const clz = Math.max(-4.3 * sc, Math.min(4.3 * sc, lz));
+  if (clx !== lx) Player.vx *= -0.2;
+  if (clz !== lz) Player.vz *= -0.2;
   nx = playerShip.position.x + clx * Math.cos(h) + clz * Math.sin(h);
   nz = playerShip.position.z + -clx * Math.sin(h) + clz * Math.cos(h);
-
   Player.x = nx; Player.z = nz;
-  const moving = (f !== 0 || s !== 0);
+
+  // stand on the deck plane, which heels and pitches with the hull
+  const deckY = 1.85 * sc;
+  const local = new THREE.Vector3(clx, deckY, clz);
+  playerShip.updateMatrixWorld();
+  const world = local.applyMatrix4(playerShip.matrixWorld);
+  Player.y = world.y + 1.7;
+
+  const moving = len > 0.1;
   Player.bob += dt * (moving ? 7 : 0);
-  Player.y = playerShip.position.y + 1.85 * sc + 1.7 + (moving ? Math.sin(Player.bob) * 0.04 : 0);
+  if (moving) Player.y += Math.sin(Player.bob) * 0.035;
 }
+
+// Ship as a rigid body: forward/lateral velocity, yaw inertia, buoyancy.
+const SHIP_PHYS = { vf: 0, vl: 0, yawRate: 0, pitch: 0, roll: 0, grounded: 0 };
 
 function updateShipPhysics(dt) {
   if (!Game.ship || !playerShip) return;
   const cls = SHIP_CLASSES[Game.ship.cls];
+  const maxSpeed = cls.maxSpeed;
+  const atHelm = Player.mode === 'helm';
 
-  if (Player.mode === 'helm') {
-    if (keys[' ']) { Ship.speed = 0; Ship.anchored = true; }
-    else {
+  // ---------------- controls ----------------
+  let throttle = 0, rudder = 0;
+  if (atHelm) {
+    if (keys[' ']) {
+      Ship.anchored = true;
+    } else {
       Ship.anchored = false;
-      if (keys['w']) Ship.speed = Math.min(cls.maxSpeed, Ship.speed + cls.maxSpeed * 0.4 * dt);
-      else if (keys['s']) Ship.speed = Math.max(-1.5, Ship.speed - cls.maxSpeed * 0.5 * dt);
-      else Ship.speed *= (1 - 0.3 * dt);
-      const authority = 0.3 + 0.7 * Math.min(1, Math.abs(Ship.speed) / cls.maxSpeed);
-      if (keys['a']) Ship.heading += cls.turn * authority * dt;
-      if (keys['d']) Ship.heading -= cls.turn * authority * dt;
+      if (keys['w']) throttle = 1;
+      else if (keys['s']) throttle = -0.55;
+      if (keys['a']) rudder = 1;
+      if (keys['d']) rudder = -1;
     }
+  }
+
+  // ---------------- forward: thrust vs quadratic hull drag ----------------
+  const thrustAcc = 3.6;
+  const dragK = thrustAcc / (maxSpeed * maxSpeed);
+  const drag = dragK * SHIP_PHYS.vf * Math.abs(SHIP_PHYS.vf);
+  SHIP_PHYS.vf += (throttle * thrustAcc - drag) * dt;
+  if (SHIP_PHYS.vf < -maxSpeed * 0.4) SHIP_PHYS.vf = -maxSpeed * 0.4;
+
+  // ---------------- sideways: the keel kills drift ----------------
+  SHIP_PHYS.vl *= Math.exp(-3.4 * dt);
+
+  // ---------------- yaw: rudder torque grows with flow over the blade ----------------
+  const flow = Math.abs(SHIP_PHYS.vf);
+  const authority = Math.min(1, flow / (maxSpeed * 0.5));
+  const targetYaw = rudder * cls.turn * 0.42 * authority * (SHIP_PHYS.vf < 0 ? -1 : 1);
+  SHIP_PHYS.yawRate += (targetYaw - SHIP_PHYS.yawRate) * Math.min(1, 2.4 * dt);
+  Ship.heading += SHIP_PHYS.yawRate * dt;
+
+  // ---------------- world velocity ----------------
+  const fx = Math.sin(Ship.heading), fz = Math.cos(Ship.heading);
+  const rx = Math.cos(Ship.heading), rz = -Math.sin(Ship.heading);
+  let vx = fx * SHIP_PHYS.vf + rx * SHIP_PHYS.vl;
+  let vz = fz * SHIP_PHYS.vf + rz * SHIP_PHYS.vl;
+
+  // ---------------- grounding: the keel needs water ----------------
+  const hullR = 3.2 * cls.scale;
+  const probe = 6 * cls.scale;
+  const bedAhead = groundY(playerShip.position.x + fx * probe, playerShip.position.z + fz * probe);
+  const bedHere = groundY(playerShip.position.x, playerShip.position.z);
+  if (bedAhead > -1.3 || bedHere > -1.1) {
+    SHIP_PHYS.grounded = 1;
+    if (Math.abs(SHIP_PHYS.vf) > 2.2) {
+      showToast('The keel strikes bottom — you are aground!', 2600);
+      addLog('Sand and weed under the keel. You are aground.', 'bad');
+    }
+    SHIP_PHYS.vf *= Math.exp(-6 * dt);
+    SHIP_PHYS.vl *= Math.exp(-6 * dt);
+    SHIP_PHYS.yawRate *= Math.exp(-4 * dt);
+    vx *= -0.25; vz *= -0.25;
   } else {
-    Ship.speed *= (1 - 0.35 * dt);
+    SHIP_PHYS.grounded = 0;
   }
 
-  const prevX = playerShip.position.x, prevZ = playerShip.position.z;
-  playerShip.position.x += Math.sin(Ship.heading) * Ship.speed * dt;
-  playerShip.position.z += Math.cos(Ship.heading) * Ship.speed * dt;
-  Game.ship.x = playerShip.position.x;
-  Game.ship.z = playerShip.position.z;
-  Game.ship.heading = Ship.heading;
-  Game.stats.distance += Math.hypot(playerShip.position.x - prevX, playerShip.position.z - prevZ);
-
-  // coast collision
-  for (const p of PORTS) {
-    const dx = playerShip.position.x - p.position.x;
-    const dz = playerShip.position.z - p.position.z;
-    const d = Math.hypot(dx, dz);
-    if (d > p.maxR + 10) continue;
-    const coast = p.radiusAt(Math.atan2(dz, dx)) + 3.5;
-    if (d < coast) {
-      const nx = d > 0.001 ? dx / d : 1;
-      const nz = d > 0.001 ? dz / d : 0;
-      playerShip.position.x = p.position.x + nx * coast;
-      playerShip.position.z = p.position.z + nz * coast;
-      if (Ship.speed > 0.4) { showToast('The surf! Come about!'); addLog('You feel the bottom under the keel.', 'bad'); }
-      Ship.speed = 0;
-    }
+  // ---------------- solid harbour walls and piers ----------------
+  const pos = { x: playerShip.position.x + vx * dt, z: playerShip.position.z + vz * dt };
+  const before = { x: pos.x, z: pos.z };
+  resolveXZ(pos, hullR, -2);
+  if (pos.x !== before.x || pos.z !== before.z) {
+    SHIP_PHYS.vf *= -0.12;
+    SHIP_PHYS.vl *= -0.12;
+    if (Math.abs(SHIP_PHYS.vf) > 2) showToast('The hull grinds against the stone!', 2200);
   }
+  playerShip.position.x = pos.x;
+  playerShip.position.z = pos.z;
 
   const limit = 1020;
   playerShip.position.x = Math.max(-limit, Math.min(limit, playerShip.position.x));
   playerShip.position.z = Math.max(-limit, Math.min(limit, playerShip.position.z));
+
+  Ship.speed = SHIP_PHYS.vf;
+  Game.ship.x = playerShip.position.x;
+  Game.ship.z = playerShip.position.z;
+  Game.ship.heading = Ship.heading;
+  Game.stats.distance += Math.abs(SHIP_PHYS.vf) * dt;
 
   // sailing away clears the docked state
   if (dockedAt) {
@@ -2679,43 +4002,55 @@ function updateShipPhysics(dt) {
     if (dd > dockedAt.maxR + 70) dockedAt = null;
   }
 
-  // ride the waves
-  const wx = playerShip.position.x, wz = playerShip.position.z;
-  const wY = waveHeightAt(wx, wz, elapsed);
-  Ship.bobPhase += dt * 1.5;
-  playerShip.position.y = wY + Math.sin(Ship.bobPhase) * 0.06;
-  playerShip.rotation.y = Ship.heading;
-  const slopeZ = (waveHeightAt(wx, wz + 1.4, elapsed) - waveHeightAt(wx, wz - 1.4, elapsed)) / 2.8;
-  const slopeX = (waveHeightAt(wx + 1.4, wz, elapsed) - waveHeightAt(wx - 1.4, wz, elapsed)) / 2.8;
-  const roll = (keys['a'] || keys['d']) && Player.mode === 'helm' ? -Ship.speed * 0.02 : 0;
-  playerShip.rotation.z = slopeX * 0.9 + roll + Math.sin(Ship.bobPhase * 0.7) * 0.015;
-  playerShip.rotation.x = -slopeZ * 0.9 + Ship.speed * 0.012;
+  // ---------------- buoyancy: four hull samples -> heave, pitch, roll ----------------
+  const L = 4.6 * cls.scale, B = 1.9 * cls.scale;
+  const sx = playerShip.position.x, sz = playerShip.position.z;
+  const hBow = waveHeightAt(sx + fx * L, sz + fz * L, elapsed);
+  const hStern = waveHeightAt(sx - fx * L, sz - fz * L, elapsed);
+  const hPort = waveHeightAt(sx + rx * B, sz + rz * B, elapsed);
+  const hStbd = waveHeightAt(sx - rx * B, sz - rz * B, elapsed);
+  const heave = (hBow + hStern + hPort + hStbd) * 0.25;
 
-  // wake
-  const spd = Math.min(1, Math.abs(Ship.speed) / cls.maxSpeed);
-  wakeGroup.position.set(wx, wY + 0.04, wz);
+  const speedRatio = SHIP_PHYS.vf / maxSpeed;
+  const targetPitch = -Math.atan2(hBow - hStern, 2 * L) - speedRatio * 0.012;
+  const targetRoll = Math.atan2(hPort - hStbd, 2 * B) * 0.85
+                   + SHIP_PHYS.yawRate * SHIP_PHYS.vf * 0.035;
+  const sm = Math.min(1, 3.2 * dt);
+  SHIP_PHYS.pitch += (targetPitch - SHIP_PHYS.pitch) * sm;
+  SHIP_PHYS.roll += (targetRoll - SHIP_PHYS.roll) * sm;
+  Ship.pitch = SHIP_PHYS.pitch;
+  Ship.roll = SHIP_PHYS.roll;
+
+  playerShip.position.y = heave + Math.sin(Ship.bobPhase) * 0.02;
+  Ship.bobPhase += dt * 1.5;
+  playerShip.rotation.order = 'YXZ';
+  playerShip.rotation.set(SHIP_PHYS.pitch, Ship.heading, SHIP_PHYS.roll);
+
+  // ---------------- wake ----------------
+  const spd = Math.min(1, Math.abs(SHIP_PHYS.vf) / maxSpeed);
+  wakeGroup.position.set(sx, heave + 0.04, sz);
   wakeGroup.rotation.y = Ship.heading;
   hullFoam.material.opacity = 0.42 + spd * 0.35;
   wakeTrail.material.opacity = spd * 0.7;
   wakeTrail.scale.y = 0.55 + spd * 0.75;
 
-  // sails billow with speed
+  // ---------------- canvas: sails billow with way ----------------
   const billow = spd;
   playerShip.userData.sails.forEach((s, i) => {
-    const pos = s.geo.attributes.position;
-    for (let v = 0; v < pos.count; v++) {
-      const x = pos.getX(v);
-      const y = pos.getY(v);
+    const p = s.geo.attributes.position;
+    for (let v = 0; v < p.count; v++) {
+      const x = p.getX(v);
+      const y = p.getY(v);
       const nx2 = x / (s.w / 2);
       const edge = 1 - Math.min(1, Math.abs(nx2));
       const ripple = Math.sin(y * 1.1 + elapsed * 2.6 + i * 1.7) * 0.055;
-      pos.setZ(v, edge * edge * (0.30 + billow * 0.85) + ripple * (0.35 + billow));
+      p.setZ(v, edge * edge * (0.30 + billow * 0.85) + ripple * (0.35 + billow));
     }
-    pos.needsUpdate = true;
+    p.needsUpdate = true;
     s.geo.computeVertexNormals();
   });
 
-  // flag
+  // ---------------- flag ----------------
   const flag = playerShip.userData.flag;
   if (flag) {
     const fg = playerShip.userData.flagGeo;
@@ -2731,36 +4066,36 @@ function updateShipPhysics(dt) {
     flag.rotation.y = Math.sin(elapsed * 2.2) * 0.18;
   }
 
-  // wake only when moving
   wakeGroup.visible = spd > 0.05;
 }
 // ============================================================
 //  CAMERA RIG (first person)
 // ============================================================
 function updateCameraRig(dt) {
+  camera.rotation.order = 'YXZ';
   if (Player.mode === 'helm' && playerShip) {
     const h = Ship.heading;
-    const s = SHIP_CLASSES[Game.ship.cls].scale;
-    // the helmsman stands on the quarterdeck, a little to port of the wheel so the
-    // mainmast does not sit dead centre in his face; eye height stays human
-    const lx = -0.55 * s, lz = -2.4 * s;
+    const sc = SHIP_CLASSES[Game.ship.cls].scale;
+    // the helmsman stands on the quarterdeck, a little to port of the wheel
+    const lx = -0.55 * sc, lz = -2.4 * sc;
     const wx = playerShip.position.x + lx * Math.cos(h) + lz * Math.sin(h);
     const wz = playerShip.position.z - lx * Math.sin(h) + lz * Math.cos(h);
-    const eyeY = Math.max(1.85 * s + 1.7, 3.28 * s + 1.15);
+    const eyeY = Math.max(1.85 * sc + 1.7, 3.28 * sc + 1.15);
     camera.position.set(wx, playerShip.position.y + eyeY, wz);
-    camera.rotation.y = h + Math.PI + Player.lookYaw;
-    camera.rotation.x = Player.lookPitch;
-    camera.rotation.z = playerShip.rotation.z * 0.35;
+    // rigidly attached to the hull: the horizon heels and pitches with her
+    camera.quaternion.copy(playerShip.quaternion);
+    camera.rotateY(Math.PI + Player.lookYaw);
+    camera.rotateX(Player.lookPitch);
   } else if (Player.mode === 'deck' && playerShip) {
     camera.position.set(Player.x, Player.y, Player.z);
-    camera.rotation.y = Ship.heading + Math.PI + Player.lookYaw;
-    camera.rotation.x = Player.lookPitch;
-    camera.rotation.z = playerShip.rotation.z * 0.3;
+    camera.quaternion.copy(playerShip.quaternion);
+    camera.rotateY(Math.PI + Player.lookYaw);
+    camera.rotateX(Player.lookPitch);
   } else {
-    camera.position.set(Player.x, Player.y, Player.z);
-    camera.rotation.y = Player.lookYaw;
-    camera.rotation.x = Player.lookPitch;
-    camera.rotation.z = 0;
+    // on foot the eye rides 1.7 m above the feet, and sinks when you swim
+    const eye = Player.inWater ? 1.6 : 1.7;
+    camera.position.set(Player.x, Player.y + eye, Player.z);
+    camera.rotation.set(Player.lookPitch, Player.lookYaw, 0, 'YXZ');
   }
 }
 
@@ -3061,7 +4396,7 @@ function saveGame(slot) {
     commissions: Game.commissions.map(c => ({ ...c })),
     gameMinutes: Game.gameMinutes, lifeLeft: Game.lifeLeft,
     quests: { ...Game.quests }, stats: { ...Game.stats }, won: !!Game.won,
-    player: { mode: Player.mode, x: Player.x, z: Player.z, lookYaw: Player.lookYaw },
+    player: { mode: Player.mode, x: Player.x, y: Player.y, z: Player.z, lookYaw: Player.lookYaw },
     dockedAt: dockedAt ? dockedAt.def.name : null,
     island: Player.island ? Player.island.def.name : null,
   };
@@ -3104,9 +4439,17 @@ function loadGame(slot) {
   if ((Player.mode === 'helm' || Player.mode === 'deck') && !playerShip) {
     Player.mode = 'foot';
     Player.island = PORTS[0];
-    Player.x = PORTS[0].position.x + 40;
-    Player.z = PORTS[0].position.z + 40;
+    Player.x = lisbonSpawn.x;
+    Player.z = lisbonSpawn.z;
   }
+  // physics state is not stored: settle on the ground you were standing on
+  Player.vx = Player.vy = Player.vz = 0;
+  Player.y = supportY(Player.x, Player.z, 60);
+  Player.onGround = true;
+  Player.inWater = false; Player.wetT = 0;
+  SHIP_PHYS.vf = 0; SHIP_PHYS.vl = 0; SHIP_PHYS.yawRate = 0;
+  SHIP_PHYS.pitch = 0; SHIP_PHYS.roll = 0;
+  Ship.speed = 0;
 
   document.getElementById('endScreen').classList.add('hidden');
   document.getElementById('startScreen').classList.add('hidden');
@@ -3196,12 +4539,13 @@ function resetLife() {
   const p0 = PORTS[0];
   Player.island = p0;
   Player.mode = 'foot';
-  const a = LISBON_PIER_ANGLE + 0.7;
-  const r = p0.radiusAt(a) * 0.45;
-  Player.x = p0.position.x + Math.cos(a) * r;
-  Player.z = p0.position.z + Math.sin(a) * r;
-  Player.y = p0.heightAt(Player.x, Player.z) + 0.1;
-  Player.lookYaw = Math.atan2(p0.position.x - Player.x, p0.position.z - Player.z);
+  // you wake on the quay, facing up the Rua Augusta
+  Player.x = lisbonSpawn.x;
+  Player.z = lisbonSpawn.z;
+  Player.vx = Player.vy = Player.vz = 0;
+  Player.y = supportY(Player.x, Player.z, 10);
+  Player.onGround = true;
+  Player.lookYaw = 0;
   Player.lookPitch = 0;
   Player.bob = 0;
 
@@ -3314,8 +4658,33 @@ function animate() {
 
     // a ship short of hands barely moves
     if (Game.ship && Player.mode !== 'foot' && Game.crew < SHIP_CLASSES[Game.ship.cls].minCrew) {
-      Ship.speed *= (1 - 2 * dt);
-      if (Math.random() < dt * 0.2) showToast('Too few hands to work the ship!');
+      SHIP_PHYS.vf *= Math.exp(-2.2 * dt);
+      if (Math.random() < dt * 0.25) showToast('Too few hands to work the ship!');
+    }
+
+    // ---- the citizens of Lisbon go about their day ----
+    for (const w of walkers) {
+      if (w.gull) {
+        const u = w.gull.userData;
+        u.a += u.spd * dt;
+        w.gull.position.x = u.cx + Math.cos(u.a) * u.r;
+        w.gull.position.z = u.cz + Math.sin(u.a) * u.r;
+        w.gull.position.y = 15 + Math.sin(u.a * 2.4) * 1.6;
+        w.gull.rotation.y = -u.a;
+        w.gull.children.forEach(c => { c.rotation.z = Math.sin(elapsed * 6 + w.phase) * 0.5; });
+        continue;
+      }
+      const path = w.path;
+      const tgt = path[(w.seg + 1) % path.length];
+      const dx = tgt.x - w.obj.position.x, dz = tgt.z - w.obj.position.z;
+      const d = Math.hypot(dx, dz);
+      if (d < 0.9) { w.seg = (w.seg + 1) % path.length; continue; }
+      const step = w.speed * dt;
+      w.obj.position.x += (dx / d) * step;
+      w.obj.position.z += (dz / d) * step;
+      w.obj.rotation.y = Math.atan2(dx, dz);
+      w.phase += dt * 7;
+      w.obj.position.y = LIS_CITY.Y + Math.abs(Math.sin(w.phase)) * 0.05;
     }
 
     updateCameraRig(dt);
@@ -3354,6 +4723,10 @@ window.addEventListener('resize', () => {
 window.__voyage = {
   Game, Player, Ship, PORTS, camera, scene, interactables, keys, clouds,
   DLG, SEA_EVENTS, STREET_EVENTS, renderDialog, closeDialog,
+  COLLIDERS, PLATFORMS, LIS_CITY, walkers, SHIP_PHYS, updateFoot, updateShipPhysics,
+  updateDeckWalk, resolveXZ, supportY, groundY, SHIP_CLASSES, openDialog, chooseOption,
+  spawnPlayerShip, spawnShipInLisbon, goAshore, boardShip, lisbonBerth, lisbonDock,
+  saveGame, loadGame, autosave, resetLife, openMenu, closeMenu,
   triggerSeaEvent, triggerStreetEvent, goAshore, die,
   get ship() { return playerShip; }
 };
