@@ -134,11 +134,23 @@ h1{font-size:clamp(30px,7vw,64px);letter-spacing:.16em;font-weight:700;line-heig
   background:repeating-linear-gradient(0deg,rgba(0,0,0,.25) 0 1px,transparent 1px 3px);opacity:.4}
 .invbox{position:relative;width:min(540px,92vw);max-height:86vh;overflow:auto;
   border:1px solid rgba(216,194,124,.4);background:rgba(10,9,5,.96);
-  box-shadow:0 0 60px rgba(0,0,0,.8),inset 0 0 60px rgba(216,194,124,.04);padding:22px 26px 26px}
-.invhead{display:flex;justify-content:space-between;align-items:baseline;
+  box-shadow:0 0 60px rgba(0,0,0,.8),inset 0 0 60px rgba(216,194,124,.04);padding:0 26px 26px}
+.invhead{display:flex;justify-content:space-between;align-items:center;gap:12px;
+  position:sticky;top:0;z-index:2;background:rgba(10,9,5,.98);
   font-size:14px;letter-spacing:5px;color:#f0e2b0;border-bottom:1px solid rgba(216,194,124,.35);
-  padding-bottom:10px;margin-bottom:6px;text-shadow:0 0 18px rgba(216,194,124,.4)}
+  padding:16px 0 10px;margin-bottom:6px;text-shadow:0 0 18px rgba(216,194,124,.4)}
 .invhead span{font-size:9px;letter-spacing:2px;color:#7c7350}
+.invclose{flex:none;background:none;border:1px solid rgba(216,194,124,.45);color:#e2d3a0;
+  font-family:inherit;font-size:9px;letter-spacing:2.5px;padding:6px 12px;cursor:pointer;
+  transition:background .1s,color .1s}
+.invclose:hover{background:rgba(216,194,124,.16)}
+.invclose:active{background:rgba(216,194,124,.3);color:#fff8dc}
+.invfoot{display:none}
+body.touch .invfoot{display:block;margin-top:16px}
+body.touch .invclose{font-size:14px;letter-spacing:4px;padding:15px 0;width:100%;
+  border-color:rgba(232,86,47,.6);color:#ffb08a;background:rgba(40,10,6,.55)}
+body.touch .invclose:active{background:rgba(232,86,47,.32);color:#fff}
+body.touch .invhead .invclose{width:auto;padding:10px 14px;font-size:11px}
 .invsec{font-size:9px;letter-spacing:3px;color:#7c7350;margin:14px 0 6px}
 .invrow{display:flex;justify-content:space-between;align-items:center;gap:10px;
   padding:7px 10px;border:1px solid rgba(216,194,124,.14);margin-bottom:5px;
@@ -398,9 +410,10 @@ body.touch #cross{opacity:.35}
 
 <div id="inv">
   <div class="invbox">
-    <div class="invhead">INVENTORY<span>[E] CLOSE</span></div>
+    <div class="invhead">INVENTORY<button class="invclose" id="invclose">CLOSE</button></div>
     <div id="invbody"></div>
     <div class="invnote">CLICK A SUPPLY TO USE IT &nbsp;·&nbsp; [4] FOOD &nbsp;·&nbsp; [5] WATER &nbsp;·&nbsp; [6] BATTERY<br>TIME STANDS STILL WHILE THE INVENTORY IS OPEN</div>
+    <div class="invfoot"><button class="invclose" id="invclose2">CLOSE</button></div>
   </div>
 </div>
 
@@ -2653,7 +2666,7 @@ function closeInv(){
   if(!invOpen)return;
   invOpen=false;
   el.inv.classList.remove('on');
-  if(state==='playing')requestLock();
+  if(state==='playing'&&!touchMode)requestLock();
 }
 function renderInv(){
   let h='';
@@ -2693,6 +2706,14 @@ el.invbody.addEventListener('click',e=>{
   if(!row)return;
   if(row.dataset.w){if(player.owned[row.dataset.w])selectWeapon(row.dataset.w);}
   else if(row.dataset.use)useItem(row.dataset.use);
+});
+// close affordances — the [E] key is useless on a touchscreen, so the panel
+// carries its own buttons and the backdrop is tappable too
+for(const b of document.querySelectorAll('.invclose')){
+  b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();closeInv();});
+}
+el.inv.addEventListener('pointerdown',e=>{
+  if(e.target===el.inv){e.preventDefault();closeInv();}
 });
 function useItem(kind){
   let ok=false;
