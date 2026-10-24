@@ -42,9 +42,9 @@ const WEAPONS = {
   rifle:  { id:'rifle',  name:'AK-47 RIFLE',  dmg:31, rate:0.112, mag:30, reserve:180, reload:2.05, spread:0.018, auto:true,  range:120, tier:3, snd:'rifle' },
   shotgun:{ id:'shotgun',name:'SPAS-12',      dmg:12, pellets:8, rate:0.85, mag:6, reserve:42, reload:2.35, spread:0.070, auto:false, range:34, tier:2, snd:'shotgun' },
   sniper: { id:'sniper', name:'AWP SNIPER',   dmg:115, rate:1.30, mag:5, reserve:25, reload:2.85, spread:0.0015, auto:false, range:220, tier:3, snd:'sniper', scope:true },
-  /* slow, short-ranged and lethal: three seconds of draw for one bolt */
+  /* slow, short-ranged and lethal: two seconds of draw for one bolt */
   crossbow:{ id:'crossbow', name:'CROSSBOW',  dmg:105, rate:0.55, mag:3, reserve:12, reload:2.40, spread:0.004, auto:false, range:30, tier:3, snd:'bow',
-             draw:3.0, boltSpeed:72, boltGravity:4.5, botOk:false }
+             draw:2.0, boltSpeed:72, boltGravity:4.5, botOk:false }
 };
 
 /* Consumables and throwables share the hotbar with guns. An entry in
@@ -157,6 +157,8 @@ const G = {
   shake: 0, aimLine: null, aimPts: null,
   timeLeft: CFG.matchTime, score: { red: 0, blue: 0 },
   sensitivity: 1, started: false, lastHud: 0, t: 0,
+  /* death cam: who killed you, and where you fell */
+  killer: null, killerWeapon: '', deathPos: new THREE.Vector3(0, 0, 0), deathYaw: 0,
   flagState: { red: { at:'base', carrier:null, dropT:0, pos:new THREE.Vector3(0,0,30) },
                blue:{ at:'base', carrier:null, dropT:0, pos:new THREE.Vector3(0,0,-30) } },
   tutorial: { active:false, tasks:[], step:0 }
@@ -1844,6 +1846,16 @@ function rayActors(ox, oy, oz, dx, dy, dz, maxD, shooter) {
   return best ? { actor: best, dist: bestT, head } : null;
 }
 
+/* escape a string for innerHTML — bot names are generated, but be safe anyway */
+function escHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/* bystander camera state: kept across the death so the view can be smoothed */
+const SPEC = { pos: new V3(), look: new V3(), t: 0, init: false, spot: -1 };
+const _specPrev = new V3();
+
 function damage(target, amount, attacker, head, weaponName) {
   if (!target.alive) return;
   target.hp -= amount;
@@ -1892,8 +1904,23 @@ function killActor(victim, attacker, head, weaponName) {
 
   if (victim.dummy && attacker && attacker.isPlayer && G.tutorial.active) G.tutorial.kills++;
   if (victim.isPlayer) {
+    /* remember the opponent so the bystander camera can watch them */
+    G.killer = (attacker && attacker !== victim) ? attacker : null;
+    G.killerWeapon = weaponName || '';
+    G.deathPos.copy(victim.pos);
+    G.deathYaw = victim.yaw;
+    SPEC.t = 0; SPEC.init = false; SPEC.spot = -1;
+    if (VM.group) VM.group.visible = false;    // the gun leaves your hands
     $('respawn').classList.add('show');
     $('carryBanner').classList.remove('show');
+    const kb = $('killBy');
+    if (G.killer) {
+      kb.innerHTML = 'KILLED BY <b>' + escHtml(G.killer.name) + '</b>' +
+        (G.killerWeapon ? ' <span class="kb-w">' + escHtml(G.killerWeapon) + '</span>' : '');
+    } else {
+      kb.innerHTML = 'YOU DIED';
+    }
+    kb.classList.add('show');
   }
   checkRoundEnd();
 }
@@ -3314,6 +3341,9 @@ function updatePlayer(dt) {
     hideAimLine();
     p.respawnT -= dt;
     $('rsNum').textContent = Math.max(0, Math.ceil(p.respawnT));
+    /* bystander camera: watch the opponent who killed you */
+    SPEC.t += dt;
+    updateSpectator(dt);
     if (p.respawnT <= 0) {
       respawnActor(p);
       $('respawn').classList.remove('show');
@@ -3335,7 +3365,7 @@ function updatePlayer(dt) {
     p.speedMul = 1;
   }
 
-  /* crossbow: hold the trigger, three seconds of draw, then the bolt flies */
+  /* crossbow: hold the trigger, two seconds of draw, then the bolt flies */
   const curSt = p.weapons[p.cur];
   const curDef = curSt ? defOf(curSt.id) : null;
   if (curDef && curDef.draw) {
@@ -3385,6 +3415,109 @@ function updatePlayer(dt) {
   updateViewModel(dt, speed);
 }
 
+/* ------------------------------------------------------------
+   BYSTANDER CAMERA — after you die you keep watching
+   ------------------------------------------------------------
+   A short beat hovering over your own corpse (looking at whoever
+   dropped you), then a chase view of that opponent so you can see
+   exactly who killed you. If they die too, the camera lingers over
+   their body instead. Every candidate spot is checked against the
+   colliders, so the view never ends up inside a wall — not even the
+   tall railing on the perimeter catwalk. */
+
+/* ordered camera placements around a subject: classic over-the-shoulder,
+   then higher (clears the catwalk railing), then closer, then the flanks */
+function specSpots(subj, yaw) {
+  const d = dirFromAngles(yaw, 0, new V3());
+  const px = -d.z, pz = d.x;                     // perpendicular to the facing
+  const y = subj.pos.y;
+  return [
+    new V3(subj.pos.x - d.x * 3.6, y + 2.8, subj.pos.z - d.z * 3.6),
+    new V3(subj.pos.x - d.x * 3.6, y + 5.8, subj.pos.z - d.z * 3.6),
+    new V3(subj.pos.x - d.x * 2.0, y + 2.2, subj.pos.z - d.z * 2.0),
+    new V3(subj.pos.x + px * 3.2, y + 2.6, subj.pos.z + pz * 3.2),
+    new V3(subj.pos.x - px * 3.2, y + 2.6, subj.pos.z - pz * 3.2),
+    new V3(subj.pos.x + d.x * 3.0, y + 2.6, subj.pos.z + d.z * 3.0),
+    new V3(subj.pos.x, y + 6.8, subj.pos.z)
+  ];
+}
+
+function specWant(dt) {
+  const k = G.killer;
+  const spin = G.deathYaw + SPEC.t * 0.4;
+
+  /* the kill beat, or a suicide with nobody to watch */
+  if (SPEC.t < 1.2 || !k) {
+    const r = 3.4;
+    return {
+      look: k ? new V3(k.pos.x, k.pos.y + 1.25, k.pos.z)
+             : new V3(G.deathPos.x, G.deathPos.y + 1.1, G.deathPos.z),
+      spots: [
+        new V3(G.deathPos.x + Math.sin(spin) * r, G.deathPos.y + 2.5, G.deathPos.z + Math.cos(spin) * r),
+        new V3(G.deathPos.x + Math.sin(spin) * r, G.deathPos.y + 4.4, G.deathPos.z + Math.cos(spin) * r),
+        new V3(G.deathPos.x, G.deathPos.y + 5.5, G.deathPos.z)
+      ]
+    };
+  }
+  if (k.alive) {
+    /* over-the-shoulder chase: behind the killer, above, aimed at their chest */
+    return { look: new V3(k.pos.x, k.pos.y + 1.35, k.pos.z), spots: specSpots(k, k.yaw) };
+  }
+  /* the killer bought it too — linger over their body */
+  const a = SPEC.t * 0.35;
+  return {
+    look: new V3(k.pos.x, k.pos.y + 0.9, k.pos.z),
+    spots: [
+      new V3(k.pos.x + Math.sin(a) * 2.8, k.pos.y + 2.2, k.pos.z + Math.cos(a) * 2.8),
+      new V3(k.pos.x + Math.sin(a) * 2.8, k.pos.y + 4.2, k.pos.z + Math.cos(a) * 2.8),
+      new V3(k.pos.x, k.pos.y + 5.2, k.pos.z)
+    ]
+  };
+}
+
+function updateSpectator(dt) {
+  const want = specWant(dt);
+  /* Keep the chosen placement sticky: if the spot we are already using is still
+     in the open, stay there, so a spinning killer never makes the camera jump
+     between the flanks. Only move on when it gets blocked. */
+  if (SPEC.spot < 0 || SPEC.spot >= want.spots.length ||
+      pointSolid(want.spots[SPEC.spot].x, want.spots[SPEC.spot].y, want.spots[SPEC.spot].z)) {
+    SPEC.spot = -1;
+    for (let i = 0; i < want.spots.length; i++) {
+      const s = want.spots[i];
+      if (!pointSolid(s.x, s.y, s.z)) { SPEC.spot = i; break; }
+    }
+  }
+  let pos;
+  if (SPEC.spot >= 0) {
+    pos = want.spots[SPEC.spot];
+  } else {
+    /* the subject is buried in geometry — hover over where you fell instead
+       (you were standing there, so it is clear) */
+    pos = new V3(G.deathPos.x, G.deathPos.y + 1.9, G.deathPos.z);
+    if (pointSolid(pos.x, pos.y, pos.z)) pos.set(G.deathPos.x, G.deathPos.y + 0.6, G.deathPos.z);
+  }
+  if (!SPEC.init) { SPEC.pos.copy(pos); SPEC.look.copy(want.look); SPEC.init = true; }
+  const s = 1 - Math.pow(0.002, dt);          // smooth, frame-rate independent
+  _specPrev.copy(SPEC.pos);
+  SPEC.pos.lerp(pos, s);
+  SPEC.look.lerp(want.look, s);
+  /* the straight line to the target can clip a corner, so never let the camera
+     finish a frame inside geometry: walk it back toward the last clear spot */
+  if (pointSolid(SPEC.pos.x, SPEC.pos.y, SPEC.pos.z)) {
+    for (let i = 1; i <= 20; i++) {
+      const f = 1 - i / 20;
+      const px = _specPrev.x + (SPEC.pos.x - _specPrev.x) * f;
+      const py = _specPrev.y + (SPEC.pos.y - _specPrev.y) * f;
+      const pz = _specPrev.z + (SPEC.pos.z - _specPrev.z) * f;
+      if (!pointSolid(px, py, pz)) { SPEC.pos.set(px, py, pz); break; }
+      if (i === 20) SPEC.pos.copy(_specPrev);
+    }
+  }
+  camera.position.copy(SPEC.pos);
+  camera.lookAt(SPEC.look);
+}
+
 function respawnActor(a) {
   const slot = a.isPlayer ? 5 : (G.bots.indexOf(a) % 5);
   finishSpawn(a, slot);
@@ -3392,6 +3525,12 @@ function respawnActor(a) {
   if (a.isPlayer) {
     $('carryBanner').classList.remove('show');
     G.player.yaw = 0; G.player.pitch = 0;
+    /* leave the bystander camera behind */
+    G.killer = null; G.killerWeapon = '';
+    SPEC.t = 0; SPEC.init = false; SPEC.spot = -1;
+    if (VM.group) VM.group.visible = true;
+    const kb = $('killBy');
+    if (kb) kb.classList.remove('show');
   }
 }
 
@@ -4265,6 +4404,7 @@ function initInput() {
 
   document.addEventListener('mousemove', e => {
     if (G.state !== 'playing' || !G.player) return;
+    if (!G.player.alive) return;               // the bystander camera owns the view
     if (!document.pointerLockElement && !e.buttons) return;
     const s = SENS_BASE * G.sensitivity * (1 - 0.45 * (VM.ads || 0));
     G.player.yaw -= (e.movementX || 0) * s;
@@ -4326,6 +4466,10 @@ function startGame(mode) {
   $('respawn').classList.remove('show');
   $('carryBanner').classList.remove('show');
   $('objBanner').classList.remove('show');
+  const kb0 = $('killBy');
+  if (kb0) kb0.classList.remove('show');
+  G.killer = null; G.killerWeapon = '';
+  SPEC.t = 0; SPEC.init = false; SPEC.spot = -1;
   $('scoreboard').innerHTML = '';
   $('nameplates').innerHTML = '';
 
@@ -4428,6 +4572,11 @@ function quitToMenu() {
   $('pause').classList.remove('show');
   $('end').classList.remove('show');
   $('menu').classList.add('show');
+  $('respawn').classList.remove('show');
+  const kb1 = $('killBy');
+  if (kb1) kb1.classList.remove('show');
+  G.killer = null; G.killerWeapon = '';
+  SPEC.t = 0; SPEC.init = false; SPEC.spot = -1;
   $('nameplates').innerHTML = '';
   $('scoreboard').classList.remove('show');
   if (G.flags) { G.flags.red.group.visible = false; G.flags.blue.group.visible = false; }
@@ -4579,7 +4728,7 @@ const HT_PAGES = [
       <tr><td>AK-47 Rifle</td><td>31</td><td>30</td><td>Best all-rounder</td></tr>
       <tr><td>SPAS-12</td><td>12×8</td><td>6</td><td>One-shot at close range</td></tr>
       <tr><td>AWP Sniper</td><td>115</td><td>5</td><td>Body-shot kill, punishing reload</td></tr>
-      <tr><td>Crossbow</td><td>105</td><td>3</td><td><b>3 s draw</b> per bolt, only 30 m of range — a duelling weapon</td></tr>
+      <tr><td>Crossbow</td><td>105</td><td>3</td><td><b>2 s draw</b> per bolt, only 30 m of range — a duelling weapon</td></tr>
     </table>
     <h4>ITEMS — the teal crates</h4>
     <table>
@@ -4615,7 +4764,11 @@ const HT_PAGES = [
       <li>Dropped flags return to base after 20 seconds.</li>
       <li>The team with the most captures when the clock hits 0:00 wins.</li>
       <li>Respawn after <b>3 seconds</b>. Carriers are marked on the HUD.</li>
-    </ul>`
+    </ul>
+    <h4>WHEN YOU GO DOWN</h4>
+    <p>The camera stays in the arena: first over your own body, then it swings onto
+    <span class="accent">whoever killed you</span> and follows them until you respawn —
+    so you always learn who got you, and from where.</p>`
   },
   {
     t: 'AI DIFFICULTY',
@@ -4804,6 +4957,11 @@ window.__wh = {
   killBot(name) {
     const b = G.bots.find(x => x.name === name);
     if (b) damage(b, 999, G.player, false, 'TEST');
+  },
+  /* kill the player, optionally crediting a named enemy (spectator test) */
+  killPlayer(name) {
+    const b = name ? G.bots.find(x => x.name === name && x.team !== G.player.team) : null;
+    damage(G.player, 999, b || null, false, b ? 'TEST RIFLE' : 'TEST');
   },
   /* straight-line walk probe: reports the first moment the actor leaves the arena */
   walk(x, z, dx, dz, secs, jump) {
