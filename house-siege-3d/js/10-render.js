@@ -14,6 +14,9 @@ const G = {
   player: null, tracers: [], particles: [], projectiles: [], blasts: [],
   shake: 0, aimLine: null, aimPts: null,
   timeLeft: CFG.matchTime, score: { red: 0, blue: 0 },
+  /* sudden death after a level full-time score: the next kill (TDM) or the
+     next capture (flag) decides the match */
+  golden: false,
   sensitivity: 1, t: 0,
   /* death cam: who killed you, and where you fell */
   killer: null, killerWeapon: '', deathPos: new THREE.Vector3(0, 0, 0), deathYaw: 0,
