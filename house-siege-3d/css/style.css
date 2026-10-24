@@ -132,6 +132,10 @@ b{font-weight:700}
 .clock{font-size:26px;font-weight:900;letter-spacing:.04em;font-variant-numeric:tabular-nums;
   text-shadow:0 2px 10px rgba(0,0,0,.8)}
 .clock.low{color:var(--red);animation:pulse 1s infinite}
+/* golden point: sudden death after a level full-time score */
+.clock.gold{color:#ffcc55;letter-spacing:.14em;animation:goldpulse 1.15s ease-in-out infinite;
+  text-shadow:0 0 14px rgba(255,204,85,.65),0 2px 10px rgba(0,0,0,.8)}
+@keyframes goldpulse{50%{opacity:.55;text-shadow:0 0 24px rgba(255,204,85,.95)}}
 @keyframes pulse{50%{opacity:.45}}
 .mode-name{font-size:8px;letter-spacing:.24em;color:#7c879c;margin-top:2px}
 
