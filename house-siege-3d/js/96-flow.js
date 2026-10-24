@@ -13,7 +13,9 @@ function startGame(mode) {
   G.mode = mode;
   G.state = 'playing';
   G.timeLeft = CFG.matchTime;
+  G.golden = false;
   G.score.red = 0; G.score.blue = 0;
+  $('clock').classList.remove('gold');
   G.tutorial.active = false;
   $('tutTasks').classList.remove('show');
   $('end').classList.remove('show');
@@ -46,6 +48,13 @@ function startGame(mode) {
   buildMapBase();
 
   $('modeName').textContent = mode === 'flag' ? 'FLAG RAID' : 'TEAM DEATHMATCH';
+  /* paint the score strip now instead of waiting for the first HUD tick, so
+     the previous match's numbers and label are never visible for a frame */
+  const cap0 = mode === 'flag' ? 'CAPTURES' : 'KILLS';
+  $('capRed').textContent = cap0;
+  $('capBlue').textContent = cap0;
+  $('scoreRed').textContent = '0';
+  $('scoreBlue').textContent = '0';
   $('hud').classList.add('show');
   $('scoreboard').classList.remove('show');
 
@@ -135,6 +144,7 @@ function quitToMenu() {
   SPEC.t = 0; SPEC.init = false; SPEC.spot = -1;
   $('nameplates').innerHTML = '';
   $('scoreboard').classList.remove('show');
+  $('clock').classList.remove('gold');
   if (G.flags) { G.flags.red.group.visible = false; G.flags.blue.group.visible = false; }
   for (const b of G.bots) if (b.mesh) b.mesh.visible = false;
   if (G.player) G.player.alive = false;
@@ -162,9 +172,14 @@ function resumeGame() {
    ------------------------------------------------------------ */
 function update(dt) {
   G.t += dt;
-  if (G.mode !== 'tutorial') {
+  if (G.mode !== 'tutorial' && !G.golden) {
     G.timeLeft -= dt;
-    if (G.timeLeft <= 0) { G.timeLeft = 0; endMatch(); return; }
+    if (G.timeLeft <= 0) {
+      G.timeLeft = 0;
+      /* level at full time -> golden point instead of a draw */
+      if (G.score.red === G.score.blue) startGoldenPoint();
+      else { endMatch(); return; }
+    }
   }
   const p = G.player;
   const prevX = p.pos.x, prevZ = p.pos.z;
