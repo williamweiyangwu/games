@@ -272,6 +272,10 @@ b{font-weight:700}
   background:radial-gradient(circle,rgba(60,0,0,.35),rgba(0,0,0,.72));backdrop-filter:blur(2px)}
 #respawn.show{display:flex}
 .rs-title{font-size:34px;font-weight:900;letter-spacing:.24em;color:#ff5252;text-shadow:0 0 30px rgba(255,0,0,.5)}
+.rs-killer{margin-top:12px;font-size:13px;letter-spacing:.18em;color:#e8edf5;display:none}
+.rs-killer.show{display:block}
+.rs-killer b{color:#ff8a80;font-weight:900}
+.rs-killer .kb-w{color:#8fa0b8;letter-spacing:.1em}
 .rs-sub{margin-top:10px;font-size:12px;letter-spacing:.2em;color:#c3cddc}
 .rs-sub span{font-size:20px;font-weight:900;color:#fff}
 
