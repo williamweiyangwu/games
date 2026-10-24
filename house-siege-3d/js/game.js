@@ -2047,7 +2047,20 @@ function grenadeDir(a, out) {
   return dirFromAngles(a.yaw, a.pitch, out || new V3());
 }
 function grenadeOrigin(a, out) {
-  return (out || new V3()).copy(eyePos(a)).addScaledVector(grenadeDir(a, new V3()), 0.5);
+  /* Launch from arm's length, not from the eyeball: a grenade spawned half a
+     metre from a 78deg camera fills a third of the screen for the first frames
+     and reads as a giant ball hovering in front of you. Step it back if that
+     spot is inside a wall, so a throw while hugging cover still works. */
+  const o = out || new V3();
+  const eye = eyePos(a, new V3());
+  const dir = grenadeDir(a, new V3());
+  let d = 1.05;
+  o.copy(eye).addScaledVector(dir, d); o.y -= 0.14;
+  while (d > 0.35 && pointSolid(o.x, o.y, o.z)) {
+    d -= 0.2;
+    o.copy(eye).addScaledVector(dir, d); o.y -= 0.14;
+  }
+  return o;
 }
 function grenadeVelocity(a, out) {
   const v = (out || new V3()).copy(grenadeDir(a, new V3())).multiplyScalar(ITEMS.grenade.speed);
@@ -2153,10 +2166,13 @@ function updateGrenadeAim(p) {
 function spawnProjectile(type, pos, vel, owner) {
   let mesh;
   if (type === 'nade') {
+    /* a real frag body is ~11 cm tall — keep it that size so it reads as a
+       grenade instead of a beach ball when it leaves your hand */
     mesh = new THREE.Mesh(
-      new THREE.SphereGeometry(0.115, 10, 8),
+      new THREE.SphereGeometry(0.07, 10, 8),
       new THREE.MeshStandardMaterial({ color: 0x3f5a3c, roughness: 0.65, metalness: 0.35, emissive: 0x0d1409 })
     );
+    mesh.scale.set(1, 1.15, 1);
   } else {
     mesh = new THREE.Mesh(
       new THREE.CylinderGeometry(0.024, 0.024, 0.52, 6),
@@ -2222,22 +2238,35 @@ function explodeGrenade(pos, owner) {
   const spec = ITEMS.grenade;
   Snd.boom();
 
-  /* fireball */
-  const ball = new THREE.Mesh(
-    new THREE.SphereGeometry(1, 12, 10),
-    new THREE.MeshBasicMaterial({ color: 0xffb35a, transparent: true, opacity: 0.9, depthWrite: false })
-  );
-  ball.position.copy(pos);
-  ball.scale.setScalar(0.6);
-  scene.add(ball);
-  const light = new THREE.PointLight(0xffa040, 6, 18);
+  /* Detonation: a hard red light flash right where it went off, plus a small
+     hot core that fades fast. No giant sphere — the light is what sells it. */
+  const light = new THREE.PointLight(0xff2a12, 11, 18, 1.6);
   light.position.copy(pos);
+  light.position.y += 0.25;
   scene.add(light);
-  G.blasts.push({ mesh: ball, light, life: 0.42, max: 0.42 });
+
+  const core = new THREE.Mesh(
+    new THREE.SphereGeometry(0.34, 12, 10),
+    new THREE.MeshBasicMaterial({ color: 0xff3a18, transparent: true, opacity: 0.92, depthWrite: false })
+  );
+  core.position.copy(pos);
+  scene.add(core);
+
+  /* a flat red halo hugging the ground, so the blast point reads at a glance */
+  const halo = new THREE.Mesh(
+    new THREE.RingGeometry(0.3, 0.62, 24),
+    new THREE.MeshBasicMaterial({ color: 0xff2a14, transparent: true, opacity: 0.75,
+                                  side: THREE.DoubleSide, depthWrite: false })
+  );
+  halo.rotation.x = -Math.PI / 2;
+  halo.position.set(pos.x, Math.min(pos.y, groundAt(pos.x, pos.z, 1) + 0.04), pos.z);
+  scene.add(halo);
+
+  G.blasts.push({ mesh: core, light, halo, life: 0.30, max: 0.30 });
 
   for (let i = 0; i < 22; i++) {
-    const g = new THREE.SphereGeometry(0.05, 4, 3);
-    const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: i % 3 ? 0xffa040 : 0xffe08a, transparent: true }));
+    const g = new THREE.SphereGeometry(0.045, 4, 3);
+    const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: i % 3 ? 0xff4a1e : 0xffa050, transparent: true }));
     m.position.copy(pos);
     scene.add(m);
     G.particles.push({
@@ -2340,6 +2369,20 @@ function updateProjectiles(dt) {
       dead = true;
     }
 
+    /* the mesh used to be left at its spawn point: a grenade then hung in
+       mid-air in front of the camera while the real one flew off and blew up
+       somewhere else. Follow the physics every frame. */
+    if (!dead) {
+      pr.mesh.position.copy(pr.pos);
+      if (pr.type === 'nade') {
+        pr.spin = (pr.spin || 0) + dt * 8.5;          // tumble in flight
+        pr.mesh.rotation.set(pr.spin * 0.8, pr.spin, pr.spin * 0.35);
+      } else {
+        const d = pr.vel.clone().normalize();
+        pr.mesh.quaternion.setFromUnitVectors(new V3(0, 1, 0), d);
+      }
+    }
+
     if (dead) {
       scene.remove(pr.mesh);
       pr.mesh.geometry.dispose();
@@ -2361,6 +2404,11 @@ function clearProjectiles() {
     b.mesh.geometry.dispose();
     b.mesh.material.dispose();
     if (b.light) scene.remove(b.light);
+    if (b.halo) {
+      scene.remove(b.halo);
+      b.halo.geometry.dispose();
+      b.halo.material.dispose();
+    }
   }
   G.blasts.length = 0;
   hideAimLine();
@@ -2511,17 +2559,27 @@ function updateEffects(dt) {
     p.mesh.scale.setScalar(Math.max(0.2, p.life / 0.35));
     if (p.life <= 0) { scene.remove(p.mesh); p.mesh.geometry.dispose(); p.mesh.material.dispose(); G.particles.splice(i, 1); }
   }
-  /* grenade fireballs */
+  /* grenade detonations: red light flash, hot core, ground halo */
   for (let i = G.blasts.length - 1; i >= 0; i--) {
     const b = G.blasts[i];
     b.life -= dt;
-    const k = 1 - Math.max(0, b.life) / b.max;
-    b.mesh.scale.setScalar(0.6 + k * 5.2);
-    b.mesh.material.opacity = Math.max(0, b.life / b.max) * 0.85;
-    if (b.light) b.light.intensity = Math.max(0, b.life / b.max) * 6;
+    const k = 1 - Math.max(0, b.life) / b.max;      // 0 at the flash, 1 when gone
+    const fade = Math.max(0, b.life / b.max);
+    b.mesh.scale.setScalar(1 + k * 1.9);            // 0.34 m core -> ~1 m
+    b.mesh.material.opacity = fade * fade * 0.92;
+    if (b.light) b.light.intensity = Math.pow(fade, 1.7) * 11;
+    if (b.halo) {
+      b.halo.scale.setScalar(1 + k * 3.4);
+      b.halo.material.opacity = fade * 0.7;
+    }
     if (b.life <= 0) {
       scene.remove(b.mesh); b.mesh.geometry.dispose(); b.mesh.material.dispose();
       if (b.light) scene.remove(b.light);
+      if (b.halo) {
+        scene.remove(b.halo);
+        b.halo.geometry.dispose();
+        b.halo.material.dispose();
+      }
       G.blasts.splice(i, 1);
     }
   }
