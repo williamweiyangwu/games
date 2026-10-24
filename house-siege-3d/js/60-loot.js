@@ -127,20 +127,26 @@ function updateChests(dt) {
       const d = Math.hypot(p.pos.x - c.pos.x, p.pos.z - c.pos.z) + Math.abs(p.pos.y - c.pos.y) * 2;
       if (d < 2.3 && (!near || d < near.d)) near = { c, d };
     }
-    // bots grab guns on their own — never consumables, and never the crossbow
-    if (c.available && c.content && !c.content.item) {
-      const cw = WEAPONS[c.content.id];
-      if (cw && cw.botOk !== false) {
+    /* bots loot crates too — guns when they still have a slot, consumables
+       when the item is one they can actually use. They used to skip every item
+       crate outright, so the whole consumable system was player-only. */
+    if (c.available && c.content) {
+      const isItem = !!c.content.item;
+      const cw = isItem ? null : WEAPONS[c.content.id];
+      const gunOk = !isItem && cw && cw.botOk !== false;
+      if (isItem || gunOk) {
         for (const b of G.bots) {
           if (!b.alive || b.dummy) continue;
           const d = Math.hypot(b.pos.x - c.pos.x, b.pos.z - c.pos.z) + Math.abs(b.pos.y - c.pos.y) * 2;
           /* 2.2 m, not 1.6: a bot stops ~1.6 m short of a crate (the nav node
              it paths to sits that far out), so the tighter radius meant they
              stood beside a crate forever and never picked anything up */
-          if (d < 2.2 && b.weapons.length < CFG.slots) {
-            takeChest(c, b);
-            break;
-          }
+          if (d >= 2.2) continue;
+          if (isItem) {
+            if (!botWantsItem(b, c.content.id)) continue;
+          } else if (b.weapons.length >= CFG.slots) continue;
+          takeChest(c, b);
+          break;
         }
       }
     }
@@ -233,17 +239,20 @@ function giveItem(a, id) {
   return { added: true, full: false, dropped: addSlot(a, { id, count: 1 }) };
 }
 
-/* Drop a slot that has run out and fall back to the pistol. */
+/* Drop a slot that has run out and fall back to the pistol. Works for bots too
+   now that they use consumables — it used to return before fixing `cur` for
+   non-players, which would leave a bot pointing past the end of its bag. */
 function consumeSlot(a, idx) {
   const st = a.weapons[idx];
   if (!st) return;
-  const wasHeld = a.isPlayer && a.cur === idx;
+  const wasHeld = a.cur === idx;
   a.weapons.splice(idx, 1);
-  if (!a.isPlayer) return;
   if (wasHeld) a.cur = Math.min(1, a.weapons.length - 1);   // back to the pistol
   else if (a.cur > idx) a.cur--;                            // keep the same weapon
   a.cur = clamp(a.cur, 0, a.weapons.length - 1);
-  a.reloadT = 0; a.drawT = 0;
-  bagSig = '';                    // force the panel to redraw
+  if (a.isPlayer) {
+    a.reloadT = 0; a.drawT = 0;
+    bagSig = '';                    // force the panel to redraw
+  }
 }
 
