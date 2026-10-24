@@ -358,6 +358,51 @@ body.touch #slots{bottom:244px}
 body.touch #invhint{display:none}
 body.touch #dashhint{display:none}
 body.touch #cross{opacity:.35}
+
+/* ---------- settings ---------- */
+#settings{position:fixed;inset:0;z-index:78;display:flex;align-items:center;justify-content:center;
+  background:rgba(2,2,1,.86);opacity:0;pointer-events:none;transition:opacity .2s}
+#settings.on{opacity:1;pointer-events:auto}
+.setbox{position:relative;width:min(560px,93vw);max-height:88vh;overflow:auto;
+  border:1px solid rgba(216,194,124,.42);background:rgba(10,9,5,.97);
+  box-shadow:0 0 70px rgba(0,0,0,.85);padding:0 26px 24px}
+.sethead{display:flex;justify-content:space-between;align-items:center;gap:12px;
+  position:sticky;top:0;z-index:2;background:rgba(10,9,5,.98);
+  font-size:13px;letter-spacing:5px;color:#f0e2b0;border-bottom:1px solid rgba(216,194,124,.35);
+  padding:16px 0 10px;margin-bottom:10px}
+.setrow{display:flex;align-items:center;justify-content:space-between;gap:14px;
+  padding:11px 0;border-bottom:1px solid rgba(216,194,124,.1)}
+.setrow .lab{font-size:10px;letter-spacing:2.5px;color:#a49a72;flex:none}
+.setrow .lab small{display:block;margin-top:3px;font-size:8.5px;letter-spacing:1.5px;color:#5d5539}
+.setrow input[type=range]{flex:1;max-width:220px;accent-color:#d8c27c;height:3px;cursor:pointer}
+.setrow .val{font-size:10px;letter-spacing:1.5px;color:#e8dcae;min-width:54px;text-align:right}
+.setseg{display:flex;gap:6px}
+.setseg button{font-family:inherit;font-size:9px;letter-spacing:2px;padding:7px 12px;cursor:pointer;
+  border:1px solid rgba(216,194,124,.28);background:none;color:#7c7350;transition:.12s}
+.setseg button.on{background:rgba(216,194,124,.85);color:#0b0a05;border-color:#d8c27c}
+.setnote{margin-top:16px;font-size:9px;letter-spacing:2px;color:#5d5539;line-height:1.9}
+
+/* ---------- lore note reader ---------- */
+#note{position:fixed;inset:0;z-index:79;display:flex;align-items:center;justify-content:center;
+  background:rgba(2,2,1,.9);opacity:0;pointer-events:none;transition:opacity .22s}
+#note.on{opacity:1;pointer-events:auto}
+.notebox{position:relative;width:min(520px,92vw);padding:30px 32px 26px;
+  border:1px solid rgba(216,194,124,.34);background:rgba(14,12,7,.98);
+  box-shadow:0 0 80px rgba(0,0,0,.9),inset 0 0 60px rgba(216,194,124,.04)}
+.notekind{font-size:9px;letter-spacing:3px;color:#7c7350;margin-bottom:14px}
+.notetitle{font-size:15px;letter-spacing:2px;color:#f0e2b0;margin-bottom:16px;line-height:1.5}
+.notebody{font-size:12.5px;line-height:2;color:#c4b990;white-space:pre-line;
+  font-family:ui-monospace,Menlo,Consolas,monospace}
+.notefoot{margin-top:22px;font-size:9px;letter-spacing:2.5px;color:#5d5539}
+
+/* ---------- escape countdown ---------- */
+#escapehud{position:absolute;left:50%;top:88px;transform:translateX(-50%);
+  font-size:11px;letter-spacing:4px;color:#ff6a4a;text-align:center;opacity:0;
+  text-shadow:0 0 18px rgba(255,60,30,.7);transition:opacity .3s}
+#escapehud.on{opacity:1}
+#escapehud b{display:block;font-size:26px;letter-spacing:6px;margin-top:6px;
+  font-weight:400;color:#ffd8cc}
+#escapehud.sealed{color:#e8dcae;text-shadow:0 0 18px rgba(216,194,124,.6)}
 </style>
 </head>
 <body>
@@ -390,6 +435,7 @@ body.touch #cross{opacity:.35}
     <span id="objtext">SEARCH THE LOCKERS &nbsp;·&nbsp; FIND <b>3 FUSES</b> &nbsp;·&nbsp; POWER THE DESCENT</span>
     <div id="fuses"><div class="fuse"></div><div class="fuse"></div><div class="fuse"></div></div>
   </div>
+  <div id="escapehud"><span id="esc-label">THE GATE CLOSES IN</span><b id="esc-time">0:60</b></div>
   <div id="useprompt"><b>RMB</b><span>OPEN LOCKER</span></div>
   <div id="cross"><div class="h"></div><div class="h2"></div><div class="dot"></div></div>
   <div id="vitals">
@@ -487,6 +533,50 @@ body.touch #cross{opacity:.35}
   </div>
 </div>
 
+<div id="settings">
+  <div class="setbox">
+    <div class="sethead">SETTINGS<span class="x" id="setclose">CLOSE</span></div>
+    <div class="setrow">
+      <span class="lab">LOOK SENSITIVITY<small>MOUSE / DRAG SPEED</small></span>
+      <input type="range" id="set-sens" min="40" max="260" step="5" value="100">
+      <span class="val" id="set-sens-v">1.00×</span>
+    </div>
+    <div class="setrow">
+      <span class="lab">FIELD OF VIEW<small>WIDER SEES MORE, WARPS EDGES</small></span>
+      <input type="range" id="set-fov" min="62" max="105" step="1" value="75">
+      <span class="val" id="set-fov-v">75°</span>
+    </div>
+    <div class="setrow">
+      <span class="lab">INVERT LOOK<small>PUSH UP TO LOOK DOWN</small></span>
+      <div class="setseg" id="set-invert">
+        <button data-v="0">OFF</button><button data-v="1">ON</button>
+      </div>
+    </div>
+    <div class="setrow">
+      <span class="lab">RENDER QUALITY<small>LOWER HELPS SLOW DEVICES</small></span>
+      <div class="setseg" id="set-quality">
+        <button data-v="0">LOW</button><button data-v="1">MED</button><button data-v="2">HIGH</button>
+      </div>
+    </div>
+    <div class="setrow">
+      <span class="lab">HEAD BOB<small>CAMERA SWAY WHILE WALKING</small></span>
+      <div class="setseg" id="set-bob">
+        <button data-v="0">OFF</button><button data-v="1">ON</button>
+      </div>
+    </div>
+    <div class="setnote">SETTINGS ARE REMEMBERED ON THIS MACHINE · CHANGES APPLY IMMEDIATELY</div>
+  </div>
+</div>
+
+<div id="note">
+  <div class="notebox">
+    <div class="notekind" id="note-kind">RECOVERED DOCUMENT</div>
+    <div class="notetitle" id="note-title"></div>
+    <div class="notebody" id="note-body"></div>
+    <div class="notefoot">[E] OR CLICK TO PUT IT AWAY</div>
+  </div>
+</div>
+
 <div class="screen" id="title">
   <div class="ghost" style="top:26px;left:28px">LEVEL 0</div>
   <div class="ghost" style="bottom:26px;right:28px">NO CLIPPING OUT</div>
@@ -523,6 +613,7 @@ body.touch #cross{opacity:.35}
   <button class="btn" id="continuebtn" style="display:none">CONTINUE</button>
   <button class="btn ops" id="opsbtn">OPERATOR MODE</button>
   <button class="btn ops" id="achbtn">ACHIEVEMENTS · 0/14</button>
+  <button class="btn ops" id="setbtn">SETTINGS</button>
   <div class="warn">CONTAINS FLASHING LIGHTS &amp; SUDDEN LOUD NOISES · HEADPHONES RECOMMENDED</div>
 </div>
 
@@ -534,6 +625,7 @@ body.touch #cross{opacity:.35}
   <button class="btn" id="savebtn">SAVE GAME</button>
   <button class="btn ops" id="opsbtn2">OPERATOR MODE</button>
   <button class="btn ops" id="achbtn2">ACHIEVEMENTS · 0/14</button>
+  <button class="btn ops" id="setbtn2">SETTINGS</button>
 </div>
 
 <div class="screen hide" id="death">
@@ -1433,6 +1525,8 @@ function clearLevel(){
   items.length=0;
   for(const c of chests)scene.remove(c.mesh);
   chests.length=0;chestTarget=null;
+  for(const v of valves)scene.remove(v.mesh);
+  valves.length=0;valveTarget=null;
   clearDecals();
   if(hallu){scene.remove(hallu.mesh);hallu=null;}
   collidersExtra=[];
@@ -1515,10 +1609,11 @@ function wallsNear(x,z){
   for(const c of collidersExtra)out.push(c);
   return out;
 }
-function resolveCollision(p,r){
+function resolveCollision(p,r,passLow){
   for(let it=0;it<3;it++){
     let hit=false;
     for(const w of wallsNear(p.x,p.z)){
+      if(passLow&&w.low)continue;      // airborne players clear knee-high pipes
       const px=clamp(p.x,w.x-w.hx,w.x+w.hx);
       const pz=clamp(p.z,w.z-w.hz,w.z+w.hz);
       let dx=p.x-px,dz=p.z-pz;
@@ -1590,6 +1685,7 @@ const player={
   bob:0,bobAmt:0,shake:0,shakeV:0,
   hurtT:0,breathT:0,stepPhase:0,exhausted:false,
   fuses:0,kills:0,startTime:0,
+  keycard:false,valves:0,noteIds:[],
   dmgTaken:0,chests:0,lastWeapon:'pipe',
   depth:0,killKinds:{},fusesTotal:0
 };
@@ -1732,7 +1828,7 @@ const MON_DEFS={
            voice:.8, step:.7, lunge:.6, biped:true, label:'SMILER',  death:'THE SMILE FADES'},
   // glass cannon — fast and lethal, but folds to a couple of good hits
   hound  :{hp:55, walk:1.45,chase:4.7, dmg:26,def:0,  sight:15,rad:.60,hitY:.72,
-           voice:1.3,step:1.3,lunge:.45,biped:false,label:'HOUND',   death:'IT STOPS MOVING'},
+           voice:1.3,step:1.3,lunge:.45,biped:false,flank:true,label:'HOUND',   death:'IT STOPS MOVING'},
   // tall silent stalker — patient, tanky, sees you from very far away
   clump  :{hp:130,walk:1.0, chase:2.2, dmg:13,def:.30,sight:23,rad:.55,hitY:1.9,
            voice:.45,step:.5, lunge:.5, biped:true, label:'CLUMP',   death:'THE DARK COLLAPSES'},
@@ -2031,14 +2127,18 @@ class Monster{
     this.vel=new THREE.Vector3();
     this.seenT=0;this.growlCd=rand(2,7);
     this.stepCd=0;
+    // memory of where the player was last seen or heard
+    this.lastSeen=null;this.searchT=0;
+    this.flankT=0;this.flankSide=Math.random()<.5?-1:1;
     // telegraphed lunge — coil, then commit
     this.lungeCd=rand(4,9);this.windT=0;this.lungeT=0;
     this.lungeDir=new THREE.Vector3();
   }
   cell(){const[x,z]=cellOf(this.pos.x,this.pos.z);return[clamp(x,0,GX-1),clamp(z,0,GZ-1)];}
-  repath(){
+  repath(){this.repathTo(player.pos.x,player.pos.z);}
+  repathTo(tx,tz){
     const[mi,mj]=this.cell();
-    const[pi,pj]=cellOf(player.pos.x,player.pos.z);
+    const[pi,pj]=cellOf(tx,tz);
     if(pi<0||pj<0||pi>=GX||pj>=GZ)return;
     const{dist,prev}=bfs(mi,mj);
     const id=pi+pj*GX;
@@ -2074,7 +2174,11 @@ class Monster{
 
     if(this.losT<=0){
       this.losT=.18+Math.random()*.12;
-      if(this.canSee()){this.alert=Math.max(this.alert,5.5);this.seenT=1;}
+      if(this.canSee()){
+        this.alert=Math.max(this.alert,5.5);this.seenT=1;
+        this.lastSeen={x:player.pos.x,z:player.pos.z};
+        this.searchT=rand(4,7);
+      }
       else this.seenT=Math.max(0,this.seenT-dt*3);
     }
     if(this.alert>0)this.alert-=dt;
@@ -2092,7 +2196,9 @@ class Monster{
       this.mesh.rotation.x=.3;
       if(distP<1.8&&this.attackCd<=0){
         this.attackCd=1.2;
-        damagePlayer(this.dmg*1.15,this);
+        // a lunge goes low — being off the floor lets it pass underneath
+        if(player.y<0.55)damagePlayer(this.dmg*1.15,this);
+        else if(AU.stepAt)AU.stepAt(this.pos.x,this.pos.z,.3,1.15);
         this.lungeT=0;
       }
       if(this.lungeT<=0)this.lungeCd=rand(6,11);
@@ -2117,9 +2223,19 @@ class Monster{
         this.repathT=.35;
         this.repath();
       }
+      // the hound circles before it commits instead of running straight in
+      let tx=player.pos.x,tz=player.pos.z;
+      if(this.def.flank&&distP>4.5&&this.seenT>0){
+        this.flankT-=dt;
+        if(this.flankT<=0){this.flankT=rand(2.2,4);this.flankSide*=-1;}
+        const dxp=player.pos.x-this.pos.x,dzp=player.pos.z-this.pos.z;
+        const dp=Math.hypot(dxp,dzp)||1;
+        tx+=(-dzp/dp)*2.6*this.flankSide;
+        tz+=(dxp/dp)*2.6*this.flankSide;
+      }
       // direct lunge when close & visible — but never press into the player's body
       if(distP<3.4&&distP>1.15&&this.seenT>0){
-        this.moveToward(player.pos.x,player.pos.z,dt,spd);
+        this.moveToward(tx,tz,dt,spd);
       }else if(this.path.length){
         while(this.pathI<this.path.length){
           const[i,j]=this.path[this.pathI];
@@ -2139,6 +2255,31 @@ class Monster{
       if(this.growlCd<=0){
         this.growlCd=rand(2.5,5.5);
         AU.growlAt(this.pos.x,this.pos.z,clamp(.55-distP*.012,.06,.55),this.def.voice);
+      }
+    }else if(this.lungeT<=0&&this.windT<=0&&this.lastSeen){
+      // ---- investigate: walk to where it last saw or heard you, then search ----
+      this.searchT-=dt;
+      const ispd=this.chaseSpd*.72;
+      if(this.repathT<=0){this.repathT=.55;this.repathTo(this.lastSeen.x,this.lastSeen.z);}
+      if(this.path.length){
+        while(this.pathI<this.path.length){
+          const[i,j]=this.path[this.pathI];
+          if(Math.hypot(cx(i)-this.pos.x,cz(j)-this.pos.z)<.55)this.pathI++;
+          else break;
+        }
+        if(this.pathI<this.path.length){
+          const[i,j]=this.path[this.pathI];
+          this.moveToward(cx(i),cz(j),dt,ispd);
+        }
+      }
+      const dl=Math.hypot(this.lastSeen.x-this.pos.x,this.lastSeen.z-this.pos.z);
+      if(dl<1.5||this.searchT<=0){
+        this.lastSeen=null;
+        this.wanderT=rand(.3,1.0);
+      }
+      if(this.growlCd<=0){
+        this.growlCd=rand(1.6,3.4);
+        AU.growlAt(this.pos.x,this.pos.z,.26,this.def.voice);
       }
     }else if(this.lungeT<=0&&this.windT<=0){
       this.wanderT-=dt;
@@ -2293,8 +2434,68 @@ const ITEM_DEFS={
   battery:{color:0xd8c27c,label:'BATTERY'},
   ammo:{color:0xc8a04a,label:'AMMO'},
   pistol:{color:0xb0b6c0,label:'M1911'},
-  shotgun:{color:0xb0b6c0,label:'SAWN-OFF'}
+  shotgun:{color:0xb0b6c0,label:'SAWN-OFF'},
+  note:{color:0xe8dcc0,label:'DOCUMENT'},
+  keycard:{color:0x6ad8ff,label:'KEYCARD'}
 };
+
+/* ══════════════════════════════════════════════════════════════
+   LORE — documents left behind on each floor
+   ══════════════════════════════════════════════════════════════ */
+const LORE=[
+  {id:'l0a',lv:0,kind:'FRONT DESK MEMO',title:'RE: EAST STAIRWELL',
+   body:`Effective immediately the east stairwell is closed.\n\nThe damp has come back through the ceiling tiles and the\nlanding light will not hold a bulb for more than a day.\n\nDo not send anyone down to look. It is not worth the\npaperwork, and Dale has not come back up.`},
+  {id:'l0b',lv:0,kind:'STAFF ROTA — WEEK 14',title:'NIGHT SHIFT',
+   body:`MON  V. OKONKWO\nTUE  V. OKONKWO\nWED  V. OKONKWO\nTHU  V. OKONKWO\nFRI  V. OKONKWO\nSAT  V. OKONKWO\nSUN  V. OKONKWO\n\nSomeone has written the same name seven times.\nThe handwriting gets worse further down.`},
+  {id:'l0c',lv:0,kind:'GUEST COMPLAINT CARD',title:'ROOM 114 — NOISE',
+   body:`"There is breathing in the wall behind the headboard.\nI put my ear to it. It stopped. When I sat up it started\nagain, and it was faster."\n\nResolved: no. Guest relocated: no. Guest found: no.`},
+  {id:'l0d',lv:0,kind:'PAGE TORN FROM A NOTEBOOK',title:'IF YOU ARE READING THIS',
+   body:`I am going down. The fuses are the only thing that\nopens the gate and there are three of them on every\nfloor, which means whoever built this wanted people\nto keep going down.\n\nIf I do not come back, do not follow me.`},
+
+  {id:'l1a',lv:1,kind:'FORKLIFT LOG — BAY 3',title:'MOVEMENT WITHOUT A DRIVER',
+   body:`06:10  unit 3 returned to charge\n06:12  unit 3 logged out at bay 3\n06:40  unit 3 logged out at bay 3\n07:15  unit 3 logged out at bay 3\n\nNo driver signed for any of these.`},
+  {id:'l1b',lv:1,kind:'INVENTORY DISCREPANCY',title:'PALLET 44',
+   body:`Manifest says 240 crates.\nCount says 241.\n\nRecount says 238.\n\nI have stopped counting.`},
+  {id:'l1c',lv:1,kind:'SAFETY NOTICE',title:'AUTHORISED PERSONNEL ONLY',
+   body:`Beyond this point the concrete sweats. It is not\ncondensation. It is warm and it smells like a mouth.\n\nMasks are mandatory. Masks are not sufficient.`},
+  {id:'l1d',lv:1,kind:'SCRAWLED ON A PALLET',title:'IT COUNTS',
+   body:`It knows how many of us came down.\nIt gets angry when the number changes.\n\nStay still when you hear it stop walking.`},
+
+  {id:'l2a',lv:2,kind:'PRESSURE LOG — PLANT ROOM',title:'LINE 2 HOLDS',
+   body:`Line 2 will not hold pressure above 4 bar.\nTwo valves, both stiff. Turn them together or the\ngate will not cycle.\n\nWhoever reads this: the gate needs the pressure.\nThe pressure needs you to stand still in the dark\nfor four seconds at each wheel.`},
+  {id:'l2b',lv:2,kind:'MAINTENANCE ORDER 77-B',title:'DO NOT REPAIR THE HUM',
+   body:`The hum is not a fault. It is the plant running.\n\nWhen the hum stops, leave. Do not look for the\nsource of the silence.`},
+  {id:'l2c',lv:2,kind:'FINAL SHIFT — HANDOVER',title:'I AM NOT COMING UP',
+   body:`Pressure is good. Gate is powered. I have the card\nand I have the fuses and I am standing at the door\nand I cannot make myself open it.\n\nIf you are the next one down: take the card. Do not\nstop to read this.`},
+  {id:'l2d',lv:2,kind:'THE LAST PAGE',title:'THE WAY OUT IS A DOOR',
+   body:`Every floor has a door. Every door wants three fuses.\nSomeone built this so that leaving costs more the\ndeeper you go.\n\nI think they wanted to see how far down a person\nwould walk before they stopped believing in the exit.`}
+];
+let noteOpen=false;
+/* A tap that opens an overlay also fires a compatibility `click` several
+   hundred ms later, hit-tested against whatever now sits under the finger.
+   Requiring a real press on the overlay itself is the exact way to tell the
+   two apart — timings vary too much to use a clock. */
+let noteArmed=false;
+function showNote(e){
+  if(!e)return;
+  noteOpen=true;
+  $('#note-kind').textContent=e.kind;
+  $('#note-title').textContent=e.title;
+  $('#note-body').textContent=e.body;
+  $('#note').classList.add('on');
+}
+function closeNote(){
+  if(!noteOpen)return;
+  noteOpen=false;
+  $('#note').classList.remove('on');
+  if(state==='playing'&&!touchMode)requestLock();
+}
+$('#note').addEventListener('pointerdown',()=>{noteArmed=true;});
+$('#note').addEventListener('click',()=>{
+  const pressed=noteArmed; noteArmed=false;
+  if(!pressed)return;   // compatibility click from the tap that picked the page up
+  closeNote();
+});
 
 function makeItemMesh(type){
   const g=new THREE.Group();
@@ -2332,6 +2533,20 @@ function makeItemMesh(type){
     const grip=new THREE.Mesh(new THREE.BoxGeometry(.06,.16,.1),
       new THREE.MeshStandardMaterial({color:0x1a1a1c,roughness:.7}));
     grip.position.set(0,-.11,.1);g.add(grip);
+  }else if(type==='note'){
+    const m=new THREE.Mesh(new THREE.BoxGeometry(.2,.006,.28),
+      new THREE.MeshStandardMaterial({color:0xe8dcc0,roughness:.95}));
+    m.rotation.z=.14;g.add(m);
+    const ink=new THREE.Mesh(new THREE.PlaneGeometry(.13,.2),
+      new THREE.MeshBasicMaterial({color:0x3a3020,transparent:true,opacity:.5}));
+    ink.rotation.x=-Math.PI/2;ink.position.set(0,.005,0);g.add(ink);
+  }else if(type==='keycard'){
+    const m=new THREE.Mesh(new THREE.BoxGeometry(.22,.02,.14),
+      new THREE.MeshStandardMaterial({color:0x2a6a8a,roughness:.35,metalness:.4}));
+    g.add(m);
+    const strip=new THREE.Mesh(new THREE.BoxGeometry(.1,.024,.03),
+      new THREE.MeshBasicMaterial({color:0x6ad8ff}));
+    strip.position.z=-.045;g.add(strip);
   }
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({
     map:GLOW_TEX,color:col,transparent:true,opacity:.55,
@@ -2341,11 +2556,11 @@ function makeItemMesh(type){
   return g;
 }
 
-function spawnItem(type,x,z){
+function spawnItem(type,x,z,meta){
   const g=makeItemMesh(type);
   g.position.set(x,.42,z);
   scene.add(g);
-  items.push({type,mesh:g,x,z,phase:rand(0,TAU),taken:false});
+  items.push({type,mesh:g,x,z,phase:rand(0,TAU),taken:false,meta:meta||null});
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -2405,10 +2620,12 @@ function clearDecals(){
    ══════════════════════════════════════════════════════════════ */
 let chests=[];
 let chestTarget=null;
+let valves=[];            // pressure wheels on level 2
+let valveTarget=null;
 
 const CHEST_LABEL={
   pistol:'M1911',shotgun:'SAWN-OFF SHOTGUN',ammo:'AMMO',food:'CANNED FOOD',
-  water:'WATER',battery:'BATTERY'
+  water:'WATER',battery:'BATTERY',note:'A DOCUMENT',keycard:'KEYCARD'
 };
 
 function texChestMetal(){
@@ -2488,6 +2705,107 @@ function spawnChest(x,z,loot){
   chests.push({mesh:g,x,z,loot,open:false,openT:0,col});
 }
 
+/* ══════════════════════════════════════════════════════════════
+   LEVEL 2 PROPS — low pipes you must hop, pressure valves
+   ══════════════════════════════════════════════════════════════ */
+function spawnLowPipe(c){
+  const ci=c.i,cj=c.j;
+  const openX=!vWall[ci][cj]&&!vWall[ci+1][cj];   // corridor runs along X
+  const openZ=!hWall[ci][cj]&&!hWall[ci][cj+1];   // corridor runs along Z
+  if(openX===openZ)return false;                  // junction or ambiguous — skip
+  const hx=openX?.36:CELL/2-.12;
+  const hz=openX?CELL/2-.12:.36;
+  const g=new THREE.Group();
+  const mat=new THREE.MeshStandardMaterial({color:0x6b6f66,roughness:.55,metalness:.6});
+  const len=(openX?hz:hx)*2;
+  const pipe=new THREE.Mesh(new THREE.CylinderGeometry(.16,.16,len,10),mat);
+  pipe.rotation.z=Math.PI/2;
+  if(openX)pipe.rotation.y=Math.PI/2;
+  pipe.position.y=.46;g.add(pipe);
+  // brackets at each end
+  for(const s of[-1,1]){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.1,.62,.1),mat);
+    b.position.set(openX?0:s*(len/2-.12),.31,openX?s*(len/2-.12):0);
+    g.add(b);
+  }
+  // a warning band so it reads as an obstacle
+  const band=new THREE.Mesh(new THREE.CylinderGeometry(.17,.17,.34,10),
+    new THREE.MeshStandardMaterial({color:0xc4a03a,roughness:.7}));
+  band.rotation.z=Math.PI/2;
+  if(openX)band.rotation.y=Math.PI/2;
+  band.position.y=.46;g.add(band);
+  g.position.set(c.x,0,c.z);
+  scene.add(g);levelObjs.push(g);
+  collidersExtra.push({x:c.x,z:c.z,hx,hz,low:true});
+  return true;
+}
+
+function buildValve(){
+  const g=new THREE.Group();
+  const steel=new THREE.MeshStandardMaterial({color:0x7a7f74,roughness:.5,metalness:.7});
+  const stub=new THREE.Mesh(new THREE.CylinderGeometry(.1,.1,.9,10),steel);
+  stub.rotation.x=Math.PI/2;stub.position.set(0,1.05,.1);g.add(stub);
+  const wheel=new THREE.Group();
+  wheel.position.set(0,1.05,.42);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(.3,.045,8,18),steel);
+  wheel.add(ring);
+  for(let k=0;k<3;k++){
+    const sp=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,.58,6),steel);
+    sp.rotation.z=k/3*Math.PI;wheel.add(sp);
+  }
+  const hub=new THREE.Mesh(new THREE.SphereGeometry(.075,10,8),steel);
+  wheel.add(hub);
+  g.add(wheel);
+  const lamp=new THREE.Mesh(new THREE.SphereGeometry(.055,8,6),
+    new THREE.MeshBasicMaterial({color:0xff4a2a}));
+  lamp.position.set(0,1.42,.16);g.add(lamp);
+  return {g,wheel,lamp};
+}
+
+function spawnValve(c){
+  const {g,wheel,lamp}=buildValve();
+  g.position.set(c.x,0,c.z);
+  g.rotation.y=rand(0,TAU);
+  scene.add(g);levelObjs.push(g);
+  valves.push({mesh:g,wheel,lamp,x:c.x,z:c.z,turned:false,spin:0});
+}
+
+function turnValve(v){
+  if(!v||v.turned)return;
+  v.turned=true;v.spin=0;
+  player.valves++;
+  if(AU.thud)AU.thud(0,.35);
+  toast(`VALVE TURNED — PRESSURE ${player.valves}/2`,2600);
+  updateLevelHUD();
+  tryPowerExit();
+}
+
+function updateValves(dt){
+  let target=null,bd=1e9;
+  for(const v of valves){
+    if(v.turned){
+      if(v.spin<1){
+        v.spin=Math.min(1,v.spin+dt*1.6);
+        v.wheel.rotation.z=-v.spin*Math.PI*2.4;
+        v.lamp.material.color.setHex(0x4affa0);
+      }
+      continue;
+    }
+    const d=Math.hypot(v.x-player.pos.x,v.z-player.pos.z);
+    if(d<2.4&&d<bd){
+      const fx=-Math.sin(player.yaw),fz=-Math.cos(player.yaw);
+      const dot=((v.x-player.pos.x)*fx+(v.z-player.pos.z)*fz)/(d||1);
+      if(dot>.25){target=v;bd=d;}
+    }
+  }
+  valveTarget=target;
+  if(target&&!chestTarget){
+    el.useprompt.innerHTML=touchMode?'<b>USE</b><span>TURN THE VALVE</span>'
+                                  :'<b>E</b><span>TURN THE VALVE</span>';
+    el.useprompt.classList.add('on');
+  }
+}
+
 function openChest(c){
   if(!c||c.open)return;
   c.open=true;c.openT=0;
@@ -2496,7 +2814,14 @@ function openChest(c){
   // loot lands on the floor between you and the locker so it is always reachable
   const dx=player.pos.x-c.x,dz=player.pos.z-c.z;
   const d=Math.hypot(dx,dz)||1;
-  spawnItem(c.loot,c.x+dx/d*.8,c.z+dz/d*.8);
+  let meta=null;
+  if(c.loot==='note'){
+    // hand out a document from this floor that the player has not read yet
+    const floor=LORE.filter(e=>e.lv===level);
+    const fresh=floor.filter(e=>!player.noteIds.includes(e.id));
+    meta=fresh.length?pick(fresh):pick(floor);
+  }
+  spawnItem(c.loot,c.x+dx/d*.8,c.z+dz/d*.8,meta);
   if(AU.chest)AU.chest();
   else AU.pickup();
   toast(`${CHEST_LABEL[c.loot]||'SUPPLIES'} — GRAB IT`);
@@ -2521,6 +2846,8 @@ function updateChests(dt){
     }
   }
   chestTarget=target;
+  if(target)el.useprompt.innerHTML=touchMode?'<b>USE</b><span>OPEN LOCKER</span>'
+                                             :'<b>RMB</b><span>OPEN LOCKER</span>';
   el.useprompt.classList.toggle('on',!!target);
 }
 
@@ -2563,12 +2890,43 @@ function populate(){
     if(spots.length>=15)break;
     if(spots.every(o=>Math.hypot(o.i-c.i,o.j-c.j)>4))spots.push(c);
   }
-  const lootBag=['pistol','shotgun','ammo','ammo','ammo','ammo','ammo','food','food','food',
-                 'food','food','water','water','water','battery','battery','battery'];
+  const lootBag=['pistol','shotgun','ammo','ammo','ammo','food','food','food',
+                 'water','water','battery','battery','ammo','food','water'];
   for(let i=lootBag.length-1;i>0;i--){
     const j=randInt(0,i);[lootBag[i],lootBag[j]]=[lootBag[j],lootBag[i]];
   }
-  spots.forEach((c,i)=>spawnChest(c.x,c.z,lootBag[i%lootBag.length]));
+  const loot=spots.map((c,i)=>lootBag[i%lootBag.length]);
+  // every floor hides documents in four of its lockers
+  const order=spots.map((_,i)=>i).filter(i=>i>0);
+  for(let i=order.length-1;i>0;i--){const j=randInt(0,i);[order[i],order[j]]=[order[j],order[i]];}
+  // the warehouse gate also reads a keycard, so one locker is guaranteed to hold it
+  if(level===1){
+    if(order.length)loot[order.pop()]='keycard';
+    else loot[0]='keycard';
+  }
+  for(let k=0;k<Math.min(4,order.length);k++)loot[order[k]]='note';
+  spots.forEach((c,i)=>spawnChest(c.x,c.z,loot[i]));
+
+  // ---- level 2: two pressure valves and some low pipes ----
+  if(level===2){
+    const busy=new Set([...taken]);
+    spots.forEach(c=>busy.add(c.i+','+c.j));
+    const free=far.filter(c=>!busy.has(c.i+','+c.j));
+    for(let i=free.length-1;i>0;i--){const j=randInt(0,i);[free[i],free[j]]=[free[j],free[i]];}
+    let vs=0;
+    for(const c of free){
+      if(vs>=2)break;
+      if(c.d<6||c.d>18)continue;
+      spawnValve(c);busy.add(c.i+','+c.j);vs++;
+    }
+    let ps=0;
+    for(const c of free){
+      if(ps>=3)break;
+      if(busy.has(c.i+','+c.j))continue;
+      if(c.d<4||c.d>15)continue;
+      if(spawnLowPipe(c)){busy.add(c.i+','+c.j);ps++;}
+    }
+  }
 }
 
 function spawnMonsters(n){
@@ -2600,6 +2958,19 @@ function spawnMonsters(n){
     monsters.push(mon);
   }
   return bag;
+}
+
+/* Something loud happened at (x,z): nearby monsters come to look. */
+function makeNoise(x,z,radius,alert){
+  for(const m of monsters){
+    if(m.dead)continue;
+    const d=Math.hypot(m.pos.x-x,m.pos.z-z);
+    if(d>radius)continue;
+    if(d>6&&!los(m.pos.x,m.pos.z,x,z))continue;   // walls muffle the rest
+    m.lastSeen={x,z};
+    m.searchT=Math.max(m.searchT,rand(3,5.5));
+    if(alert)m.alert=Math.max(m.alert,alert);
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -2664,9 +3035,18 @@ function updateHUD(){
    INVENTORY — [E] toggles it, supplies are used from here
    ══════════════════════════════════════════════════════════════ */
 let invOpen=false;
-function openInv(){
+let invOpenStamp=-1;
+/* A tap fires pointerdown at once but its compatibility click can arrive
+   several hundred ms later, by which time the panel has appeared under the
+   finger. Chromium stamps that click with the original touch time, so a
+   timestamp match is an exact way to recognise the opening gesture. */
+function ghostClick(e,stamp){
+  return stamp>=0&&typeof e.timeStamp==='number'&&e.timeStamp<=stamp+2;
+}
+function openInv(stamp){
   if(state!=='playing'||invOpen)return;
   invOpen=true;
+  invOpenStamp=(typeof stamp==='number')?stamp:-1;
   renderInv();
   el.inv.classList.add('on');
   document.exitPointerLock&&document.exitPointerLock();
@@ -2706,11 +3086,24 @@ function renderInv(){
   h+=`<div class="invrow ${player.fuses>0?'have':''}">`+
      `<span class="n"><span class="dot"></span>FUSES</span>`+
      `<span class="v"><b>${player.fuses}/3</b></span></div>`;
+  if(level===1)h+=`<div class="invrow ${player.keycard?'have':''}">`+
+     `<span class="n"><span class="dot"></span>KEYCARD</span>`+
+     `<span class="v">${player.keycard?'<b>CARRIED</b>':'THE GATE NEEDS IT'}</span></div>`;
+  if(level===2)h+=`<div class="invrow ${player.valves>0?'have':''}">`+
+     `<span class="n"><span class="dot"></span>PRESSURE VALVES</span>`+
+     `<span class="v"><b>${player.valves}/2</b></span></div>`;
+  h+=`<div class="invrow ${player.noteIds.length?'have':''}">`+
+     `<span class="n"><span class="dot"></span>DOCUMENTS</span>`+
+     `<span class="v"><b>${player.noteIds.length}</b> / ${LORE.length}</span></div>`;
   h+=`<div class="invrow have"><span class="n"><span class="dot"></span>DEPTH</span>`+
      `<span class="v"><b>LEVEL ${level}</b> / ${LAST_LEVEL} · ${LV().name}</span></div>`;
   el.invbody.innerHTML=h;
 }
+let invBodyArmed=false;
+el.invbody.addEventListener('pointerdown',()=>{invBodyArmed=true;});
 el.invbody.addEventListener('click',e=>{
+  const pressed=invBodyArmed; invBodyArmed=false;
+  if(!pressed&&ghostClick(e,invOpenStamp))return;  // leftover click from the opening tap
   const row=e.target.closest('.invrow');
   if(!row)return;
   if(row.dataset.w){if(player.owned[row.dataset.w])selectWeapon(row.dataset.w);}
@@ -2719,7 +3112,14 @@ el.invbody.addEventListener('click',e=>{
 // close affordances — the [E] key is useless on a touchscreen, so the panel
 // carries its own buttons and the backdrop is tappable too
 for(const b of document.querySelectorAll('.invclose')){
-  b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();closeInv();});
+  let armed=false;                       // did a press actually land on this button?
+  b.addEventListener('pointerdown',()=>{armed=true;});
+  b.addEventListener('click',e=>{
+    e.preventDefault();e.stopPropagation();
+    const pressed=armed; armed=false;
+    if(!pressed&&ghostClick(e,invOpenStamp))return;  // the tap that opened the panel
+    closeInv();
+  });
 }
 el.inv.addEventListener('pointerdown',e=>{
   if(e.target===el.inv){e.preventDefault();closeInv();}
@@ -3023,7 +3423,7 @@ function deployToLevel(lv){
   if(midRun){
     if(state==='paused')setState('playing');
     loadLevel(target,null);
-    player.fuses=0;exitPowered=false;
+    player.fuses=0;exitPowered=false;player.valves=0;player.keycard=false;
     player.depth=Math.max(player.depth,target);
     updateLevelHUD();
     showLevelCard();
@@ -3032,7 +3432,7 @@ function deployToLevel(lv){
   }else{
     level=target;
     loadLevel(level,null);
-    player.fuses=0;exitPowered=false;
+    player.fuses=0;exitPowered=false;player.valves=0;player.keycard=false;
     player.depth=level;
     restoredRun=false;
     startGame();
@@ -3250,6 +3650,71 @@ document.querySelectorAll('.diff').forEach(b=>{
 });
 
 /* ══════════════════════════════════════════════════════════════
+   SETTINGS — sensitivity, FOV, invert, quality, head bob
+   ══════════════════════════════════════════════════════════════ */
+const SET_KEY='br_set_v1';
+const SET={sens:1,fov:75,invert:0,quality:2,bob:1};
+let setOpen=false;
+function loadSettings(){
+  try{const s=JSON.parse(localStorage.getItem(SET_KEY)||'{}');
+    if(s&&typeof s==='object')Object.assign(SET,s);}catch(e){}
+  SET.sens=clamp(+SET.sens||1,.4,2.6);
+  SET.fov=clamp(+SET.fov||75,62,105);
+  SET.quality=clamp(+SET.quality|0,0,2);
+  SET.invert=SET.invert?1:0;SET.bob=SET.bob?1:0;
+}
+function saveSettings(){try{localStorage.setItem(SET_KEY,JSON.stringify(SET));}catch(e){}}
+const QUALITY=[{pr:1,label:'LOW'},{pr:1.3,label:'MED'},{pr:Math.min(devicePixelRatio||1,1.6),label:'HIGH'}];
+function applySettings(){
+  camera.fov=SET.fov;camera.updateProjectionMatrix();
+  renderer.setPixelRatio(QUALITY[SET.quality].pr);
+  renderer.setSize(innerWidth,innerHeight);
+  syncSettingsUI();
+}
+function syncSettingsUI(){
+  const s=$('#set-sens'),f=$('#set-fov');
+  if(s){s.value=String(Math.round(SET.sens*100));$('#set-sens-v').textContent=SET.sens.toFixed(2)+'×';}
+  if(f){f.value=String(SET.fov);$('#set-fov-v').textContent=SET.fov+'°';}
+  for(const b of document.querySelectorAll('#set-invert button'))b.classList.toggle('on',+b.dataset.v===SET.invert);
+  for(const b of document.querySelectorAll('#set-quality button'))b.classList.toggle('on',+b.dataset.v===SET.quality);
+  for(const b of document.querySelectorAll('#set-bob button'))b.classList.toggle('on',+b.dataset.v===SET.bob);
+}
+function openSettings(){setOpen=true;$('#settings').classList.add('on');syncSettingsUI();}
+function closeSettings(){
+  if(!setOpen)return;
+  setOpen=false;$('#settings').classList.remove('on');
+}
+loadSettings();
+$('#setbtn').addEventListener('click',openSettings);
+$('#setbtn2').addEventListener('click',openSettings);
+{
+  let armed=false;
+  $('#setclose').addEventListener('pointerdown',()=>{armed=true;});
+  $('#setclose').addEventListener('click',()=>{
+    const pressed=armed; armed=false;
+    if(!pressed)return;   // compatibility click from the tap that opened the panel
+    closeSettings();
+  });
+}
+$('#set-sens').addEventListener('input',e=>{
+  SET.sens=clamp(+e.target.value/100,.4,2.6);$('#set-sens-v').textContent=SET.sens.toFixed(2)+'×';saveSettings();
+});
+$('#set-fov').addEventListener('input',e=>{
+  SET.fov=clamp(+e.target.value,62,105);$('#set-fov-v').textContent=SET.fov+'°';
+  camera.fov=SET.fov;camera.updateProjectionMatrix();saveSettings();
+});
+function segBind(sel,key,after){
+  for(const b of document.querySelectorAll(sel+' button')){
+    b.addEventListener('click',()=>{
+      SET[key]=+b.dataset.v;syncSettingsUI();saveSettings();if(after)after();
+    });
+  }
+}
+segBind('#set-invert','invert');
+segBind('#set-quality','quality',applySettings);
+segBind('#set-bob','bob');
+
+/* ══════════════════════════════════════════════════════════════
    TOUCH — virtual stick, drag-to-look, action buttons
    ══════════════════════════════════════════════════════════════ */
 const touchMode=('ontouchstart' in window)||(navigator.maxTouchPoints>0&&matchMedia('(pointer:coarse)').matches);
@@ -3311,14 +3776,18 @@ function bindBtn(sel,fn){
   b.addEventListener('pointerdown',e=>{
     e.preventDefault();e.stopPropagation();
     if(state!=='playing'&&sel!=='#tops')return;
-    fn();
+    fn(e);
   });
 }
 bindBtn('#tattack',()=>attack());
 bindBtn('#tjump',()=>tryJump());
 bindBtn('#tdodge',()=>tryDash());
-bindBtn('#tuse',()=>{if(chestTarget)openChest(chestTarget);});
-bindBtn('#tinv',()=>{invOpen?closeInv():openInv();});
+bindBtn('#tuse',()=>{
+  if(chestTarget)openChest(chestTarget);
+  else if(escapeSealed&&nearExit())forceExit();
+  else if(valveTarget)turnValve(valveTarget);
+});
+bindBtn('#tinv',e=>{invOpen?closeInv():openInv(e.timeStamp);});
 bindBtn('#ttorch',()=>toggleTorch());
 bindBtn('#tops',()=>requestOps());
 bindBtn('#tswap',()=>{
@@ -3340,13 +3809,20 @@ addEventListener('keydown',e=>{
   if(e.code==='Space')e.preventDefault();
   // overlays own the keyboard first
   if(e.code==='Escape'){
+    if(setOpen){closeSettings();return;}
+    if(noteOpen){closeNote();return;}
     if(opsSelectOpen){closeOpsSelect();return;}
     if(opsOpen){closeOps();return;}
     if(pwOpen){closePw();return;}
     if(invOpen){closeInv();return;}
   }
   if(state==='playing'){
-    if(e.code==='KeyE'&&!e.repeat&&!opsOpen&&!pwOpen){invOpen?closeInv():openInv();}
+    if(e.code==='KeyE'&&!e.repeat&&!opsOpen&&!pwOpen){
+      if(noteOpen)closeNote();
+      else if(escapeSealed&&nearExit())forceExit();
+      else if(valveTarget)turnValve(valveTarget);
+      else invOpen?closeInv():openInv(-1);
+    }
     if(e.code==='KeyF')toggleTorch();
     if(e.code==='KeyR'&&!e.repeat&&!invOpen&&!opsOpen&&!pwOpen)startReload();
     if(e.code==='KeyM'&&!e.repeat){
@@ -3390,9 +3866,9 @@ addEventListener('mousemove',e=>{
   if(document.pointerLockElement===canvas){dx=e.movementX||0;dy=e.movementY||0;}
   else if(dragging){dx=e.clientX-lastMX;dy=e.clientY-lastMY;lastMX=e.clientX;lastMY=e.clientY;}
   else return;
-  const s=0.0022;
+  const s=0.0022*SET.sens;
   player.yaw-=dx*s;
-  player.pitch-=dy*s;
+  player.pitch+=(SET.invert?1:-1)*dy*s;
   player.pitch=clamp(player.pitch,-1.45,1.45);
 });
 
@@ -3578,7 +4054,7 @@ function pickup(it){
       player.fuses++;player.fusesTotal++;
       AU.fuse();
       toast(`FUSE RECOVERED — ${player.fuses}/3`);
-      if(player.fuses>=3)powerExit();
+      if(player.fuses>=3)tryPowerExit();
       break;
     case 'food':
       player.inv.food++;AU.pickup();toast('CANNED FOOD +1 — [E] INVENTORY');break;
@@ -3598,11 +4074,38 @@ function pickup(it){
       player.owned.shotgun=true;player.ammo.shells+=4;topUpMag('shotgun');
       unlockAch('loaded');
       AU.pickup();toast('SAWN-OFF — 4 SHELLS');selectWeapon('shotgun');break;
+    case 'note':{
+      const e=it.meta||LORE[0];
+      if(!player.noteIds.includes(e.id))player.noteIds.push(e.id);
+      AU.pickup();
+      showNote(e);
+      updateHUD();
+      return;
+    }
+    case 'keycard':
+      player.keycard=true;AU.pickup();
+      toast('KEYCARD — THE GATE WILL READ IT',3200);
+      updateLevelHUD();
+      tryPowerExit();
+      break;
   }
   updateHUD();
 }
 
 let exitPowered=false;
+/* Each floor asks for the fuses, plus one extra thing of its own. */
+function objMissing(){
+  const out=[];
+  if(player.fuses<3)out.push(3-player.fuses);
+  if(level===1&&!player.keycard)out.push('card');
+  if(level===2&&player.valves<2)out.push('valve');
+  return out;
+}
+function tryPowerExit(){
+  if(exitPowered)return false;
+  if(objMissing().length)return false;
+  powerExit();return true;
+}
 function powerExit(){
   exitPowered=true;
   unlockAch('powered');
@@ -3614,7 +4117,8 @@ function powerExit(){
     ? 'THE DESCENT GATE HAS POWER — FOLLOW THE RED LIGHT'
     : 'THE WAY OUT HAS POWER — FOLLOW THE RED LIGHT',4000);
   updateLevelHUD();
-  // escalate
+  // escalate — the last floor gets a full alarm instead
+  if(level>=LAST_LEVEL){startEscape();return;}
   setTimeout(()=>{
     if(state!=='playing')return;
     for(let k=0;k<2;k++){
@@ -3625,6 +4129,80 @@ function powerExit(){
     }
     toast('SOMETHING ELSE WOKE UP');
   },5000);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   FINAL ESCAPE — the gate opens on a timer and everything wakes up
+   ══════════════════════════════════════════════════════════════ */
+let escapeActive=false,escapeT=0,escapeSealed=false;
+const ESC_FIRST=60, ESC_AGAIN=45;
+
+function startEscape(){
+  if(escapeActive)return;
+  escapeActive=true;escapeSealed=false;escapeT=ESC_FIRST;
+  const h=$('#escapehud');
+  h.classList.add('on');h.classList.remove('sealed');
+  $('#esc-label').textContent='THE GATE CLOSES IN';
+  toast('THE BUILDING KNOWS — RUN FOR THE GATE',5200);
+  if(AU.setChase)AU.setChase(1);
+  for(const m of monsters){
+    if(m.dead)continue;
+    m.alert=999;
+    m.lastSeen={x:player.pos.x,z:player.pos.z};
+    m.searchT=30;
+  }
+  for(let k=0;k<3;k++){
+    let c=null,tries=0;
+    do{c={i:randInt(0,GX-1),j:randInt(0,GZ-1)};tries++;}
+    while(tries<40&&Math.hypot(cx(c.i)-player.pos.x,cz(c.j)-player.pos.z)<10);
+    const m=new Monster(pickKind(),c.i,c.j);
+    m.alert=999;
+    m.lastSeen={x:player.pos.x,z:player.pos.z};
+    m.searchT=30;
+    monsters.push(m);
+  }
+}
+
+function sealExit(){
+  if(!exitInfo)return;
+  escapeActive=false;escapeSealed=true;
+  exitPowered=false;exitInfo.open=false;
+  if(!collidersExtra.includes(exitInfo.col))collidersExtra.push(exitInfo.col);
+  const h=$('#escapehud');
+  h.classList.add('sealed');
+  $('#esc-label').textContent='THE GATE HAS SEALED';
+  $('#esc-time').textContent='FORCE IT';
+  toast('THE GATE SLAMS SHUT — HOLD [E] AT THE DOOR',5000);
+  if(AU.setChase)AU.setChase(.55);
+}
+
+function nearExit(){
+  return !!exitInfo && Math.hypot(exitInfo.x-player.pos.x,exitInfo.z-player.pos.z)<2.8;
+}
+function forceExit(){
+  if(!escapeSealed)return;  escapeSealed=false;escapeActive=true;escapeT=ESC_AGAIN;
+  exitPowered=true;exitInfo.open=true;
+  const idx=collidersExtra.indexOf(exitInfo.col);
+  if(idx>=0)collidersExtra.splice(idx,1);
+  const h=$('#escapehud');
+  h.classList.remove('sealed');
+  $('#esc-label').textContent='THE GATE CLOSES IN';
+  toast('THE GATE GROANS OPEN — GO',3000);
+  if(AU.setChase)AU.setChase(1);
+}
+
+function updateEscape(dt){
+  if(!escapeActive)return;
+  escapeT-=dt;
+  const s=Math.max(0,Math.ceil(escapeT));
+  $('#esc-time').textContent='0:'+String(s).padStart(2,'0');
+  if(escapeT<=0)sealExit();
+}
+
+function resetEscape(){
+  escapeActive=false;escapeSealed=false;escapeT=0;
+  const h=$('#escapehud');
+  if(h){h.classList.remove('on','sealed');$('#esc-label').textContent='THE GATE CLOSES IN';}
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -3818,6 +4396,7 @@ function renderTitleRec(){
 }
 
 function die(){
+  resetEscape();
   if(state!=='playing')return;
   state='dying';
   player.dead=true;
@@ -3839,6 +4418,7 @@ function die(){
 function win(){
   if(state!=='playing')return;
   state='winning';
+  resetEscape();
   unlockAch('escape');
   if(player.dmgTaken<=0)unlockAch('untouchable');
   deleteSave();
@@ -3947,10 +4527,19 @@ function updatePlayer(dt){
   // ---- jump (SPACE): vertical only, resolved before the eye height ----
   if(keys.Space)tryJump();
   if(player.y>0||player.vy!==0){
+    const wasAir=player.y>0.12;
     player.vy-=GRAVITY*dt;
     player.y+=player.vy*dt;
     if(player.y>=JUMP_CEIL){player.y=JUMP_CEIL;player.vy=Math.min(0,player.vy);}
-    if(player.y<=0){player.y=0;player.vy=0;}
+    if(player.y<=0){
+      player.y=0;player.vy=0;
+      if(wasAir){
+        // landing is loud — whatever is nearby comes to look
+        AU.stepAt(player.pos.x,player.pos.z,.5,.78);
+        makeNoise(player.pos.x,player.pos.z,15,1.5);
+        player.shake=Math.max(player.shake,.09);
+      }
+    }
   }
 
   if(sprinting){
@@ -3973,7 +4562,7 @@ function updatePlayer(dt){
 
   player.pos.x+=player.velX*dt;
   player.pos.z+=player.velZ*dt;
-  resolveCollision(player.pos,.34);
+  resolveCollision(player.pos,.34,player.y>0.5);
 
   // eye height
   const targetEye=player.crouch?1.02:1.62;
@@ -4016,8 +4605,9 @@ function updatePlayer(dt){
   }
 
   // camera
-  const bobY=Math.sin(player.bob)*0.042*player.bobAmt;
-  const bobX=Math.cos(player.bob*.5)*0.03*player.bobAmt;
+  const bobK=player.bobAmt*(SET.bob?1:0);
+  const bobY=Math.sin(player.bob)*0.042*bobK;
+  const bobX=Math.cos(player.bob*.5)*0.03*bobK;
   camera.position.set(player.pos.x+bobX*right.x,player.eye+player.y+bobY,player.pos.z+bobX*right.z);
   player.shake=Math.max(0,player.shake-dt*2.4);
   const sh=player.shake;
@@ -4054,6 +4644,13 @@ function updateExit(dt){
     }
     // drone
     AU.setExitLevel(clamp(1-d/40,0,1)*.22);
+  }else if(exitInfo.t>0){
+    // the gate slams back down
+    exitInfo.t=Math.max(0,exitInfo.t-dt*1.6);
+    exitInfo.door.position.y=WALL_H*.48+exitInfo.t*WALL_H;
+    exitInfo.glowMat.opacity=exitInfo.t*.85;
+    exitInfo.signMat.opacity=.18+exitInfo.t*.82;
+    exitInfo.light.intensity=exitInfo.t*8;
   }
   // arrow indicator
   if(exitPowered&&state==='playing'){
@@ -4153,6 +4750,8 @@ function tick(){
       for(const m of monsters)m.update(dt);
       updateItems(dt);
       updateChests(dt);
+      updateValves(dt);
+      updateEscape(dt);
       updateExit(dt);
       updateLights(dt);
       updateDanger(dt);
@@ -4290,20 +4889,33 @@ function updateLevelHUD(){
   const lv=$('#objlevel');
   if(lv)lv.textContent=`LEVEL ${th.n} · ${th.name}`;
   if(!el.objtext)return;
-  if(player.fuses>=3||exitPowered){
-    el.objtext.innerHTML=`REACH THE <b>${level<LAST_LEVEL?'DESCENT':'EXIT'}</b>`;
+  const gate=level<LAST_LEVEL?'DESCENT':'EXIT';
+  if(exitPowered){
+    el.objtext.innerHTML=`REACH THE <b>${gate}</b>`;
     el.objtext.style.color='#e8562f';
-  }else{
-    const need=3-player.fuses;
-    el.objtext.innerHTML=player.fuses===0
-      ? `FIND <b>3 FUSES</b> · POWER THE ${level<LAST_LEVEL?'DESCENT':'EXIT'}`
-      : `FIND <b>${need} MORE FUSE${need===1?'':'S'}</b> · POWER THE ${level<LAST_LEVEL?'DESCENT':'EXIT'}`;
-    el.objtext.style.color='';
+    return;
   }
+  const parts=[];
+  const need=3-player.fuses;
+  if(need>0)parts.push(`<b>${need} FUSE${need===1?'':'S'}</b>`);
+  if(level===1&&!player.keycard)parts.push('<b>KEYCARD</b>');
+  if(level===2&&player.valves<2){
+    const v=2-player.valves;
+    parts.push(`<b>${v} VALVE${v===1?'':'S'}</b>`);
+  }
+  if(!parts.length){
+    el.objtext.innerHTML=`REACH THE <b>${gate}</b>`;
+    el.objtext.style.color='#e8562f';
+    return;
+  }
+  el.objtext.innerHTML=`FIND ${parts.join(' &nbsp;·&nbsp; ')} &nbsp;·&nbsp; POWER THE ${gate}`;
+  el.objtext.style.color='';
 }
 
 function loadLevel(lv,sv){
   clearLevel();
+  resetEscape();
+  exitPowered=false;                 // a freshly built floor always starts unpowered
   level=clamp(lv,0,LAST_LEVEL);
   applyTheme(level);
   buildLevel(level,sv&&sv.maze?sv.maze:null);
@@ -4342,7 +4954,7 @@ function descend(){
   el.static.style.opacity='1';
   setTimeout(()=>{
     loadLevel(level+1,null);
-    player.fuses=0;exitPowered=false;
+    player.fuses=0;exitPowered=false;player.valves=0;player.keycard=false;
     player.depth=Math.max(player.depth,level);
     unlockAch(level===1?'descent':'deep');
     updateLevelHUD();
@@ -4391,6 +5003,7 @@ function boot(){
   updateContinueBtn();
   updateAchButtons();
   updateDiffButtons();
+  applySettings();
   renderTitleRec();
   tick();
 }
@@ -4418,6 +5031,14 @@ window.__BR={player,get monsters(){return monsters;},get state(){return state;},
   saveGame,hasSave,deleteSave,openAch,closeAch,openOpsSelect,closeOpsSelect,chooseOpsLevel,
   get dashT(){return dashT;},get dashCd(){return dashCd;},tryDash,tryJump,
   get playerY(){return player.y;},get playerVy(){return player.vy;},
+  get valves(){return valves;},get valveTarget(){return valveTarget;},turnValve,
+  get escape(){return{active:escapeActive,t:escapeT,sealed:escapeSealed};},
+  startEscape,sealExit,forceExit,tryPowerExit,nearExit,makeNoise,objMissing,
+  resolveCollision,get colliders(){return collidersExtra;},
+  updateLevelHUD,
+  get noteOpen(){return noteOpen;},showNote,closeNote,LORE,
+  get keycard(){return player.keycard;},get noteIds(){return player.noteIds;},
+  get settings(){return SET;},applySettings,openSettings,closeSettings,
   get achs(){return [...achUnlocked];},
   get decals(){return decals;},addBlood,
   get diff(){return diff;},setDiff(i){diff=clamp(i,0,DIFFS.length-1);updateDiffButtons();},
@@ -4427,7 +5048,7 @@ window.__BR={player,get monsters(){return monsters;},get state(){return state;},
   setPos(x,z){player.pos.set(x,0,z);},
   get reloadT(){return player.reloadT;},get touchMode(){return touchMode;},
   get levelName(){return LV().name;},
-  WEAPONS,ACH_DEFS,
+  WEAPONS,ACH_DEFS,MON_DEFS,
   debugSpawn(kind,dx=3,dz=2){
     const x=player.pos.x+dx,z=player.pos.z+dz;
     const m=new Monster(kind,0,0);
