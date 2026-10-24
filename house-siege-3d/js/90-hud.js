@@ -9,8 +9,26 @@
    ------------------------------------------------------------ */
 function checkRoundEnd() {
   if (G.state !== 'playing') return;
+  /* GOLDEN POINT: full time expired level, so the first score change decides
+     it. A suicide leaves both scores untouched, so the round simply plays on. */
+  if (G.golden) {
+    if (G.score.red !== G.score.blue) endMatch();
+    return;
+  }
   const limit = G.mode === 'flag' ? CFG.flagLimit : CFG.killLimit;
   if (G.score.red >= limit || G.score.blue >= limit) endMatch();
+}
+
+/* Sudden death: entered when the clock runs out with the scores level. */
+function startGoldenPoint() {
+  if (G.golden) return;
+  G.golden = true;
+  G.timeLeft = 0;
+  Snd.tone(560, 900, 0.28, 0.22, 'triangle');
+  setTimeout(() => Snd.tone(900, 1200, 0.3, 0.18, 'triangle'), 160);
+  banner('<span class="hl">GOLDEN POINT</span> — ' +
+    (G.mode === 'flag' ? 'THE NEXT CAPTURE WINS' : 'THE NEXT KILL WINS'), 5);
+  $('clock').classList.add('gold');
 }
 
 function endMatch() {
@@ -19,7 +37,9 @@ function endMatch() {
   document.exitPointerLock && document.exitPointerLock();
   const red = G.score.red, blue = G.score.blue;
   const win = red > blue ? 'RED' : blue > red ? 'BLUE' : 'DRAW';
-  $('endKicker').textContent = G.mode === 'flag' ? 'FLAG RAID COMPLETE' : 'DEATHMATCH COMPLETE';
+  $('endKicker').textContent = G.golden
+    ? 'GOLDEN POINT'
+    : (G.mode === 'flag' ? 'FLAG RAID COMPLETE' : 'DEATHMATCH COMPLETE');
   $('endTitle').textContent = win === 'DRAW' ? 'DRAW' : win + ' TEAM WINS';
   $('endTitle').style.color = win === 'RED' ? '#ff6b6b' : win === 'BLUE' ? '#7fabff' : '#fff';
   $('endScore').textContent = red + '  —  ' + blue;
@@ -227,8 +247,11 @@ function updateHUD(dt) {
   const p = G.player;
   const t = Math.max(0, G.timeLeft);
   const mm = Math.floor(t / 60), ss = Math.floor(t % 60);
-  $('clock').textContent = G.mode === 'tutorial' ? '∞' : (mm + ':' + (ss < 10 ? '0' : '') + ss);
-  $('clock').classList.toggle('low', t < 30 && G.mode !== 'tutorial');
+  $('clock').textContent = G.mode === 'tutorial' ? '∞'
+    : G.golden ? 'GOLD'
+      : (mm + ':' + (ss < 10 ? '0' : '') + ss);
+  $('clock').classList.toggle('gold', G.golden);
+  $('clock').classList.toggle('low', !G.golden && t < 30 && G.mode !== 'tutorial');
   $('scoreRed').textContent = G.score.red;
   $('scoreBlue').textContent = G.score.blue;
   const capLabel = G.mode === 'flag' ? 'CAPTURES' : 'KILLS';
