@@ -20,16 +20,17 @@ function useAid(a) {
   const st = a.weapons[a.cur];
   if (!st || st.id !== 'aid' || st.count <= 0) return;
   if (a.hp >= a.maxHp - 0.01) {
-    banner('HEALTH IS ALREADY FULL', 1.1);
-    Snd.empty();
+    if (a.isPlayer) { banner('HEALTH IS ALREADY FULL', 1.1); Snd.empty(); }
     return;
   }
   const before = a.hp;
   a.hp = Math.min(a.maxHp, a.hp + ITEMS.aid.heal);
   a.itemT = G.t;
   st.count--;
-  Snd.heal();
-  banner('+ ' + Math.round(a.hp - before) + ' HP', 0.9);
+  if (a.isPlayer) {
+    Snd.heal();
+    banner('+ ' + Math.round(a.hp - before) + ' HP', 0.9);
+  }
   if (st.count <= 0) consumeSlot(a, a.cur);
 }
 
@@ -43,11 +44,13 @@ function useAmmo(a) {
     if (!w || w.melee) continue;
     if (s.res < w.reserve) { s.res = w.reserve; filled++; }
   }
-  if (!filled) { banner('ALL RESERVES ALREADY FULL', 1.1); Snd.empty(); return; }
+  if (!filled) {
+    if (a.isPlayer) { banner('ALL RESERVES ALREADY FULL', 1.1); Snd.empty(); }
+    return;
+  }
   st.count--;
   a.itemT = G.t;
-  Snd.reload();
-  banner('AMMO RESUPPLIED', 1.2);
+  if (a.isPlayer) { Snd.reload(); banner('AMMO RESUPPLIED', 1.2); }
   if (st.count <= 0) consumeSlot(a, a.cur);
 }
 
@@ -58,9 +61,83 @@ function useStim(a) {
   st.count--;
   a.itemT = G.t;
   a.stimT = ITEMS.stim.dur;
-  Snd.stim();
-  banner('STIM ACTIVE — FASTER FOR ' + ITEMS.stim.dur + 's', 1.4);
+  if (a.isPlayer) {
+    Snd.stim();
+    banner('STIM ACTIVE — FASTER FOR ' + ITEMS.stim.dur + 's', 1.4);
+  }
   if (st.count <= 0) consumeSlot(a, a.cur);
+}
+
+/* ------------------------------------------------------------
+   BOT ITEM USE
+   ------------------------------------------------------------
+   Bots looted crates but were hard-coded to skip anything that was not a gun,
+   and tryFire() bailed out on items for every non-player actor — so a match
+   full of bots never opened a single FIELD AID. These helpers give them the
+   same consumables the player has. */
+function botWantsItem(b, id) {
+  const it = ITEMS[id];
+  if (!it) return false;
+  const has = b.weapons.find(w => w.id === id);
+  if (has) return has.count < it.stack;
+  if (b.weapons.length >= CFG.slots) return false;
+  if (id === 'aid') return b.hp < b.maxHp;
+  if (id === 'ammo') {
+    return b.weapons.some(w => {
+      const d = WEAPONS[w.id];
+      return d && !d.melee && w.res < d.reserve * 0.7;
+    });
+  }
+  return true;                       // grenades and stims are always worth a slot
+}
+
+/* Swap to the consumable, fire it, then go back to the best gun. */
+function botUseItem(b, id) {
+  const idx = b.weapons.findIndex(w => w.id === id && (w.count || 0) > 0);
+  if (idx < 0) return false;
+  b.cur = idx;
+  if (id === 'aid') useAid(b);
+  else if (id === 'ammo') useAmmo(b);
+  else if (id === 'stim') useStim(b);
+  else return false;
+  botPickWeapon(b);                  // never keep an item in hand
+  return true;
+}
+
+function botUseItems(b) {
+  if (b.hp < b.maxHp * 0.55) botUseItem(b, 'aid');
+  const st = b.weapons[b.cur];
+  const w = st ? WEAPONS[st.id] : null;
+  if (w && !w.melee && w.reserve && st.res < w.reserve * 0.25) botUseItem(b, 'ammo');
+  if (b.stimT <= 0 && b.target && b.target.alive) botUseItem(b, 'stim');
+}
+
+/* Lob a frag: try a few lofts with the real ballistics and keep the one that
+   lands closest to the target, so bots do not just drop grenades at their own
+   feet. */
+function botGrenade(b, tgt) {
+  const gi = b.weapons.findIndex(w => w.id === 'grenade' && (w.count || 0) > 0);
+  if (gi < 0) return false;
+  const prevYaw = b.yaw, prevPitch = b.pitch;
+  b.cur = gi;
+  b.yaw = Math.atan2(-(tgt.pos.x - b.pos.x), -(tgt.pos.z - b.pos.z));
+  let bestPitch = 0.45, bestD = 1e9;
+  for (const p of [0.30, 0.42, 0.54, 0.66, 0.78]) {
+    b.pitch = p;
+    const from = grenadeOrigin(b, new V3());
+    const vel = grenadeVelocity(b, new V3());
+    const tr = grenadeTrajectory(from, vel);
+    const d = Math.hypot(tr.impact.x - tgt.pos.x, tr.impact.z - tgt.pos.z);
+    if (d < bestD) { bestD = d; bestPitch = p; }
+  }
+  let thrown = false;
+  if (bestD < 4.5) {                 // only worth it if it actually lands on them
+    b.pitch = bestPitch;
+    thrown = throwGrenade(b);
+  }
+  b.yaw = prevYaw; b.pitch = prevPitch;
+  botPickWeapon(b);
+  return thrown;
 }
 
 /* --- GRENADE -------------------------------------------------
@@ -229,7 +306,8 @@ function throwGrenade(a) {
   st.count--;
   a.lastShot = G.t;
   spawnProjectile('nade', grenadeOrigin(a, new V3()), grenadeVelocity(a, new V3()), a);
-  Snd.throwNade();
+  if (a.isPlayer) Snd.throwNade();
+  else { const dd = camera.position.distanceTo(a.pos); if (dd < 40) Snd.throwNade(); }
   hideAimLine();
   if (st.count <= 0) consumeSlot(a, a.cur);
   return true;
