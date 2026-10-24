@@ -50,6 +50,9 @@ function botThink(b) {
     b.target = null;
   }
 
+  /* consumables: patch up, top the reserves, pop a stim before a fight */
+  botUseItems(b);
+
   /* choose destination — then COMMIT to it for a couple of seconds.
      Re-rolling the goal every think tick made bots jitter in place,
      bouncing between opposing destinations without going anywhere. */
@@ -89,10 +92,12 @@ function botThink(b) {
     }
     else if (ef.at === 'base' && b.role === 'attack') { goal = ef.pos; kind = 'attack'; }
     else {
-      // hold a post near own base (snapped to a walkable node — never aim into a wall).
-      // The post is chosen ONCE per commitment. It used to be re-rolled to a fresh
-      // random spot on every think tick, so `moved > 3.5` was always true, the bot
-      // replanned ~4x a second and ping-ponged between two random posts forever.
+      /* nothing urgent — grab a nearby crate if it holds something useful,
+         otherwise hold a post near own base (snapped to a walkable node —
+         never aim into a wall). */
+      const loot = nearestWantedChest(b, 15);
+      if (loot) { goal = loot.pos; kind = 'chest'; }
+      else {
       kind = 'defend';
       const arrived = b.defendPost &&
         Math.hypot(b.pos.x - b.defendPost.x, b.pos.z - b.defendPost.z) < 3.2;
@@ -102,20 +107,31 @@ function botThink(b) {
         b.postT = 3.5 + Math.random() * 3.5;
       }
       goal = b.defendPost;
+      }
     }
   } else {
-    // TDM: hunt the enemy, grab a better gun early
-    if (b.weapons.length < 3) {
-      let bc = null, bcd = 1e9;
-      for (const c of G.chests) {
-        if (!c.available || !c.content || c.content.item) continue;  // bots cannot use items
-        const cw = WEAPONS[c.content.id];
-        if (!cw || cw.botOk === false) continue;                     // nor the crossbow
-        const dd = b.pos.distanceTo(c.pos);
-        if (dd < bcd) { bcd = dd; bc = c; }
+    /* TDM: loot what is actually useful, sweep the catwalk, hunt the enemy */
+    /* 46 m, not 34: the two crates on the catwalk sit further than that from
+       most of the maze, so they were never a candidate */
+    const bc = nearestWantedChest(b, 46);
+    if (bc && (!b.target || bestD > 16)) { goal = bc.pos; kind = 'chest'; }
+
+    /* HIGH GROUND. The catwalk overlooks the whole maze, but the only reason a
+       bot ever climbed up there was one of the two crates on the deck, so the
+       entire upper level played as empty map. Attackers now take a deck post
+       on a timer and walk the ring. */
+    if (!goal && b.deckT > 0 && b.deckPost) {
+      if (Math.hypot(b.pos.x - b.deckPost.x, b.pos.z - b.deckPost.z) < 2.4) {
+        b.deckPost = deckPost(b);          // arrived: move on to the next span
       }
-      if (bc && bcd < 34 && (!b.target || bestD > 16)) { goal = bc.pos; kind = 'chest'; }
+      if (b.deckPost) { goal = b.deckPost; kind = 'deck'; }
     }
+    if (!goal && b.role === 'attack' && b.deckT <= 0 && b.deckCd <= 0) {
+      b.deckPost = deckPost(b);
+      b.deckT = 14 + Math.random() * 10;
+      if (b.deckPost) { goal = b.deckPost; kind = 'deck'; }
+    }
+
     if (!goal) {
       kind = 'enemy';
       if (b.target) goal = b.target.pos;
@@ -143,9 +159,43 @@ function botThink(b) {
       b.goalPos.copy(goal);
       b.goalKind = kind;
       b.goalLock = 1.8 + Math.random() * 1.4;
+      b.bestGoalD = 1e9;          // fresh goal: forget the old best approach
       planPath(b, goal);
     }
   }
+}
+
+/* The crate a bot would actually want: a gun while it still has a slot free, or
+   a consumable it can use. Shared by both modes. */
+function nearestWantedChest(b, maxD) {
+  let best = null, bd = maxD;
+  for (const c of G.chests) {
+    if (!c.available || !c.content) continue;
+    if (c.content.item) {
+      if (!botWantsItem(b, c.content.id)) continue;      // no room / not useful
+    } else {
+      const cw = WEAPONS[c.content.id];
+      if (!cw || cw.botOk === false) continue;           // never the crossbow
+      if (b.weapons.length >= 3) continue;               // one looted gun is enough
+    }
+    const dd = b.pos.distanceTo(c.pos);
+    if (dd < bd) { bd = dd; best = c; }
+  }
+  return best;
+}
+
+/* A catwalk waypoint that faces the enemy half, with enough randomness that a
+   sweeping bot walks the ring instead of pacing on one spot. */
+function deckPost(b) {
+  const foe = G.hq ? G.hq[otherTeam(b.team)] : { x: 0, z: 0 };
+  let best = null, bd = -1e9;
+  for (const n of NODES) {
+    if (Math.abs(n.y - MAP.platY) > 0.6) continue;    // ring nodes only
+    if (b.deckPost && n.x === b.deckPost.x && n.z === b.deckPost.z) continue;
+    const score = -Math.hypot(n.x - foe.x, n.z - foe.z) + Math.random() * 14;
+    if (score > bd) { bd = score; best = n; }
+  }
+  return best ? new V3(best.x, best.y, best.z) : null;
 }
 
 function planPath(b, goal) {
@@ -202,6 +252,11 @@ function updateBot(b, dt) {
   if (b.goalLock > 0) b.goalLock -= dt;
   if (b.postT > 0) b.postT -= dt;
   if (b.reactT > 0) b.reactT -= dt;
+  /* catwalk sweep timer, then the cooldown before the next one */
+  if (b.deckT > 0) {
+    b.deckT -= dt;
+    if (b.deckT <= 0) b.deckCd = 22 + Math.random() * 18;
+  } else if (b.deckCd > 0) b.deckCd -= dt;
   if (b.reloadT > 0) { b.reloadT -= dt; if (b.reloadT <= 0) finishReload(b); }
 
   const d = b.diff;
@@ -213,7 +268,24 @@ function updateBot(b, dt) {
   if (tgt && tgt.alive && botCanSee(b, tgt)) visible = true;
   else if (tgt && !tgt.alive) b.target = null;
 
-  const sameFloor = tgt ? Math.abs(tgt.pos.y - b.pos.y) < 1.6 : true;
+  /* 4.8 m, not 1.6: a bot on the catwalk is 4.2 m above the maze floor, so the
+     tight limit made it ignore every enemy below and walk straight back down —
+     the deck was useless as high ground. botCanSee() still casts a real 3D ray,
+     so the deck itself blocks shots at anyone directly underneath. */
+  const sameFloor = tgt ? Math.abs(tgt.pos.y - b.pos.y) < 4.8 : true;
+
+  /* frag: only from a range where the arc actually reaches, and on a cooldown
+     so bots do not carpet the map */
+  if (b.grenadeCd > 0) b.grenadeCd -= dt;
+  else if (visible && tgt) {
+    const gd = Math.hypot(tgt.pos.x - b.pos.x, tgt.pos.z - b.pos.z);
+    if (gd > 7 && gd < 21) {
+      if (botGrenade(b, tgt)) b.grenadeCd = 9 + Math.random() * 7;
+      else b.grenadeCd = 3;                 // no grenade / no clean arc: retry later
+    } else {
+      b.grenadeCd = 1.5;                    // out of range: re-check shortly
+    }
+  }
 
   if (visible && tgt && sameFloor) {
     const dx = tgt.pos.x - b.pos.x, dz = tgt.pos.z - b.pos.z;
@@ -310,14 +382,21 @@ function updateBot(b, dt) {
     b.stuckWin += dt;
     if (b.stuckWin >= 1.0) {
       const moved = Math.hypot(b.pos.x - b.stuckX, b.pos.z - b.stuckZ);
-      /* "Did it get anywhere?" is the only signal that matters. The old gate on
-         intent missed the worst case of all: a bot whose wish vector had been
-         whittled down to a crawl, which is immobile in every practical sense. */
-      if (moved < 0.6 && goalD > 2.5) {
-        b.stuckT += b.stuckWin;
+      /* PROGRESS, not motion. A bot pacing between two equidistant nav nodes
+         covers 1.4 m every second, so the old "did it move" test never fired
+         while it made zero headway — the player just saw a bot walking into a
+         wall. What matters is whether the distance to the goal is shrinking. */
+      const closer = goalD < b.bestGoalD - 0.35;
+      if (closer) {
+        b.bestGoalD = goalD;
+        b.stuckT = 0; b.stuckStage = 0;
+      } else if (goalD > 2.5) {
+        /* no headway: a frozen bot trips the timer twice as fast as one that is
+           at least moving (badly) */
+        b.stuckT += b.stuckWin * (moved < 0.6 ? 1 : 0.6);
         if (b.stuckT >= 1.5) {
-          // badly stuck: abandon the goal, hop, and strike out for a node that at
-          // least points the way we were already heading
+          // badly stuck: strike out for a node that at least points at the goal,
+          // and hold that intermediate target long enough to actually reach it
           b.stuckT = 0; b.stuckStage = 0;
           const gx = b.goalPos.x - b.pos.x, gz = b.goalPos.z - b.pos.z;
           const gl = Math.hypot(gx, gz) || 1;
@@ -332,7 +411,12 @@ function updateBot(b, dt) {
             if (s > bs) { bs = s; n = c; }
           }
           if (!n) n = NODES[(Math.random() * NODES.length) | 0];
-          if (n) { b.goalPos.set(n.x, 0, n.z); planPath(b, b.goalPos); }
+          if (n) {
+            b.goalPos.set(n.x, 0, n.z);
+            b.bestGoalD = 1e9;
+            b.goalLock = 2.2;        // do not let botThink overwrite it at once
+            planPath(b, b.goalPos);
+          }
           b.nudgeT = 1.0; b.nudgeAng = Math.random() * Math.PI * 2; b.hopT = 0.35;
         } else if (b.stuckT >= 0.5 && b.stuckStage < 2) {
           // gentle recovery: repath and sidestep around the obstacle
@@ -349,6 +433,7 @@ function updateBot(b, dt) {
     }
   } else {
     b.stuckX = b.pos.x; b.stuckZ = b.pos.z; b.stuckWin = 0; b.stuckT = 0; b.stuckStage = 0;
+    b.bestGoalD = goalD;
   }
 
   /* A bot standing ON its goal is invisible to the watchdog above, because that
