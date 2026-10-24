@@ -198,6 +198,12 @@ body.touch .invhead .invclose{width:auto;padding:10px 14px;font-size:11px}
 .opstab:hover:not(.on){color:#7fe8c0;background:rgba(64,220,160,.08)}
 #opscanvas{flex:1;width:100%;min-height:0;display:block}
 .opsside{width:284px;flex:none;padding:14px;overflow:auto;display:flex;flex-direction:column;gap:11px}
+.opsdeploy button{width:100%;padding:11px 8px;cursor:pointer;font-family:inherit;
+  font-size:10px;letter-spacing:3px;border:1px solid rgba(64,220,160,.55);
+  background:rgba(64,220,160,.1);color:#8ff0cc;transition:background .12s,color .12s}
+.opsdeploy button:hover{background:rgba(64,220,160,.24);color:#eafff7}
+.opsdeploy button:disabled{border-color:rgba(64,220,160,.18);background:none;
+  color:#2f5a4a;cursor:default}
 .opscard{border:1px solid rgba(64,220,160,.24);padding:11px 12px;background:rgba(64,220,160,.03)}
 .opscard h3{font-size:10px;letter-spacing:3px;color:#7fe8c0;margin-bottom:7px;
   display:flex;justify-content:space-between;align-items:baseline;text-shadow:0 0 12px rgba(64,220,160,.4)}
@@ -341,8 +347,9 @@ body.touch #touch.on{display:block}
 .tbtn{pointer-events:auto;touch-action:none;width:64px;height:50px;border-radius:12px;
   border:1px solid rgba(216,194,124,.3);background:rgba(10,9,5,.6);color:#c9b87a;
   font-family:inherit;font-size:9px;letter-spacing:1.5px;transition:background .1s}
-.tbtn.big{grid-column:span 3;height:62px;font-size:12px;letter-spacing:3px;
+.tbtn.big{grid-column:span 2;height:58px;font-size:12px;letter-spacing:3px;
   border-color:rgba(232,86,47,.45);color:#ffb08a;background:rgba(40,10,6,.6)}
+#tjump{height:58px;font-size:11px;letter-spacing:2px;border-color:rgba(127,232,192,.4);color:#a8e8d0}
 .tbtn:active{background:rgba(216,194,124,.24)}
 .tbtn.on{border-color:#7fe8c0;color:#7fe8c0}
 body.touch #vitals{bottom:172px}
@@ -366,6 +373,7 @@ body.touch #cross{opacity:.35}
   <div id="stick"><div id="knob"></div></div>
   <div id="tbtns">
     <button class="tbtn big" id="tattack">HIT</button>
+    <button class="tbtn" id="tjump">JUMP</button>
     <button class="tbtn" id="tdodge">DODGE</button>
     <button class="tbtn" id="tuse">OPEN</button>
     <button class="tbtn" id="tinv">BAG</button>
@@ -467,13 +475,13 @@ body.touch #cross{opacity:.35}
         <div class="oselmeta">STEAM &amp; NARROW SERVICE<br>ARCHIVE RELAY ONLY</div>
       </div>
     </div>
-    <div class="oselnote">OPERATOR ACCESS IS LOGGED · THE EXIT DOES NOT OPEN WITHOUT 3 FUSES</div>
+    <div class="oselnote">PICK A MAP TO SURVEY — THEN <b>DEPLOY</b> FROM THE CONSOLE TO PLAY IT<br>OPERATOR ACCESS IS LOGGED · THE EXIT DOES NOT OPEN WITHOUT 3 FUSES</div>
   </div>
 </div>
 
 <div id="ach">
   <div class="achbox">
-    <div class="achhead">ACHIEVEMENTS<span id="achcount">0/12</span><span class="x" id="achclose">CLOSE</span></div>
+    <div class="achhead">ACHIEVEMENTS<span id="achcount">0/14</span><span class="x" id="achclose">CLOSE</span></div>
     <div id="achgrid"></div>
     <div class="achnote">PROGRESS IS REMEMBERED ON THIS MACHINE</div>
   </div>
@@ -497,15 +505,15 @@ body.touch #cross{opacity:.35}
     <div><kbd>W A S D</kbd>MOVE</div>
     <div><kbd>MOUSE</kbd>LOOK</div>
     <div><kbd>SHIFT</kbd>SPRINT</div>
-    <div><kbd>CTRL</kbd>CROUCH</div>
-    <div><kbd>LMB</kbd>ATTACK</div>
+    <div><kbd>CTRL</kbd>CROUCH</div>    <div><kbd>LMB</kbd>ATTACK</div>
     <div><kbd>R</kbd>RELOAD</div>
     <div><kbd>E</kbd>INVENTORY</div>
     <div><kbd>RMB</kbd>OPEN LOCKER</div>
     <div><kbd>F</kbd>TORCH</div>
     <div><kbd>1 2 3</kbd>WEAPONS</div>
     <div><kbd>4 5 6</kbd>USE ITEM</div>
-    <div><kbd>SPACE</kbd>DODGE</div>
+    <div><kbd>SPACE</kbd>JUMP</div>
+    <div><kbd>Q</kbd>DODGE</div>
     <div><kbd>O</kbd>OPERATOR MAP</div>
     <div><kbd>M</kbd>MUTE</div>
     <div><kbd>ESC</kbd>PAUSE</div>
@@ -514,7 +522,7 @@ body.touch #cross{opacity:.35}
   <button class="btn" id="startbtn">DESCEND</button>
   <button class="btn" id="continuebtn" style="display:none">CONTINUE</button>
   <button class="btn ops" id="opsbtn">OPERATOR MODE</button>
-  <button class="btn ops" id="achbtn">ACHIEVEMENTS · 0/12</button>
+  <button class="btn ops" id="achbtn">ACHIEVEMENTS · 0/14</button>
   <div class="warn">CONTAINS FLASHING LIGHTS &amp; SUDDEN LOUD NOISES · HEADPHONES RECOMMENDED</div>
 </div>
 
@@ -525,7 +533,7 @@ body.touch #cross{opacity:.35}
   <button class="btn" id="resumebtn">RESUME</button>
   <button class="btn" id="savebtn">SAVE GAME</button>
   <button class="btn ops" id="opsbtn2">OPERATOR MODE</button>
-  <button class="btn ops" id="achbtn2">ACHIEVEMENTS · 0/12</button>
+  <button class="btn ops" id="achbtn2">ACHIEVEMENTS · 0/14</button>
 </div>
 
 <div class="screen hide" id="death">
@@ -1572,6 +1580,7 @@ const player={
   yaw:0,pitch:0,
   hp:100,stamina:100,battery:100,
   eye:1.62,crouch:false,
+  y:0,vy:0,jumpHeld:false,        // vertical offset from a jump + its velocity
   weapon:'pipe',owned:{pipe:true,pistol:false,shotgun:false},
   ammo:{pistolAmmo:0,shells:0},
   mag:{pistol:0,shotgun:0},
@@ -2647,7 +2656,7 @@ function updateHUD(){
   if(dh){
     if(dashT>0){dh.textContent='DODGING';dh.classList.add('cool');}
     else if(dashCd>0){dh.textContent='DODGE · '+dashCd.toFixed(1)+'s';dh.classList.add('cool');}
-    else{dh.textContent='SPACE · DODGE READY';dh.classList.remove('cool');}
+    else{dh.textContent='Q · DODGE READY';dh.classList.remove('cool');}
   }
 }
 
@@ -2986,12 +2995,49 @@ function renderOpsSide(){
      (opsLive()?`<div class="row"><span>● ENTITY</span><b>TRACKED LIVE</b></div>`+
                `<div class="row"><span>■ LOCKER</span><b>UNSEARCHED</b></div>`:'')+
      `</div>`;
+  const midRun=(state==='playing'||state==='paused');
+  const here=midRun&&opsLevel===level;
+  h+=`<div class="opsdeploy"><button id="opsdeploy"${here?' disabled':''}>`+
+     (here?'YOU ARE ON THIS FLOOR'
+          :midRun?`TELEPORT TO LEVEL ${opsLevel}`
+                 :`DEPLOY · PLAY LEVEL ${opsLevel}`)+
+     `</button></div>`;
   h+=`<div class="opsnote">`+
      (state==='playing'
        ? 'SIMULATION HELD WHILE THIS CONSOLE IS OPEN — THE HALLS CANNOT REACH YOU HERE.<br>'
        : 'TITLE-SCREEN CONSOLE — ALL THREE FLOORS ARE MAPPED BEFORE YOU DESCEND.<br>')+
      `OPERATOR ACCESS IS LOGGED. EVERY GATE NEEDS 3 FUSES.</div>`;
   $('#opsside').innerHTML=h;
+  const dep=$('#opsdeploy');
+  if(dep&&!here)dep.addEventListener('click',()=>deployToLevel(opsLevel));
+}
+
+/* Drop into the floor the operator is looking at. Mid-run this is a
+   teleport (the loadout comes with you); otherwise it starts a fresh run. */
+function deployToLevel(lv){
+  const target=clamp(lv,0,LAST_LEVEL);
+  const midRun=(state==='playing'||state==='paused');
+  if(opsOpen)closeOps();
+  if(pwOpen)closePw();
+  if(opsSelectOpen)closeOpsSelect();
+  if(midRun){
+    if(state==='paused')setState('playing');
+    loadLevel(target,null);
+    player.fuses=0;exitPowered=false;
+    player.depth=Math.max(player.depth,target);
+    updateLevelHUD();
+    showLevelCard();
+    toast(`OPERATOR RELOCATION — LEVEL ${target} · ${LV().name}`,2600);
+    if(!touchMode)requestLock();
+  }else{
+    level=target;
+    loadLevel(level,null);
+    player.fuses=0;exitPowered=false;
+    player.depth=level;
+    restoredRun=false;
+    startGame();
+    showLevelCard();
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -3269,6 +3315,7 @@ function bindBtn(sel,fn){
   });
 }
 bindBtn('#tattack',()=>attack());
+bindBtn('#tjump',()=>tryJump());
 bindBtn('#tdodge',()=>tryDash());
 bindBtn('#tuse',()=>{if(chestTarget)openChest(chestTarget);});
 bindBtn('#tinv',()=>{invOpen?closeInv():openInv();});
@@ -3846,6 +3893,18 @@ function tryDash(){
   player.shake=Math.max(player.shake,.16);
   return true;
 }
+
+/* ---- jump (SPACE): a real hop with gravity, no ceiling clipping ---- */
+const GRAVITY=19.5, JUMP_V=5.1, JUMP_CEIL=1.55;  // ~0.67m apex
+function tryJump(){
+  if(state!=='playing'||player.dead)return false;
+  if(player.y>0.02||player.vy!==0)return false;   // no double jump
+  if(player.crouch)return false;
+  player.vy=JUMP_V;
+  player.y=0.001;
+  AU.step(.07,1.28);
+  return true;
+}
 function updatePlayer(dt){
   if(player.dead)return;
 
@@ -3880,10 +3939,19 @@ function updatePlayer(dt){
   let spd=sprinting?5.9:(player.crouch?1.75:3.35);
   if(player.stamina<=0)spd=Math.min(spd,2.1);
 
-  // ---- dodge dash (SPACE): a short committed burst, costs stamina ----
+  // ---- dodge dash (Q): a short committed burst, costs stamina ----
   dashCd=Math.max(0,dashCd-dt);
   if(dashT>0)dashT-=dt;
-  if(keys.Space)tryDash();
+  if(keys.KeyQ)tryDash();
+
+  // ---- jump (SPACE): vertical only, resolved before the eye height ----
+  if(keys.Space)tryJump();
+  if(player.y>0||player.vy!==0){
+    player.vy-=GRAVITY*dt;
+    player.y+=player.vy*dt;
+    if(player.y>=JUMP_CEIL){player.y=JUMP_CEIL;player.vy=Math.min(0,player.vy);}
+    if(player.y<=0){player.y=0;player.vy=0;}
+  }
 
   if(sprinting){
     player.stamina-=dt*16;
@@ -3950,7 +4018,7 @@ function updatePlayer(dt){
   // camera
   const bobY=Math.sin(player.bob)*0.042*player.bobAmt;
   const bobX=Math.cos(player.bob*.5)*0.03*player.bobAmt;
-  camera.position.set(player.pos.x+bobX*right.x,player.eye+bobY,player.pos.z+bobX*right.z);
+  camera.position.set(player.pos.x+bobX*right.x,player.eye+player.y+bobY,player.pos.z+bobX*right.z);
   player.shake=Math.max(0,player.shake-dt*2.4);
   const sh=player.shake;
   camera.rotation.x=player.pitch+rand(-1,1)*sh*.02;
@@ -4212,6 +4280,7 @@ function placePlayer(){
     if(d>bestD){bestD=d;bestYaw=a;}
   }
   player.yaw=bestYaw;player.pitch=0;
+  player.y=0;player.vy=0;
   camera.position.set(player.pos.x,1.62,player.pos.z);
   camera.rotation.set(0,player.yaw,0);
 }
@@ -4345,9 +4414,10 @@ window.__BR={player,get monsters(){return monsters;},get state(){return state;},
   get opsOpen(){return opsOpen;},get pwOpen(){return pwOpen;},
   get level(){return level;},get mazes(){return LEVEL_MAZES;},levelExitCell,
   get opsLevel(){return opsLevel;},
-  requestOps,openOps,closeOps,
+  requestOps,openOps,closeOps,deployToLevel,
   saveGame,hasSave,deleteSave,openAch,closeAch,openOpsSelect,closeOpsSelect,chooseOpsLevel,
-  get dashT(){return dashT;},get dashCd(){return dashCd;},tryDash,
+  get dashT(){return dashT;},get dashCd(){return dashCd;},tryDash,tryJump,
+  get playerY(){return player.y;},get playerVy(){return player.vy;},
   get achs(){return [...achUnlocked];},
   get decals(){return decals;},addBlood,
   get diff(){return diff;},setDiff(i){diff=clamp(i,0,DIFFS.length-1);updateDiffButtons();},
