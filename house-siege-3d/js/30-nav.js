@@ -51,15 +51,18 @@ function buildWaypoints() {
   const E = xs.map(x => addNode(D, x, PY));
   const W = xs.map(x => addNode(-D, x, PY));
   for (const arr of [S, Nn, E, W]) for (let k = 0; k + 1 < arr.length; k++) link(arr[k], arr[k + 1]);
-  /* corners: the inner railings seal each corner, so route around them along the
-     deck midline via a corner node. (The old code linked the wrong ends of two
-     sides, creating 59 m "shortcuts" straight through the map — bots pathing on
-     them walked into walls and ground there.) */
+  /* Corners: the inner railings seal each corner, so route around them along the
+     deck midline via a corner node.
+     The west side had the two corner links swapped — cNW was joined to W[last]
+     (z = +26) and W[0] (z = -26) to cSW, which put a 59 m edge straight down the
+     west wall. Bots that pathed along it ground into that wall and stood there,
+     which is exactly the "AI stuck on a wall" behaviour. W[0] is the NORTH end
+     and W[last] the SOUTH end, so NW takes W[0] and SW takes W[last]. */
   const cSE = addNode(D, D, PY), cNE = addNode(D, -D, PY), cNW = addNode(-D, -D, PY), cSW = addNode(-D, D, PY);
   link(S[S.length - 1], cSE); link(cSE, E[E.length - 1]);
   link(E[0], cNE); link(cNE, Nn[Nn.length - 1]);
-  link(Nn[0], cNW); link(cNW, W[W.length - 1]);
-  link(W[0], cSW); link(cSW, S[0]);
+  link(Nn[0], cNW); link(cNW, W[0]);
+  link(W[W.length - 1], cSW); link(cSW, S[0]);
 
   /* stairs: chain the four ramps to the floor and to the ring */
   const groundNodes = [];
@@ -102,6 +105,10 @@ function buildWaypoints() {
 
 function link(a, b) {
   if (!a || !b || a === b) return;
+  /* No corridor in this map is longer than ~14 m, so a longer "edge" is always
+     a wiring mistake (a corner joined to the wrong end of a side). Reject it
+     instead of handing bots a straight line through solid geometry. */
+  if (Math.hypot(a.x - b.x, a.z - b.z) > 14) return;
   if (a.nb.indexOf(b) < 0) a.nb.push(b);
   if (b.nb.indexOf(a) < 0) b.nb.push(a);
 }
