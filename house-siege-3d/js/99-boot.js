@@ -20,7 +20,11 @@ function boot() {
   const tick = () => {
     if (i >= steps.length) {
       $('loading').classList.add('hide');
-      $('menu').classList.add('show');
+      /* Only reveal the menu if no match has started meanwhile. The progress
+         chain runs on timers for about a second, so a deploy click (or an
+         automated test) that lands inside that window used to get the menu
+         painted straight back over a running match. */
+      if (G.state === 'menu') $('menu').classList.add('show');
       setTimeout(() => $('loading').style.display = 'none', 600);
       return;
     }
