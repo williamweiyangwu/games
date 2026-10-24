@@ -240,8 +240,14 @@ function finishSpawn(a, slot) {
   // fresh navigation state: no stale stuck history or half-walked path
   a.path = null; a.pathIdx = 0; a.goalPos.set(1e9, 0, 0); a.goalKind = ''; a.goalLock = 0;
   a.defendPost = null; a.postT = 0; a.huntTarget = null;
+  /* catwalk sweep: staggered so a whole team does not rush the deck at once */
+  a.deckPost = null;
+  a.deckT = 0;
+  a.deckCd = 5 + Math.random() * 22;
+  a.grenadeCd = 6 + Math.random() * 8;
   a.stuckX = a.pos.x; a.stuckZ = a.pos.z; a.stuckWin = 0; a.stuckT = 0; a.stuckStage = 0; a.nudgeT = 0; a.hopT = 0;
   a.arriveT = 0;
+  a.bestGoalD = 1e9;
   if (a.mesh) { a.mesh.visible = true; a.mesh.position.copy(a.pos); }
   if (a.np) a.np.style.opacity = '1';
 }
