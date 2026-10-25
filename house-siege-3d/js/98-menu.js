@@ -32,12 +32,13 @@ const HT_PAGES = [
       <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td><td>Move</td></tr>
       <tr><td><kbd>MOUSE</kbd></td><td>Look / aim</td></tr>
       <tr><td><kbd>LEFT CLICK</kbd></td><td>Fire · use an item · <b>hold</b> to draw the crossbow or aim a grenade</td></tr>
-      <tr><td><kbd>Q</kbd></td><td>Aim down sights — tighter spread, zoom, slower turn (toggle)</td></tr>
+      <tr><td><kbd>Q</kbd></td><td>Aim down sights — tighter spread, zoom, slower turn (toggle). The <b>AWP</b> gets a full scope: mil-dot reticle, 3.7× zoom, very slow turn</td></tr>
       <tr><td><kbd>R</kbd></td><td>Reload</td></tr>
       <tr><td><kbd>E</kbd></td><td>Take what is in a crate</td></tr>
       <tr><td><kbd>SHIFT</kbd></td><td>Sprint (forward)</td></tr>
       <tr><td><kbd>SPACE</kbd></td><td>Jump</td></tr>
       <tr><td><kbd>1</kbd>–<kbd>5</kbd></td><td>Select a bag slot</td></tr>
+      <tr><td><kbd>MIDDLE CLICK</kbd></td><td>Cycle to the next bag slot</td></tr>
       <tr><td><kbd>TAB</kbd></td><td>Scoreboard (kills / deaths / HP)</td></tr>
       <tr><td><kbd>ESC</kbd></td><td>Pause</td></tr>
     </table>
@@ -53,7 +54,7 @@ const HT_PAGES = [
       <tr><td>MP5 SMG</td><td>17</td><td>30</td><td>Fast full-auto, great indoors</td></tr>
       <tr><td>AK-47 Rifle</td><td>31</td><td>30</td><td>Best all-rounder</td></tr>
       <tr><td>SPAS-12</td><td>12×8</td><td>6</td><td>One-shot at close range</td></tr>
-      <tr><td>AWP Sniper</td><td>115</td><td>5</td><td>Body-shot kill, punishing reload</td></tr>
+      <tr><td>AWP Sniper</td><td>115</td><td>5</td><td>Body-shot kill, punishing reload. <b>Q for the scope</b> — mil-dot reticle, 3.7× zoom, slower turn</td></tr>
       <tr><td>Crossbow</td><td>105</td><td>3</td><td><b>2 s draw</b> per bolt, only 30 m of range — a duelling weapon</td></tr>
     </table>
     <h4>ITEMS — the teal crates</h4>
