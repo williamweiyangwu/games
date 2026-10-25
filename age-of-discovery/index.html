@@ -3052,7 +3052,9 @@ function spawnPlayerShip(cls, x, z, heading) {
   const def = SHIP_CLASSES[cls];
   playerShip = buildShipModel(def.scale);
   playerShip.rotation.order = 'YXZ';
-  playerShip.position.set(x, 0, z);
+  // start her on the local wave: spawning at y = 0 made the hull jump up to a
+  // metre on the first physics step
+  playerShip.position.set(x, waveHeightAt(x, z, elapsed), z);
   playerShip.rotation.y = heading;
   scene.add(playerShip);
   Ship.maxSpeed = def.maxSpeed;
@@ -4047,6 +4049,20 @@ function goAshore(port) {
     Player.x = lisbonDock.x;
     Player.z = lisbonDock.z;
     Player.lookYaw = 0;
+    // She comes alongside the pier she sailed from. Without this the ship is
+    // left out in the river while you stand on the quay, and the "Board your
+    // ship" prompt (which needs you within 9 m of the hull) can never fire.
+    if (playerShip) {
+      playerShip.position.x = lisbonBerth.x;
+      playerShip.position.z = lisbonBerth.z;
+      playerShip.position.y = waveHeightAt(lisbonBerth.x, lisbonBerth.z, elapsed);
+      Ship.heading = 0;                       // the same berth spawnShipInLisbon uses
+      SHIP_PHYS.vf = 0; SHIP_PHYS.vl = 0; SHIP_PHYS.yawRate = 0;
+      Ship.speed = 0;
+      Game.ship.x = lisbonBerth.x;
+      Game.ship.z = lisbonBerth.z;
+      Game.ship.heading = Ship.heading;
+    }
   } else {
     const dx = playerShip.position.x - port.position.x;
     const dz = playerShip.position.z - port.position.z;
@@ -4057,7 +4073,10 @@ function goAshore(port) {
     Player.lookYaw = Math.atan2(dx / d, dz / d);
   }
   Player.vx = Player.vy = Player.vz = 0;
-  Player.y = supportY(Player.x, Player.z, 12);
+  // the boats put you in the shallows, not on the seabed: starting at the
+  // harbour floor dropped the camera several metres before buoyancy lifted it
+  const sup = supportY(Player.x, Player.z, 12);
+  Player.y = Math.max(sup, -1.0);
   Player.onGround = true;
   Player.lookPitch = 0;
   SHIP_PHYS.vf = 0; SHIP_PHYS.vl = 0; SHIP_PHYS.yawRate = 0;
@@ -4083,12 +4102,21 @@ function boardShip() {
   const p = deckLocalToWorld(0, 2.2);
   Player.x = p.x;
   Player.z = p.z;
-  Player.y = playerShip.position.y + SHIP_CLASSES[Game.ship.cls].scale * 1.85 + 1.7;
-  Player.lookYaw = Ship.heading + Math.PI;
+  Player.y = deckEyeHeight();
+  // lookYaw is a small look-AROUND offset from the hull's heading, never an
+  // absolute bearing: assigning one here made the view swing at twice the
+  // ship's turn rate and snap hundreds of degrees on the first mouse move.
+  Player.lookYaw = 0;
   Player.lookPitch = 0;
   Ship.anchored = false;
   showToast('Aboard your ship — find the wheel');
   updateHUD();
+}
+
+// Eye height of a man standing on the deck plane, before the hull's heel.
+// Used wherever the player is put onto the deck so every path agrees.
+function deckEyeHeight() {
+  return playerShip.position.y + SHIP_CLASSES[Game.ship.cls].scale * 1.85 + 1.7;
 }
 
 function deliverReadyCommissions() {
@@ -4814,9 +4842,16 @@ function loadGame(slot) {
     Player.x = lisbonSpawn.x;
     Player.z = lisbonSpawn.z;
   }
-  // physics state is not stored: settle on the ground you were standing on
+  // physics state is not stored: settle where you were standing. A save taken
+  // at sea must settle on the DECK, not on the harbour floor below the hull —
+  // otherwise the camera starts tens of metres underwater and snaps up.
   Player.vx = Player.vy = Player.vz = 0;
-  Player.y = supportY(Player.x, Player.z, 60);
+  if (Player.mode === 'foot' || !playerShip) {
+    // a life saved in the water resumes at the waterline, not on the river bed
+    Player.y = Math.max(supportY(Player.x, Player.z, 60), -1.0);
+  } else {
+    Player.y = deckEyeHeight();
+  }
   Player.onGround = true;
   Player.inWater = false; Player.wetT = 0;
   SHIP_PHYS.vf = 0; SHIP_PHYS.vl = 0; SHIP_PHYS.yawRate = 0;
@@ -4988,6 +5023,9 @@ function stepPhysics(h) {
     if (Game.ship) updateShipPhysics(h);
   } else if (Player.mode === 'helm' && Game.ship) {
     updateShipPhysics(h);
+    // the standing height tracks the deck while you steer, so stepping back
+    // from the wheel never pops the camera to a stale height
+    Player.y = deckEyeHeight();
   }
   // a ship short of hands barely moves
   if (Game.ship && Player.mode !== 'foot' && Game.crew < SHIP_CLASSES[Game.ship.cls].minCrew) {
