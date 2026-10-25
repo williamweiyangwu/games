@@ -3226,9 +3226,13 @@ function applyEffect(e) {
     if (e.cargo === 'all') {
       Game.inventory = {};
     } else {
+      // never load more than the hold will take
+      let room = cargoRoom();
       for (const k in e.cargo) {
-        Game.inventory[k] = Math.max(0, (Game.inventory[k] || 0) + e.cargo[k]);
-        if (Game.inventory[k] === 0) delete Game.inventory[k];
+        const want = Math.max(0, e.cargo[k] || 0);
+        const take = Math.min(want, room);
+        if (take > 0) { Game.inventory[k] = (Game.inventory[k] || 0) + take; room -= take; }
+        if (!Game.inventory[k]) delete Game.inventory[k];
       }
     }
   }
@@ -3295,7 +3299,12 @@ function chooseOption(opt) {
   if (opt.death) return die(opt.death);
   if (opt.action) opt.action();
   if (opt.next) return renderDialog(DLG[opt.next]());
-  if (opt.stay) return renderDialog(currentDialog);
+  if (opt.stay) {
+    // A trading dialog re-prices itself after every purchase, so the labels
+    // always match what the hold can still take. Without this the buttons
+    // keep their old numbers and you could pay for cargo that never loads.
+    return renderDialog(currentDialog.rebuild ? currentDialog.rebuild() : currentDialog);
+  }
   closeDialog();
 }
 
@@ -3319,6 +3328,21 @@ function cargoValue() {
   let v = 0;
   for (const k in Game.inventory) v += Game.inventory[k] * TRADE_GOODS[k].sellPrice;
   return v;
+}
+
+// The hold is only as big as the ship that carries it. A skiff swallows 10
+// bales, a caravel 25, a nau 50 - without this the cargo cap in SHIP_CLASSES
+// was decorative and you could buy a skiff full of gems and then some.
+function cargoUnits() {
+  let n = 0;
+  for (const k in Game.inventory) n += (Game.inventory[k] || 0);
+  return n;
+}
+function cargoCapacity() {
+  return Game.ship ? SHIP_CLASSES[Game.ship.cls].cargo : Infinity;
+}
+function cargoRoom() {
+  return Math.max(0, cargoCapacity() - cargoUnits());
 }
 
 function discoverIsland(port) {
@@ -3398,6 +3422,12 @@ const DLG = {
         label: `Buy a ${c.name} outright — ${c.instant}g (ready now)`,
         req: { gold: c.instant },
         action: () => {
+          // a smaller hold than the cargo you already carry is a bad trade
+          if (cargoUnits() > c.cargo) {
+            addLog(`Your ${cargoUnits()} bales will not fit aboard a ${c.name}. Sell the cargo first.`, 'bad');
+            showToast(`The ${c.name} only carries ${c.cargo} bales`);
+            return;
+          }
           if (Game.ship) { Game.gold += Math.floor(SHIP_CLASSES[Game.ship.cls].price * 0.25); addLog('Your old ship is broken up for timber and nails.'); }
           Game.gold -= c.instant;
           spawnShipInLisbon(key);
@@ -3613,19 +3643,35 @@ const DLG = {
       };
     }
     const localPrice = Math.floor(local.buyPrice * 0.8);
-    const opts = [
-      { label: `Buy 1 ${local.name} — ${localPrice}g (local price)`, req: { gold: localPrice }, effect: { gold: -localPrice, cargo: { [localKey]: 1 } }, stay: true },
-      { label: `Buy 5 ${local.name} — ${localPrice * 5}g`, req: { gold: localPrice * 5 }, effect: { gold: -localPrice * 5, cargo: { [localKey]: 5 } }, stay: true },
-    ];
+    const room = cargoRoom();
+    const opts = [];
+    // a buy is only offered if it fits: a skiff takes 10 bales, a caravel 25,
+    // a nau 50. If the hold is full the trader tells you so instead.
+    const buy = (key, n, unit, name) => {
+      const fits = Math.min(n, room);
+      if (fits <= 0) return;
+      opts.push(fits < n
+        ? { label: `Buy ${fits} ${name} — ${unit * fits}g (all that will fit)`, req: { gold: unit * fits },
+            effect: { gold: -unit * fits, cargo: { [key]: fits } }, stay: true }
+        : { label: `Buy ${n} ${name} — ${unit * n}g${n === 1 ? ' (local price)' : ''}`, req: { gold: unit * n },
+            effect: { gold: -unit * n, cargo: { [key]: n } }, stay: true });
+    };
+    buy(localKey, 1, localPrice, local.name);
+    buy(localKey, 5, localPrice, local.name);
     for (const key of Object.keys(TRADE_GOODS)) {
       if (key === localKey) continue;
       const g = TRADE_GOODS[key];
-      opts.push({ label: `Buy 1 ${g.name} — ${g.buyPrice}g`, req: { gold: g.buyPrice }, effect: { gold: -g.buyPrice, cargo: { [key]: 1 } }, stay: true });
+      buy(key, 1, g.buyPrice, g.name);
+    }
+    if (room <= 0) {
+      opts.length = 0;
+      opts.push({ label: `Your hold is full — ${cargoUnits()} of ${cargoCapacity()} bales. Sell in Lisbon and come back.`, stay: true });
     }
     opts.push({ label: "Trade is done." });
     return {
       who: "The Natives", role: port.def.name, portrait: "\u{1F9F1}",
       text: `The people of ${port.def.name} spread bolts of cloth and baskets of ${local.name.toLowerCase()} on the sand, eyeing your ship with open curiosity. They trade gladly — ${local.name.toLowerCase()} is theirs to sell cheap, and they will take your silver for anything else you fancy.`,
+      rebuild: () => DLG.trade_post({ port }),      // re-price after every purchase
       options: opts,
     };
   },
@@ -4518,9 +4564,10 @@ function showToast(msg, duration = 2600) {
 
 function updateCargoBox() {
   const entries = Object.entries(Game.inventory).filter(([k, v]) => v > 0);
+  const cap = Game.ship ? ` / ${SHIP_CLASSES[Game.ship.cls].cargo}` : '';
   document.getElementById('cargoVal').textContent = entries.length === 0
     ? 'empty'
-    : entries.map(([k, v]) => `${TRADE_GOODS[k].icon} ${TRADE_GOODS[k].name} ×${v}`).join(', ');
+    : `${cargoUnits()}${cap} — ` + entries.map(([k, v]) => `${TRADE_GOODS[k].icon} ${TRADE_GOODS[k].name} ×${v}`).join(', ');
 }
 
 function fmtLife() {
@@ -5071,6 +5118,8 @@ window.__voyage = {
   triggerSeaEvent, triggerStreetEvent, goAshore, die,
   makeHouse, mergeParts, facadeGeo, gableRoofGeo, buildShipModel,
   toggleAnchor, spaceLatch: () => spaceLatch,
+  cargoUnits, cargoCapacity, cargoRoom, drawMinimap, updateDayNight, updateCameraRig,
+  updateHUD, updateCargoBox, applyEffect, cargoValue, fmtClock, stepPhysics,
   get ship() { return playerShip; }
 };
 </script>
