@@ -46,15 +46,29 @@ function initInput() {
       const w = st ? defOf(st.id) : null;
       if (w && !w.auto) tryFire(G.player);
     }
-    /* MIDDLE CLICK: cycle the bag — the number keys stay as they were */
-    if (e.button === 1) {
-      e.preventDefault();                 // otherwise the browser autoscrolls
-      cycleWeapon();
-    }
   });
-  /* a middle click also fires auxclick after mouseup; swallow it too so no
-     autoscroll drag can start while the pointer is locked */
-  document.addEventListener('auxclick', e => { if (e.button === 1) e.preventDefault(); });
+
+  /* ---- MIDDLE MOUSE BUTTON: cycle the bag -------------------------------
+     Bound to the WINDOW, not the canvas: a middle click that lands on any
+     element other than the canvas (or that a browser delivers while the
+     pointer is locked) still has to change weapon. The number keys are
+     untouched. `preventDefault` stops the browser starting an autoscroll. */
+  let midDown = 0, midAux = 0;
+  window.addEventListener('mousedown', e => {
+    if (e.button !== 1) return;
+    midDown++;
+    e.preventDefault();
+    if (G.state === 'playing') cycleWeapon();
+  });
+  /* A normal middle click fires mousedown AND auxclick, so counting both and
+     only acting on the extra ones means a setup that reports the button as
+     auxclick alone still cycles — and a normal click never cycles twice. */
+  window.addEventListener('auxclick', e => {
+    if (e.button !== 1) return;
+    e.preventDefault();
+    midAux++;
+    if (midAux > midDown) { midAux = midDown; if (G.state === 'playing') cycleWeapon(); }
+  });
   window.addEventListener('mouseup', e => {
     if (e.button !== 0) return;
     /* releasing the trigger is what actually throws a grenade */
