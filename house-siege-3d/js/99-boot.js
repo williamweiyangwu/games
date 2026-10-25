@@ -46,8 +46,41 @@ function boot() {
   scene.add(camera);
   clock = new THREE.Clock();
   G.clock = clock;
+  staleShellGuard();
   tick();
   requestAnimationFrame(loop);
+}
+
+/* ------------------------------------------------------------
+   STALE SHELL GUARD
+   index.html is the one file without a ?v= token, so a browser that keeps a
+   cached copy of the page keeps naming the OLD script URLs — and those files
+   still exist on the server, so the game silently runs the previous build
+   (this is how "the new button does nothing" happens). Ask the server for a
+   fresh copy of the page; if it names a newer build, reload once.
+   ------------------------------------------------------------ */
+function staleShellGuard() {
+  let here = 0;
+  for (const s of document.querySelectorAll('script[src*="?v="]')) {
+    const m = s.src.match(/[?&]v=(\d+)/);
+    if (m) here = Math.max(here, +m[1]);
+  }
+  if (!here) return;
+  fetch(location.href, { cache: 'no-store' })
+    .then(r => (r.ok ? r.text() : ''))
+    .then(html => {
+      let fresh = 0;
+      for (const m of html.matchAll(/[?&]v=(\d+)/g)) fresh = Math.max(fresh, +m[1]);
+      if (fresh <= here) return;
+      /* one reload per version, so a proxy that keeps serving the stale copy
+         can never turn this into a loop */
+      let done = '';
+      try { done = sessionStorage.getItem('wh_build_reload') || ''; } catch (e) { /* private mode */ }
+      if (done === String(fresh)) return;
+      try { sessionStorage.setItem('wh_build_reload', String(fresh)); } catch (e) { /* ignore */ }
+      location.reload();
+    })
+    .catch(() => { /* offline or blocked: nothing to do */ });
 }
 
 /* debug handle (used by the automated smoke test) */
