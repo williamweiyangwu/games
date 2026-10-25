@@ -93,6 +93,15 @@ function updatePlayer(dt) {
     camera.position.z += rand(-1, 1) * G.shake * 0.24;
     camera.rotation.z += rand(-1, 1) * G.shake * 0.05;
   }
+  /* easing out of the bystander camera: the death pose can be looking straight
+     down, so rotating straight to level whipped the view 90 deg in one frame.
+     Rotation only — you respawn at your own spawn, far from where you fell, so
+     blending the POSITION too would fly the camera across the map. */
+  if (p.viewBlend > 0) {
+    p.viewBlend -= dt;
+    const k = Math.max(0, p.viewBlend) / VIEW_BLEND;      // 1 -> 0
+    camera.quaternion.slerp(_exitQuat, k);
+  }
 
   // weapon switch keys handled in keydown
   updateViewModel(dt, speed);
@@ -101,6 +110,11 @@ function updatePlayer(dt) {
 /* bystander camera state: kept across the death so the view can be smoothed */
 const SPEC = { pos: new V3(), look: new V3(), t: 0, init: false, spot: -1 };
 const _specPrev = new V3();
+/* the pose the camera is leaving when you respawn — blending out of the
+   bystander view instead of snapping the pitch from -90 deg to 0 in one frame */
+const _exitPos = new V3();
+const _exitQuat = new THREE.Quaternion();
+const VIEW_BLEND = 0.35;
 
 /* ------------------------------------------------------------
    BYSTANDER CAMERA — after you die you keep watching
@@ -184,8 +198,18 @@ function updateSpectator(dt) {
     pos = new V3(G.deathPos.x, G.deathPos.y + 1.9, G.deathPos.z);
     if (pointSolid(pos.x, pos.y, pos.z)) pos.set(G.deathPos.x, G.deathPos.y + 0.6, G.deathPos.z);
   }
-  if (!SPEC.init) { SPEC.pos.copy(pos); SPEC.look.copy(want.look); SPEC.init = true; }
-  const s = 1 - Math.pow(0.002, dt);          // smooth, frame-rate independent
+  if (!SPEC.init) {
+    /* Start where the player's own eyes were and glide from there. Copying the
+       target pose straight in snapped the view ~44 deg down in a single frame. */
+    SPEC.pos.copy(camera.position);
+    const dir = camera.getWorldDirection(new V3());
+    SPEC.look.copy(SPEC.pos).addScaledVector(dir, 6);
+    SPEC.init = true;
+  }
+  /* ramp the glide in over the first quarter second: the camera eases out of the
+     first-person pose instead of whipping straight to the killer */
+  const ramp = Math.min(1, SPEC.t / 0.25);
+  const s = (1 - Math.pow(0.002, dt)) * ramp;   // smooth, frame-rate independent
   _specPrev.copy(SPEC.pos);
   SPEC.pos.lerp(pos, s);
   SPEC.look.lerp(want.look, s);
@@ -215,7 +239,12 @@ function respawnActor(a) {
   if (a.isPlayer) {
     $('carryBanner').classList.remove('show');
     G.player.yaw = 0; G.player.pitch = 0;
-    /* leave the bystander camera behind */
+    /* leave the bystander camera behind — but blend out of it: the death pose
+       can be looking straight down, so snapping to first person whipped the
+       view 90 deg in one frame */
+    _exitPos.copy(camera.position);
+    _exitQuat.copy(camera.quaternion);
+    a.viewBlend = VIEW_BLEND;
     G.killer = null; G.killerWeapon = '';
     SPEC.t = 0; SPEC.init = false; SPEC.spot = -1;
     if (VM.group) VM.group.visible = true;
