@@ -47,6 +47,12 @@
   .screen h1 { font-size: 46px; letter-spacing: 6px; color: #ffd700; text-shadow: 0 3px 14px rgba(0,0,0,0.8); }
   .screen .subtitle { color: #9fb8cc; font-style: italic; font-size: 16px; margin-bottom: 6px; }
   .screen .desc { max-width: 620px; color: #cfc0a0; font-size: 15px; line-height: 1.75; margin-bottom: 6px; }
+  /* the ledger read aloud at the end of a life */
+  .ledger { margin: 12px auto 4px; max-width: 430px; text-align: left; font-size: 14px; }
+  .ledger .lrow { display: flex; justify-content: space-between; gap: 18px; padding: 3px 0; border-bottom: 1px dotted rgba(216,198,150,0.22); }
+  .ledger .lrow span { color: #b8a884; }
+  .ledger .lrow b { color: #f0d090; font-weight: 600; white-space: nowrap; }
+  .ledger .lhead { text-align: center; color: #f0d090; letter-spacing: 2px; font-size: 13px; margin-bottom: 4px; }
   .screen .controls-info {
     display: flex; flex-wrap: wrap; gap: 8px 22px; justify-content: center;
     color: #8fa4b5; font-size: 13px; margin-bottom: 12px;
@@ -232,15 +238,18 @@
     scarcely a coin to your name. You have one hour of life before you.
     Haul cargo on the docks, commission a ship at the estaleiro, hire brave sailors
     in the tavern, and sail beyond the edge of the known world.
+    Fish off the pier head, pray at the S&eacute;, and talk with every citizen you meet &mdash;
+    each one will trade words with you, and most will throw dice or ask riddles for silver.
     Buy where goods are cheap, sell them at home, and carve your name into the age &mdash;
     from unknown citizen to Fidalgo of the Realm.
+    When your hour is done, the ledger of your life will be read aloud.
     But beware: the sea is vast, and a man can <i>die an unnatural death</i> upon it.
   </div>
   <div class="controls-info">
     <div><b>W A S D</b><span> Move / Sail</span></div>
     <div><b>Mouse</b><span> Look</span></div>
-    <div><b>E</b><span> Interact / Helm</span></div>
-    <div><b>Space</b><span> Anchor</span></div>
+    <div><b>E</b><span> Talk / Interact / Helm</span></div>
+    <div><b>Space</b><span> Jump / Climb out / Anchor</span></div>
     <div><b>Esc</b><span> Menu &amp; Save</span></div>
   </div>
   <button id="beginBtn" class="bigbtn">BEGIN YOUR LIFE</button>
@@ -333,7 +342,7 @@
 <div id="touchControls">
   <div id="stickBase"><div id="stickKnob"></div></div>
   <div id="btnE" class="touch-btn">E</div>
-  <div id="btnSpace" class="touch-btn">ANCHOR</div>
+  <div id="btnSpace" class="touch-btn">JUMP&middot;&#9873;</div>
 </div>
 
 <script type="module">
@@ -2449,6 +2458,16 @@ function buildLisbon(group, island, pointAt) {
     }
   }
 
+  // a fisher's basket and a rod at the pier head, by the ladder
+  {
+    const basket = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.32, 0.5, 8), CITY_MAT.timber);
+    add(basket, -1.6, Y + 0.25, 52);
+    const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 3.4, 5), CITY_MAT.timber);
+    add(rod, 1.9, Y + 1.7, 52.4);
+    rod.rotation.z = 0.45;
+  }
+  addInteractable(OX + 0, OZ + 52, Y, 3.0, "Fish from the pier", () => openDialog('fish'));
+
   // ---------------------------------------------------------
   //  ROSSO - the second great square, with a fountain
   // ---------------------------------------------------------
@@ -2714,6 +2733,47 @@ function buildLisbon(group, island, pointAt) {
   npc(8.2, 24, 0x5a5a4a, 0x2a2a1a, 0xffd700, "Zé Caolho, the dockmaster", () => openDialog('dockmaster'), Math.PI);
 
   // ---------------------------------------------------------
+  //  THE SÉ - the cathedral, on the one block the grid left empty
+  // ---------------------------------------------------------
+  {
+    const cx = -67, cz = -121, w = 34, d = 22;
+    const nave = new THREE.Mesh(new THREE.BoxGeometry(w, 11, d), CITY_MAT.stone);
+    nave.castShadow = nave.receiveShadow = true;
+    add(nave, cx, Y + 5.5, cz);
+    coll(cx, cz, w, d, Y + 11);
+    // the ridge runs across the nave, so the gable end faces the street
+    const roof = makeGableRoof(w, d, 6, CITY_MAT.roof, 0.7);
+    add(roof, cx, Y + 11, cz);
+    // a bell tower at the front-left corner, with a spire
+    const tx = cx - w / 2 + 4.5, tz = cz + d / 2 - 4.5;
+    const tower = new THREE.Mesh(new THREE.BoxGeometry(8, 22, 8), CITY_MAT.stone);
+    tower.castShadow = true;
+    add(tower, tx, Y + 11, tz);
+    coll(tx, tz, 8, 8, Y + 22);
+    const spire = new THREE.Mesh(new THREE.ConeGeometry(6.2, 7, 4), CITY_MAT.roof);
+    spire.rotation.y = Math.PI / 4;
+    add(spire, tx, Y + 25.5, tz);
+    // the portal, and slit windows dark against the stone
+    const portal = new THREE.Mesh(new THREE.BoxGeometry(7, 6, 1.2),
+      new THREE.MeshStandardMaterial({ color: 0x1a1410, roughness: 1 }));
+    add(portal, cx, Y + 3, cz + d / 2 + 0.3);
+    for (const wx of [-9, 0, 9]) {
+      const win = new THREE.Mesh(new THREE.BoxGeometry(2.2, 5.5, 0.6),
+        new THREE.MeshStandardMaterial({ color: 0x241c12, roughness: 0.8 }));
+      add(win, cx + wx, Y + 6, cz + d / 2 + 0.2);
+    }
+    for (const wz of [-4, 4]) {
+      const win = new THREE.Mesh(new THREE.BoxGeometry(0.6, 5.5, 2.2),
+        new THREE.MeshStandardMaterial({ color: 0x241c12, roughness: 0.8 }));
+      add(win, cx + w / 2 + 0.2, Y + 6, cz + wz);
+      add(win, cx - w / 2 - 0.2, Y + 6, cz + wz);
+    }
+    // a priest at the door: a quiet way to spend an afternoon
+    npc(cx, cz + d / 2 + 3.4, 0x2a2a3a, null, 0x9fd8ff, "Enter the Sé and pray",
+        () => openDialog('church'), Math.PI);
+  }
+
+  // ---------------------------------------------------------
   //  AMBIENT CITIZENS
   // ---------------------------------------------------------
   const WALK_PATHS = [
@@ -2725,13 +2785,30 @@ function buildLisbon(group, island, pointAt) {
     [{ x: -70, z: 10 }, { x: -40, z: 10 }, { x: -40, z: 22 }, { x: -70, z: 22 }],
   ];
   const ROBES = [0x6b5a3a, 0x3a4a5a, 0x7a4a3a, 0x4a5a3a, 0x5a3a4a, 0x6a6a5a];
+  // Every citizen of Lisbon has a name, a trade and a temperament. Walk up to
+  // one and you may talk, drink, or contend -- dice and riddles for silver.
+  // `skill` is how good they are: it sets the odds they will beat you.
+  const CITIZENS = [
+    { name: "Beatriz", job: "fishwife",  portrait: "\u{1F9D5}", talk: "sardines, and the price of them" },
+    { name: "Álvaro",  job: "cordwainer", portrait: "\u{1F9D4}", talk: "leather, and the hides from Ceuta" },
+    { name: "Duarte",  job: "sailor",   portrait: "\u{1F9D3}", talk: "the Guinea coast and its fevers" },
+    { name: "Catarina", job: "weaver",  portrait: "\u{1F9D5}", talk: "Flemish cloth and Lisbon wool" },
+    { name: "Gil",     job: "porter",   portrait: "\u{1F9D4}", talk: "which crates are heavy and which lie" },
+    { name: "Inês",    job: "baker",    portrait: "\u{1F9D5}", talk: "bread, and the king's new grain tax" },
+  ];
   for (let i = 0; i < WALK_PATHS.length; i++) {
     const p = makePerson(ROBES[i], i % 2 ? 0x2a2a1a : null);
     const start = WALK_PATHS[i][0];
     add(p, start.x, Y, start.z, Math.random() * 6.28);
+    const id = CITIZENS[i % CITIZENS.length];
     // ox/oz carry the group offset so the collision code can compare these
     // local positions against world-space Player.x/z
-    walkers.push({ obj: p, ox: OX, oz: OZ, path: WALK_PATHS[i], seg: 0, phase: Math.random() * 6.28, speed: 1.0 + Math.random() * 0.5 });
+    walkers.push({
+      obj: p, ox: OX, oz: OZ, path: WALK_PATHS[i], seg: 0,
+      phase: Math.random() * 6.28, speed: 1.0 + Math.random() * 0.5,
+      name: id.name, job: id.job, portrait: id.portrait, talk: id.talk,
+      skill: 0.34 + Math.random() * 0.28, met: false, talkT: 0, riddle: null, riddleRight: false,
+    });
   }
 
   // a few gulls over the harbour
@@ -2972,7 +3049,9 @@ const Game = {
   gameMinutes: 6 * 60,          // day 1, 06:00
   lifeLeft: LIFE_SECONDS,
   quests: {},                   // id -> 'active' | 'done'
-  stats: { jobs: 0, voyages: 0, earned: 0, distance: 0 },
+  // the ledger of a life: everything the end-of-hour screen reads aloud
+  stats: { jobs: 0, voyages: 0, earned: 0, spent: 0, distance: 0,
+           fish: 0, talked: 0, duels: 0, duelsWon: 0, duelsLost: 0, prayers: 0 },
   cause: '',
 };
 
@@ -2997,6 +3076,24 @@ const Ship = {
 let playerShip = null;          // THREE.Group
 let dockedAt = null;            // PORTS entry while docked
 let spaceLatch = false;         // edge detection so one key press = one toggle
+
+// The ledger of a life needs honest totals, so every change to the purse --
+// wherever it happens in the code -- is tallied here. loadGame and resetLife
+// restore a purse wholesale and pause the tally while they do it, or a loaded
+// save would count its whole fortune as one day's earnings.
+let goldLedgerPause = false;
+let goldLedger = Game.gold;
+Object.defineProperty(Game, 'gold', {
+  get() { return goldLedger; },
+  set(v) {
+    const d = v - goldLedger;
+    goldLedger = v;
+    if (goldLedgerPause || !d) return;
+    if (d > 0) Game.stats.earned += d;
+    else Game.stats.spent += -d;
+  },
+  configurable: true, enumerable: true,
+});
 
 // Drop or weigh anchor. While she is anchored there is no way on her and she
 // holds her station, so you can leave the helm and walk the deck.
@@ -3249,12 +3346,14 @@ function fmtClock() {
 
 function applyEffect(e) {
   if (!e) return;
-  if (e.gold) Game.gold += e.gold;
-  if (e.gold < 0) Game.stats.earned += 0;
+  if (e.gold) Game.gold += e.gold;      // the ledger accessor tallies the gain/loss
   if (e.rep) Game.rep = Math.max(0, Game.rep + e.rep);
   if (e.food) Game.food = Math.max(0, Math.min(200, Game.food + e.food));
   if (e.crew) Game.crew = Math.max(0, Game.crew + e.crew);
   if (e.morale) Game.morale = Math.max(0, Math.min(100, Game.morale + e.morale));
+  // a contest against a citizen: dice or riddles, silver on the table
+  if (e.duel === 'win') { Game.stats.duels++; Game.stats.duelsWon++; }
+  if (e.duel === 'loss') { Game.stats.duels++; Game.stats.duelsLost++; }
   if (e.cargo) {
     if (e.cargo === 'all') {
       Game.inventory = {};
@@ -3339,6 +3438,18 @@ function chooseOption(opt) {
     return renderDialog(currentDialog.rebuild ? currentDialog.rebuild() : currentDialog);
   }
   closeDialog();
+}
+
+let talker = null;              // the citizen you are currently talking with
+
+// Every citizen you meet is an opponent you can talk to: small talk and rumor,
+// or a contest -- dice and riddles, silver on the table. They stop walking and
+// turn to face you while the conversation lasts.
+function talkToCitizen(w) {
+  talker = w;
+  w.talkT = 12;                            // they will wait a while for you
+  if (!w.met) { w.met = true; Game.stats.talked++; }
+  openDialog('citizen');
 }
 
 function openDialog(id, ctx) {
@@ -3430,6 +3541,42 @@ const RUMORS = [
   "Storms come quicker after dusk. So does death.",
 ];
 
+// Contests of wit, for silver. The answers shuffle so nobody learns the key.
+const RIDDLES = [
+  { q: "I have cities but no houses, forests but no trees, water but no fish. What am I?",
+    a: ["A chart", "A dream", "A coffin"], correct: 0 },
+  { q: "The more you take of me, the more you leave behind. What am I?",
+    a: ["Footsteps", "Coin", "Wine"], correct: 0 },
+  { q: "What has an eye but cannot see, and stands in the wind on the deck?",
+    a: ["A marlinspike", "A storm", "A needle"], correct: 2 },
+  { q: "I am always hungry, I must always be fed. The finger I touch, I soon turn red. What am I?",
+    a: ["Fire", "A cannon", "Rust"], correct: 0 },
+  { q: "What can travel around the world while staying in a corner?",
+    a: ["A compass", "A rumour", "A stamp"], correct: 2 },
+  { q: "I have a spine but no bones, and men steer by what I show. What am I?",
+    a: ["A chart of stars", "A ship's log", "A cutlass"], correct: 0 },
+  { q: "The more you take of me, the more you grow. Men dig for me, and die for me. What am I?",
+    a: ["A hold of cargo", "A reputation", "Water"], correct: 1 },
+  { q: "I follow you all day and lose you at night, yet I am never fed. What am I?",
+    a: ["Your shadow", "Your dog", "Your luck"], correct: 0 },
+];
+
+function pickRiddle() {
+  const src = RIDDLES[Math.floor(Math.random() * RIDDLES.length)];
+  const order = [0, 1, 2];
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const t = order[i]; order[i] = order[j]; order[j] = t;
+  }
+  return { q: src.q, a: order.map(i => src.a[i]), correct: order.indexOf(src.correct) };
+}
+
+// a citizen's chance of beating you at dice: the better they are, the worse
+// your odds. Everyone is beatable, nobody is a pushover.
+function diceChance(w) {
+  return Math.max(0.3, Math.min(0.66, 1 - w.skill));
+}
+
 const DLG = {
   // ---------------- Lisbon: the shipwright ----------------
   shipwright: () => {
@@ -3501,6 +3648,10 @@ const DLG = {
       { label: "Buy 10 provisions — 20g", req: { gold: 20 }, effect: { gold: -20, food: 10 }, stay: true },
       { label: "Buy 25 provisions — 50g", req: { gold: 50 }, effect: { gold: -50, food: 25 }, stay: true },
       { label: "Buy a round for the crew — 20g", req: { gold: 20, crew: 1 }, effect: { gold: -20, morale: 10 }, stay: true, hint: "Morale +10" },
+      { label: "Throw dice with a sailor — 10g", req: { gold: 10 },
+        roll: { chance: 0.5,
+          good: { effect: { gold: 10, duel: 'win', morale: 4 }, next: 'tavern', text: "He throws nothing, and the table erupts. The sailor pays with a laugh and calls you a cardsharp." },
+          bad: { effect: { gold: -10, duel: 'loss', morale: -2 }, next: 'tavern', text: "He throws sixes like rain. The sailor pockets your silver amid howls of laughter." } } },
       { label: "Heard any rumors?", next: 'tavern_rumor' },
       { label: "Nothing today." },
     ],
@@ -3654,6 +3805,162 @@ const DLG = {
       options: [{ label: "Put it away.", next: 'home' }],
     };
   },
+
+  // ---------------- Lisbon: any citizen on the street ----------------
+  // They are all opponents: talk, drink, dice, riddles — silver on the table.
+  citizen: () => {
+    const w = talker;
+    if (!w) {
+      return { who: "Someone", role: "Lisbon", text: "They have gone about their day.",
+               options: [{ label: "\u2026" }] };
+    }
+    const greet = w.met
+      ? `"Back again? ${w.name} knows your face now."`
+      : `${w.name} the ${w.job} slows their step. "Well met, citizen. They call me ${w.name}."`;
+    return {
+      who: w.name, role: `A ${w.job} of Lisbon`, portrait: w.portrait,
+      text: `${greet} The street roars around you both.`,
+      options: [
+        { label: `Talk with ${w.name}`, hint: "Rumor, and sometimes cheer", stay: true,
+          action: () => {
+            const r = Math.random();
+            if (r < 0.14) {
+              Game.morale = Math.min(100, Game.morale + 4);
+              addLog(`${w.name} gossips about ${w.talk} until you are both laughing. Morale +4.`, 'good');
+            } else {
+              addLog(`${w.name} says: "${RUMORS[Math.floor(Math.random() * RUMORS.length)]}"`);
+            }
+            updateHUD();
+          } },
+        { label: "Throw dice — stake 10g", req: { gold: 10 }, hint: "They are good at this",
+          roll: { chance: diceChance(w),
+            good: { effect: { gold: 10, duel: 'win' }, next: 'citizen',
+                    text: `The bones fall your way. ${w.name} counts out ten silver with a grimace. "Again — come on, again."` },
+            bad:  { effect: { gold: -10, duel: 'loss' }, next: 'citizen',
+                    text: `${w.name} scoops the coins. "Luck is a trade like any other. Best learn it."` } } },
+        { label: "Ask a riddle — stake 5g", req: { gold: 5 }, hint: "Win 8g for the right answer",
+          action: () => {
+            Game.gold -= 5;
+            w.riddle = pickRiddle();
+            w.riddleRight = false;
+          }, next: 'riddle' },
+        { label: "Buy them a drink — 3g", req: { gold: 3 }, effect: { gold: -3, morale: 3 }, stay: true,
+          hint: "They remember kindness" },
+        { label: "Take your leave" },
+      ],
+    };
+  },
+
+  riddle: () => {
+    const w = talker;
+    const r = (w && w.riddle) ? w.riddle : pickRiddle();
+    if (w) w.riddle = r;
+    return {
+      who: w ? w.name : "Someone", role: "A riddle", portrait: w ? w.portrait : "\u{1F9D4}",
+      text: `"${r.q}"`,
+      options: r.a.map((ans, i) => ({
+        label: ans,
+        action: () => {
+          w.riddleRight = (i === r.correct);
+          if (w.riddleRight) {
+            Game.gold += 8;
+            Game.stats.duels++; Game.stats.duelsWon++;
+            addLog(`You answered ${w.name}'s riddle. +8g.`, 'good');
+            showToast('Riddle answered — +8g');
+          } else {
+            Game.stats.duels++; Game.stats.duelsLost++;
+            addLog(`"No," says ${w.name}. "The answer was ${r.a[r.correct]}."`);
+            showToast(`The answer was: ${r.a[r.correct]}`);
+          }
+          updateHUD();
+        },
+        next: 'riddle_result',
+      })),
+    };
+  },
+
+  riddle_result: () => {
+    const w = talker;
+    const right = !!(w && w.riddleRight);
+    return {
+      who: w ? w.name : "Someone", role: "A riddle", portrait: w ? w.portrait : "\u{1F9D4}",
+      text: right
+        ? `"Correct — devil take you." ${w.name} pays out your eight silver, annoyed and admiring in equal measure.`
+        : `${w.name} grins. "The stake stays with me. Riddles are cheaper than dice, and twice as educational."`,
+      options: [{ label: "Back to the conversation", next: 'citizen' }],
+    };
+  },
+
+  // ---------------- Lisbon: fishing at the pier head ----------------
+  fish: () => ({
+    who: "The Harbour", role: "Off the pier head", portrait: "\u{1F3A3}",
+    text: "Green water, twenty feet deep. Shoals of sardines work the tide beneath the pier; sometimes something larger follows them in.",
+    options: [
+      { label: "Cast your line (15 minutes)", stay: true, action: () => {
+          spendMinutes(15);
+          const r = Math.random();
+          let got, txt;
+          if (r < 0.50) { got = 3 + Math.floor(Math.random() * 3); txt = `A basket of sardines. +${got} provisions.`; }
+          else if (r < 0.82) { got = 5 + Math.floor(Math.random() * 4); txt = `Sea bream on the turn of the tide. +${got} provisions.`; }
+          else if (r < 0.96) { got = 11; txt = "A tuna, thick as a barrel! The quay stops to watch you land it. +11 provisions."; }
+          else { got = 6; Game.gold += 30; txt = "A sea turtle in the net — the apothecary pays 30g for the shell. +6 provisions."; }
+          Game.food = Math.min(200, Game.food + got);
+          Game.stats.fish++;
+          addLog(txt, 'good'); showToast(txt);
+          updateHUD();
+        } },
+      { label: "Not now." },
+    ],
+  }),
+
+  // ---------------- At sea: fishing from the rail ----------------
+  fish_sea: () => ({
+    who: "The Rail", role: "Under easy sail", portrait: "\u{1F3A3}",
+    text: "The ship barely moves through the water. Deep-blue sea with no bottom to it. A line over the rail here finds bigger things than the harbour does.",
+    options: [
+      { label: "Fish from the rail (20 minutes)", stay: true, action: () => {
+          spendMinutes(20);
+          const r = Math.random();
+          let got, txt;
+          if (r < 0.42) { got = 4 + Math.floor(Math.random() * 4); txt = `Bonito for the pot. +${got} provisions.`; }
+          else if (r < 0.74) { got = 8 + Math.floor(Math.random() * 5); txt = `A fine draught of fish. +${got} provisions.`; }
+          else if (r < 0.90) { got = 14; Game.morale = Math.min(100, Game.morale + 5); txt = "A great dorado, golden in the sun! The crew cheers. +14 provisions, morale +5."; }
+          else if (r < 0.98) { Game.gold += 55; got = 5; txt = "Ambergris, thick and grey, in a drifting weed-line. Worth 55g to the right buyer. +5 provisions."; }
+          else { got = 0; Game.morale = Math.max(0, Game.morale - 3); txt = "A shark takes the bait, the bait's keeper's dignity, and half the line. You land nothing."; }
+          Game.food = Math.min(200, Game.food + got);
+          Game.stats.fish++;
+          addLog(txt, 'good'); showToast(txt);
+          updateHUD();
+        } },
+      { label: "Leave it." },
+    ],
+  }),
+
+  // ---------------- Lisbon: the Sé ----------------
+  church: () => ({
+    who: "Frei Manuel", role: "Priest of the Sé", portrait: "\u{1F9D6}",
+    text: "The Sé is cool and smells of candle smoke. Frei Manuel looks up from his breviary. \"Come to pray, citizen — or to be seen praying? Both are welcome. Only one is heard.\"",
+    options: [
+      { label: "Pray for your voyage (10 minutes)", stay: true, action: () => {
+          spendMinutes(10);
+          Game.stats.prayers++;
+          if (Math.random() < 0.25) {
+            Game.rep += 1;
+            addLog("You pray beside the altar. The priest notices, and the quarter hears of it. +1 reputation.", 'good');
+            showToast('The priest speaks well of you: +1 reputation');
+          } else {
+            Game.morale = Math.min(100, Game.morale + 8);
+            addLog("You kneel until your legs ache, and rise lighter. Morale +8.", 'good');
+            showToast('You pray, and feel steadier for it');
+          }
+          updateHUD();
+        } },
+      { label: "Light a candle for the dead — 2g", req: { gold: 2 }, effect: { gold: -2, morale: 4 }, stay: true },
+      { label: "Ask a blessing on your ship", req: { ship: true }, effect: { morale: 6 }, stay: true,
+        hint: "The crew would approve" },
+      { label: "Leave the Sé." },
+    ],
+  }),
 
   // ---------------- Foreign islands: the trade post ----------------
   trade_post: (ctx) => {
@@ -4037,6 +4344,10 @@ function currentTarget() {
     if (dockedAt && Math.hypot(playerShip.position.x - Player.x, playerShip.position.z - Player.z) < 8) {
       return { label: `Go ashore at ${dockedAt.def.name}`, use: () => goAshore(dockedAt) };
     }
+    // a line over the rail, when she is barely moving
+    if (playerShip && Math.abs(Ship.speed) < 3) {
+      return { label: 'Fish from the rail', use: () => openDialog('fish_sea') };
+    }
     return null;
   }
 
@@ -4046,11 +4357,21 @@ function currentTarget() {
     if (d < 9) return { label: 'Board your ship', use: boardShip };
   }
 
-  // On foot: nearest interactable
+  // On foot: the nearest interactable — or a citizen of Lisbon within
+  // arm's reach. Every citizen is an opponent you can talk to.
   let best = null, bestD = 1e9;
   for (const it of interactables) {
     const d = Math.hypot(it.x - Player.x, it.z - Player.z);
     if (d < it.radius && d < bestD) { best = it; bestD = d; }
+  }
+  for (const w of walkers) {
+    if (!w.obj) continue;                       // gulls have no obj
+    const d = Math.hypot(w.obj.position.x + (w.ox || 0) - Player.x,
+                         w.obj.position.z + (w.oz || 0) - Player.z);
+    if (d < 2.8 && d < bestD) {
+      best = { label: `Talk to ${w.name}, the ${w.job}`, onUse: () => talkToCitizen(w) };
+      bestD = d;
+    }
   }
   if (best) return { label: best.label, use: best.onUse };
   return null;
@@ -4075,6 +4396,7 @@ function goAshore(port) {
   dockedAt = port;
   Player.island = port;
   Player.mode = 'foot';
+  if (port.def.type !== 'home') Game.stats.voyages++;   // a landfall abroad
   if (port.def.type === 'home') {
     // step off onto the pier
     Player.x = lisbonDock.x;
@@ -4845,10 +5167,39 @@ function victory() {
   showEndScreen('victory');
 }
 
+// The ledger read aloud when a life ends — death, victory, or the hour's end.
 function endStats() {
-  return `Gold: ${Math.floor(Game.gold)} &nbsp;·&nbsp; Reputation: ${Math.floor(Game.rep)} (${repTitle(Game.rep)})<br>` +
-         `Crew: ${Game.crew} &nbsp;·&nbsp; Islands charted: ${Game.discovered.size - 1} of 8<br>` +
-         `Sailed: ${Math.floor(Game.stats.distance)} leagues &nbsp;·&nbsp; Days worked the docks: ${Game.stats.jobs}`;
+  const s = Game.stats || {};
+  const row = (k, v) => `<div class="lrow"><span>${k}</span><b>${v}</b></div>`;
+  const reported = Math.max(0, Game.discovered.size - 1 - Game.charts.length);
+  return `<div class="lhead">THE LEDGER OF YOUR LIFE</div><div class="ledger">` +
+    row('Title at the end of your hour', repTitle(Game.rep)) +
+    row('Gold in your purse', Math.floor(Game.gold) + 'g') +
+    row('Gold earned', Math.floor(s.earned || 0) + 'g') +
+    row('Gold spent', Math.floor(s.spent || 0) + 'g') +
+    row('Reputation', Math.floor(Game.rep)) +
+    row('Islands discovered', (Game.discovered.size - 1) + ' of 8') +
+    row('Charts reported to the Crown', reported) +
+    row('Leagues sailed', Math.floor(s.distance || 0)) +
+    row('Landfalls abroad', s.voyages || 0) +
+    row('Days worked the docks', s.jobs || 0) +
+    row('Fish caught', s.fish || 0) +
+    row('Citizens you came to know', s.talked || 0) +
+    row('Dice and riddles', (s.duelsWon || 0) + ' won / ' + (s.duelsLost || 0) + ' lost') +
+    row('Prayers at the Sé', s.prayers || 0) +
+    `</div>`;
+}
+
+// how the city will sum you up, read under the ledger
+function lifeVerdict() {
+  if (Game.won) return 'The Age of Discovery has your name upon it, and will not forget.';
+  const r = Game.rep;
+  if (r >= 85) return 'A name for the ages — Lisbon will speak of you long after the bell has tolled.';
+  if (r >= 55) return 'A captain of fortune, argued over in every tavern on the Tagus.';
+  if (r >= 25) return 'A sailor of some account, with a chest of silver to show for the hour.';
+  if (r >= 10) return 'Known in the quarter — a man who went to sea and came back with a story.';
+  if (Game.gold >= 300) return 'You ended with a full purse and a quiet name. There are worse lives.';
+  return 'An honest nobody, as most lives are honestly lived.';
 }
 
 function showEndScreen(kind) {
@@ -4864,13 +5215,13 @@ function showEndScreen(kind) {
     title.textContent = 'YOU DIED AN UNNATURAL DEATH';
     title.style.color = '#cc3333';
     sub.textContent = Game.cause;
-    sum.innerHTML = `Lisbon will remember you as a warning, not a name.<br><br>${endStats()}`;
+    sum.innerHTML = `Lisbon will remember you as a warning, not a name.<br><br>${endStats()}<br><i>${lifeVerdict()}</i>`;
     btn.textContent = 'BEGIN A NEW LIFE';
   } else if (kind === 'time') {
     title.textContent = 'YOUR HOUR IS DONE';
     title.style.color = '#ffd700';
     sub.textContent = 'The bell of São Jorge tolls the end of your life';
-    sum.innerHTML = `You lived as much as a man may in an hour.<br><br>${endStats()}`;
+    sum.innerHTML = `You lived as much as a man may in an hour. This is what the hour held:<br><br>${endStats()}<br><i>${lifeVerdict()}</i>`;
     btn.textContent = 'BEGIN A NEW LIFE';
   } else {
     title.textContent = 'THE KING KNIGHTS YOU';
@@ -4925,14 +5276,21 @@ function loadGame(slot) {
   const s = saves[slot];
   if (!s) { showToast('That slot is empty'); return false; }
 
+  // restoring a purse wholesale must not read as a day's earnings
+  goldLedgerPause = true;
   Object.assign(Game, {
     gold: s.gold, rep: s.rep, food: s.food, crew: s.crew, morale: s.morale,
     inventory: { ...s.inventory },
     discovered: new Set(s.discovered), charts: [...s.charts],
     commissions: s.commissions.map(c => ({ ...c })),
     gameMinutes: s.gameMinutes, lifeLeft: s.lifeLeft,
-    quests: { ...s.quests }, stats: { ...s.stats }, won: !!s.won, cause: '',
+    quests: { ...s.quests },
+    // older saves predate the ledger's new rows: fill them in, then overwrite
+    stats: { jobs: 0, voyages: 0, earned: 0, spent: 0, distance: 0,
+             fish: 0, talked: 0, duels: 0, duelsWon: 0, duelsLost: 0, prayers: 0, ...s.stats },
+    won: !!s.won, cause: '',
   });
+  goldLedgerPause = false;
 
   PORTS.forEach(p => { p.discovered = s.discovered.includes(p.def.name); });
 
@@ -5040,13 +5398,16 @@ function openSavePanel(mode) {
 //  LIFE SETUP
 // ============================================================
 function resetLife() {
+  goldLedgerPause = true;
   Object.assign(Game, {
     gold: 40, rep: 0, food: 20, crew: 0, morale: 75,
     inventory: {}, discovered: new Set(['Lisbon']), charts: [],
     ship: null, commissions: [], gameMinutes: 360, lifeLeft: LIFE_SECONDS,
-    quests: {}, stats: { jobs: 0, voyages: 0, earned: 0, distance: 0 },
+    quests: {}, stats: { jobs: 0, voyages: 0, earned: 0, spent: 0, distance: 0,
+                         fish: 0, talked: 0, duels: 0, duelsWon: 0, duelsLost: 0, prayers: 0 },
     cause: '', won: false,
   });
+  goldLedgerPause = false;
   removePlayerShip();
   PORTS.forEach(p => { p.discovered = !!p.def.discovered; });
   dockedAt = null;
@@ -5212,6 +5573,14 @@ function animate() {
       const dx = tgt.x - w.obj.position.x, dz = tgt.z - w.obj.position.z;
       const d = Math.hypot(dx, dz);
       if (d < 0.9) { w.seg = (w.seg + 1) % path.length; continue; }
+      // a citizen you are talking with stops walking and turns to face you
+      if (w.talkT > 0) {
+        w.talkT -= dt;
+        const px = Player.x - (w.obj.position.x + (w.ox || 0));
+        const pz = Player.z - (w.obj.position.z + (w.oz || 0));
+        w.obj.rotation.y = Math.atan2(px, pz);
+        continue;
+      }
       const step = w.speed * dt;
       w.obj.position.x += (dx / d) * step;
       w.obj.position.z += (dz / d) * step;
@@ -5260,11 +5629,13 @@ window.__voyage = {
   COLLIDERS, PLATFORMS, LIS_CITY, walkers, SHIP_PHYS, updateFoot, updateShipPhysics,
   updateDeckWalk, resolveXZ, supportY, groundY, SHIP_CLASSES, openDialog, chooseOption,
   spawnPlayerShip, spawnShipInLisbon, goAshore, boardShip, lisbonBerth, lisbonDock,
+  currentTarget, tryInteract, showEndScreen,
   saveGame, loadGame, autosave, resetLife, openMenu, closeMenu,
   triggerSeaEvent, triggerStreetEvent, goAshore, die,
   makeHouse, mergeParts, facadeGeo, gableRoofGeo, buildShipModel,
   toggleAnchor, spaceLatch: () => spaceLatch,
   climbOutOfWater, resolvePeople, resolveShipHull,
+  talkToCitizen, pickRiddle, diceChance, RIDDLES, endStats, lifeVerdict,
   cargoUnits, cargoCapacity, cargoRoom, drawMinimap, updateDayNight, updateCameraRig,
   updateHUD, updateCargoBox, applyEffect, cargoValue, fmtClock, stepPhysics,
   get ship() { return playerShip; }
