@@ -226,11 +226,22 @@ body.touch .invhead .invclose{width:auto;padding:10px 14px;font-size:11px}
   40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(4px)}}
 .pwhead{font-size:12px;letter-spacing:4px;color:#7fe8c0;text-shadow:0 0 14px rgba(64,220,160,.5)}
 .pwsub{margin-top:8px;font-size:9px;letter-spacing:2.5px;color:#3f7a64}
-#pwinput{width:100%;margin-top:18px;padding:10px 12px;background:rgba(64,220,160,.06);
+#pwinput{width:100%;margin-top:18px;padding:10px 44px 10px 12px;background:rgba(64,220,160,.06);
   border:1px solid rgba(64,220,160,.35);color:#a8f0d4;font-family:inherit;font-size:12px;
   letter-spacing:2px;text-align:center;outline:none}
 #pwinput:focus{border-color:rgba(64,220,160,.8);box-shadow:0 0 22px rgba(64,220,160,.18)}
 #pwinput::placeholder{color:#2f5f4f}
+.pwfield{position:relative;margin-top:18px}
+.pwfield #pwinput{margin-top:0}
+#pweye{position:absolute;top:50%;right:7px;transform:translateY(-50%);width:32px;height:32px;
+  display:flex;align-items:center;justify-content:center;padding:0;background:none;border:none;
+  color:#3f7a64;cursor:pointer;transition:color .15s}
+#pweye:hover{color:#7fe8c0}
+#pweye svg{display:block;overflow:visible}
+#pweye .pupil{fill:currentColor}
+#pweye .slash{stroke:currentColor;stroke-width:1.5;stroke-linecap:round;display:none}
+#pweye.on .pupil{opacity:.3}
+#pweye.on .slash{display:block}
 .pwerr{min-height:14px;margin-top:8px;font-size:9px;letter-spacing:2px;color:#e88a6a}
 .pwrow{margin-top:12px;display:flex;gap:10px;justify-content:center}
 .pwrow button{padding:9px 22px;background:transparent;cursor:pointer;font-family:inherit;
@@ -475,7 +486,18 @@ body.touch #cross{opacity:.35}
   <div class="pwcard" id="pwcard">
     <div class="pwhead">RESTRICTED — OPERATOR ACCESS</div>
     <div class="pwsub">ENTER PASSPHRASE TO OPEN THE SURVEILLANCE MAP</div>
-    <input id="pwinput" type="text" autocomplete="off" spellcheck="false" placeholder="·······················">
+    <div class="pwfield">
+      <input id="pwinput" type="password" autocomplete="off" spellcheck="false"
+             autocapitalize="off" placeholder="·······················">
+      <button type="button" id="pweye" aria-label="Show passphrase" aria-pressed="false">
+        <svg viewBox="0 0 24 16" width="21" height="14" aria-hidden="true" focusable="false">
+          <path d="M1.2 8S4.8 2.9 12 2.9 22.8 8 22.8 8 19.2 13.1 12 13.1 1.2 8 1.2 8Z"
+                fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+          <circle class="pupil" cx="12" cy="8" r="2.7"/>
+          <line class="slash" x1="2.5" y1="13.5" x2="21.5" y2="2.5"/>
+        </svg>
+      </button>
+    </div>
     <div class="pwerr" id="pwerr"></div>
     <div class="pwrow"><button id="pwok">UNLOCK</button><button id="pwcancel" class="ghostbtn">CANCEL</button></div>
   </div>
@@ -527,7 +549,7 @@ body.touch #cross{opacity:.35}
 
 <div id="ach">
   <div class="achbox">
-    <div class="achhead">ACHIEVEMENTS<span id="achcount">0/14</span><span class="x" id="achclose">CLOSE</span></div>
+    <div class="achhead">ACHIEVEMENTS<span id="achcount">0/13</span><span class="x" id="achclose">CLOSE</span></div>
     <div id="achgrid"></div>
     <div class="achnote">PROGRESS IS REMEMBERED ON THIS MACHINE</div>
   </div>
@@ -612,7 +634,7 @@ body.touch #cross{opacity:.35}
   <button class="btn" id="startbtn">DESCEND</button>
   <button class="btn" id="continuebtn" style="display:none">CONTINUE</button>
   <button class="btn ops" id="opsbtn">OPERATOR MODE</button>
-  <button class="btn ops" id="achbtn">ACHIEVEMENTS · 0/14</button>
+  <button class="btn ops" id="achbtn">ACHIEVEMENTS · 0/13</button>
   <button class="btn ops" id="setbtn">SETTINGS</button>
   <div class="warn">CONTAINS FLASHING LIGHTS &amp; SUDDEN LOUD NOISES · HEADPHONES RECOMMENDED</div>
 </div>
@@ -624,7 +646,7 @@ body.touch #cross{opacity:.35}
   <button class="btn" id="resumebtn">RESUME</button>
   <button class="btn" id="savebtn">SAVE GAME</button>
   <button class="btn ops" id="opsbtn2">OPERATOR MODE</button>
-  <button class="btn ops" id="achbtn2">ACHIEVEMENTS · 0/14</button>
+  <button class="btn ops" id="achbtn2">ACHIEVEMENTS · 0/13</button>
   <button class="btn ops" id="setbtn2">SETTINGS</button>
 </div>
 
@@ -3176,6 +3198,7 @@ function openPw(){
   $('#pwbox').classList.add('on');
   $('#pwerr').textContent='';
   $('#pwinput').value='';
+  maskPassphrase();
   setTimeout(()=>$('#pwinput').focus(),60);
 }
 function closePw(){
@@ -3183,12 +3206,12 @@ function closePw(){
   pwOpen=false;
   $('#pwbox').classList.remove('on');
   $('#pwinput').blur();
+  maskPassphrase();
 }
 function tryUnlock(){
   const v=$('#pwinput').value.trim().toLowerCase().replace(/\s+/g,' ');
   if(v===OPS_PW){
     opUnlocked=true;
-    unlockAch('operator');
     closePw();
     openOps();
   }else{
@@ -3226,6 +3249,29 @@ $('#pwinput').addEventListener('keydown',e=>{
   if(e.code==='Escape')closePw();
   e.stopPropagation();
 });
+/* the passphrase is masked like any real password; the eye reveals it and
+   toggles back to dots */
+{
+  const eye=$('#pweye'),f=$('#pwinput');
+  const apply=(reveal)=>{
+    f.type=reveal?'text':'password';
+    eye.classList.toggle('on',reveal);
+    eye.setAttribute('aria-pressed',reveal?'true':'false');
+    eye.setAttribute('aria-label',reveal?'Hide passphrase':'Show passphrase');
+  };
+  eye.addEventListener('click',e=>{
+    e.preventDefault();e.stopPropagation();
+    apply(f.type==='password');
+    f.focus();
+  });
+}
+/* the passphrase stays masked whenever the prompt is not in front of you */
+function maskPassphrase(){
+  const f=$('#pwinput'),eye=$('#pweye');
+  if(f)f.type='password';
+  if(eye){eye.classList.remove('on');eye.setAttribute('aria-pressed','false');
+          eye.setAttribute('aria-label','Show passphrase');}
+}
 [...document.querySelectorAll('.opstab')].forEach(t=>{
   t.addEventListener('click',()=>{
     opsLevel=+t.dataset.lv;
@@ -3455,7 +3501,6 @@ const ACH_DEFS=[
   {id:'armed',name:'ARMED',desc:'FIND THE M1911'},
   {id:'loaded',name:'FULLY LOADED',desc:'FIND THE SAWN-OFF'},
   {id:'powered',name:'POWER UP',desc:'RECOVER ALL 3 FUSES'},
-  {id:'operator',name:'OPERATOR',desc:'UNLOCK THE SURVEILLANCE CONSOLE'},
   {id:'survivor',name:'SURVIVOR',desc:'SURVIVE 5 MINUTES IN ONE RUN'},
   {id:'descent',name:'GOING DOWN',desc:'DESCEND TO LEVEL 1'},
   {id:'deep',name:'PIPE DREAMS',desc:'REACH LEVEL 2'},
@@ -3475,12 +3520,15 @@ function unlockAch(id){
   if(AU.fuse)AU.fuse();
   updateAchButtons();
 }
+/* count only achievements that still exist, so a save written by an older
+   build (a retired achievement) can never inflate the total */
+function achCount(){return ACH_DEFS.filter(a=>achUnlocked.has(a.id)).length;}
 function updateAchButtons(){
-  const t='ACHIEVEMENTS · '+achUnlocked.size+'/'+ACH_DEFS.length;
+  const n=achCount(),t='ACHIEVEMENTS · '+n+'/'+ACH_DEFS.length;
   const b1=$('#achbtn'),b2=$('#achbtn2'),c=$('#achcount');
   if(b1)b1.textContent=t;
   if(b2)b2.textContent=t;
-  if(c)c.textContent=achUnlocked.size+'/'+ACH_DEFS.length;
+  if(c)c.textContent=n+'/'+ACH_DEFS.length;
 }
 function renderAchPanel(){
   $('#achgrid').innerHTML=ACH_DEFS.map(a=>{
@@ -5033,7 +5081,7 @@ window.__BR={player,get monsters(){return monsters;},get state(){return state;},
   get opsOpen(){return opsOpen;},get pwOpen(){return pwOpen;},
   get level(){return level;},get mazes(){return LEVEL_MAZES;},levelExitCell,
   get opsLevel(){return opsLevel;},
-  requestOps,openOps,closeOps,deployToLevel,
+  requestOps,openOps,closeOps,deployToLevel,openPw,closePw,
   saveGame,hasSave,deleteSave,openAch,closeAch,openOpsSelect,closeOpsSelect,chooseOpsLevel,
   get dashT(){return dashT;},get dashCd(){return dashCd;},tryDash,tryJump,
   get playerY(){return player.y;},get playerVy(){return player.vy;},
