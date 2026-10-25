@@ -138,6 +138,7 @@ function quitToMenu() {
   $('end').classList.remove('show');
   $('menu').classList.add('show');
   $('respawn').classList.remove('show');
+  hideScope();                       // the lens is part of the match HUD
   const kb1 = $('killBy');
   if (kb1) kb1.classList.remove('show');
   G.killer = null; G.killerWeapon = '';
@@ -155,6 +156,7 @@ function pauseGame() {
   G.state = 'paused';
   firing = false;
   hideAimLine();
+  hideScope();                       // the lens must not sit over the pause card
   $('pause').classList.add('show');
   $('pauseScore').textContent = 'RED ' + G.score.red + '  —  ' + G.score.blue + ' BLUE   ·   ' + $('clock').textContent;
   document.exitPointerLock && document.exitPointerLock();
