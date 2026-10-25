@@ -201,6 +201,7 @@
   }
   #btnE { right: 26px; bottom: 96px; width: 66px; height: 66px; }
   #btnSpace { right: 100px; bottom: 40px; width: 56px; height: 56px; font-size: 12px; }
+  #btnSpace.on { background: rgba(216,168,64,0.85); border-color: #f0d090; color: #2a2010; }
 
   @media (max-width: 720px) {
     #logPanel { width: 200px; max-height: 90px; font-size: 11px; }
@@ -889,6 +890,111 @@ function buildShipModel(scale = 1) {
   lantern.position.set(0, 3.55, 3.6);
   shipModel.add(lantern);
 
+  // ---- rigging: shrouds and ratlines, the ladder-work of a square-rigger ----
+  function shroud(x1, y1, z1, x2, y2, z2) { rope(x1, y1, z1, x2, y2, z2); }
+  function ratlines(mastX, mastZ, topY, footY, spread) {
+    const steps = 7;
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const y = topY + (footY - topY) * t;
+      // the deadeye chain slants inward as it rises
+      const x = mastX + spread * (1 - t * 0.55);
+      rope(mastX, y, mastZ, x, y, mastZ + spread * 0.12);
+      rope(mastX, y, mastZ, -x, y, mastZ + spread * 0.12);
+      if (i > 0) {
+        const py = topY + (footY - topY) * ((i - 1) / steps);
+        const px = mastX + spread * (1 - ((i - 1) / steps) * 0.55);
+        rope(px, py, mastZ + spread * 0.12, x, y, mastZ + spread * 0.12);
+        rope(-px, py, mastZ + spread * 0.12, -x, y, mastZ + spread * 0.12);
+      }
+    }
+  }
+  ratlines(0, 0.2, 1.85 + mainMastH * 0.92, 1.95, 2.5);
+  ratlines(0, -2.6, 1.85 + foreH * 0.90, 1.95, 2.0);
+  ratlines(0, 3.1, 1.85 + mizzenH * 0.88, 1.95, 1.5);
+  // backstays over the top of each mast
+  shroud(0, mainTop, 0.2, -2.1, 1.95, 3.9);
+  shroud(0, mainTop, 0.2, 2.1, 1.95, 3.9);
+  shroud(0, mainTop, 0.2, -2.1, 1.95, -4.4);
+  shroud(0, mainTop, 0.2, 2.1, 1.95, -4.4);
+
+  // ---- fighting tops: small platforms at the mastheads ----
+  for (const [mz, mh] of [[0.2, mainMastH], [-2.6, foreH]]) {
+    const ty = 1.85 + mh * 0.96;
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.7, 0.16, 10), MAT.trim);
+    top.position.set(0, ty, mz);
+    top.castShadow = true;
+    shipModel.add(top);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.82, 0.05, 5, 12), MAT.trim);
+    rim.position.set(0, ty + 0.14, mz);
+    rim.rotation.x = Math.PI / 2;
+    shipModel.add(rim);
+  }
+
+  // ---- deck fittings: hatches, the capstan, the mast step ----
+  for (const hz of [-0.6, 1.4]) {
+    const hatch = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.14, 1.7), MAT.trim);
+    hatch.position.set(0, 1.94, hz);
+    hatch.castShadow = true;
+    hatch.receiveShadow = true;
+    shipModel.add(hatch);
+    const coam = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.2, 0.14), MAT.trim);
+    coam.position.set(0, 2.02, hz - 0.85);
+    shipModel.add(coam);
+    const coam2 = coam.clone(); coam2.position.z = hz + 0.85; shipModel.add(coam2);
+  }
+  const capstan = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.5, 0.8, 10), MAT.mast);
+  capstan.position.set(0, 2.25, -1.9);
+  capstan.castShadow = true;
+  shipModel.add(capstan);
+  const capTop = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.46, 0.08, 10), MAT.trim);
+  capTop.position.set(0, 2.68, -1.9);
+  shipModel.add(capTop);
+  const step = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.7, 0.22, 10), MAT.trim);
+  step.position.set(0, 1.96, 0.2);
+  shipModel.add(step);
+
+  // ---- gunwale wale: the thick strake that takes the pounding ----
+  for (const side of [-1, 1]) {
+    for (let i = 0; i < stations.length - 1; i++) {
+      const s0 = stations[i], s1 = stations[i + 1];
+      const len = Math.hypot(s1.z - s0.z, s1.w - s0.w);
+      const wale = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.34, len + 0.06), MAT.hull);
+      wale.position.set(side * (s0.w + s1.w) / 2 * 1.005,
+                        1.72,
+                        (s0.z + s1.z) / 2);
+      wale.rotation.y = Math.atan2(s1.w - s0.w, s1.z - s0.z) * side;
+      wale.castShadow = true;
+      shipModel.add(wale);
+    }
+  }
+
+  // ---- rudder and tiller at the stern ----
+  const rudder = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.0, 1.1), MAT.trim);
+  rudder.position.set(0, 0.85, 4.5);
+  rudder.rotation.x = 0.06;
+  rudder.castShadow = true;
+  shipModel.add(rudder);
+  const tiller = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 1.6), MAT.mast);
+  tiller.position.set(0, 1.95, 3.9);
+  shipModel.add(tiller);
+
+  // ---- anchor stowed at the bow, and its cable ----
+  const shank = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.5, 6), MAT.iron);
+  shank.position.set(0.55, 1.55, -4.3);
+  shank.rotation.z = 0.4;
+  shipModel.add(shank);
+  for (const s of [-1, 1]) {
+    const fluke = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.5, 5), MAT.iron);
+    fluke.position.set(0.55 + s * 0.32, 1.35, -4.3);
+    fluke.rotation.z = s * 1.2;
+    shipModel.add(fluke);
+  }
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.035, 5, 10), MAT.iron);
+  ring.position.set(0.55, 2.3, -4.3);
+  shipModel.add(ring);
+  rope(0.55, 2.42, -4.3, 0, 2.1, -3.2);
+
   const flagGeo = new THREE.PlaneGeometry(1.6, 0.85, 6, 4);
   const flag = new THREE.Mesh(flagGeo, MAT.flag);
   flag.position.set(0.85, mainTop + 0.2, 0.2);
@@ -1232,7 +1338,7 @@ function addPlatform(x, z, w, d, top) {
 }
 
 // A wall box whose side UVs tile by bay / floor, so windows line up floor to floor
-function facadeBox(w, h, d, mat, bay = 3.3, floorH = 3.35) {
+function facadeGeo(w, h, d, bay = 3.3, floorH = 3.35) {
   const g = new THREE.BoxGeometry(w, h, d);
   const uv = g.attributes.uv;
   const scaleFace = (f, su, sv) => {
@@ -1243,14 +1349,18 @@ function facadeBox(w, h, d, mat, bay = 3.3, floorH = 3.35) {
   scaleFace(4, Math.max(1, Math.round(w / bay)), Math.max(1, Math.round(h / floorH)));
   scaleFace(5, Math.max(1, Math.round(w / bay)), Math.max(1, Math.round(h / floorH)));
   uv.needsUpdate = true;
-  const m = new THREE.Mesh(g, mat);
+  return g;
+}
+
+function facadeBox(w, h, d, mat, bay = 3.3, floorH = 3.35) {
+  const m = new THREE.Mesh(facadeGeo(w, h, d, bay, floorH), mat);
   m.castShadow = true;
   m.receiveShadow = true;
   return m;
 }
 
 // Proper gabled roof: two slopes, two gable ends, overhanging eaves
-function makeGableRoof(w, d, h, mat, ov = 0.5, ridgeAlongX = true) {
+function gableRoofGeo(w, d, h, ov = 0.5) {
   const W = w + ov * 2, D = d + ov * 2;
   const pos = [], uvs = [];
   const push = (a, b, c, ua, ub, uc) => {
@@ -1273,10 +1383,75 @@ function makeGableRoof(w, d, h, mat, ov = 0.5, ridgeAlongX = true) {
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   g.computeVertexNormals();
-  const m = new THREE.Mesh(g, mat);
+  return g;
+}
+
+function makeGableRoof(w, d, h, mat, ov = 0.5, ridgeAlongX = true) {
+  const m = new THREE.Mesh(gableRoofGeo(w, d, h, ov), mat);
   m.castShadow = true;
   m.receiveShadow = true;
   return m;
+}
+
+// Append one geometry's triangles as flat vertex triples. BoxGeometry is
+// INDEXED, so its 24 vertices must be walked through the index buffer - copying
+// the position array alone would stitch triangles out of the wrong vertices and
+// tear the mesh apart.
+function appendGeo(geo, pos, nor, uv) {
+  const p = geo.attributes.position, n = geo.attributes.normal, u = geo.attributes.uv;
+  if (geo.index) {
+    const idx = geo.index.array;
+    for (let i = 0; i < idx.length; i++) {
+      const v = idx[i];
+      pos.push(p.getX(v), p.getY(v), p.getZ(v));
+      nor.push(n.getX(v), n.getY(v), n.getZ(v));
+      uv.push(u.getX(v), u.getY(v));
+    }
+  } else {
+    for (let v = 0; v < p.count; v++) {
+      pos.push(p.getX(v), p.getY(v), p.getZ(v));
+      nor.push(n.getX(v), n.getY(v), n.getZ(v));
+      uv.push(u.getX(v), u.getY(v));
+    }
+  }
+}
+
+// Merge many small parts into one mesh per material. A detailed townhouse is
+// then a handful of draw calls instead of fifty, which is what lets the whole
+// city carry real architectural detail without melting the frame rate.
+function mergeParts(parts) {
+  const byMat = new Map();
+  for (const p of parts) {
+    let g = p.geo;
+    if (!g) {
+      g = new THREE.BoxGeometry(p.w, p.h, p.d);
+    }
+    if (p.x || p.y || p.z || p.ry) {
+      const m = new THREE.Matrix4();
+      if (p.ry) m.makeRotationY(p.ry);
+      m.setPosition(p.x || 0, p.y || 0, p.z || 0);
+      g = g.clone().applyMatrix4(m);
+    }
+    if (!byMat.has(p.mat)) byMat.set(p.mat, []);
+    byMat.get(p.mat).push(g);
+  }
+  const out = [];
+  for (const [mat, geos] of byMat) {
+    let pos = [], nor = [], uv = [];
+    for (const g of geos) {
+      appendGeo(g, pos, nor, uv);
+      g.dispose();
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    out.push(mesh);
+  }
+  return out;
 }
 
 // ============================================================
@@ -1691,77 +1866,105 @@ function repTitle(rep) {
 // ============================================================
 //  BUILDING / PERSON HELPERS
 // ============================================================
-function makeBuilding(w, h, d, wallMat, roofMat) {
-  const g = new THREE.Group();
-  const walls = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), wallMat);
-  walls.position.y = h / 2;
-  walls.castShadow = true;
-  walls.receiveShadow = true;
-  g.add(walls);
-
-  // proper gable roof with eaves instead of a pyramid hat
-  const roof = makeGableRoof(w, d, Math.max(1.1, Math.min(w, d) * 0.34), roofMat, 0.45);
-  roof.position.y = h;
-  g.add(roof);
-
-  // door with a stone surround
-  const door = new THREE.Mesh(new THREE.BoxGeometry(w * 0.22, Math.min(2.1, h * 0.6), 0.1), CITY_MAT.timber);
-  door.position.set(0, Math.min(2.1, h * 0.6) / 2, d / 2 + 0.04);
-  g.add(door);
-  const lintel = new THREE.Mesh(new THREE.BoxGeometry(w * 0.3, 0.16, 0.22), CITY_MAT.stone);
-  lintel.position.set(0, Math.min(2.1, h * 0.6) + 0.08, d / 2 + 0.04);
-  g.add(lintel);
-
-  // two shuttered windows
-  for (const sx of [-w * 0.28, w * 0.28]) {
-    const win = new THREE.Mesh(new THREE.BoxGeometry(w * 0.17, 0.85, 0.08), CITY_MAT.glass);
-    win.position.set(sx, h * 0.62, d / 2 + 0.04);
-    g.add(win);
-    const sill = new THREE.Mesh(new THREE.BoxGeometry(w * 0.22, 0.08, 0.2), CITY_MAT.stone);
-    sill.position.set(sx, h * 0.62 - 0.48, d / 2 + 0.06);
-    g.add(sill);
-  }
-  return g;
-}
-
-// A Lisbon townhouse: stone ground floor, plastered upper floors, tiled roof
+// A Lisbon townhouse. The Baixa blocks are TERRACES of narrow houses that share
+// a party wall, so a wide block is built as a row of individual houses - each
+// with its own roof, chimney, front door and balcony - instead of one enormous
+// box with a facade painted on it. That is what makes the street read as real
+// Pombaline architecture.
 function makeHouse(w, d, floors, styleIdx, shop) {
   const g = new THREE.Group();
   const st = FACADE_MATS[styleIdx % FACADE_MATS.length];
   const groundH = 4.2, floorH = 3.3;
   const upperH = floors * floorH;
+  const totalH = groundH + upperH;
 
-  const ground = facadeBox(w, groundH, d, shop ? st.ground : st.plain, 3.3, groundH);
-  ground.position.y = groundH / 2;
-  g.add(ground);
+  // how many separate houses share this block
+  const bays = Math.max(1, Math.round(w / 6.4));
+  const bayW = w / bays;
+  const parts = [];
+  const B = (bw, bh, bd, x, y, z, mat, ry) => parts.push({ w: bw, h: bh, d: bd, x, y, z, mat, ry });
 
-  const upper = facadeBox(w, upperH, d, st.upper, 3.3, floorH);
-  upper.position.y = groundH + upperH / 2;
-  g.add(upper);
+  // ---- stone plinth: the basement courses stand proud of the pavement ----
+  B(w + 0.16, 0.55, d + 0.16, 0, 0.275, 0, CITY_MAT.stone);
 
-  // cornice under the eaves
-  const cornice = new THREE.Mesh(new THREE.BoxGeometry(w + 0.5, 0.34, d + 0.5), CITY_MAT.stone);
-  cornice.position.y = groundH + upperH + 0.17;
-  cornice.castShadow = true;
-  g.add(cornice);
+  // ---- the houses, one bay at a time ----
+  for (let i = 0; i < bays; i++) {
+    const bx = -w / 2 + bayW * (i + 0.5);
+    const bw = bayW - 0.09;                       // the party wall gap
+    const front = d / 2;
 
-  const roofH = Math.max(1.3, Math.min(w, d) * 0.30);
-  const roof = makeGableRoof(w, d, roofH, CITY_MAT.roof, 0.55);
-  roof.position.y = groundH + upperH + 0.34;
-  g.add(roof);
+    // ground floor (shopfront or plain) and the plastered upper floors
+    parts.push({ geo: facadeGeo(bw, groundH - 0.55, d - 0.06, bayW, groundH), mat: shop ? st.ground : st.plain,
+                 x: bx, y: 0.55 + (groundH - 0.55) / 2, z: 0 });
+    parts.push({ geo: facadeGeo(bw, upperH, d - 0.06, bayW, floorH), mat: st.upper,
+                 x: bx, y: groundH + upperH / 2, z: 0 });
 
-  // chimney stack - the Lisbon skyline is full of them
-  const ch = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.5, 0.9), CITY_MAT.stone);
-  ch.position.set((w / 2 - 1.3) * (w > 6 ? 1 : 0.6), groundH + upperH + roofH * 0.55 + 0.7, -d * 0.18);
-  ch.castShadow = true;
-  g.add(ch);
-  const cap = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.16, 1.15), CITY_MAT.stone);
-  cap.position.copy(ch.position).y += 0.8;
-  g.add(cap);
+    // its own gable roof. The ridge runs front-to-back (along the depth), so the
+    // gable triangle faces the street and the slopes fall away left and right -
+    // exactly how a terrace of townhouses is roofed. The height follows the
+    // span (the house width), not the depth, or the roof ends up nearly flat.
+    const span = bw / 2 + 0.42;
+    const roofH = Math.max(1.3, Math.min(3.4, span * 0.62));
+    parts.push({ geo: gableRoofGeo(d - 0.06, bw, roofH, 0.42), mat: CITY_MAT.roof,
+                 x: bx, y: totalH, z: 0, ry: Math.PI / 2 });
 
-  g.userData.height = groundH + upperH + roofH;
+    // chimney stack - the Lisbon skyline is full of them
+    B(0.72, 1.6, 0.72, bx + bw * 0.22, totalH + roofH * 0.62 + 0.7, -d * 0.16, CITY_MAT.stone);
+    B(0.95, 0.15, 0.95, bx + bw * 0.22, totalH + roofH * 0.62 + 1.55, -d * 0.16, CITY_MAT.stone);
+
+    // front door in a stone surround, with a step up to it
+    B(1.05, 2.25, 0.16, bx, 0.55 + 1.125, front + 0.05, CITY_MAT.stone);
+    B(0.82, 2.05, 0.12, bx, 0.55 + 1.02, front + 0.10, CITY_MAT.timber);
+    B(1.3, 0.14, 0.5, bx, 0.56, front + 0.16, CITY_MAT.stone);
+
+    // a real balcony you could stand on: stone bracket, slab, iron railing
+    if (i % 2 === 0) {
+      const by = groundH + floorH * 0.42;
+      B(0.5, 0.34, 0.34, bx - bayW * 0.34, by - 0.2, front + 0.24, CITY_MAT.stone);
+      B(0.5, 0.34, 0.34, bx + bayW * 0.34, by - 0.2, front + 0.24, CITY_MAT.stone);
+      B(bayW * 0.86, 0.13, 0.78, bx, by, front + 0.42, CITY_MAT.stone);
+      // railing: top rail plus uprights
+      B(bayW * 0.86, 0.07, 0.07, bx, by + 0.62, front + 0.78, CITY_MAT.iron);
+      B(0.06, 0.62, 0.06, bx - bayW * 0.42, by + 0.31, front + 0.78, CITY_MAT.iron);
+      B(0.06, 0.62, 0.06, bx + bayW * 0.42, by + 0.31, front + 0.78, CITY_MAT.iron);
+      for (let k = -2; k <= 2; k++) {
+        if (k === 0) continue;
+        B(0.045, 0.6, 0.045, bx + k * bayW * 0.21, by + 0.3, front + 0.78, CITY_MAT.iron);
+      }
+    }
+
+    // shop awning and hanging sign
+    if (shop && i % 2 === 1) {
+      B(bayW * 0.8, 0.1, 1.5, bx, groundH - 1.1, front + 0.72, CITY_MAT.timber, 0.14);
+      B(0.08, 0.75, 0.5, bx + bayW * 0.3, groundH - 1.5, front + 1.3, CITY_MAT.iron);
+      B(0.7, 0.5, 0.06, bx + bayW * 0.3, groundH - 1.85, front + 1.32, CITY_MAT.timber);
+    }
+  }
+
+  // ---- terrace-level detail ----
+  // corner pilasters (quoins) running the full height: the Pombaline signature
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) {
+      B(0.5, totalH, 0.5, sx * (w / 2 - 0.08), totalH / 2, sz * (d / 2 - 0.08), CITY_MAT.stone);
+    }
+  }
+  // string course at every floor line, front and back
+  for (let f = 0; f <= floors; f++) {
+    const y = groundH + f * floorH - 0.07;
+    if (y <= 0.6) continue;
+    B(w + 0.12, 0.14, d + 0.02, 0, y, 0, CITY_MAT.stone);
+  }
+  // cornice under the eaves, then a parapet coping along the two long sides
+  B(w + 0.5, 0.34, d + 0.5, 0, totalH + 0.17, 0, CITY_MAT.stone);
+  B(w + 0.62, 0.2, 0.62, 0, totalH + 0.44, d / 2, CITY_MAT.stone);
+  B(w + 0.62, 0.2, 0.62, 0, totalH + 0.44, -d / 2, CITY_MAT.stone);
+
+  for (const m of mergeParts(parts)) g.add(m);
+
+  g.userData.height = totalH + 0.6;
   return g;
 }
+
 
 function makePerson(robeColor, hatColor) {
   const g = new THREE.Group();
@@ -2234,14 +2437,6 @@ function buildLisbon(group, island, pointAt) {
         group.add(h);
         coll(cx, cz, w, d, Y + h.userData.height);
         bi++;
-
-        // an awning or two over the shopfronts
-        if ((r + c) % 3 === 0) {
-          const aw = new THREE.Mesh(new THREE.BoxGeometry(w * 0.9, 0.1, 1.6),
-            new THREE.MeshStandardMaterial({ color: (c % 2 ? 0xb2483a : 0x2f6a58), roughness: 0.9 }));
-          add(aw, cx, Y + 3.4, cz + d / 2 + 0.7);
-          aw.rotation.x = 0.16;
-        }
       }
     }
   }
@@ -2304,7 +2499,10 @@ function buildLisbon(group, island, pointAt) {
     add(nave, cx, Y + naveH / 2, cz);
     coll(cx, cz, naveW, naveD, Y + naveH);
 
-    const roof = makeGableRoof(naveW, naveD, 4.6, CITY_MAT.roof, 0.5);
+    // the ridge runs the length of the nave, so the gable faces the river and
+    // the pitch follows the 26 m span instead of the 40 m length
+    const roof = makeGableRoof(naveD, naveW, 4.6, CITY_MAT.roof, 0.5);
+    roof.rotation.y = Math.PI / 2;
     add(roof, cx, Y + naveH, cz);
 
     // west front facing the river (+z)
@@ -2551,7 +2749,7 @@ function buildTradePost(group, island, pointAt, def) {
   const OX = group.position.x, OZ = group.position.z;
   const add = (m, x, y, z, ry = 0) => { m.position.set(x, y, z); if (ry) m.rotation.y = ry; group.add(m); return m; };
 
-  // ---- huts: round walls with a conical thatch roof ----
+  // ---- huts: round walls, conical thatch, all on a raised timber platform ----
   const huts = 4 + Math.floor(island.rng() * 3);
   const plaza = [];
   for (let i = 0; i < huts; i++) {
@@ -2560,24 +2758,49 @@ function buildTradePost(group, island, pointAt, def) {
     const hx = Math.cos(ha) * R * ht, hz = Math.sin(ha) * R * ht;
     const hy = island.heightAt(hx, hz);
     const rad = 1.9 + island.rng() * 0.7;
+    const big = i === 0;                       // the longhouse, larger than the rest
 
-    const walls = new THREE.Mesh(new THREE.CylinderGeometry(rad, rad * 1.05, 2.0, 9), hutMat);
-    add(walls, hx, hy + 1.0, hz);
+    // platform on stilts, with a ladder of steps up the seaward side
+    const prad = big ? rad * 1.9 : rad + 0.55;
+    const deck = new THREE.Mesh(new THREE.CylinderGeometry(prad, prad, 0.18, 10), CITY_MAT.timber);
+    add(deck, hx, hy + 0.55, hz);
+    deck.castShadow = true; deck.receiveShadow = true;
+    for (let k = 0; k < 6; k++) {
+      const pa = (k / 6) * Math.PI * 2 + 0.3;
+      const stilt = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.62, 5), CITY_MAT.timber);
+      add(stilt, hx + Math.cos(pa) * (prad - 0.2), hy + 0.28, hz + Math.sin(pa) * (prad - 0.2));
+    }
+    for (let k = 0; k < 3; k++) {
+      const tread = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.09, 0.34), CITY_MAT.timber);
+      add(tread, hx + prad + 0.35, hy + 0.18 + k * 0.2, hz, 0);
+    }
+
+    const wallH = big ? 2.6 : 2.0;
+    const walls = new THREE.Mesh(new THREE.CylinderGeometry(rad, rad * 1.05, wallH, 9), hutMat);
+    add(walls, hx, hy + 0.64 + wallH / 2, hz);
     walls.castShadow = true; walls.receiveShadow = true;
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(rad * 1.5, 1.9, 9), thatchMat);
-    add(roof, hx, hy + 2.9, hz);
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(rad * (big ? 1.75 : 1.5), big ? 2.6 : 1.9, 9), thatchMat);
+    add(roof, hx, hy + 0.64 + wallH + (big ? 1.3 : 0.95), hz);
     roof.castShadow = true;
-    // door frame
-    const door = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.3, 0.16), CITY_MAT.dark);
+    // ridge cap of weighted lashings
+    const capTop = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.6, 6), CITY_MAT.timber);
+    add(capTop, hx, hy + 0.64 + wallH + (big ? 2.6 : 1.9) + 0.28, hz);
+
+    // door frame and a carved lintel
     const da = ha + Math.PI;
-    add(door, hx + Math.cos(da) * (rad - 0.1), hy + 0.65, hz + Math.sin(da) * (rad - 0.1), -da);
+    add(new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.4, 0.18), CITY_MAT.timber),
+        hx + Math.cos(da) * (rad - 0.08), hy + 0.64 + 0.7, hz + Math.sin(da) * (rad - 0.08), -da);
+    add(new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.16, 0.24), CITY_MAT.dark),
+        hx + Math.cos(da) * (rad - 0.05), hy + 0.64 + 1.42, hz + Math.sin(da) * (rad - 0.05), -da);
+
     // a post and beam for drying nets
     if (i % 2 === 0) {
       const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.4, 6), CITY_MAT.timber);
       add(post, hx + Math.cos(ha + 1.2) * 2.2, hy + 1.2, hz + Math.sin(ha + 1.2) * 2.2);
     }
-    addColliderBox(OX + hx, OZ + hz, rad * 2, rad * 2, hy + 2);
-    plaza.push({ x: hx, y: hy, z: hz });
+    addColliderBox(OX + hx, OZ + hz, rad * 2, rad * 2, hy + wallH + 0.7);
+    addPlatform(OX + hx, OZ + hz, prad * 2, prad * 2, hy + 0.64);
+    plaza.push({ x: hx, y: hy + 0.64, z: hz });
   }
 
   // ---- jetty out into the lagoon ----
@@ -2656,6 +2879,43 @@ function buildTradePost(group, island, pointAt, def) {
     }
   }
 
+  // ---- a palisade of sharpened stakes round the village ----
+  const stakeCount = 26;
+  for (let i = 0; i < stakeCount; i++) {
+    const pa = a + (i / stakeCount) * Math.PI * 2;
+    const sr = R * 0.82;
+    const sx2 = Math.cos(pa) * sr, sz2 = Math.sin(pa) * sr;
+    const sy = island.heightAt(sx2, sz2);
+    if (sy < 0.4) continue;                       // no stakes in the lagoon
+    const stake = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.1, 1.7 + (i % 3) * 0.2, 5), CITY_MAT.timber);
+    add(stake, sx2, sy + 0.85, sz2, pa);
+    stake.castShadow = true;
+  }
+
+  // ---- totems: carved and painted, the village's pride ----
+  for (let i = 0; i < 2; i++) {
+    const ta = a + 2.2 + i * 2.6;
+    const tx2 = Math.cos(ta) * R * 0.5, tz2 = Math.sin(ta) * R * 0.5;
+    const ty2 = island.heightAt(tx2, tz2);
+    const totem = new THREE.Group();
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.3, 3.4, 7), CITY_MAT.timber);
+    trunk.position.y = 1.7; trunk.castShadow = true;
+    totem.add(trunk);
+    for (let k = 0; k < 3; k++) {
+      const wing = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.34, 0.16),
+        new THREE.MeshStandardMaterial({ color: [0xb2483a, 0x2f6a58, 0xd8b23a][k], roughness: 0.9 }));
+      wing.position.y = 0.9 + k * 0.95;
+      wing.rotation.z = 0.06 * (k % 2 ? 1 : -1);
+      wing.castShadow = true;
+      totem.add(wing);
+    }
+    const crest = new THREE.Mesh(new THREE.ConeGeometry(0.42, 0.8, 6), CITY_MAT.timber);
+    crest.position.y = 3.7;
+    totem.add(crest);
+    add(totem, tx2, ty2, tz2, ta);
+    addColliderBox(OX + tx2, OZ + tz2, 0.9, 0.9, ty2 + 3.4);
+  }
+
   // ---- the trader ----
   const tp = plaza[0];
   const person = makePerson(0x8a5a2a, null);
@@ -2706,6 +2966,7 @@ const Player = {
   lookYaw: 0, lookPitch: 0,
   island: null,                 // PORTS entry while ashore
   bob: 0,
+  bobY: 0,                      // head-bob camera offset (never touches the physics y)
 };
 
 const Ship = {
@@ -2716,6 +2977,25 @@ const Ship = {
 
 let playerShip = null;          // THREE.Group
 let dockedAt = null;            // PORTS entry while docked
+let spaceLatch = false;         // edge detection so one key press = one toggle
+
+// Drop or weigh anchor. While she is anchored there is no way on her and she
+// holds her station, so you can leave the helm and walk the deck.
+function toggleAnchor() {
+  if (!Game.ship || !playerShip) return;
+  Ship.anchored = !Ship.anchored;
+  if (Ship.anchored) {
+    SHIP_PHYS.vf = 0; SHIP_PHYS.vl = 0; SHIP_PHYS.yawRate = 0;
+    Ship.speed = 0;
+    addLog('You drop anchor. She swings to the wind and holds her station.');
+    showToast('Anchor down — press Space to weigh it');
+  } else {
+    addLog('You weigh anchor. The cables come in dripping.');
+    showToast('Anchor up');
+  }
+  const b = document.getElementById('btnSpace');
+  if (b) b.classList.toggle('on', Ship.anchored);
+}
 
 // ---- camera (first person) ----
 const camera = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerHeight, 0.1, 1200);
@@ -2782,6 +3062,7 @@ function spawnPlayerShip(cls, x, z, heading) {
   Ship.pitch = 0; Ship.roll = 0;
   SHIP_PHYS.vf = 0; SHIP_PHYS.vl = 0; SHIP_PHYS.yawRate = 0;
   SHIP_PHYS.pitch = 0; SHIP_PHYS.roll = 0;
+  Ship.anchored = false;
   Game.ship = { cls, x, z, heading };
 }
 
@@ -2827,6 +3108,13 @@ window.addEventListener('keydown', (e) => {
     keys[k] = true;
     if (Game.phase === 'play') e.preventDefault();
   }
+  // Space DROPS or WEIGHS the anchor - a toggle, so you can leave her riding
+  // to the anchor and walk about the deck. It used to be a held key that did
+  // nothing at all, because Ship.anchored was never read by the physics.
+  if (k === ' ' && Game.phase === 'play' && Player.mode !== 'foot' && !spaceLatch) {
+    spaceLatch = true;
+    toggleAnchor();
+  }
   if (k === 'e' && Game.phase === 'play') {
     e.preventDefault();
     tryInteract();
@@ -2836,8 +3124,12 @@ window.addEventListener('keydown', (e) => {
     else if (Game.phase === 'menu' || Game.phase === 'save') closeMenu();
   }
 });
-window.addEventListener('keyup', (e) => { keys[normKey(e)] = false; });
-window.addEventListener('blur', () => { Object.keys(keys).forEach(k => keys[k] = false); });
+window.addEventListener('keyup', (e) => {
+  const k = normKey(e);
+  keys[k] = false;
+  if (k === ' ') spaceLatch = false;
+});
+window.addEventListener('blur', () => { Object.keys(keys).forEach(k => keys[k] = false); spaceLatch = false; });
 
 // Pointer lock mouse look
 canvas.addEventListener('click', () => {
@@ -2850,8 +3142,17 @@ document.addEventListener('mousemove', (e) => {
   const sens = 0.0022;
   Player.lookYaw -= e.movementX * sens;
   Player.lookPitch -= e.movementY * sens;
-  Player.lookYaw = Math.max(-1.3, Math.min(1.3, Player.lookYaw));
-  Player.lookPitch = Math.max(-0.85, Math.min(0.85, Player.lookPitch));
+  if (Player.mode === 'foot') {
+    // on foot the look IS your facing: turn all the way round, and wrap the
+    // angle so it never loses precision after a long spin
+    Player.lookYaw = ((Player.lookYaw + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+    Player.lookPitch = Math.max(-1.35, Math.min(1.35, Player.lookPitch));
+  } else {
+    // at the helm or on deck the yaw is only a look-around offset from the
+    // ship's heading, so it must stay small
+    Player.lookYaw = Math.max(-1.3, Math.min(1.3, Player.lookYaw));
+    Player.lookPitch = Math.max(-0.85, Math.min(0.85, Player.lookPitch));
+  }
 });
 
 // ---- touch controls ----
@@ -2896,8 +3197,7 @@ if (isTouch) {
   });
   document.getElementById('btnSpace').addEventListener('touchstart', (e) => {
     e.preventDefault();
-    if (Game.phase === 'play' && Player.mode !== 'foot') keys[' '] = true;
-    setTimeout(() => keys[' '] = false, 120);
+    if (Game.phase === 'play' && Player.mode !== 'foot') toggleAnchor();
   });
 }
 // ============================================================
@@ -3304,6 +3604,14 @@ const DLG = {
     }
     const localKey = port.def.type;
     const local = TRADE_GOODS[localKey];
+    // the home port has no local specialty - it is where you SELL, not buy
+    if (!local) {
+      return {
+        who: "Trading Post", role: port.def.name, portrait: "\u{1F3DD}️",
+        text: `There is nothing to buy at ${port.def.name}. Sail to a foreign island for goods, and bring them home to sell.`,
+        options: [{ label: "Walk away." }],
+      };
+    }
     const localPrice = Math.floor(local.buyPrice * 0.8);
     const opts = [
       { label: `Buy 1 ${local.name} — ${localPrice}g (local price)`, req: { gold: localPrice }, effect: { gold: -localPrice, cargo: { [localKey]: 1 } }, stay: true },
@@ -3862,7 +4170,9 @@ function updateFoot(dt) {
 
   const moving = Math.hypot(Player.vx, Player.vz) > 0.6;
   Player.bob += dt * (moving ? 9 : 0);
-  Player.y += (moving && Player.onGround ? Math.sin(Player.bob) * 0.045 : 0);
+  // head bob is a CAMERA offset only - writing it into Player.y would make the
+  // landing test flicker between "on the ground" and "in the air" every half step
+  Player.bobY = (moving && Player.onGround) ? Math.sin(Player.bob) * 0.045 : 0;
   if (Player.y < -30) die('The sea took you.');
 }
 
@@ -3906,7 +4216,7 @@ function updateDeckWalk(dt) {
 
   const moving = len > 0.1;
   Player.bob += dt * (moving ? 7 : 0);
-  if (moving) Player.y += Math.sin(Player.bob) * 0.035;
+  Player.bobY = moving ? Math.sin(Player.bob) * 0.035 : 0;
 }
 
 // Ship as a rigid body: forward/lateral velocity, yaw inertia, buoyancy.
@@ -3921,15 +4231,30 @@ function updateShipPhysics(dt) {
   // ---------------- controls ----------------
   let throttle = 0, rudder = 0;
   if (atHelm) {
-    if (keys[' ']) {
-      Ship.anchored = true;
+    if (Ship.anchored) {
+      // no way on her: the cable holds, and she slowly swings to the wind
+      SHIP_PHYS.vf *= Math.exp(-3.5 * dt);
+      SHIP_PHYS.vl *= Math.exp(-3.5 * dt);
+      SHIP_PHYS.yawRate *= Math.exp(-3.0 * dt);
+      // leaning on the helm weighs anchor rather than leaving you stuck
+      if (keys['w'] || keys['s']) {
+        Ship.anchored = false;
+        addLog('You weigh anchor. The cables come in dripping.');
+        showToast('Anchor up');
+        const b = document.getElementById('btnSpace');
+        if (b) b.classList.remove('on');
+      }
     } else {
-      Ship.anchored = false;
       if (keys['w']) throttle = 1;
       else if (keys['s']) throttle = -0.55;
       if (keys['a']) rudder = 1;
       if (keys['d']) rudder = -1;
     }
+  } else if (Ship.anchored) {
+    // riding to the anchor on deck: she holds station but still answers the wind
+    SHIP_PHYS.vf *= Math.exp(-3.5 * dt);
+    SHIP_PHYS.vl *= Math.exp(-3.5 * dt);
+    SHIP_PHYS.yawRate *= Math.exp(-3.0 * dt);
   }
 
   // ---------------- forward: thrust vs quadratic hull drag ----------------
@@ -4087,14 +4412,14 @@ function updateCameraRig(dt) {
     camera.rotateY(Math.PI + Player.lookYaw);
     camera.rotateX(Player.lookPitch);
   } else if (Player.mode === 'deck' && playerShip) {
-    camera.position.set(Player.x, Player.y, Player.z);
+    camera.position.set(Player.x, Player.y + Player.bobY, Player.z);
     camera.quaternion.copy(playerShip.quaternion);
     camera.rotateY(Math.PI + Player.lookYaw);
     camera.rotateX(Player.lookPitch);
   } else {
     // on foot the eye rides 1.7 m above the feet, and sinks when you swim
     const eye = Player.inWater ? 1.6 : 1.7;
-    camera.position.set(Player.x, Player.y + eye, Player.z);
+    camera.position.set(Player.x, Player.y + eye + Player.bobY, Player.z);
     camera.rotation.set(Player.lookPitch, Player.lookYaw, 0, 'YXZ');
   }
 }
@@ -4548,6 +4873,7 @@ function resetLife() {
   Player.lookYaw = 0;
   Player.lookPitch = 0;
   Player.bob = 0;
+  Player.bobY = 0;
 
   seaEventTimer = 50 + Math.random() * 30;
   streetEventTimer = 70 + Math.random() * 50;
@@ -4601,6 +4927,27 @@ const clock = new THREE.Clock();
 let seaEventTimer = 60, streetEventTimer = 90;
 let mmFrame = 0;
 
+// Physics runs on a fixed timestep so walking and sailing feel identical at
+// 30 fps and at 144 fps; the frame rate only decides how many steps we take.
+const PHYS_STEP = 1 / 120;
+let physAcc = 0;
+
+function stepPhysics(h) {
+  if (Player.mode === 'foot') {
+    updateFoot(h);
+    wakeGroup.visible = false;
+  } else if (Player.mode === 'deck') {
+    updateDeckWalk(h);
+    if (Game.ship) updateShipPhysics(h);
+  } else if (Player.mode === 'helm' && Game.ship) {
+    updateShipPhysics(h);
+  }
+  // a ship short of hands barely moves
+  if (Game.ship && Player.mode !== 'foot' && Game.crew < SHIP_CLASSES[Game.ship.cls].minCrew) {
+    SHIP_PHYS.vf *= Math.exp(-2.2 * h);
+  }
+}
+
 function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(0.05, clock.getDelta());
@@ -4645,22 +4992,15 @@ function animate() {
       if (streetEventTimer <= 0) { streetEventTimer = 80 + Math.random() * 70; triggerStreetEvent(); }
     }
 
-    // ---- movement ----
-    if (Player.mode === 'foot') {
-      updateFoot(dt);
-      wakeGroup.visible = false;
-    } else if (Player.mode === 'deck') {
-      updateDeckWalk(dt);
-      if (Game.ship) updateShipPhysics(dt);
-    } else if (Player.mode === 'helm' && Game.ship) {
-      updateShipPhysics(dt);
-    }
+    // ---- movement: fixed substeps, then one camera update per frame ----
+    physAcc += dt;
+    let steps = 0;
+    while (physAcc >= PHYS_STEP && steps < 8) { stepPhysics(PHYS_STEP); physAcc -= PHYS_STEP; steps++; }
+    if (steps === 8) physAcc = 0;           // shed the backlog after a long stall
 
     // a ship short of hands barely moves
-    if (Game.ship && Player.mode !== 'foot' && Game.crew < SHIP_CLASSES[Game.ship.cls].minCrew) {
-      SHIP_PHYS.vf *= Math.exp(-2.2 * dt);
-      if (Math.random() < dt * 0.25) showToast('Too few hands to work the ship!');
-    }
+    if (Game.ship && Player.mode !== 'foot' && Game.crew < SHIP_CLASSES[Game.ship.cls].minCrew
+        && Math.random() < dt * 0.25) showToast('Too few hands to work the ship!');
 
     // ---- the citizens of Lisbon go about their day ----
     for (const w of walkers) {
@@ -4721,13 +5061,16 @@ window.addEventListener('resize', () => {
 
 // debug handle (handy in the console)
 window.__voyage = {
-  Game, Player, Ship, PORTS, camera, scene, interactables, keys, clouds,
+  THREE,
+  Game, Player, Ship, PORTS, camera, scene, renderer, interactables, keys, clouds,
   DLG, SEA_EVENTS, STREET_EVENTS, renderDialog, closeDialog,
   COLLIDERS, PLATFORMS, LIS_CITY, walkers, SHIP_PHYS, updateFoot, updateShipPhysics,
   updateDeckWalk, resolveXZ, supportY, groundY, SHIP_CLASSES, openDialog, chooseOption,
   spawnPlayerShip, spawnShipInLisbon, goAshore, boardShip, lisbonBerth, lisbonDock,
   saveGame, loadGame, autosave, resetLife, openMenu, closeMenu,
   triggerSeaEvent, triggerStreetEvent, goAshore, die,
+  makeHouse, mergeParts, facadeGeo, gableRoofGeo, buildShipModel,
+  toggleAnchor, spaceLatch: () => spaceLatch,
   get ship() { return playerShip; }
 };
 </script>
