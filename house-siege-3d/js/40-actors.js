@@ -250,6 +250,7 @@ function finishSpawn(a, slot) {
   a.stuckX = a.pos.x; a.stuckZ = a.pos.z; a.stuckWin = 0; a.stuckT = 0; a.stuckStage = 0; a.nudgeT = 0; a.hopT = 0;
   a.arriveT = 0;
   a.bestGoalD = 1e9;
+  a.viewBlend = 0;                 // easing out of the bystander camera
   if (a.mesh) { a.mesh.visible = true; a.mesh.position.copy(a.pos); }
   if (a.np) a.np.style.opacity = '1';
 }
