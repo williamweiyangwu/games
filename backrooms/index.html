@@ -573,7 +573,7 @@ body.touch #cross{opacity:.35}
     <div class="notekind" id="note-kind">RECOVERED DOCUMENT</div>
     <div class="notetitle" id="note-title"></div>
     <div class="notebody" id="note-body"></div>
-    <div class="notefoot">[E] OR CLICK TO PUT IT AWAY</div>
+    <div class="notefoot">[E] · CLICK OR TAP TO PUT IT AWAY</div>
   </div>
 </div>
 
@@ -2483,6 +2483,9 @@ function showNote(e){
   $('#note-title').textContent=e.title;
   $('#note-body').textContent=e.body;
   $('#note').classList.add('on');
+  // give the cursor back, otherwise the promised "click to put it away"
+  // lands on the canvas and fires the weapon instead
+  document.exitPointerLock&&document.exitPointerLock();
 }
 function closeNote(){
   if(!noteOpen)return;
@@ -3853,7 +3856,7 @@ const canvas=renderer.domElement;
 canvas.addEventListener('mousedown',e=>{
   if(state!=='playing')return;
   if(touchMode)return;          // touch owns its own buttons and drag-look
-  if(invOpen)return; // the overlay owns the cursor while the inventory is up
+  if(invOpen||noteOpen)return; // an overlay owns the cursor
   if(e.button===0)attack();
   if(e.button===2&&chestTarget)openChest(chestTarget);
   if(document.pointerLockElement!==canvas){dragging=true;lastMX=e.clientX;lastMY=e.clientY;}
@@ -3861,7 +3864,7 @@ canvas.addEventListener('mousedown',e=>{
 addEventListener('mouseup',()=>dragging=false);
 
 addEventListener('mousemove',e=>{
-  if(state!=='playing')return;
+  if(state!=='playing'||noteOpen)return;
   let dx=0,dy=0;
   if(document.pointerLockElement===canvas){dx=e.movementX||0;dy=e.movementY||0;}
   else if(dragging){dx=e.clientX-lastMX;dy=e.clientY-lastMY;lastMX=e.clientX;lastMY=e.clientY;}
@@ -3885,7 +3888,7 @@ addEventListener('wheel',e=>{
 addEventListener('contextmenu',e=>e.preventDefault());
 
 document.addEventListener('pointerlockchange',()=>{
-  if(document.pointerLockElement!==canvas&&state==='playing'&&!invOpen&&!opsOpen&&!pwOpen){
+  if(document.pointerLockElement!==canvas&&state==='playing'&&!invOpen&&!opsOpen&&!pwOpen&&!noteOpen){
     setState('paused');
   }
 });
@@ -4403,6 +4406,7 @@ function die(){
   deleteSave();
   recordRun(false);
   if(invOpen)closeInv();
+  if(noteOpen)closeNote();
   if(opsOpen)closeOps();
   if(pwOpen)closePw();
   AU.stinger();
@@ -4424,6 +4428,7 @@ function win(){
   deleteSave();
   recordRun(true);
   if(invOpen)closeInv();
+  if(noteOpen)closeNote();
   if(opsOpen)closeOps();
   if(pwOpen)closePw();
   AU.setChase(0);
@@ -4742,9 +4747,9 @@ function tick(){
 
   if(state==='playing'){
     const nowW=performance.now();
-    // the inventory and the operator console freeze time: the world
-    // renders, nothing simulates
-    if(!invOpen&&!opsOpen&&!pwOpen){
+    // the inventory, the operator console and a recovered document all freeze
+    // time: the world renders, nothing simulates
+    if(!invOpen&&!opsOpen&&!pwOpen&&!noteOpen){
       playT+=Math.min(2,(nowW-lastTickW)/1000);
       updatePlayer(dt);
       for(const m of monsters)m.update(dt);
@@ -4946,6 +4951,7 @@ function descend(){
   if(state!=='playing'||level>=LAST_LEVEL)return;
   state='descending';
   if(invOpen)closeInv();
+  if(noteOpen)closeNote();
   if(opsOpen)closeOps();
   if(pwOpen)closePw();
   document.exitPointerLock&&document.exitPointerLock();
