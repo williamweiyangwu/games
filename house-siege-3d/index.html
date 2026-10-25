@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>WHITE MAZE 5v5</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230a0d13'/%3E%3Cpath d='M16 5l9 6v10l-9 6-9-6V11z' fill='none' stroke='%23ff4a4a' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23ffc44d'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="css/style.css?v=20">
+<link rel="stylesheet" href="css/style.css?v=21">
 </head>
 <body>
 
@@ -125,8 +125,11 @@
   <div id="dmgvig"></div>
   <div id="scope">
     <div class="sc-ring"></div>
+    <div class="sc-lens"></div>
     <div class="sc-h"></div><div class="sc-v"></div>
-    <div class="sc-mil"></div>
+    <div class="sc-tick l"></div><div class="sc-tick r"></div>
+    <div class="sc-dots"></div>
+    <div class="sc-dot"></div>
   </div>
 
   <!-- bottom left: health -->
@@ -148,7 +151,7 @@
 
   <!-- bag / loadout -->
   <div id="bag">
-    <div class="bag-head">BAG <span>1–5</span></div>
+    <div class="bag-head">BAG <span>1–5 · MMB CYCLE</span></div>
     <div id="bagList"></div>
   </div>
 
@@ -223,25 +226,25 @@
 </div>
 
 <script src="lib/three.min.js"></script>
-<script src="js/00-core.js?v=20"></script>
-<script src="js/10-render.js?v=20"></script>
-<script src="js/20-world.js?v=20"></script>
-<script src="js/30-nav.js?v=20"></script>
-<script src="js/35-physics.js?v=20"></script>
-<script src="js/40-actors.js?v=20"></script>
-<script src="js/45-combat.js?v=20"></script>
-<script src="js/50-items.js?v=20"></script>
-<script src="js/55-effects.js?v=20"></script>
-<script src="js/60-loot.js?v=20"></script>
-<script src="js/65-flags.js?v=20"></script>
-<script src="js/70-ai.js?v=20"></script>
-<script src="js/75-player.js?v=20"></script>
-<script src="js/80-viewmodel.js?v=20"></script>
-<script src="js/90-hud.js?v=20"></script>
-<script src="js/94-tutorial.js?v=20"></script>
-<script src="js/95-input.js?v=20"></script>
-<script src="js/96-flow.js?v=20"></script>
-<script src="js/98-menu.js?v=20"></script>
-<script src="js/99-boot.js?v=20"></script>
+<script src="js/00-core.js?v=21"></script>
+<script src="js/10-render.js?v=21"></script>
+<script src="js/20-world.js?v=21"></script>
+<script src="js/30-nav.js?v=21"></script>
+<script src="js/35-physics.js?v=21"></script>
+<script src="js/40-actors.js?v=21"></script>
+<script src="js/45-combat.js?v=21"></script>
+<script src="js/50-items.js?v=21"></script>
+<script src="js/55-effects.js?v=21"></script>
+<script src="js/60-loot.js?v=21"></script>
+<script src="js/65-flags.js?v=21"></script>
+<script src="js/70-ai.js?v=21"></script>
+<script src="js/75-player.js?v=21"></script>
+<script src="js/80-viewmodel.js?v=21"></script>
+<script src="js/90-hud.js?v=21"></script>
+<script src="js/94-tutorial.js?v=21"></script>
+<script src="js/95-input.js?v=21"></script>
+<script src="js/96-flow.js?v=21"></script>
+<script src="js/98-menu.js?v=21"></script>
+<script src="js/99-boot.js?v=21"></script>
 </body>
 </html>
