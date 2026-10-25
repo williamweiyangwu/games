@@ -334,6 +334,22 @@ function setViewModel(id) {
   VM.cur = id;
 }
 
+/* Drop the lens and give the plain crosshair back. Needed whenever the view
+   stops being first person (death, pause, quit to menu): updateViewModel() is
+   the only thing that draws the scope, so without this the overlay stays up
+   over the bystander camera, the pause screen or the menu. */
+function hideScope() {
+  VM.adsOn = false;
+  const sc = $('scope');
+  if (sc) {
+    sc.classList.remove('show');
+    sc.style.removeProperty('--sx');
+    sc.style.removeProperty('--sy');
+  }
+  const ch = $('crosshair');
+  if (ch) ch.style.display = '';
+}
+
 function addRecoil(w) {
   VM.recoilV += 0.05 + (w.dmg / 900);
   G.player.pitch = clamp(G.player.pitch + 0.004 + Math.random() * 0.003, -1.35, 1.35);
@@ -345,7 +361,7 @@ function swingKnife() {
 }
 
 const MUZZLE = { knife: [0, 0.01, -0.36], pistol: [0, 0.035, -0.22], smg: [0, 0.025, -0.46], rifle: [0, 0.028, -0.6], shotgun: [0, 0.035, -0.68], sniper: [0, 0.03, -0.82], crossbow: [0, 0.058, -0.5] };
-const ADS_FOV = { pistol: 58, smg: 55, rifle: 50, shotgun: 60, sniper: 24, knife: 74, crossbow: 50 };
+const ADS_FOV = { pistol: 58, smg: 55, rifle: 50, shotgun: 60, sniper: 21, knife: 74, crossbow: 50 };
 
 function updateViewModel(dt, speed) {
   const p = G.player;
@@ -386,17 +402,34 @@ function updateViewModel(dt, speed) {
     lerp(hip.r[2], ads.r[2], t) + VM.kick * 0.45
   );
 
-  /* FOV / scope */
-  const sniperScoped = st.id === 'sniper' && VM.ads > 0.75;
+  /* FOV / scope — only a weapon flagged `scope` (the sniper) gets the lens */
+  const scoped = !!w.scope && VM.ads > 0.75;
   const targetFov = 78 - (78 - (ADS_FOV[st.id] || 55)) * VM.ads;
   if (Math.abs(camera.fov - targetFov) > 0.15) {
     camera.fov = lerp(camera.fov, targetFov, Math.min(1, dt * 14));
     camera.updateProjectionMatrix();
   }
   const scopeEl = $('scope');
-  if (scopeEl) scopeEl.classList.toggle('show', sniperScoped);
-  m.visible = !sniperScoped;
-  VM.flash.visible = VM.recoilV > 0.055 && !sniperScoped && !w.item;
+  if (scopeEl) {
+    scopeEl.classList.toggle('show', scoped);
+    /* scope breathing: the reticle drifts a couple of pixels while the lens is
+       on a target. Cosmetic only — the shots still leave dead centre. */
+    if (scoped) {
+      VM.scopeT = (VM.scopeT || 0) + dt;
+      const t = VM.scopeT, a = 2.4;
+      scopeEl.style.setProperty('--sx', (Math.sin(t * 0.9) * a + Math.sin(t * 2.3) * a * 0.35).toFixed(2) + 'px');
+      scopeEl.style.setProperty('--sy', (Math.cos(t * 0.7) * a * 0.8 + Math.sin(t * 1.9) * a * 0.3).toFixed(2) + 'px');
+    } else {
+      VM.scopeT = 0;
+      scopeEl.style.removeProperty('--sx');
+      scopeEl.style.removeProperty('--sy');
+    }
+  }
+  /* the plain crosshair would sit on top of the reticle, so drop it in the lens */
+  const chEl = $('crosshair');
+  if (chEl) chEl.style.display = scoped ? 'none' : '';
+  m.visible = !scoped;
+  VM.flash.visible = VM.recoilV > 0.055 && !scoped && !w.item;
   VM.flash2.visible = VM.flash.visible;
 
   if (VM.flash.visible) {
