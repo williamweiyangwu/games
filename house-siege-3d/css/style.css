@@ -354,14 +354,32 @@ b{font-weight:700}
   #mapBox{transform:scale(.8);transform-origin:top right}
 }
 
-/* ---------- sniper scope ---------- */
-#scope{position:absolute;inset:0;display:none;pointer-events:none;z-index:15}
+/* ---------- sniper scope ----------
+   A lens, not a crosshair: a black surround, green-tinted glass and a mil-dot
+   reticle that drifts as the shooter breathes. --sx/--sy are written every
+   frame by updateViewModel() while the lens is up. */
+#scope{position:absolute;inset:0;display:none;pointer-events:none;z-index:15;--sx:0px;--sy:0px}
 #scope.show{display:block}
+/* the lens itself — everything outside this circle is black */
 #scope .sc-ring{position:absolute;left:50%;top:50%;width:min(84vh,84vw);height:min(84vh,84vw);
   transform:translate(-50%,-50%);border-radius:50%;
-  box-shadow:0 0 0 1px rgba(0,0,0,.9), 0 0 0 9999px rgba(0,0,0,.92), inset 0 0 90px rgba(0,0,0,.95)}
-#scope .sc-h{position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(10,12,10,.75)}
-#scope .sc-v{position:absolute;top:0;bottom:0;left:50%;width:1px;background:rgba(10,12,10,.75)}
-#scope .sc-mil{position:absolute;left:50%;top:50%;width:min(84vh,84vw);height:min(84vh,84vw);
+  box-shadow:0 0 0 2px rgba(0,0,0,.95), 0 0 0 9999px rgba(0,0,0,.94), inset 0 0 90px rgba(0,0,0,.95)}
+/* glass: faint green tint that falls off to black at the rim */
+#scope .sc-lens{position:absolute;left:50%;top:50%;width:min(84vh,84vw);height:min(84vh,84vw);
   transform:translate(-50%,-50%);border-radius:50%;
-  background:radial-gradient(circle at 50% 50%, rgba(120,200,160,.05) 0%, rgba(80,140,110,.12) 55%, rgba(0,0,0,0) 70%)}
+  background:radial-gradient(circle at 50% 50%, rgba(120,200,160,.05) 0%, rgba(70,130,105,.15) 58%, rgba(0,0,0,.4) 90%, rgba(0,0,0,0) 100%)}
+/* reticle: full cross, offset by the sway */
+#scope .sc-h{position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(8,10,8,.8);transform:translateY(var(--sy))}
+#scope .sc-v{position:absolute;top:0;bottom:0;left:50%;width:1px;background:rgba(8,10,8,.8);transform:translateX(var(--sx))}
+/* mil-dots down the vertical post: one every 30px below the cross */
+#scope .sc-dots{position:absolute;left:50%;top:50%;width:8px;height:min(42vh,42vw);
+  transform:translate(-50%,0) translate(var(--sx),var(--sy));
+  background-image:radial-gradient(circle at 50% 50%, rgba(6,8,6,.95) 0 2.1px, rgba(6,8,6,0) 3px);
+  background-size:8px 30px;background-repeat:repeat-y;background-position:center 30px}
+/* hold marks out along the horizontal line */
+#scope .sc-tick{position:absolute;top:50%;width:26px;height:2px;background:rgba(8,10,8,.8);transform:translateY(var(--sy))}
+#scope .sc-tick.l{left:calc(50% - 80px)}
+#scope .sc-tick.r{left:calc(50% + 54px)}
+/* centre pip */
+#scope .sc-dot{position:absolute;left:50%;top:50%;width:3px;height:3px;border-radius:50%;
+  background:rgba(8,10,8,.95);transform:translate(-50%,-50%) translate(var(--sx),var(--sy))}
