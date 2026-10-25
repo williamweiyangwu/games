@@ -26,13 +26,7 @@ function initInput() {
     if (k === 'r') startReload(G.player);
     if (k === 'e') { if (G.nearChest) takeChest(G.nearChest, G.player); }
     if (k === 'q') { VM.adsOn = !VM.adsOn; Snd.tone(VM.adsOn ? 520 : 380, VM.adsOn ? 520 : 380, 0.04, 0.05, 'square'); }
-    if (k === '1' || k === '2' || k === '3' || k === '4' || k === '5') {
-      const i = parseInt(k, 10) - 1;
-      if (G.player.weapons[i]) {
-        G.player.cur = i; G.player.reloadT = 0; G.player.drawT = 0;
-        Snd.tone(700, 700, 0.03, 0.06, 'square');
-      }
-    }
+    if (k === '1' || k === '2' || k === '3' || k === '4' || k === '5') selectSlot(parseInt(k, 10) - 1);
     if (k === ' ' && G.tutorial.active && G.player.onGround) G.tutorial.jumps++;
     if (k === 'tab') showScoreboard(true);
   });
@@ -52,7 +46,15 @@ function initInput() {
       const w = st ? defOf(st.id) : null;
       if (w && !w.auto) tryFire(G.player);
     }
+    /* MIDDLE CLICK: cycle the bag — the number keys stay as they were */
+    if (e.button === 1) {
+      e.preventDefault();                 // otherwise the browser autoscrolls
+      cycleWeapon();
+    }
   });
+  /* a middle click also fires auxclick after mouseup; swallow it too so no
+     autoscroll drag can start while the pointer is locked */
+  document.addEventListener('auxclick', e => { if (e.button === 1) e.preventDefault(); });
   window.addEventListener('mouseup', e => {
     if (e.button !== 0) return;
     /* releasing the trigger is what actually throws a grenade */
@@ -67,7 +69,13 @@ function initInput() {
     if (G.state !== 'playing' || !G.player) return;
     if (!G.player.alive) return;               // the bystander camera owns the view
     if (!document.pointerLockElement && !e.buttons) return;
-    const s = SENS_BASE * G.sensitivity * (1 - 0.45 * (VM.ads || 0));
+    /* aiming slows the turn; a scoped sniper slows it much further so the
+       lens can actually be held on a target at 3x zoom */
+    const st = G.player.weapons[G.player.cur];
+    const cw = st ? defOf(st.id) : null;
+    const adsK = VM.ads || 0;
+    const slow = cw && cw.scope ? 0.72 : 0.45;
+    const s = SENS_BASE * G.sensitivity * (1 - slow * adsK);
     G.player.yaw -= (e.movementX || 0) * s;
     G.player.pitch = clamp(G.player.pitch - (e.movementY || 0) * s, -1.35, 1.35);
   });
@@ -88,6 +96,27 @@ function initInput() {
 function requestLock() {
   if (renderer.domElement.requestPointerLock) {
     try { renderer.domElement.requestPointerLock(); } catch (e) { /* drag fallback */ }
+  }
+}
+
+/* ------------------------------------------------------------
+   WEAPON SELECTION — number keys, or middle click to cycle
+   ------------------------------------------------------------ */
+function selectSlot(i) {
+  const p = G.player;
+  if (!p || !p.alive || !p.weapons[i]) return;
+  if (p.cur === i) return;
+  p.cur = i; p.reloadT = 0; p.drawT = 0;
+  Snd.tone(700, 700, 0.03, 0.06, 'square');
+}
+
+/* middle mouse button: step to the next occupied slot, wrapping around */
+function cycleWeapon() {
+  const p = G.player;
+  if (!p || !p.alive || !p.weapons.length) return;
+  for (let n = 1; n <= p.weapons.length; n++) {
+    const j = (p.cur + n) % p.weapons.length;
+    if (p.weapons[j]) { selectSlot(j); return; }
   }
 }
 
