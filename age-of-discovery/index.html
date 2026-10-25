@@ -3441,6 +3441,7 @@ function chooseOption(opt) {
 }
 
 let talker = null;              // the citizen you are currently talking with
+let talkerGreet = '';           // how they greeted you when this talk began
 
 // Every citizen you meet is an opponent you can talk to: small talk and rumor,
 // or a contest -- dice and riddles, silver on the table. They stop walking and
@@ -3448,6 +3449,10 @@ let talker = null;              // the citizen you are currently talking with
 function talkToCitizen(w) {
   talker = w;
   w.talkT = 12;                            // they will wait a while for you
+  // capture the greeting BEFORE marking them met, or "Well met" never shows
+  talkerGreet = w.met
+    ? `"Back again? ${w.name} knows your face now."`
+    : `${w.name} the ${w.job} slows their step. "Well met, citizen. They call me ${w.name}."`;
   if (!w.met) { w.met = true; Game.stats.talked++; }
   openDialog('citizen');
 }
@@ -3814,9 +3819,8 @@ const DLG = {
       return { who: "Someone", role: "Lisbon", text: "They have gone about their day.",
                options: [{ label: "\u2026" }] };
     }
-    const greet = w.met
-      ? `"Back again? ${w.name} knows your face now."`
-      : `${w.name} the ${w.job} slows their step. "Well met, citizen. They call me ${w.name}."`;
+    const greet = talkerGreet ||
+      `${w.name} the ${w.job} slows their step. "Well met, citizen. They call me ${w.name}."`;
     return {
       who: w.name, role: `A ${w.job} of Lisbon`, portrait: w.portrait,
       text: `${greet} The street roars around you both.`,
