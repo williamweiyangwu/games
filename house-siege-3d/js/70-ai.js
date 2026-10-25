@@ -97,16 +97,31 @@ function botThink(b) {
          never aim into a wall). */
       const loot = nearestWantedChest(b, 15);
       if (loot) { goal = loot.pos; kind = 'chest'; }
-      else {
-      kind = 'defend';
-      const arrived = b.defendPost &&
-        Math.hypot(b.pos.x - b.defendPost.x, b.pos.z - b.defendPost.z) < 3.2;
-      if (!b.defendPost || (arrived && b.postT <= 0)) {
-        const dn = nearestNode(rand(-9, 9), flagBasePos(b.team).z * 0.62, 0);
-        b.defendPost = dn ? new V3(dn.x, 0, dn.z) : new V3(0, 0, 0);
-        b.postT = 3.5 + Math.random() * 3.5;
+      /* ...but a defender with nothing to chase can also take the catwalk above
+         its OWN base: the deck looks straight down on the flag stand, which is
+         exactly where a runner has to appear. Gated by the same deckT/deckCd
+         timer TDM uses, so the stand is never left empty for long. */
+      else if (b.deckT > 0 && b.deckPost) {
+        if (Math.hypot(b.pos.x - b.deckPost.x, b.pos.z - b.deckPost.z) < 2.4) {
+          b.deckPost = deckPost(b, flagBasePos(b.team));
+        }
+        if (b.deckPost) { goal = b.deckPost; kind = 'deck'; }
       }
-      goal = b.defendPost;
+      else if (b.role === 'defend' && b.deckCd <= 0 && !teammateOnDeck(b)) {
+        b.deckPost = deckPost(b, flagBasePos(b.team));
+        b.deckT = 6 + Math.random() * 4;
+        if (b.deckPost) { goal = b.deckPost; kind = 'deck'; }
+      }
+      if (!goal) {
+        kind = 'defend';
+        const arrived = b.defendPost &&
+          Math.hypot(b.pos.x - b.defendPost.x, b.pos.z - b.defendPost.z) < 3.2;
+        if (!b.defendPost || (arrived && b.postT <= 0)) {
+          const dn = nearestNode(rand(-9, 9), flagBasePos(b.team).z * 0.62, 0);
+          b.defendPost = dn ? new V3(dn.x, 0, dn.z) : new V3(0, 0, 0);
+          b.postT = 3.5 + Math.random() * 3.5;
+        }
+        goal = b.defendPost;
       }
     }
   } else {
@@ -184,15 +199,27 @@ function nearestWantedChest(b, maxD) {
   return best;
 }
 
-/* A catwalk waypoint that faces the enemy half, with enough randomness that a
-   sweeping bot walks the ring instead of pacing on one spot. */
-function deckPost(b) {
-  const foe = G.hq ? G.hq[otherTeam(b.team)] : { x: 0, z: 0 };
+/* True when a team-mate is already committed to a catwalk post. In flag mode
+   only one defender may leave the stand for the high ground — letting the whole
+   team climb turned a 5-minute raid into a 0-0 stalemate. */
+function teammateOnDeck(b) {
+  for (const a of allActors()) {
+    if (a === b || !a.alive || a.team !== b.team) continue;
+    if (a.deckT > 0) return true;
+  }
+  return false;
+}
+
+/* A catwalk waypoint that faces `foe` (the enemy HQ by default, or our own base
+   for a defending sweep), with enough randomness that a sweeping bot walks the
+   ring instead of pacing on one spot. */
+function deckPost(b, foe) {
+  const tgt = foe || (G.hq ? G.hq[otherTeam(b.team)] : { x: 0, z: 0 });
   let best = null, bd = -1e9;
   for (const n of NODES) {
     if (Math.abs(n.y - MAP.platY) > 0.6) continue;    // ring nodes only
     if (b.deckPost && n.x === b.deckPost.x && n.z === b.deckPost.z) continue;
-    const score = -Math.hypot(n.x - foe.x, n.z - foe.z) + Math.random() * 14;
+    const score = -Math.hypot(n.x - tgt.x, n.z - tgt.z) + Math.random() * 14;
     if (score > bd) { bd = score; best = n; }
   }
   return best ? new V3(best.x, best.y, best.z) : null;
@@ -252,10 +279,16 @@ function updateBot(b, dt) {
   if (b.goalLock > 0) b.goalLock -= dt;
   if (b.postT > 0) b.postT -= dt;
   if (b.reactT > 0) b.reactT -= dt;
-  /* catwalk sweep timer, then the cooldown before the next one */
+  /* catwalk sweep timer, then the cooldown before the next one. Flag mode is
+     deliberately rarer: a defender parked above its own stand shuts the base
+     down, so it only makes the climb now and then. */
   if (b.deckT > 0) {
     b.deckT -= dt;
-    if (b.deckT <= 0) b.deckCd = 22 + Math.random() * 18;
+    if (b.deckT <= 0) {
+      b.deckCd = G.mode === 'flag'
+        ? 60 + Math.random() * 40
+        : 22 + Math.random() * 18;
+    }
   } else if (b.deckCd > 0) b.deckCd -= dt;
   if (b.reloadT > 0) { b.reloadT -= dt; if (b.reloadT <= 0) finishReload(b); }
 
