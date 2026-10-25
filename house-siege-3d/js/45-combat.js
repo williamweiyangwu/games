@@ -95,6 +95,7 @@ function killActor(victim, attacker, head, weaponName) {
     G.deathYaw = victim.yaw;
     SPEC.t = 0; SPEC.init = false; SPEC.spot = -1;
     if (VM.group) VM.group.visible = false;    // the gun leaves your hands
+    hideScope();                               // and the lens with it
     $('respawn').classList.add('show');
     $('carryBanner').classList.remove('show');
     const kb = $('killBy');
