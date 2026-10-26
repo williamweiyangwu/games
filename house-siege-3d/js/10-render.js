@@ -22,7 +22,8 @@ const G = {
   killer: null, killerWeapon: '', deathPos: new THREE.Vector3(0, 0, 0), deathYaw: 0,
   flagState: { red: { at:'base', carrier:null, dropT:0, pos:new THREE.Vector3(0,0,30) },
                blue:{ at:'base', carrier:null, dropT:0, pos:new THREE.Vector3(0,0,-30) } },
-  tutorial: { active:false, tasks:[], step:0 }
+  tutorial: { active:false, tasks:[], step:0, moved:0, jumps:0, kills:0, chests:0,
+              sprintT:0, wheels:0, scopes:0, breathT:0 }
 };
 
 let renderer, scene, camera, clock = null;
