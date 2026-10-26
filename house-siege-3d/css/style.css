@@ -397,3 +397,28 @@ b{font-weight:700}
 /* centre pip */
 #scope .sc-dot{position:absolute;left:50%;top:50%;width:3px;height:3px;border-radius:50%;
   background:rgba(8,10,8,.95);transform:translate(-50%,-50%) translate(var(--sx),var(--sy))}
+
+/* breath hold readout — sits inside the lens, under the reticle, so the state
+   is visible exactly where you are looking instead of in the corner of the HUD */
+#scope .sc-breath{position:absolute;left:50%;top:calc(50% + min(26vh,26vw));
+  transform:translateX(-50%);display:flex;align-items:center;gap:8px;
+  padding:5px 10px;border-radius:3px;
+  background:rgba(6,10,8,.58);box-shadow:0 1px 6px rgba(0,0,0,.5);
+  font:600 10.5px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.2em;
+  color:rgba(170,195,180,.9);text-shadow:0 1px 2px #000;white-space:nowrap}
+#scope .scb-key{display:inline-flex;align-items:center;justify-content:center;
+  width:16px;height:16px;border:1px solid rgba(150,175,160,.5);border-radius:2px;
+  font-size:9px;letter-spacing:0;color:rgba(190,215,200,.95)}
+#scope .scb-bar{position:relative;width:74px;height:4px;background:rgba(0,0,0,.6);
+  border:1px solid rgba(150,175,160,.35);overflow:hidden}
+#scope .scb-bar i{position:absolute;inset:0;width:100%;
+  background:linear-gradient(90deg,#3aa0ff,#7fd0ff);transition:width .08s linear}
+/* holding: green, and the key cap lights up */
+#scope .sc-breath.on{color:#8ff0c0}
+#scope .sc-breath.on .scb-key{border-color:#8ff0c0;color:#8ff0c0;
+  box-shadow:0 0 10px rgba(120,240,190,.55)}
+#scope .sc-breath.on .scb-bar i{background:linear-gradient(90deg,#25d366,#8ff0c0)}
+/* dry: no stamina left to hold with */
+#scope .sc-breath.dry{color:#ff8a8a}
+#scope .sc-breath.dry .scb-key{border-color:#ff8a8a;color:#ff8a8a}
+#scope .sc-breath.dry .scb-bar i{background:linear-gradient(90deg,#ff2d2d,#ff8a8a)}
