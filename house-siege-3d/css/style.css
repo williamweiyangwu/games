@@ -296,7 +296,10 @@ b{font-weight:700}
 
 /* tutorial tasks */
 #tutTasks{position:absolute;left:14px;bottom:96px;width:330px;display:none;
-  background:rgba(8,11,17,.84);border:1px solid rgba(255,196,77,.3);border-radius:3px;padding:10px 12px}
+  background:rgba(8,11,17,.84);border:1px solid rgba(255,196,77,.3);border-radius:3px;padding:10px 12px;
+  max-height:min(58vh,420px);overflow-y:auto}
+#tutTasks::-webkit-scrollbar{width:5px}
+#tutTasks::-webkit-scrollbar-thumb{background:rgba(255,196,77,.35);border-radius:3px}
 #tutTasks.show{display:block}
 .tt-head{font-size:9px;letter-spacing:.24em;color:var(--gold);margin-bottom:7px;font-weight:700}
 .tk{font-size:11px;color:#98a4b8;padding:3px 0;display:flex;gap:8px;align-items:center;line-height:1.35}
