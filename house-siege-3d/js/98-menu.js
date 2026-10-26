@@ -31,7 +31,8 @@ const HT_PAGES = [
       <tr><th>INPUT</th><th>ACTION</th></tr>
       <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td><td>Move</td></tr>
       <tr><td><kbd>MOUSE</kbd></td><td>Look / aim</td></tr>
-      <tr><td><kbd>LEFT CLICK</kbd></td><td>Fire · use an item · <b>hold</b> to draw the crossbow or aim a grenade · <b>open a crate</b> when standing on one</td></tr>
+      <tr><td><kbd>LEFT CLICK</kbd></td><td>Fire · use an item · <b>hold</b> to draw the crossbow or aim a grenade</td></tr>
+      <tr><td><kbd>RIGHT CLICK</kbd></td><td>Open a crate when standing on one</td></tr>
       <tr><td><kbd>E</kbd></td><td>Sniper scope — toggle the AWP's full scope: mil-dot reticle, 3.7× zoom, very slow turn</td></tr>
       <tr><td><kbd>R</kbd></td><td>Reload</td></tr>
       <tr><td><kbd>SHIFT</kbd></td><td>Sprint (forward)</td></tr>
@@ -71,7 +72,7 @@ const HT_PAGES = [
     <p>Eight wooden crates sit in open ground — one in each HQ plaza, four spread over maze junctions, two up on the catwalk. Every one throws a <span class="accent">column of light</span>
     into the air, shows a spinning marker, and is drawn as a diamond on the tactical map — you should never have to hunt for one.
     <b>Gold</b> crates hold a gun, <b>teal</b> crates hold an item; the prompt tells you what is inside before you take it.</p>
-    <p>Walk up and <b>left-click</b> to take it. A used crate refills after ~26 seconds with something new, so camp it or beat the enemy to it.
+    <p>Walk up and <b>right-click</b> to take it. A used crate refills after ~26 seconds with something new, so camp it or beat the enemy to it.
     Your bag has <b>five slots</b>: knife, pistol and three pickups. When the last three are full, a new pickup replaces the last one.</p>
     <p><span class="accent">Headshots deal double damage</span> — the AK and AWP kill in one headshot.</p>`
   },
