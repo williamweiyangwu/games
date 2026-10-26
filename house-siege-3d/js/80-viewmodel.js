@@ -431,6 +431,19 @@ function updateViewModel(dt, speed) {
       const a = 2.4 * shaky * (1 - 0.92 * VM.breathK);
       scopeEl.style.setProperty('--sx', (Math.sin(t * 0.9) * a + Math.sin(t * 2.3) * a * 0.35).toFixed(2) + 'px');
       scopeEl.style.setProperty('--sy', (Math.cos(t * 0.7) * a * 0.8 + Math.sin(t * 1.9) * a * 0.3).toFixed(2) + 'px');
+
+      /* breath-hold readout on the lens itself */
+      const br = $('scBreath');
+      if (br) {
+        const dry = p.stamina < STAM.breathMin;
+        br.classList.toggle('on', VM.breathK > 0.35);
+        br.classList.toggle('dry', dry);
+        const label = VM.breathK > 0.35 ? 'BREATH HELD' : dry ? 'OUT OF BREATH' : 'HOLD BREATH';
+        const txt = $('scbTxt');
+        if (txt && txt.textContent !== label) txt.textContent = label;
+        const fill = $('scbFill');
+        if (fill) fill.style.width = clamp(p.stamina / STAM.max * 100, 0, 100).toFixed(1) + '%';
+      }
     } else {
       VM.scopeT = 0;
       VM.breathK = 0;
