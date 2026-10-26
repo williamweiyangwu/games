@@ -25,14 +25,18 @@ function initInput() {
 
     if (k === 'r') startReload(G.player);
     if (k === 'e') { VM.adsOn = !VM.adsOn; Snd.tone(VM.adsOn ? 520 : 380, VM.adsOn ? 520 : 380, 0.04, 0.05, 'square'); }
+    /* hold your breath behind the scope — costs stamina, steadies the reticle */
+    if (k === 'q') VM.holdBreath = true;
     if (k === '1' || k === '2' || k === '3' || k === '4' || k === '5') selectSlot(parseInt(k, 10) - 1);
     if (k === ' ' && G.tutorial.active && G.player.onGround) G.tutorial.jumps++;
     if (k === 'tab') showScoreboard(true);
   });
 
   window.addEventListener('keyup', e => {
-    keys[e.key.toLowerCase()] = false;
-    if (e.key.toLowerCase() === 'tab') showScoreboard(false);
+    const k = e.key.toLowerCase();
+    keys[k] = false;
+    if (k === 'tab') showScoreboard(false);
+    if (k === 'q') VM.holdBreath = false;
   });
 
   renderer.domElement.addEventListener('mousedown', e => {
@@ -121,7 +125,10 @@ function initInput() {
     if (G.state === 'playing' && !document.pointerLockElement) requestLock();
   });
 
-  window.addEventListener('blur', () => { firing = false; VM.adsOn = false; for (const k in keys) keys[k] = false; });
+  window.addEventListener('blur', () => {
+    firing = false; VM.adsOn = false; VM.holdBreath = false;
+    for (const k in keys) keys[k] = false;
+  });
   window.addEventListener('contextmenu', e => e.preventDefault());
 }
 
