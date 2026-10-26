@@ -37,7 +37,7 @@ const HT_PAGES = [
       <tr><td><kbd>MOUSE</kbd></td><td>Look / aim</td></tr>
       <tr><td><kbd>LEFT CLICK</kbd></td><td>Fire · use an item · <b>hold</b> to draw the crossbow or aim a grenade</td></tr>
       <tr><td><kbd>RIGHT CLICK</kbd></td><td>Open a crate when standing on one</td></tr>
-      <tr><td><kbd>E</kbd></td><td>Sniper scope — toggle the AWP's full scope: mil-dot reticle, 3.7× zoom, very slow turn</td></tr>
+      <tr><td><kbd>E</kbd></td><td>Aim down sights — tighter spread, slight zoom, slower turn. The <b>AWP</b> gets a full scope: mil-dot reticle, 3.7× zoom, very slow turn</td></tr>
       <tr><td><kbd>Q</kbd></td><td><b>Hold your breath</b> while scoped — costs stamina, steadies the wobble</td></tr>
       <tr><td><kbd>R</kbd></td><td>Reload</td></tr>
       <tr><td><kbd>SHIFT</kbd></td><td>Sprint (forward) — <b>drains stamina</b></td></tr>
