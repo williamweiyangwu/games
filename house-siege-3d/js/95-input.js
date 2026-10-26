@@ -66,8 +66,10 @@ function initInput() {
     if (G.state !== 'playing') return;
     if (!G.player || !G.player.alive) return;
     e.preventDefault();
+    const before = G.player.cur;
     if (e.deltaY > 0) cycleWeapon(1);
     else if (e.deltaY < 0) cycleWeapon(-1);
+    if (G.player.cur !== before && G.tutorial.active) G.tutorial.wheels++;
   }, { passive: false });
 
   /* ---- MIDDLE MOUSE BUTTON: cycle the bag -------------------------------
