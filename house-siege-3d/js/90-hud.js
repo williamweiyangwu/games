@@ -306,12 +306,11 @@ function updateHUD(dt) {
       if (w.draw && p.drawT > 0) {
         $('gHint').textContent = 'DRAWING ' + Math.round(p.drawT / w.draw * 100) + '%';
       } else if (w.scope) {
-        /* the sniper's lens is the whole point of the weapon — say so, and
-           point at the breath hold that steadies it */
+        /* the breath hold is shown on the lens itself now, so the corner hint
+           keeps to reload state once you are actually looking through it */
         if (!VM.adsOn) $('gHint').textContent = 'E — SCOPE';
-        else if (VM.breathK > 0.4) $('gHint').textContent = 'BREATH HELD — STEADY';
-        else if (p.stamina < STAM.breathMin) $('gHint').textContent = 'NO BREATH LEFT';
-        else $('gHint').textContent = 'HOLD Q — STEADY THE LENS';
+        else $('gHint').textContent = p.reloadT > 0 ? 'RELOADING…'
+          : (st.mag === 0 ? 'PRESS R TO RELOAD' : 'R RELOAD');
         $('gHint').classList.remove('warn');
       } else {
         $('gHint').textContent = p.reloadT > 0 ? 'RELOADING…' : (st.mag === 0 ? 'PRESS R TO RELOAD' : (st.mag / w.mag < 0.3 ? 'LOW AMMO — R' : 'R RELOAD'));
