@@ -294,7 +294,7 @@ function updateHUD(dt) {
         $('gHint').textContent = 'DRAWING ' + Math.round(p.drawT / w.draw * 100) + '%';
       } else if (w.scope) {
         /* the sniper's lens is the whole point of the weapon — say so */
-        $('gHint').textContent = VM.adsOn ? 'SCOPED — Q TO LEAVE' : 'Q — SCOPE';
+        $('gHint').textContent = VM.adsOn ? 'SCOPED — E TO LEAVE' : 'E — SCOPE';
         $('gHint').classList.remove('warn');
       } else {
         $('gHint').textContent = p.reloadT > 0 ? 'RELOADING…' : (st.mag === 0 ? 'PRESS R TO RELOAD' : (st.mag / w.mag < 0.3 ? 'LOW AMMO — R' : 'R RELOAD'));
