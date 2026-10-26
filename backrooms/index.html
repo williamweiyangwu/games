@@ -120,6 +120,8 @@ h1{font-size:clamp(30px,7vw,64px);letter-spacing:.16em;font-weight:700;line-heig
   transition:.25s}
 .btn:hover{background:rgba(216,194,124,.1);border-color:#e2d3a0;box-shadow:0 0 34px rgba(216,194,124,.18)}
 .warn{margin-top:26px;font-size:9.5px;letter-spacing:2px;color:#5d5539}
+#storewarn{margin-top:14px;margin-bottom:0;color:#e0a35f;line-height:1.7;max-width:520px;
+  border:1px solid rgba(224,163,95,.35);padding:8px 12px;background:rgba(224,163,95,.06)}
 #death h1{color:#a81f1f;text-shadow:0 0 46px rgba(180,20,20,.55);animation:none}
 #win h1{color:#fff;text-shadow:0 0 60px #fff,0 0 120px rgba(255,255,255,.55)}
 .stats{margin-top:22px;font-size:11px;letter-spacing:2.5px;color:#8b8159;line-height:2.1}
@@ -231,6 +233,12 @@ body.touch .invhead .invclose{width:auto;padding:10px 14px;font-size:11px}
   letter-spacing:2px;text-align:center;outline:none}
 #pwinput:focus{border-color:rgba(64,220,160,.8);box-shadow:0 0 22px rgba(64,220,160,.18)}
 #pwinput::placeholder{color:#2f5f4f}
+/* Edge and Chromium draw their own reveal control inside a password field.
+   Two eyes with two different behaviours is worse than none, so the native
+   one goes and #pweye is the only way to reveal the text. */
+#pwinput::-ms-reveal,#pwinput::-ms-clear{display:none}
+#pwinput::-webkit-credentials-auto-fill-button,
+#pwinput::-webkit-strong-password-auto-fill-button{display:none!important;visibility:hidden;pointer-events:none}
 .pwfield{position:relative;margin-top:18px}
 .pwfield #pwinput{margin-top:0}
 #pweye{position:absolute;top:50%;right:7px;transform:translateY(-50%);width:32px;height:32px;
@@ -240,8 +248,11 @@ body.touch .invhead .invclose{width:auto;padding:10px 14px;font-size:11px}
 #pweye svg{display:block;overflow:visible}
 #pweye .pupil{fill:currentColor}
 #pweye .slash{stroke:currentColor;stroke-width:1.5;stroke-linecap:round;display:none}
-#pweye.on .pupil{opacity:.3}
-#pweye.on .slash{display:block}
+/* the icon shows what you are looking at, not what the click will do: an open
+   eye means the passphrase is readable right now, a struck-through eye means
+   it is hidden */
+#pweye.shut .pupil{opacity:.3}
+#pweye.shut .slash{display:block}
 .pwerr{min-height:14px;margin-top:8px;font-size:9px;letter-spacing:2px;color:#e88a6a}
 .pwrow{margin-top:12px;display:flex;gap:10px;justify-content:center}
 .pwrow button{padding:9px 22px;background:transparent;cursor:pointer;font-family:inherit;
@@ -285,6 +296,7 @@ body.touch .invhead .invclose{width:auto;padding:10px 14px;font-size:11px}
 .achcard.on .achname{text-shadow:0 0 12px rgba(216,194,124,.5)}
 .achcard .achdesc{margin-top:5px;font-size:8.5px;letter-spacing:1.5px;color:#6d6547;line-height:1.7}
 .achnote{padding:10px 20px 14px;font-size:8.5px;letter-spacing:2px;color:#5d5539;text-align:center}
+.achnote.bad{color:#e0a35f}
 
 /* ---------- operator: map chooser ---------- */
 #opsselect{position:fixed;inset:0;z-index:75;display:flex;align-items:center;justify-content:center;
@@ -489,7 +501,7 @@ body.touch #cross{opacity:.35}
     <div class="pwfield">
       <input id="pwinput" type="password" autocomplete="off" spellcheck="false"
              autocapitalize="off" placeholder="·······················">
-      <button type="button" id="pweye" aria-label="Show passphrase" aria-pressed="false">
+      <button type="button" id="pweye" class="shut" aria-label="Show passphrase" aria-pressed="false">
         <svg viewBox="0 0 24 16" width="21" height="14" aria-hidden="true" focusable="false">
           <path d="M1.2 8S4.8 2.9 12 2.9 22.8 8 22.8 8 19.2 13.1 12 13.1 1.2 8 1.2 8Z"
                 fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
@@ -636,6 +648,7 @@ body.touch #cross{opacity:.35}
   <button class="btn ops" id="opsbtn">OPERATOR MODE</button>
   <button class="btn ops" id="achbtn">ACHIEVEMENTS · 0/13</button>
   <button class="btn ops" id="setbtn">SETTINGS</button>
+  <div class="warn" id="storewarn" style="display:none"></div>
   <div class="warn">CONTAINS FLASHING LIGHTS &amp; SUDDEN LOUD NOISES · HEADPHONES RECOMMENDED</div>
 </div>
 
@@ -683,6 +696,49 @@ const lerp=(a,b,t)=>a+(b-a)*t;
 const TAU=Math.PI*2;
 const $=s=>document.querySelector(s);
 const cnv=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return[c,c.getContext('2d')];};
+
+/* ══════════════════════════════════════════════════════════════
+   STORE — every write goes through here.
+
+   localStorage is the only thing keeping a run, a setting or an
+   achievement past the next restart, and it fails quietly: private
+   windows, "block all site data", and a full quota all make setItem
+   throw, which a bare try/catch turns into a toast that promises
+   something that was never written. So: probe once at boot, report
+   the result, and let callers know whether the bytes landed.
+   ══════════════════════════════════════════════════════════════ */
+const store=(()=>{
+  let ok=false;
+  try{
+    const k='__br_probe';
+    localStorage.setItem(k,'1');
+    ok=localStorage.getItem(k)==='1';
+    localStorage.removeItem(k);
+  }catch(e){ok=false;}
+  const api={
+    ok,
+    get(k,d){try{const v=localStorage.getItem(k);return v==null?d:v;}catch(e){return d;}},
+    /* returns true only when the value can be read back — a write that
+       silently evaporates is the same as no write at all */
+    set(k,v){
+      try{
+        localStorage.setItem(k,v);
+        if(localStorage.getItem(k)!==v){api.ok=false;return false;}
+        return true;
+      }catch(e){api.ok=false;return false;}
+    },
+    del(k){try{localStorage.removeItem(k);}catch(e){}}
+  };
+  return api;
+})();
+/* a blocked store is worth saying out loud once, on the title screen */
+function reportStoreState(){
+  const w=$('#storewarn');
+  if(!w)return;
+  w.style.display=store.ok?'none':'block';
+  w.textContent=store.ok?'':'SAVES OFF — THIS BROWSER IS BLOCKING SITE DATA · '
+    +'PROGRESS AND ACHIEVEMENTS WILL VANISH WHEN YOU CLOSE IT';
+}
 
 /* ══════════════════════════════════════════════════════════════
    LEVELS — three floors, each with its own palette, roster and bed
@@ -3255,7 +3311,9 @@ $('#pwinput').addEventListener('keydown',e=>{
   const eye=$('#pweye'),f=$('#pwinput');
   const apply=(reveal)=>{
     f.type=reveal?'text':'password';
-    eye.classList.toggle('on',reveal);
+    /* the icon describes what you can see right now: an open eye while the
+       passphrase is readable, a struck-through one while it is dots */
+    eye.classList.toggle('shut',!reveal);
     eye.setAttribute('aria-pressed',reveal?'true':'false');
     eye.setAttribute('aria-label',reveal?'Hide passphrase':'Show passphrase');
   };
@@ -3269,7 +3327,7 @@ $('#pwinput').addEventListener('keydown',e=>{
 function maskPassphrase(){
   const f=$('#pwinput'),eye=$('#pweye');
   if(f)f.type='password';
-  if(eye){eye.classList.remove('on');eye.setAttribute('aria-pressed','false');
+  if(eye){eye.classList.add('shut');eye.setAttribute('aria-pressed','false');
           eye.setAttribute('aria-label','Show passphrase');}
 }
 [...document.querySelectorAll('.opstab')].forEach(t=>{
@@ -3508,15 +3566,33 @@ const ACH_DEFS=[
   {id:'escape',name:'NO-CLIP OUT',desc:'ESCAPE ALL THREE FLOORS'}
 ];
 const ACH_KEY='br_achs_v1';
-let achUnlocked=new Set();
-try{achUnlocked=new Set(JSON.parse(localStorage.getItem(ACH_KEY)||'[]'));}catch(e){}
+/* a second copy of the same list: one clobbered key should not cost a
+   player everything they have earned */
+const ACH_MIRROR='br_achs_v1.bak';
+function readAchList(k){
+  try{
+    const a=JSON.parse(store.get(k,'[]'));
+    return Array.isArray(a)?a:[];
+  }catch(e){return [];}
+}
+/* achievements only ever go up, so the two copies can just be unioned */
+let achUnlocked=new Set([...readAchList(ACH_KEY),...readAchList(ACH_MIRROR)]);
+function saveAch(){
+  const s=JSON.stringify([...achUnlocked]);
+  const a=store.set(ACH_KEY,s);
+  const b=store.set(ACH_MIRROR,s);
+  return a||b;
+}
 function unlockAch(id){
   if(achUnlocked.has(id))return;
   const a=ACH_DEFS.find(x=>x.id===id);
   if(!a)return;
   achUnlocked.add(id);
-  try{localStorage.setItem(ACH_KEY,JSON.stringify([...achUnlocked]));}catch(e){}
-  toast('ACHIEVEMENT UNLOCKED — '+a.name,3400);
+  const saved=saveAch();
+  if(!saved)reportStoreState();
+  toast(saved?'ACHIEVEMENT UNLOCKED — '+a.name
+             :'ACHIEVEMENT UNLOCKED — '+a.name+' · NOT SAVED, SITE DATA IS BLOCKED',
+        saved?3400:4600);
   if(AU.fuse)AU.fuse();
   updateAchButtons();
 }
@@ -3536,6 +3612,15 @@ function renderAchPanel(){
     return `<div class="achcard${on?' on':''}"><div class="achname">${on?'◆ ':'· '}${a.name}</div>`+
            `<div class="achdesc">${on?a.desc:'LOCKED — '+a.desc}</div></div>`;
   }).join('');
+  /* the footer is the one place a player looks for "will this be kept?", so
+     it says the truth instead of a comfortable half-truth */
+  const note=document.querySelector('.achnote');
+  if(note){
+    note.classList.toggle('bad',!store.ok);
+    note.textContent=store.ok
+      ?'PROGRESS IS REMEMBERED ON THIS MACHINE'
+      :'SITE DATA IS BLOCKED — THIS BROWSER IS NOT KEEPING YOUR ACHIEVEMENTS';
+  }
   updateAchButtons();
 }
 function openAch(){renderAchPanel();$('#ach').classList.add('on');}
@@ -3585,9 +3670,10 @@ function saveGame(manual){
       monsters:monsters.filter(m=>!m.dead)
         .map(m=>({kind:m.kind,x:m.pos.x,z:m.pos.z,hp:m.hp,alert:m.alert}))
     };
-    localStorage.setItem(SAVE_KEY,JSON.stringify(data));
+    const written=store.set(SAVE_KEY,JSON.stringify(data));
     lastSavePT=playT;
-    if(manual)toast('PROGRESS SAVED');
+    if(manual)toast(written?'PROGRESS SAVED':'SAVE FAILED — SITE DATA IS BLOCKED');
+    if(!written){reportStoreState();return;}
     const si=$('#saveind');
     if(si){si.classList.add('on');saveIndT=1.8;}
   }catch(e){if(manual)toast('SAVE FAILED');}
@@ -4383,6 +4469,7 @@ function setState(s){
   if(touchEl)touchEl.classList.toggle('on',s==='playing'&&touchMode);
   if(AU.ready)AU.duck(s==='playing'?1:.45);
   updateWeaponVis();
+  if(s==='menu')reportStoreState();
 }
 
 function startGame(){
@@ -5056,6 +5143,7 @@ function boot(){
   el.vig.style.opacity='.9';
   updateContinueBtn();
   updateAchButtons();
+  reportStoreState();
   updateDiffButtons();
   applySettings();
   renderTitleRec();
@@ -5093,7 +5181,7 @@ window.__BR={player,get monsters(){return monsters;},get state(){return state;},
   get noteOpen(){return noteOpen;},showNote,closeNote,LORE,
   get keycard(){return player.keycard;},get noteIds(){return player.noteIds;},
   get settings(){return SET;},applySettings,openSettings,closeSettings,
-  get achs(){return [...achUnlocked];},
+  get achs(){return [...achUnlocked];},unlockAch,
   get decals(){return decals;},addBlood,
   get diff(){return diff;},setDiff(i){diff=clamp(i,0,DIFFS.length-1);updateDiffButtons();},
   DIF,DIFFS,LEVELS,LAST_LEVEL,
