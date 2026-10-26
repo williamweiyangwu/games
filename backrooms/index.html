@@ -272,6 +272,27 @@ body.touch .invhead .invclose{width:auto;padding:10px 14px;font-size:11px}
 #dashhint{left:26px;bottom:140px;opacity:.72}
 #dashhint.cool{color:#5a5238;opacity:.5}
 
+/* ---------- tutorial ---------- */
+#tut{position:absolute;left:26px;top:92px;width:min(340px,42vw);
+  padding:10px 14px 11px 15px;
+  background:linear-gradient(100deg,rgba(5,5,3,.82),rgba(5,5,3,.6) 72%,rgba(5,5,3,.18));
+  border-left:2px solid rgba(232,86,47,.6);
+  opacity:0;transform:translateY(-6px);transition:opacity .4s,transform .4s}
+#tut.on{opacity:1;transform:none}
+#tut .tutk{font-size:8px;letter-spacing:4px;color:#e8562f;opacity:.95}
+#tut .tutt{font-size:15px;letter-spacing:4px;color:#efe0a8;margin-top:4px;
+  text-shadow:0 1px 6px #000;transition:color .25s}
+#tut.ok .tutt{color:#7fe8c0;text-shadow:0 0 18px rgba(127,232,192,.5)}
+#tut .tutb{font-size:9.5px;letter-spacing:2px;color:#c4b98d;margin-top:7px;line-height:1.8;
+  text-shadow:0 1px 4px #000}
+#tut .tuts{font-size:8.5px;letter-spacing:1.5px;color:#8b8159;margin-top:6px;line-height:1.7;
+  text-shadow:0 1px 4px #000}
+#tut .tutdots{display:flex;gap:5px;margin-top:10px}
+#tut .tutdots i{width:14px;height:3px;background:rgba(216,194,124,.3);transition:.25s}
+#tut .tutdots i.done{background:#e8562f;box-shadow:0 0 8px rgba(232,86,47,.65)}
+body.touch #tut{top:74px;left:10px;width:min(320px,72vw);padding-left:11px}
+body.touch #tut .tutt{font-size:13px}
+
 /* ---------- achievements ---------- */
 #ach{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;
   background:rgba(2,2,1,.86);opacity:0;pointer-events:none;transition:opacity .2s}
@@ -459,6 +480,13 @@ body.touch #cross{opacity:.35}
     <div id="fuses"><div class="fuse"></div><div class="fuse"></div><div class="fuse"></div></div>
   </div>
   <div id="escapehud"><span id="esc-label">THE GATE CLOSES IN</span><b id="esc-time">0:60</b></div>
+  <div id="tut">
+    <div class="tutk">TUTORIAL</div>
+    <div class="tutt" id="tutt"></div>
+    <div class="tutb" id="tutb"></div>
+    <div class="tuts" id="tuts"></div>
+    <div class="tutdots" id="tutdots"></div>
+  </div>
   <div id="useprompt"><b>RMB</b><span>OPEN LOCKER</span></div>
   <div id="cross"><div class="h"></div><div class="h2"></div><div class="dot"></div></div>
   <div id="vitals">
@@ -595,6 +623,12 @@ body.touch #cross{opacity:.35}
     <div class="setrow">
       <span class="lab">HEAD BOB<small>CAMERA SWAY WHILE WALKING</small></span>
       <div class="setseg" id="set-bob">
+        <button data-v="0">OFF</button><button data-v="1">ON</button>
+      </div>
+    </div>
+    <div class="setrow">
+      <span class="lab">TUTORIAL<small>TURNING IT BACK ON REPLAYS IT</small></span>
+      <div class="setseg" id="set-tut">
         <button data-v="0">OFF</button><button data-v="1">ON</button>
       </div>
     </div>
@@ -3065,6 +3099,7 @@ const el={
   slots:[...document.querySelectorAll('.slot')],arrow:$('#arrow'),
   dmg:$('#dmg'),danger:$('#danger'),flash:$('#flash'),static:$('#static'),
   vig:$('#vig'),useprompt:$('#useprompt'),
+  tut:$('#tut'),tutt:$('#tutt'),tutb:$('#tutb'),tuts:$('#tuts'),tutdots:$('#tutdots'),
   inv:$('#inv'),invbody:$('#invbody')
 };
 
@@ -3524,6 +3559,7 @@ function renderOpsSide(){
 function deployToLevel(lv){
   const target=clamp(lv,0,LAST_LEVEL);
   const midRun=(state==='playing'||state==='paused');
+  if(tutActive)tutHide();          // teleporting skips the first-floor lesson
   if(opsOpen)closeOps();
   if(pwOpen)closePw();
   if(opsSelectOpen)closeOpsSelect();
@@ -3815,6 +3851,8 @@ function syncSettingsUI(){
   for(const b of document.querySelectorAll('#set-invert button'))b.classList.toggle('on',+b.dataset.v===SET.invert);
   for(const b of document.querySelectorAll('#set-quality button'))b.classList.toggle('on',+b.dataset.v===SET.quality);
   for(const b of document.querySelectorAll('#set-bob button'))b.classList.toggle('on',+b.dataset.v===SET.bob);
+  for(const b of document.querySelectorAll('#set-tut button'))
+    b.classList.toggle('on',(+b.dataset.v===1)===(tutMode!=='off'));
 }
 function openSettings(){setOpen=true;$('#settings').classList.add('on');syncSettingsUI();}
 function closeSettings(){
@@ -3850,6 +3888,18 @@ function segBind(sel,key,after){
 segBind('#set-invert','invert');
 segBind('#set-quality','quality',applySettings);
 segBind('#set-bob','bob');
+/* the tutorial is not a value in SET — it is on, off, or already finished */
+for(const b of document.querySelectorAll('#set-tut button')){
+  b.addEventListener('click',()=>{
+    const on=+b.dataset.v===1;
+    tutMode=on?'on':'off';
+    tutDone.clear();
+    saveTut();
+    syncSettingsUI();
+    if(!on)tutHide();
+    else if(state==='playing')tutStart();
+  });
+}
 
 /* ══════════════════════════════════════════════════════════════
    TOUCH — virtual stick, drag-to-look, action buttons
@@ -4040,6 +4090,7 @@ function requestLock(){
 function toggleTorch(){
   if(player.battery<=0){AU.click();toast('TORCH IS DEAD');return;}
   torchOn=!torchOn;
+  tutTorchFlips++;
   AU.click();
   flash.intensity=torchOn?26:0;
 }
@@ -4486,6 +4537,7 @@ function startGame(){
   AU.setTheme(level);
   if(restoredRun){restoredRun=false;toast('RUN RESTORED — WELCOME BACK',3000);}
   else toast(`LEVEL ${level} · ${LV().name} — YOU NO-CLIPPED OUT OF REALITY`,3600);
+  if(tutMode==='on')tutStart();
 }
 
 /* ---- records: kept on this machine, shown on the title screen ---- */
@@ -4683,6 +4735,7 @@ function updatePlayer(dt){
   }
 
   if(sprinting){
+    tutSprintT+=dt;
     player.stamina-=dt*16;
     if(player.stamina<=0){player.stamina=0;}
   }else{
@@ -4874,6 +4927,160 @@ function updateDanger(dt){
   }
 }
 
+/* ══════════════════════════════════════════════════════════════
+   TUTORIAL — one action per step, on the first floor.
+
+   The game explains itself badly on purpose (it is a horror game),
+   but nobody should die because they never found out that lockers
+   open with the right button. Each step names a single thing to
+   try and retires itself the moment you do it, so nothing has to
+   be read twice and nothing blocks the game. Progress is stored:
+   quit halfway and the next run continues from the same step. A
+   step with `when` only exists while that is true — the fight
+   step needs something to fight.
+   ══════════════════════════════════════════════════════════════ */
+const TUT_KEY='br_tut_v1';
+const TUT_STEPS=[
+  {id:'move',title:'MOVE',
+   body:'W A S D TO WALK · MOUSE TO LOOK',
+   touchBody:'LEFT THUMB WALKS · DRAG THE SCREEN TO LOOK',
+   sub:'CLICK ONCE IF THE MOUSE STOPS TURNING',
+   touchSub:'THE CROSSHAIR IS WHERE YOU WILL HIT',
+   cond:()=>Math.hypot(player.pos.x-tutBase.x,player.pos.z-tutBase.z)>4},
+  {id:'sprint',title:'RUN',
+   body:'HOLD SHIFT WHILE MOVING',
+   touchBody:'PUSH THE STICK ALL THE WAY',
+   sub:'STAMINA DRAINS FAST · IT REFILLS WHEN YOU WALK',
+   touchSub:'STAMINA REFILLS WHEN YOU SLOW DOWN',
+   cond:()=>tutSprintT-tutBase.sprint>.5},
+  {id:'torch',title:'TORCH',
+   body:'F TOGGLES THE LIGHT',
+   touchBody:'THE LIGHT BUTTON TOGGLES IT',
+   sub:'THE BATTERY DRAINS · [6] LOADS A SPARE',
+   touchSub:'THE BATTERY DRAINS · SPARES LIVE IN THE BAG',
+   cond:()=>tutTorchFlips>tutBase.torch},
+  {id:'locker',title:'LOCKERS',
+   body:'RMB OPENS THE ONE YOU FACE',
+   touchBody:'THE OPEN BUTTON OPENS THE ONE YOU FACE',
+   sub:'THEY HOLD FUSES, FOOD AND PAPER',
+   cond:()=>player.chests>tutBase.chests},
+  {id:'fuse',title:'FUSES',
+   body:'WALK OVER ONE AND IT IS YOURS',
+   sub:'EACH GATE WANTS THREE',
+   cond:()=>player.fuses>tutBase.fuses},
+  {id:'fight',title:'IT SEES YOU',
+   when:()=>!exitPowered&&nearestMonster()<12,
+   body:'LMB SWINGS · Q ROLLS YOU OUT OF A LUNGE',
+   touchBody:'HIT SWINGS · DODGE ROLLS YOU OUT OF A LUNGE',
+   sub:'YOU ARE FASTER THAN IT IN A STRAIGHT LINE',
+   cond:()=>player.kills>tutBase.kills},
+  {id:'gate',title:'THE GATE',
+   body:'FOLLOW THE RED LIGHT',
+   sub:'THREE FUSES AND IT OPENS ITSELF',
+   cond:()=>exitPowered},
+  {id:'descend',title:'DESCEND',
+   body:'STEP INTO THE OPENING',
+   sub:'THERE ARE THREE FLOORS DOWN',
+   cond:()=>false}                       // descend() closes the tutorial itself
+];
+let tutMode='on';                       // on | off | done
+let tutDone=new Set();
+let tutActive=false,tutIdx=-1,tutBase=null,tutShown=0,tutOkT=0;
+let tutSprintT=0,tutTorchFlips=0;
+
+function saveTut(){
+  store.set(TUT_KEY,JSON.stringify({mode:tutMode,done:[...tutDone]}));
+}
+/* a brand new player gets the coaching; anyone with a history does not */
+(function loadTut(){
+  const raw=store.get(TUT_KEY,null);
+  if(raw===null){
+    const played=readAchList(ACH_KEY).length>0||readAchList(ACH_MIRROR).length>0
+                 ||store.get('br_save_v1',null)!==null;
+    tutMode=played?'done':'on';
+    if(played)saveTut();
+    return;
+  }
+  try{
+    const s=JSON.parse(raw)||{};
+    if(s.mode==='off'||s.mode==='done'||s.mode==='on')tutMode=s.mode;
+    if(Array.isArray(s.done))tutDone=new Set(s.done.filter(id=>TUT_STEPS.some(t=>t.id===id)));
+  }catch(e){}
+})();
+
+function nearestMonster(){
+  let bd=1e9;
+  for(const m of monsters){
+    if(m.dead)continue;
+    const d=Math.hypot(m.pos.x-player.pos.x,m.pos.z-player.pos.z);
+    if(d<bd)bd=d;
+  }
+  return bd;
+}
+function tutPick(){
+  for(let i=0;i<TUT_STEPS.length;i++){
+    const s=TUT_STEPS[i];
+    if(tutDone.has(s.id))continue;
+    if(s.when&&!s.when())continue;
+    return i;
+  }
+  return -1;
+}
+function renderTut(){
+  const s=TUT_STEPS[tutIdx];
+  if(!s||!el.tut)return;
+  el.tutt.textContent=s.title;
+  el.tutb.textContent=(touchMode&&s.touchBody)?s.touchBody:s.body;
+  el.tuts.textContent=(touchMode&&s.touchSub)?s.touchSub:(s.sub||'');
+  el.tutdots.innerHTML=TUT_STEPS.map(x=>
+    `<i class="${tutDone.has(x.id)?'done':''}"></i>`).join('');
+  el.tut.classList.add('on');
+  el.tut.classList.remove('ok');
+}
+function tutAdvance(){
+  const i=tutPick();
+  if(i<0){tutFinish();return;}
+  tutIdx=i;tutShown=0;tutOkT=0;
+  /* every step measures against where you were when it appeared */
+  tutBase={x:player.pos.x,z:player.pos.z,sprint:tutSprintT,torch:tutTorchFlips,
+           chests:player.chests,fuses:player.fuses,kills:player.kills};
+  renderTut();
+}
+function tutStart(){
+  if(tutMode!=='on')return;
+  tutActive=true;tutIdx=-1;tutShown=0;tutOkT=0;
+  tutAdvance();
+}
+function tutFinish(){
+  tutActive=false;tutIdx=-1;tutMode='done';
+  for(const s of TUT_STEPS)tutDone.add(s.id);
+  saveTut();
+  if(el.tut)el.tut.classList.remove('on');
+}
+function tutHide(){
+  tutActive=false;tutIdx=-1;
+  if(el.tut)el.tut.classList.remove('on');
+}
+function updateTutorial(dt){
+  if(!tutActive)return;
+  if(tutOkT>0){
+    tutOkT-=dt;
+    if(tutOkT<=0)tutAdvance();
+    return;
+  }
+  const s=TUT_STEPS[tutIdx];
+  if(!s)return;
+  tutShown+=dt;
+  if(tutShown<1.1)return;               // let the line be read before it retires
+  if(s.when&&!s.when()){tutAdvance();return;}   // whatever it waited for left
+  if(!s.cond())return;
+  tutDone.add(s.id);
+  saveTut();
+  el.tut.classList.add('ok');
+  if(AU.pickup)AU.pickup();
+  tutOkT=.5;
+}
+
 /* ---- main loop ---- */
 function tick(){
   requestAnimationFrame(tick);
@@ -4898,6 +5105,7 @@ function tick(){
       updateHallu(dt);
       updateViewModel(dt);
       updateHUD();
+      updateTutorial(dt);
 
       eventT-=dt;
       if(eventT<=0){eventT=rand(13,26);randomEvent();}
@@ -5084,6 +5292,7 @@ function showLevelCard(){
 
 function descend(){
   if(state!=='playing'||level>=LAST_LEVEL)return;
+  if(tutActive)tutFinish();
   state='descending';
   if(invOpen)closeInv();
   if(noteOpen)closeNote();
@@ -5182,11 +5391,17 @@ window.__BR={player,get monsters(){return monsters;},get state(){return state;},
   get keycard(){return player.keycard;},get noteIds(){return player.noteIds;},
   get settings(){return SET;},applySettings,openSettings,closeSettings,
   get achs(){return [...achUnlocked];},unlockAch,
+  get tutorial(){return{mode:tutMode,active:tutActive,
+    step:tutIdx>=0?TUT_STEPS[tutIdx].id:null,done:[...tutDone],steps:TUT_STEPS.length};},
+  resetTutorial(){tutMode='on';tutDone.clear();saveTut();if(state==='playing')tutStart();},
+  openChest,spawnItem,nearestMonster,
+  get chests(){return chests;},
   get decals(){return decals;},addBlood,
   get diff(){return diff;},setDiff(i){diff=clamp(i,0,DIFFS.length-1);updateDiffButtons();},
   DIF,DIFFS,LEVELS,LAST_LEVEL,
   descend,loadLevel,startReload,finishReload,runSeconds,loadRec,recordRun,renderTitleRec,
   powerExit,attack,damagePlayer,
+  get pos(){return{x:player.pos.x,z:player.pos.z,yaw:player.yaw,y:player.y};},
   setPos(x,z){player.pos.set(x,0,z);},
   get reloadT(){return player.reloadT;},get touchMode(){return touchMode;},
   get levelName(){return LV().name;},
