@@ -53,7 +53,7 @@ const HT_PAGES = [
       <tr><td><kbd>SHIFT</kbd></td><td>Sprint (forward) — <b>drains stamina</b></td></tr>
       <tr><td><kbd>SPACE</kbd></td><td>Jump</td></tr>
       <tr><td><kbd>1</kbd>–<kbd>5</kbd></td><td>Select a bag slot</td></tr>
-      <tr><td><kbd>WHEEL</kbd></td><td>Cycle to the next / previous bag slot</td></tr>
+      <tr><td><kbd>MOUSE WHEEL</kbd></td><td>Roll up / down to cycle to the previous / next bag slot</td></tr>
       <tr><td><kbd>MIDDLE CLICK</kbd></td><td>Cycle to the next bag slot</td></tr>
       <tr><td><kbd>TAB</kbd></td><td>Scoreboard (kills / deaths / HP)</td></tr>
       <tr><td><kbd>ESC</kbd></td><td>Pause</td></tr>
@@ -69,7 +69,7 @@ const HT_PAGES = [
       <tr><td>M9 Pistol</td><td>26</td><td>12</td><td>Starting sidearm, accurate, semi-auto</td></tr>
       <tr><td>MP5 SMG</td><td>17</td><td>30</td><td>Fast full-auto, great indoors</td></tr>
       <tr><td>AK-47 Rifle</td><td>31</td><td>30</td><td>Best all-rounder</td></tr>
-      <tr><td>SPAS-12</td><td>12×8</td><td>6</td><td>One-shot at close range</td></tr>
+      <tr><td>SPAS-12</td><td>12×8</td><td>6</td><td>Up to 96 damage when every pellet lands — drops an Easy bot outright, but not a Normal bot or a player</td></tr>
       <tr><td>AWP Sniper</td><td>115</td><td>5</td><td>One body shot drops an Easy, Normal or Hard bot; Legend (125 HP) survives one. Punishing reload. <b>E for the scope</b> — mil-dot reticle, 3.7× zoom. <b>Hold Q</b> to steady the wobble (costs stamina)</td></tr>
       <tr><td>Crossbow</td><td>105</td><td>3</td><td><b>2 s draw</b> per bolt, only 30 m of range — a duelling weapon</td></tr>
     </table>
@@ -90,7 +90,7 @@ const HT_PAGES = [
     <p>Walk up and <b>right-click</b> to take it. A used crate refills after ~26 seconds with something new, so camp it or beat the enemy to it.
     Your bag has <b>five slots</b>: knife, pistol and three pickups. When it is full, a new pickup replaces <b>whatever you are holding</b>
     (or the last slot, if you are on the knife or pistol) — so switch to the thing you are willing to lose before you loot.</p>
-    <p><span class="accent">Headshots deal double damage</span> — the AWP drops anyone with a single headshot, the AK takes two.</p>`
+    <p><span class="accent">Headshots deal double damage</span> — the AWP drops anyone with a single headshot; the AK needs two, or three on a Legend.</p>`
   },
   {
     t: 'GAME MODES',
