@@ -227,6 +227,11 @@ function finishSpawn(a, slot) {
   a.stimT = 0;
   a.itemT = -99;
   a.speedMul = 1;
+  /* stamina: sprinting and holding your breath both draw on it */
+  a.stamina = STAM.max;
+  a.staminaMax = STAM.max;
+  a.exhausted = false;
+  a.stamIdleT = 0;
   a.weapons = [
     { id: 'knife', mag: 0, res: 0 },
     { id: 'pistol', mag: WEAPONS.pistol.mag, res: WEAPONS.pistol.reserve }
