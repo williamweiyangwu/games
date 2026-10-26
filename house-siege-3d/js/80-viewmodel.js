@@ -7,7 +7,7 @@
 /* ------------------------------------------------------------
    VIEW MODEL (first person weapon)
    ------------------------------------------------------------ */
-const VM = { group: null, models: {}, recoil: 0, recoilV: 0, kick: 0, cur: null, flash: null, ads: 0, adsTarget: 0, adsOn: false, sway: new THREE.Vector2() };
+const VM = { group: null, models: {}, recoil: 0, recoilV: 0, kick: 0, cur: null, flash: null, ads: 0, adsTarget: 0, adsOn: false, sway: new THREE.Vector2(), holdBreath: false, breathK: 0 };
 
 const GM = {};
 function gunMats() {
@@ -340,6 +340,8 @@ function setViewModel(id) {
    over the bystander camera, the pause screen or the menu. */
 function hideScope() {
   VM.adsOn = false;
+  VM.holdBreath = false;
+  VM.breathK = 0;
   const sc = $('scope');
   if (sc) {
     sc.classList.remove('show');
@@ -413,14 +415,21 @@ function updateViewModel(dt, speed) {
   if (scopeEl) {
     scopeEl.classList.toggle('show', scoped);
     /* scope breathing: the reticle drifts a couple of pixels while the lens is
-       on a target. Cosmetic only — the shots still leave dead centre. */
+       on a target. Cosmetic only — the shots still leave dead centre.
+       Holding Q clamps down on the wobble (a held breath), and a tank that is
+       nearly empty makes the aim visibly shakier. */
+    const breathOk = VM.holdBreath && p.stamina > 0;
+    VM.breathK = lerp(VM.breathK, scoped && breathOk ? 1 : 0, Math.min(1, dt * 9));
     if (scoped) {
       VM.scopeT = (VM.scopeT || 0) + dt;
-      const t = VM.scopeT, a = 2.4;
+      const t = VM.scopeT;
+      const shaky = 1 + (1 - clamp(p.stamina / STAM.max, 0, 1)) * STAM.swayMax;
+      const a = 2.4 * shaky * (1 - 0.92 * VM.breathK);
       scopeEl.style.setProperty('--sx', (Math.sin(t * 0.9) * a + Math.sin(t * 2.3) * a * 0.35).toFixed(2) + 'px');
       scopeEl.style.setProperty('--sy', (Math.cos(t * 0.7) * a * 0.8 + Math.sin(t * 1.9) * a * 0.3).toFixed(2) + 'px');
     } else {
       VM.scopeT = 0;
+      VM.breathK = 0;
       scopeEl.style.removeProperty('--sx');
       scopeEl.style.removeProperty('--sy');
     }
