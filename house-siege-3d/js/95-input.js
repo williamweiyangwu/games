@@ -40,13 +40,17 @@ function initInput() {
     if (!document.pointerLockElement) requestLock();
     if (e.button === 0) {
       if (!G.player || !G.player.alive) return;
-      /* LMB opens a crate when one is in reach — the genre standard.
-         Firing still happens for guns, but not when standing on a chest. */
-      if (G.nearChest) { takeChest(G.nearChest, G.player); return; }
       firing = true;
       const st = G.player.weapons[G.player.cur];
       const w = st ? defOf(st.id) : null;
       if (w && !w.auto) tryFire(G.player);
+    }
+    /* ---- RMB: open a crate when one is in reach ----
+       The contextmenu listener below already suppresses the browser's
+       right-click menu, so this is a clean dedicated interaction button. */
+    if (e.button === 2) {
+      if (!G.player || !G.player.alive) return;
+      if (G.nearChest) { takeChest(G.nearChest, G.player); return; }
     }
   });
 
