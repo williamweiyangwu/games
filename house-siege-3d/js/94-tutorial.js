@@ -11,7 +11,7 @@ const TUT_TASKS = [
   { id: 'move', text: 'Move with <b>W A S D</b> — cover 12 m' },
   { id: 'jump', text: 'Jump with <b>SPACE</b>' },
   { id: 'shoot', text: 'Aim with the mouse and <b>ELIMINATE</b> a practice dummy' },
-  { id: 'chest', text: 'Walk to a crate and press <b>E</b> to take what is inside' },
+  { id: 'chest', text: 'Walk to a crate and <b>LEFT-CLICK</b> to take what is inside' },
   { id: 'more', text: 'Eliminate 2 more dummies with your new gun' }
 ];
 
