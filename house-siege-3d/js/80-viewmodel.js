@@ -342,6 +342,7 @@ function hideScope() {
   VM.adsOn = false;
   VM.holdBreath = false;
   VM.breathK = 0;
+  VM.wasScoped = false;
   const sc = $('scope');
   if (sc) {
     sc.classList.remove('show');
@@ -406,6 +407,9 @@ function updateViewModel(dt, speed) {
 
   /* FOV / scope — only a weapon flagged `scope` (the sniper) gets the lens */
   const scoped = !!w.scope && VM.ads > 0.75;
+  /* tutorial: count each time the lens actually comes up */
+  if (scoped && !VM.wasScoped && G.tutorial.active) G.tutorial.scopes++;
+  VM.wasScoped = scoped;
   const targetFov = 78 - (78 - (ADS_FOV[st.id] || 55)) * VM.ads;
   if (Math.abs(camera.fov - targetFov) > 0.15) {
     camera.fov = lerp(camera.fov, targetFov, Math.min(1, dt * 14));
