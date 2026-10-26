@@ -265,6 +265,19 @@ function updateHUD(dt) {
   fill.className = 'hp-fill' + (hpPct < 30 ? ' low' : hpPct < 60 ? ' mid' : '');
   $('hpNum').textContent = Math.max(0, Math.ceil(p.hp));
 
+  // stamina — drives the sprint and the held breath behind the scope
+  const stMax = p.staminaMax || STAM.max;
+  const stPct = clamp(p.stamina / stMax * 100, 0, 100);
+  const stFill = $('stFill');
+  if (stFill) {
+    stFill.style.width = stPct + '%';
+    stFill.className = 'st-fill' + (p.exhausted ? ' exhausted' : stPct < 30 ? ' low' : '');
+    const stNum = $('stNum');
+    if (stNum) stNum.textContent = Math.ceil(p.stamina);
+    const vit = document.querySelector('.vitals');
+    if (vit) vit.classList.toggle('exhausted', !!p.exhausted);
+  }
+
   // weapon
   const st = p.weapons[p.cur];
   const w = st ? defOf(st.id) : null;
@@ -293,8 +306,12 @@ function updateHUD(dt) {
       if (w.draw && p.drawT > 0) {
         $('gHint').textContent = 'DRAWING ' + Math.round(p.drawT / w.draw * 100) + '%';
       } else if (w.scope) {
-        /* the sniper's lens is the whole point of the weapon — say so */
-        $('gHint').textContent = VM.adsOn ? 'SCOPED — E TO LEAVE' : 'E — SCOPE';
+        /* the sniper's lens is the whole point of the weapon — say so, and
+           point at the breath hold that steadies it */
+        if (!VM.adsOn) $('gHint').textContent = 'E — SCOPE';
+        else if (VM.breathK > 0.4) $('gHint').textContent = 'BREATH HELD — STEADY';
+        else if (p.stamina < STAM.breathMin) $('gHint').textContent = 'NO BREATH LEFT';
+        else $('gHint').textContent = 'HOLD Q — STEADY THE LENS';
         $('gHint').classList.remove('warn');
       } else {
         $('gHint').textContent = p.reloadT > 0 ? 'RELOADING…' : (st.mag === 0 ? 'PRESS R TO RELOAD' : (st.mag / w.mag < 0.3 ? 'LOW AMMO — R' : 'R RELOAD'));
