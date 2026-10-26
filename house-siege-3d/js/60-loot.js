@@ -93,6 +93,18 @@ function createChests() {
     if (need <= 0) break;
     if (!c.content.item) { c.content = { id: pick(ITEM_POOL), item: true }; need--; }
   }
+  /* TRAINING: the scope and breath-hold objectives need an AWP, so the crate
+     nearest your own HQ is always one. Without this the lesson depended on a
+     lucky roll and could not be finished at all. */
+  if (G.mode === 'tutorial' && G.hq && G.hq[G.team]) {
+    const h = G.hq[G.team];
+    let best = null, bestD = 1e9;
+    for (const c of G.chests) {
+      const d = Math.hypot(c.pos.x - h.x, c.pos.z - h.z);
+      if (d < bestD) { bestD = d; best = c; }
+    }
+    if (best) best.content = { id: 'sniper', item: false };
+  }
   for (const c of G.chests) applyChestContent(c);
 }
 
