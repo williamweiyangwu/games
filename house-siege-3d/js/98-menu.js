@@ -23,7 +23,11 @@ const HT_PAGES = [
     <p>You always start with a <span class="accent">knife</span> and a <span class="accent">pistol</span>.
     Everything else is found in crates. Pick your fights early — a pistol loses to a rifle at range.
     You have <span class="accent">140 HP</span> and <b>no regeneration</b>: a <span class="accent">FIELD AID</span>
-    from a crate is the only way to get health back, so a fight you cannot win is a fight you should leave.</p>`
+    from a crate is the only way to get health back, so a fight you cannot win is a fight you should leave.</p>
+    <h4>STAMINA</h4>
+    <p>Sprinting and holding your breath behind the scope both come out of one <span class="accent">stamina</span> bar.
+    It refills on its own after a short pause. Run it to <b>zero</b> and you are in oxygen debt: the sprint locks out
+    and your <b>health starts bleeding away</b> until you have got your breath back — so do not sprint straight into a fight.</p>`
   },
   {
     t: 'CONTROLS',
@@ -34,8 +38,9 @@ const HT_PAGES = [
       <tr><td><kbd>LEFT CLICK</kbd></td><td>Fire · use an item · <b>hold</b> to draw the crossbow or aim a grenade</td></tr>
       <tr><td><kbd>RIGHT CLICK</kbd></td><td>Open a crate when standing on one</td></tr>
       <tr><td><kbd>E</kbd></td><td>Sniper scope — toggle the AWP's full scope: mil-dot reticle, 3.7× zoom, very slow turn</td></tr>
+      <tr><td><kbd>Q</kbd></td><td><b>Hold your breath</b> while scoped — costs stamina, steadies the wobble</td></tr>
       <tr><td><kbd>R</kbd></td><td>Reload</td></tr>
-      <tr><td><kbd>SHIFT</kbd></td><td>Sprint (forward)</td></tr>
+      <tr><td><kbd>SHIFT</kbd></td><td>Sprint (forward) — <b>drains stamina</b></td></tr>
       <tr><td><kbd>SPACE</kbd></td><td>Jump</td></tr>
       <tr><td><kbd>1</kbd>–<kbd>5</kbd></td><td>Select a bag slot</td></tr>
       <tr><td><kbd>WHEEL</kbd></td><td>Cycle to the next / previous bag slot</td></tr>
@@ -55,7 +60,7 @@ const HT_PAGES = [
       <tr><td>MP5 SMG</td><td>17</td><td>30</td><td>Fast full-auto, great indoors</td></tr>
       <tr><td>AK-47 Rifle</td><td>31</td><td>30</td><td>Best all-rounder</td></tr>
       <tr><td>SPAS-12</td><td>12×8</td><td>6</td><td>One-shot at close range</td></tr>
-      <tr><td>AWP Sniper</td><td>115</td><td>5</td><td>Body-shot kill, punishing reload. <b>E for the scope</b> — mil-dot reticle, 3.7× zoom, slower turn</td></tr>
+      <tr><td>AWP Sniper</td><td>115</td><td>5</td><td>Body-shot kill, punishing reload. <b>E for the scope</b> — mil-dot reticle, 3.7× zoom. <b>Hold Q</b> to steady the wobble (costs stamina)</td></tr>
       <tr><td>Crossbow</td><td>105</td><td>3</td><td><b>2 s draw</b> per bolt, only 30 m of range — a duelling weapon</td></tr>
     </table>
     <h4>ITEMS — the teal crates</h4>
