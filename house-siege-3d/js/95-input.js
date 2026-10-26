@@ -24,8 +24,7 @@ function initInput() {
     if (G.state !== 'playing' || !G.player || !G.player.alive) return;
 
     if (k === 'r') startReload(G.player);
-    if (k === 'e') { if (G.nearChest) takeChest(G.nearChest, G.player); }
-    if (k === 'q') { VM.adsOn = !VM.adsOn; Snd.tone(VM.adsOn ? 520 : 380, VM.adsOn ? 520 : 380, 0.04, 0.05, 'square'); }
+    if (k === 'e') { VM.adsOn = !VM.adsOn; Snd.tone(VM.adsOn ? 520 : 380, VM.adsOn ? 520 : 380, 0.04, 0.05, 'square'); }
     if (k === '1' || k === '2' || k === '3' || k === '4' || k === '5') selectSlot(parseInt(k, 10) - 1);
     if (k === ' ' && G.tutorial.active && G.player.onGround) G.tutorial.jumps++;
     if (k === 'tab') showScoreboard(true);
@@ -41,12 +40,27 @@ function initInput() {
     if (!document.pointerLockElement) requestLock();
     if (e.button === 0) {
       if (!G.player || !G.player.alive) return;
+      /* LMB opens a crate when one is in reach — the genre standard.
+         Firing still happens for guns, but not when standing on a chest. */
+      if (G.nearChest) { takeChest(G.nearChest, G.player); return; }
       firing = true;
       const st = G.player.weapons[G.player.cur];
       const w = st ? defOf(st.id) : null;
       if (w && !w.auto) tryFire(G.player);
     }
   });
+
+  /* ---- MOUSE WHEEL: cycle the bag ------------------------------------
+     Bound to the WINDOW so the wheel works whether or not the pointer is
+     locked. deltaY > 0 = scroll down = next slot; deltaY < 0 = previous.
+     The sign guard means a single notch always advances exactly one slot. */
+  window.addEventListener('wheel', e => {
+    if (G.state !== 'playing') return;
+    if (!G.player || !G.player.alive) return;
+    e.preventDefault();
+    if (e.deltaY > 0) cycleWeapon(1);
+    else if (e.deltaY < 0) cycleWeapon(-1);
+  }, { passive: false });
 
   /* ---- MIDDLE MOUSE BUTTON: cycle the bag -------------------------------
      Bound to the WINDOW, not the canvas: a middle click that lands on any
@@ -58,7 +72,7 @@ function initInput() {
     if (e.button !== 1) return;
     midDown++;
     e.preventDefault();
-    if (G.state === 'playing') cycleWeapon();
+    if (G.state === 'playing') cycleWeapon(1);
   });
   /* A normal middle click fires mousedown AND auxclick, so counting both and
      only acting on the extra ones means a setup that reports the button as
@@ -67,7 +81,7 @@ function initInput() {
     if (e.button !== 1) return;
     e.preventDefault();
     midAux++;
-    if (midAux > midDown) { midAux = midDown; if (G.state === 'playing') cycleWeapon(); }
+    if (midAux > midDown) { midAux = midDown; if (G.state === 'playing') cycleWeapon(1); }
   });
   window.addEventListener('mouseup', e => {
     if (e.button !== 0) return;
@@ -124,12 +138,15 @@ function selectSlot(i) {
   Snd.tone(700, 700, 0.03, 0.06, 'square');
 }
 
-/* middle mouse button: step to the next occupied slot, wrapping around */
-function cycleWeapon() {
+/* middle mouse button or mouse wheel: step to the next occupied slot.
+   `dir` is +1 (forward/down) or -1 (backward/up); defaults to +1. */
+function cycleWeapon(dir) {
   const p = G.player;
   if (!p || !p.alive || !p.weapons.length) return;
+  dir = dir || 1;
+  const step = dir > 0 ? 1 : p.weapons.length - 1;
   for (let n = 1; n <= p.weapons.length; n++) {
-    const j = (p.cur + n) % p.weapons.length;
+    const j = (p.cur + step * n) % p.weapons.length;
     if (p.weapons[j]) { selectSlot(j); return; }
   }
 }
