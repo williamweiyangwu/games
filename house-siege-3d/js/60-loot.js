@@ -155,7 +155,7 @@ function updateChests(dt) {
   const promptEl = $('prompt');
   promptEl.classList.toggle('show', !!near && G.state === 'playing');
   if (near && G.state === 'playing') {
-    const txt = '<b>LMB</b> TAKE ' + (near.c.label || 'CRATE');
+    const txt = '<b>RMB</b> TAKE ' + (near.c.label || 'CRATE');
     if (promptEl.dataset.txt !== txt) { promptEl.innerHTML = txt; promptEl.dataset.txt = txt; }
   }
 }
