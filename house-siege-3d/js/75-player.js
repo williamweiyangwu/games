@@ -78,7 +78,14 @@ function updatePlayer(dt) {
   const mz = fz * (-wz) + rz * wx;
 
   const sprint = !!(keys['shift'] && wz < 0);
-  moveActor(p, mx, mz, sprint, !!keys[' '], dt);
+  const moving = Math.hypot(mx, mz) > 0.01;
+  /* --- SPRINT costs stamina ------------------------------------------------
+     A dry tank locks sprint out (oxygen debt) until you have recovered, so
+     holding SHIFT forever is no longer free movement. */
+  const canSprint = !p.exhausted && p.stamina > 0.5;
+  const sprinting = sprint && moving && canSprint;
+  moveActor(p, mx, mz, sprinting, !!keys[' '], dt);
+  updateStamina(p, dt, sprinting, holdingBreath(p));
 
   // camera
   const speed = Math.hypot(p.vel.x, p.vel.z);
@@ -105,6 +112,62 @@ function updatePlayer(dt) {
 
   // weapon switch keys handled in keydown
   updateViewModel(dt, speed);
+}
+
+/* ------------------------------------------------------------
+   STAMINA
+   ------------------------------------------------------------
+   One pool feeds two things: the sprint and the held breath behind the
+   scope. Empty it and you are in oxygen debt — no sprint, and your health
+   ticks down until you have breathed back above `recoverAt`. */
+function holdingBreath(p) {
+  if (!VM.holdBreath) return false;
+  const st = p.weapons[p.cur];
+  const w = st ? defOf(st.id) : null;
+  if (!w || !w.scope) return false;      // only the AWP has a breath hold
+  if (VM.ads < 0.75) return false;       // and only while looking through it
+  return p.stamina > 0;                  // a dry tank cannot hold anything
+}
+
+function updateStamina(p, dt, sprinting, breathing) {
+  let drain = 0;
+  if (sprinting) drain += STAM.sprintDrain;
+  if (breathing) drain += STAM.breathDrain;
+
+  if (drain > 0) {
+    p.stamina = Math.max(0, p.stamina - drain * dt);
+    p.stamIdleT = 0;
+  } else {
+    p.stamIdleT += dt;
+    /* a short pause before it starts coming back, so tapping sprint is not
+       free and a long chase leaves you winded */
+    if (p.stamIdleT >= STAM.regenDelay) {
+      p.stamina = Math.min(STAM.max, p.stamina + STAM.regen * dt);
+    }
+  }
+
+  /* oxygen debt: sprint locks out and health bleeds until recovered */
+  if (p.stamina <= 0.001) {
+    if (!p.exhausted) {
+      p.exhausted = true;
+      /* warn, but not on every sprint burst — holding SHIFT forever cycles
+         through debt about every 7 s and a banner each time is noise */
+      if (!p.exhaustWarnT || G.t - p.exhaustWarnT > 5) {
+        p.exhaustWarnT = G.t;
+        banner('<span class="hl">OUT OF STAMINA</span> — HEALTH DRAINING', 1.8);
+      }
+    }
+  } else if (p.exhausted && p.stamina >= STAM.recoverAt) {
+    p.exhausted = false;
+  }
+
+  if (p.exhausted && p.alive) {
+    p.hp -= STAM.exhaustDrain * dt;
+    if (p.hp <= 0) {
+      p.hp = 0;
+      killActor(p, null, false, 'EXHAUSTION');
+    }
+  }
 }
 
 /* bystander camera state: kept across the death so the view can be smoothed */
