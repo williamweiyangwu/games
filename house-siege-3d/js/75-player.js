@@ -85,6 +85,7 @@ function updatePlayer(dt) {
   const canSprint = !p.exhausted && p.stamina > 0.5;
   const sprinting = sprint && moving && canSprint;
   moveActor(p, mx, mz, sprinting, !!keys[' '], dt);
+  if (sprinting && G.tutorial.active) G.tutorial.sprintT += dt;
   updateStamina(p, dt, sprinting, holdingBreath(p));
 
   // camera
@@ -132,7 +133,10 @@ function holdingBreath(p) {
 function updateStamina(p, dt, sprinting, breathing) {
   let drain = 0;
   if (sprinting) drain += STAM.sprintDrain;
-  if (breathing) drain += STAM.breathDrain;
+  if (breathing) {
+    drain += STAM.breathDrain;
+    if (G.tutorial.active) G.tutorial.breathT += dt;
+  }
 
   if (drain > 0) {
     p.stamina = Math.max(0, p.stamina - drain * dt);
