@@ -150,6 +150,16 @@
   .dlg-opt .hint { display: block; font-size: 11.5px; color: #93b8a0; margin-top: 2px; font-style: italic; }
   .dlg-opt.disabled { opacity: 0.45; cursor: not-allowed; }
   .dlg-opt.disabled:hover { background: rgba(60,50,30,0.55); border-color: rgba(200,170,80,0.35); }
+  /* the conversation clock: patience left, and a warning before they walk off */
+  #dlgFoot {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    margin-top: 11px; padding-top: 9px; font-size: 11.5px; font-style: italic;
+    color: #8fa4b5; border-top: 1px solid rgba(200,170,80,0.16);
+  }
+  #dlgFoot .pips { font-style: normal; letter-spacing: 3px; color: #b99a52; margin-left: 6px; }
+  #dlgFoot .warn { color: #c99a5a; }
+  #dlgFoot.low { color: #d9a86a; }
+  #dlgFoot.low .pips { color: #c46a4a; }
 
   #menuPanel, #savePanel { width: min(430px, calc(100% - 40px)); padding: 26px 30px; }
   #menuPanel h2, #savePanel h2 { color: #ffd700; font-size: 22px; letter-spacing: 3px; text-align: center; margin-bottom: 18px; }
@@ -304,6 +314,7 @@
   </div>
   <div id="dlgText"></div>
   <div id="dlgOptions"></div>
+  <div id="dlgFoot" class="hidden"></div>
 </div>
 
 <!-- ==================== PAUSE MENU ==================== -->
@@ -3250,7 +3261,10 @@ window.addEventListener('keydown', (e) => {
     tryInteract();
   }
   if (k === 'escape') {
-    if (Game.phase === 'play') openMenu();
+    // Escape is the way out of anything, including a conversation you cannot
+    // finish. It used to do nothing at all while a dialog was open.
+    if (Game.phase === 'dialog') closeDialog();
+    else if (Game.phase === 'play') openMenu();
     else if (Game.phase === 'menu' || Game.phase === 'save') closeMenu();
   }
 });
@@ -3336,6 +3350,76 @@ if (isTouch) {
 const dlgEl = document.getElementById('dialog');
 let currentDialog = null;
 
+// A conversation is not an endless room. A citizen will hear you out for a few
+// exchanges and then go about their business; every dialog closes itself if you
+// sit there saying nothing. Without this a talk could circle forever -- the same
+// button re-rendering the same words with the whole world frozen behind it.
+const TALK_EXCHANGES = 10;     // choices a citizen will hear out before leaving
+const DLG_IDLE_TALK = 25;      // seconds a citizen waits for you to speak
+const DLG_IDLE_SHOP = 40;      // a shopkeeper has more business to attend to
+let dlgSocial = false;         // true while a citizen conversation is open
+let dlgTalkLeft = 0;           // exchanges left in that conversation
+let dlgIdle = 0;               // seconds since you last chose anything
+let dlgIdleShown = -1;         // last whole second drawn into the footer
+
+// the small line under the options: patience pips, and a warning as time runs out
+function renderDialogFoot() {
+  const el = document.getElementById('dlgFoot');
+  if (!el) return;
+  const limit = dlgSocial ? DLG_IDLE_TALK : DLG_IDLE_SHOP;
+  const left = limit - dlgIdle;
+  const parts = [];
+  if (dlgSocial) {
+    const full = Math.max(0, Math.min(TALK_EXCHANGES, dlgTalkLeft));
+    parts.push(`<span>Their patience<span class="pips">` +
+      '\u25CF'.repeat(full) + '\u25CB'.repeat(TALK_EXCHANGES - full) + `</span></span>`);
+  } else {
+    parts.push('<span></span>');
+  }
+  // only in the last few seconds, so it never nags a player who is reading
+  if (left <= 10) {
+    parts.push(`<span class="warn">They will not wait much longer\u2026</span>`);
+  }
+  if (dlgSocial || left <= 10) {
+    el.innerHTML = parts.join('');
+    el.classList.toggle('low', dlgSocial ? dlgTalkLeft <= 2 : left <= 4);
+    el.classList.remove('hidden');
+  } else {
+    el.innerHTML = '';
+    el.classList.add('hidden');
+  }
+}
+
+// End the conversation on its own terms: the other party has heard enough, or
+// has waited long enough. The dialog closes, the world resumes, and a toast
+// tells you why -- no way to be stuck in a loop.
+function endConversation(reason) {
+  // only a citizen conversation has a person to say goodbye to -- a shop that
+  // times out must not blame whoever you last spoke with on the street
+  const w = dlgSocial ? talker : null;
+  closeDialog();
+  if (w) w.talkT = 0;               // they stop waiting and walk on at once
+  if (reason === 'talked' && w) {
+    showToast(`${w.name} has heard enough. "Good day to you."`, 3800);
+    addLog(`${w.name} ends the conversation and goes back to their work.`);
+  } else if (w) {
+    showToast(`${w.name} will not stand about all day. They move on.`, 3600);
+    addLog(`${w.name} tired of waiting and left you to your thoughts.`);
+  } else {
+    showToast('The conversation lapses, and you turn away.', 3000);
+  }
+}
+
+// called once per frame while a dialog is open -- dialogs used to freeze the
+// game loop entirely, so nothing could ever time out
+function tickDialog(dt) {
+  dlgIdle += dt;
+  const limit = dlgSocial ? DLG_IDLE_TALK : DLG_IDLE_SHOP;
+  if (dlgIdle >= limit) return endConversation('idle');
+  const sec = Math.floor(dlgIdle);
+  if (sec !== dlgIdleShown) { dlgIdleShown = sec; renderDialogFoot(); }
+}
+
 function fmtClock() {
   const day = 1 + Math.floor(Game.gameMinutes / (24 * 60));
   const mins = Math.floor(Game.gameMinutes % (24 * 60));
@@ -3377,6 +3461,8 @@ function applyEffect(e) {
 
 function renderDialog(node) {
   currentDialog = node;
+  dlgIdle = 0;                 // a fresh page of the conversation: the clock restarts
+  dlgIdleShown = -1;
   document.getElementById('dlgPortrait').textContent = node.portrait || '\u{1F9D4}';
   document.getElementById('dlgName').textContent = node.who || 'Someone';
   document.getElementById('dlgRole').textContent = node.role || 'Lisbon';
@@ -3404,11 +3490,25 @@ function renderDialog(node) {
   });
 
   dlgEl.classList.remove('hidden');
+  renderDialogFoot();
   Game.phase = 'dialog';
   if (document.pointerLockElement === canvas) document.exitPointerLock();
 }
 
 function chooseOption(opt) {
+  if (!opt) return closeDialog();
+  dlgIdle = 0;                       // you are still here, and still talking
+
+  // A social conversation has a budget. When it is spent they end it themselves
+  // -- this is what stops "Talk with Beatriz" from being a button you can press
+  // forever while the city stands still behind the dialog. A wager counts too,
+  // or the dice table would be a way around the budget.
+  const continues = !!(opt.next || opt.stay || opt.roll);
+  if (continues && dlgSocial) {
+    if (dlgTalkLeft <= 0) return endConversation('talked');
+    dlgTalkLeft--;
+  }
+
   if (opt.effect) applyEffect(opt.effect);
 
   // probabilistic outcome
@@ -3432,6 +3532,11 @@ function chooseOption(opt) {
   if (opt.action) opt.action();
   if (opt.next) return renderDialog(DLG[opt.next]());
   if (opt.stay) {
+    // A button that changes nothing and re-renders itself is a dead circle --
+    // the hold-is-full notice used to be exactly that. Such a choice closes.
+    const inert = !opt.action && !opt.effect && !opt.roll &&
+                  !(currentDialog && currentDialog.rebuild);
+    if (inert) return closeDialog();
     // A trading dialog re-prices itself after every purchase, so the labels
     // always match what the hold can still take. Without this the buttons
     // keep their old numbers and you could pay for cargo that never loads.
@@ -3449,6 +3554,9 @@ let talkerGreet = '';           // how they greeted you when this talk began
 function talkToCitizen(w) {
   talker = w;
   w.talkT = 12;                            // they will wait a while for you
+  dlgSocial = true;                        // a person, with only so much patience
+  dlgTalkLeft = TALK_EXCHANGES;
+  dlgIdle = 0;
   // capture the greeting BEFORE marking them met, or "Well met" never shows
   talkerGreet = w.met
     ? `"Back again? ${w.name} knows your face now."`
@@ -3460,12 +3568,23 @@ function talkToCitizen(w) {
 function openDialog(id, ctx) {
   const builder = DLG[id];
   if (!builder) return;
+  // only a citizen conversation has a patience budget; a shop is a shop
+  if (id !== 'citizen' && id !== 'riddle' && id !== 'riddle_result') {
+    dlgSocial = false;
+    dlgTalkLeft = 0;
+  }
   renderDialog(builder(ctx || {}));
 }
 
 function closeDialog() {
   dlgEl.classList.add('hidden');
+  const foot = document.getElementById('dlgFoot');
+  if (foot) { foot.classList.add('hidden'); foot.innerHTML = ''; }
   currentDialog = null;
+  dlgSocial = false;
+  dlgTalkLeft = 0;
+  dlgIdle = 0;
+  dlgIdleShown = -1;
   if (Game.phase === 'dialog') Game.phase = 'play';
   if (Game.phase === 'play' && !isTouch) canvas.requestPointerLock();
 }
@@ -4009,7 +4128,9 @@ const DLG = {
     }
     if (room <= 0) {
       opts.length = 0;
-      opts.push({ label: `Your hold is full — ${cargoUnits()} of ${cargoCapacity()} bales. Sell in Lisbon and come back.`, stay: true });
+      // a notice, not a button: it used to be `stay: true`, so clicking it
+      // re-opened the same words forever -- the one true dead circle in the game
+      opts.push({ label: `Your hold is full — ${cargoUnits()} of ${cargoCapacity()} bales. Sell in Lisbon and come back.` });
     }
     opts.push({ label: "Trade is done." });
     return {
@@ -5432,6 +5553,8 @@ function resetLife() {
 
   seaEventTimer = 50 + Math.random() * 30;
   streetEventTimer = 70 + Math.random() * 50;
+  // a new life starts with no conversation hanging over from the last one
+  dlgSocial = false; dlgTalkLeft = 0; dlgIdle = 0; dlgIdleShown = -1;
   logPanel.innerHTML = '';
   addLog('Dawn over Lisbon. You are a citizen with nothing but your name.');
   updateHUD(); updateCargoBox(); drawMinimap();
@@ -5600,6 +5723,11 @@ function animate() {
     if (mmFrame-- <= 0) { drawMinimap(); mmFrame = 6; }
 
     if (Game.lifeLeft <= 0) showEndScreen('time');
+  } else if (Game.phase === 'dialog') {
+    // dialogs used to stop the world entirely, so a conversation had no clock
+    // at all: it could only end if you clicked the right button. Now silence
+    // ends it, and so does a citizen running out of patience.
+    tickDialog(dt);
   }
 
   // clouds drift around the camera
@@ -5640,6 +5768,10 @@ window.__voyage = {
   toggleAnchor, spaceLatch: () => spaceLatch,
   climbOutOfWater, resolvePeople, resolveShipHull,
   talkToCitizen, pickRiddle, diceChance, RIDDLES, endStats, lifeVerdict,
+  endConversation, tickDialog, renderDialogFoot, TALK_EXCHANGES,
+  get dlgSocial() { return dlgSocial; },
+  get dlgTalkLeft() { return dlgTalkLeft; },
+  get dlgIdle() { return dlgIdle; },
   cargoUnits, cargoCapacity, cargoRoom, drawMinimap, updateDayNight, updateCameraRig,
   updateHUD, updateCargoBox, applyEffect, cargoValue, fmtClock, stepPhysics,
   get ship() { return playerShip; }
