@@ -208,6 +208,17 @@ b{font-weight:700}
 .hp-fill.low{background:linear-gradient(90deg,#ff2d2d,#ff7a7a)}
 .hp-num{font-size:22px;font-weight:900;font-variant-numeric:tabular-nums;width:46px;text-align:right;
   text-shadow:0 2px 6px #000,0 0 2px #000}
+
+/* stamina — sits under the health bar and feeds sprint + held breath */
+.st-row{margin-top:8px}
+.st-label{font-size:9px;letter-spacing:.22em;color:#7c879c;margin-bottom:4px;display:flex;
+  justify-content:space-between;align-items:baseline}
+.st-label span{font-size:10px;letter-spacing:.06em;color:#a9b6c9;font-variant-numeric:tabular-nums}
+.st-bar{height:6px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.14);overflow:hidden}
+.st-fill{height:100%;width:100%;background:linear-gradient(90deg,#3aa0ff,#7fd0ff);transition:width .1s}
+.st-fill.low{background:linear-gradient(90deg,#ffb020,#ffd97a)}
+.st-fill.exhausted{background:linear-gradient(90deg,#ff2d2d,#ff7a7a);animation:pulse .6s infinite}
+.vitals.exhausted .v-label{color:#ff7a7a}
 .v-sub{margin-top:7px;font-size:9px;letter-spacing:.14em;color:#93a0b4;text-shadow:0 1px 3px #000}
 
 /* gun box */
