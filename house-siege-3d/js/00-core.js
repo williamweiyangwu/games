@@ -61,6 +61,26 @@ const DIFF = {
   legend: { key:'legend', label:'LEGEND', hp:125, dmg:1.05, react:0.17, err:0.024, range:50, speed:4.9, reload:1.8, burst:0.20, jumpiness:1.0 }
 };
 
+/* ------------------------------------------------------------
+   STAMINA
+   ------------------------------------------------------------
+   Sprinting and holding your breath behind the scope both come out of the
+   same pool. Run it dry and you go into oxygen debt: sprint is locked out
+   and your health bleeds away until you have recovered enough to breathe
+   normally again. */
+const STAM = {
+  max: 100,
+  sprintDrain: 22,      // per second, sprinting
+  breathDrain: 26,      // per second, holding breath behind the scope
+  regen: 16,            // per second, once the delay has passed
+  regenDelay: 0.7,      // seconds of not exerting before regen starts
+  recoverAt: 25,        // stamina needed to clear the exhausted state
+  breathMin: 6,         // stamina needed to start holding your breath
+  exhaustDrain: 3.2,    // HP per second while in oxygen debt
+  swayMax: 1.35         // extra scope wobble at zero stamina
+};
+
+
 const WEAPONS = {
   knife:  { id:'knife',  name:'COMBAT KNIFE', melee:true, dmg:58, rate:0.40, range:2.5, tier:0 },
   pistol: { id:'pistol', name:'M9 PISTOL',    dmg:26, rate:0.20, mag:12, reserve:120, reload:1.35, spread:0.012, auto:false, range:90, tier:1, snd:'pistol' },
