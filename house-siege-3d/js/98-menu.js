@@ -10,15 +10,24 @@
 const HT_PAGES = [
   {
     t: 'MISSION BRIEFING',
-    h: `<h3>5 v 5 · Red Team vs Blue Team</h3>
-    <p>You deploy with the <span class="r">RED TEAM</span> — four AI teammates and you — against five <span class="b">BLUE</span> operators.
+    /* a function, not a string: the side you deploy on is a menu choice, so
+       hard-coding "you deploy with the RED team" was a lie half the time */
+    h: () => {
+      const mine = G.team, foe = otherTeam(mine);
+      const corner = t => t === 'red' ? 'south-west' : 'north-east';
+      const cls = t => t === 'red' ? 'r' : 'b';
+      return `<h3>5 v 5 · Red Team vs Blue Team</h3>
+    <p>You deploy with the <span class="${cls(mine)}">${teamLabel(mine)} TEAM</span> — four AI teammates and you — against five
+    <span class="${cls(foe)}">${teamLabel(foe)}</span> operators. You pick your side on the main menu before you deploy, and you can change it there at any time.
     The arena is a sealed white maze. There is no exit: the walls go all the way round and up.</p>
     <h4>THE MAZE</h4>
     <p><b>Level 1</b> is a 13x13 labyrinth with wide corridors and plenty of loops — you can always back out of a dead end.
     <b>Level 2</b> is a catwalk platform that runs around the entire outer edge, 4.2 m above the maze floor.
     From up there you can see the whole labyrinth and shoot down into it — but you are also the most exposed target on the map.</p>
     <p>Four stairways lead up to the catwalk, one in the middle of each side. Each team owns a wide open corner plaza:
-    red in the <b>south-west</b>, blue in the <b>north-east</b>. Those plazas are your HQ, your spawn and your flag.</p>
+    red in the <b>south-west</b>, blue in the <b>north-east</b>. A plaza is that team's HQ, spawn and flag.</p>
+    <p>You are on the <span class="${cls(mine)}">${teamLabel(mine)} TEAM</span>, so your HQ is the
+    <b>${corner(mine)}</b> plaza and the enemy holds the <b>${corner(foe)}</b> one.</p>
     <h4>YOUR LOADOUT</h4>
     <p>You always start with a <span class="accent">knife</span> and a <span class="accent">pistol</span>.
     Everything else is found in crates. Pick your fights early — a pistol loses to a rifle at range.
@@ -27,7 +36,8 @@ const HT_PAGES = [
     <h4>STAMINA</h4>
     <p>Sprinting and holding your breath behind the scope both come out of one <span class="accent">stamina</span> bar.
     It refills on its own after a short pause. Run it to <b>zero</b> and you are in oxygen debt: the sprint locks out
-    and your <b>health starts bleeding away</b> until you have got your breath back — so do not sprint straight into a fight.</p>`
+    and your <b>health starts bleeding away</b> until you have got your breath back — so do not sprint straight into a fight.</p>`;
+    }
   },
   {
     t: 'CONTROLS',
@@ -60,7 +70,7 @@ const HT_PAGES = [
       <tr><td>MP5 SMG</td><td>17</td><td>30</td><td>Fast full-auto, great indoors</td></tr>
       <tr><td>AK-47 Rifle</td><td>31</td><td>30</td><td>Best all-rounder</td></tr>
       <tr><td>SPAS-12</td><td>12×8</td><td>6</td><td>One-shot at close range</td></tr>
-      <tr><td>AWP Sniper</td><td>115</td><td>5</td><td>Body-shot kill, punishing reload. <b>E for the scope</b> — mil-dot reticle, 3.7× zoom. <b>Hold Q</b> to steady the wobble (costs stamina)</td></tr>
+      <tr><td>AWP Sniper</td><td>115</td><td>5</td><td>One body shot drops an Easy, Normal or Hard bot; Legend (125 HP) survives one. Punishing reload. <b>E for the scope</b> — mil-dot reticle, 3.7× zoom. <b>Hold Q</b> to steady the wobble (costs stamina)</td></tr>
       <tr><td>Crossbow</td><td>105</td><td>3</td><td><b>2 s draw</b> per bolt, only 30 m of range — a duelling weapon</td></tr>
     </table>
     <h4>ITEMS — the teal crates</h4>
@@ -78,8 +88,9 @@ const HT_PAGES = [
     into the air, shows a spinning marker, and is drawn as a diamond on the tactical map — you should never have to hunt for one.
     <b>Gold</b> crates hold a gun, <b>teal</b> crates hold an item; the prompt tells you what is inside before you take it.</p>
     <p>Walk up and <b>right-click</b> to take it. A used crate refills after ~26 seconds with something new, so camp it or beat the enemy to it.
-    Your bag has <b>five slots</b>: knife, pistol and three pickups. When the last three are full, a new pickup replaces the last one.</p>
-    <p><span class="accent">Headshots deal double damage</span> — the AK and AWP kill in one headshot.</p>`
+    Your bag has <b>five slots</b>: knife, pistol and three pickups. When it is full, a new pickup replaces <b>whatever you are holding</b>
+    (or the last slot, if you are on the knife or pistol) — so switch to the thing you are willing to lose before you loot.</p>
+    <p><span class="accent">Headshots deal double damage</span> — the AWP drops anyone with a single headshot, the AK takes two.</p>`
   },
   {
     t: 'GAME MODES',
@@ -92,12 +103,16 @@ const HT_PAGES = [
     <h3><span class="b">FLAG RAID</span> — 5:00</h3>
     <ul>
       <li>Each team has a flag at its HQ: red in the <b>south-west</b> corner of the maze, blue in the <b>north-east</b>.</li>
-      <li>Walk over the enemy flag to pick it up, then carry it back to your own HQ to score.</li>
+      <li>Walk over the enemy flag to pick it up, then carry it back to your own HQ and <b>hold position for 2.4 s</b> to score — touching the pad is not enough.</li>
       <li>You can only score while <b>your own flag is at home</b> — if yours is stolen, hunt the carrier or touch your dropped flag to return it.</li>
       <li>Dropped flags return to base after 20 seconds.</li>
       <li>The team with the most captures when the clock hits 0:00 wins.</li>
       <li>Respawn after <b>3 seconds</b>. Carriers are marked on the HUD.</li>
     </ul>
+    <h4>GOLDEN POINT</h4>
+    <p>If the clock runs out with the scores <b>level</b>, the match does not end in a draw — it goes to
+    <span class="accent">golden point</span>. The next score wins it outright: the next kill in Team Deathmatch,
+    the next capture in Flag Raid. A suicide leaves both scores untouched, so the round simply plays on.</p>
     <h4>WHEN YOU GO DOWN</h4>
     <p>The camera stays in the arena: first over your own body, then it swings onto
     <span class="accent">whoever killed you</span> and follows them until you respawn —
@@ -108,12 +123,15 @@ const HT_PAGES = [
     h: `<h3>Four levels — they change aim, reaction and aggression</h3>
     <table>
       <tr><th>LEVEL</th><th>REACTION</th><th>AIM ERROR</th><th>DAMAGE</th><th>RANGE</th></tr>
-      <tr><td><b>EASY</b></td><td>0.62 s</td><td>Wide</td><td>55%</td><td>24 m</td></tr>
-      <tr><td><b>NORMAL</b></td><td>0.38 s</td><td>Medium</td><td>85%</td><td>32 m</td></tr>
-      <tr><td><b>HARD</b></td><td>0.21 s</td><td>Tight</td><td>105%</td><td>42 m</td></tr>
-      <tr><td><b>LEGEND</b></td><td>0.11 s</td><td>Very tight</td><td>125%</td><td>56 m</td></tr>
+      <tr><td><b>EASY</b></td><td>0.90 s</td><td>Wide</td><td>42%</td><td>18 m</td></tr>
+      <tr><td><b>NORMAL</b></td><td>0.58 s</td><td>Medium</td><td>62%</td><td>26 m</td></tr>
+      <tr><td><b>HARD</b></td><td>0.34 s</td><td>Tight</td><td>84%</td><td>36 m</td></tr>
+      <tr><td><b>LEGEND</b></td><td>0.17 s</td><td>Very tight</td><td>105%</td><td>50 m</td></tr>
     </table>
-    <p>Higher levels also strafe more, reload faster, have more HP (Hard 110 / Legend 125) and push the objective harder.</p>
+    <p>Reaction times are the base figure — a bot actually takes anywhere from 75% to 130% of it, so the same
+    difficulty does not feel robotic. Damage is a share of the weapon's normal damage, so only <b>LEGEND</b> hits
+    harder than you do.</p>
+    <p>Higher levels also strafe more, reload faster and have more HP (Hard 110 / Legend 125).</p>
     <h4>TACTICS</h4>
     <ul>
       <li>Listen for the direction of gunfire and check your teammates' HP bars — a collapsing flank shows up there first.</li>
@@ -125,7 +143,9 @@ const HT_PAGES = [
 ];
 let htPage = 0;
 function renderHowTo() {
-  $('htBody').innerHTML = HT_PAGES[htPage].h;
+  const page = HT_PAGES[htPage];
+  /* some pages are built from live match state (which side you picked) */
+  $('htBody').innerHTML = typeof page.h === 'function' ? page.h() : page.h;
   $('htDots').innerHTML = HT_PAGES.map((p, i) => '<i class="' + (i === htPage ? 'on' : '') + '"></i>').join('');
   $('htPrev').style.visibility = htPage === 0 ? 'hidden' : 'visible';
   $('htNext').textContent = htPage === HT_PAGES.length - 1 ? 'GOT IT' : 'NEXT →';
@@ -154,9 +174,9 @@ function initMenu() {
       const d = DIFF[G.diff];
       const descs = {
         easy: 'Slow reactions and loose aim. Good for learning the map.',
-        normal: 'Balanced bots. They miss sometimes and react in a third of a second.',
+        normal: 'Balanced bots. They miss sometimes and take about half a second to react.',
         hard: 'Fast reactions, tight aim and better positioning. They punish wide peeks.',
-        legend: 'Near-instant reactions, 125 HP and 125% damage. Treat every corner as occupied.'
+        legend: 'Near-instant reactions, 125 HP and 105% damage. Treat every corner as occupied.'
       };
       $('diffDesc').textContent = descs[G.diff];
     });
