@@ -92,6 +92,47 @@
   a.card:hover .arrow{transform:translateX(4px)}
   footer{text-align:center;color:#5b667c;font-size:12.5px;margin-top:56px;letter-spacing:.4px}
   footer a{color:#8b96ad}
+
+  /* AI chat widget */
+  #aiFAB{
+    position:fixed;right:20px;bottom:20px;z-index:9999;
+    width:58px;height:58px;border-radius:50%;border:1px solid var(--line);
+    background:linear-gradient(135deg,#ffd75e,#ff9d2e);color:#14161d;
+    font-size:15px;font-weight:800;letter-spacing:1px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 8px 24px rgba(255,157,46,.35);transition:transform .15s ease;
+  }
+  #aiFAB:hover{transform:scale(1.06)}
+  #aiChat{
+    position:fixed;right:20px;bottom:90px;z-index:9999;
+    width:min(380px,calc(100vw - 40px));height:min(560px,calc(100vh - 120px));
+    background:var(--panel);border:1px solid var(--line);border-radius:16px;
+    display:flex;flex-direction:column;overflow:hidden;
+    box-shadow:0 20px 60px rgba(0,0,0,.6);
+  }
+  #aiChat.hidden{display:none}
+  #aiChat .ai-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:13px 16px;border-bottom:1px solid var(--line);background:var(--panel2);
+  }
+  #aiChat .ai-head b{font-size:15px;letter-spacing:.5px}
+  #aiChat .ai-head button{background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer;line-height:1;padding:0}
+  #aiChat .ai-head button:hover{color:var(--ink)}
+  #aiChat .ai-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+  #aiChat .msg{max-width:84%;padding:10px 13px;border-radius:14px;font-size:14px;line-height:1.45;white-space:pre-wrap;word-wrap:break-word}
+  #aiChat .msg.bot{align-self:flex-start;background:var(--panel2);border:1px solid var(--line)}
+  #aiChat .msg.user{align-self:flex-end;background:linear-gradient(135deg,#2b3a63,#1b2542)}
+  #aiChat .ai-input{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line)}
+  #aiChat .ai-input input{
+    flex:1;background:var(--bg);border:1px solid var(--line);border-radius:10px;
+    color:var(--ink);padding:10px 12px;font-size:14px;outline:none;
+  }
+  #aiChat .ai-input input:focus{border-color:#3d4c74}
+  #aiChat .ai-input button{
+    background:linear-gradient(135deg,#ffd75e,#ff9d2e);color:#14161d;border:none;
+    border-radius:10px;padding:0 16px;font-weight:700;cursor:pointer;font-size:14px;
+  }
+  #aiChat .ai-input button:disabled{opacity:.5;cursor:default}
 </style>
 </head>
 <body>
@@ -179,5 +220,101 @@
     Built by <a href="https://github.com/williamweiyangwu">William</a> &middot; hosted on GitHub Pages
   </footer>
 </div>
+
+<button id="aiFAB" aria-label="Open AI assistant">AI</button>
+<div id="aiChat" class="hidden">
+  <div class="ai-head">
+    <b>AI Assistant</b>
+    <button id="aiClose" aria-label="Close">&#215;</button>
+  </div>
+  <div class="ai-msgs" id="aiMsgs"></div>
+  <div class="ai-input">
+    <input id="aiInput" type="text" placeholder="Ask me anything…" autocomplete="off">
+    <button id="aiSend">Send</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  // PASTE YOUR GEMINI API KEY HERE (get one at https://aistudio.google.com/apikey)
+  var API_KEY = "YOUR_GEMINI_API_KEY";
+  var MODEL = "gemini-2.0-flash";
+  var SYSTEM = "You are a friendly, concise AI assistant embedded on the Arcade hub of William's games website. You can answer questions about the games (Age of Discovery, The Backrooms, House Siege 3D, KARDS, Map Game, Blockcraft, Tank War, Apex Racing, WWII Europe) or anything else.";
+
+  var history = [];
+  var fab = document.getElementById("aiFAB");
+  var chat = document.getElementById("aiChat");
+  var msgs = document.getElementById("aiMsgs");
+  var input = document.getElementById("aiInput");
+  var send = document.getElementById("aiSend");
+  var close = document.getElementById("aiClose");
+
+  function addMsg(role, text) {
+    var d = document.createElement("div");
+    d.className = "msg " + (role === "user" ? "user" : "bot");
+    d.textContent = text;
+    msgs.appendChild(d);
+    msgs.scrollTop = msgs.scrollHeight;
+    return d;
+  }
+
+  function setTyping(on) {
+    var t = document.getElementById("aiTyping");
+    if (on) {
+      if (!t) { t = document.createElement("div"); t.id = "aiTyping"; t.className = "msg bot"; t.textContent = "…"; msgs.appendChild(t); }
+      msgs.scrollTop = msgs.scrollHeight;
+    } else if (t) { t.remove(); }
+  }
+
+  function ask() {
+    var q = input.value.trim();
+    if (!q || send.disabled) return;
+    if (API_KEY === "YOUR_GEMINI_API_KEY") {
+      addMsg("bot", "The assistant needs a Gemini API key. Open index.html and replace YOUR_GEMINI_API_KEY with your key from https://aistudio.google.com/apikey");
+      return;
+    }
+    input.value = "";
+    addMsg("user", q);
+    history.push({ role: "user", text: q });
+    setTyping(true);
+    send.disabled = true;
+
+    var contents = history.map(function (h) {
+      return { role: h.role === "user" ? "user" : "model", parts: [{ text: h.text }] };
+    });
+
+    fetch("https://generativelanguage.googleapis.com/v1beta/models/" + MODEL + ":generateContent?key=" + encodeURIComponent(API_KEY), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: contents, systemInstruction: { parts: [{ text: SYSTEM }] } })
+    })
+    .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+    .then(function (r) {
+      if (!r.ok) { throw new Error(r.data && r.data.error && r.data.error.message ? r.data.error.message : "Gemini error " + r.data); }
+      var reply = (r.data.candidates && r.data.candidates[0] && r.data.candidates[0].content && r.data.candidates[0].content.parts || []).map(function (p) { return p.text; }).join("") || "(no reply)";
+      history.push({ role: "model", text: reply });
+      addMsg("bot", reply);
+    })
+    .catch(function (e) {
+      addMsg("bot", "Sorry, something went wrong: " + e.message);
+    })
+    .then(function () {
+      setTyping(false);
+      send.disabled = false;
+      input.focus();
+    });
+  }
+
+  fab.addEventListener("click", function () {
+    chat.classList.toggle("hidden");
+    if (!chat.classList.contains("hidden")) input.focus();
+  });
+  close.addEventListener("click", function () { chat.classList.add("hidden"); });
+  send.addEventListener("click", ask);
+  input.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); ask(); } });
+
+  addMsg("bot", "Hi! I can answer questions about the games here or anything else. What would you like to know?");
+})();
+</script>
 </body>
 </html>
