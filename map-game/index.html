@@ -681,6 +681,14 @@
     <div class="mbody">
       <div class="sub" id="achHead" style="margin-bottom:6px">&nbsp;</div>
       <div id="achList"></div>
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid #2a3548">
+        <div class="sub" style="opacity:.85">Your progress lives in this browser. If it keeps vanishing after you restart your computer, your browser is clearing site data on exit &mdash; export a backup here and you can restore it any time.</div>
+        <div style="margin-top:8px">
+          <button class="btn" id="bExport">&#128190; Export backup</button>
+          <button class="btn" id="bImport">&#128229; Import backup</button>
+          <input type="file" id="bImportFile" accept="application/json,.json,text/plain" style="display:none">
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -2239,6 +2247,41 @@ function renderAchList(){
       (got?'<div class="adt">unlocked '+when+'</div>':'')+
       '</div></div>';
   }).join('');
+}
+function exportBackup(){
+  try{
+    var b={ app:'europe-ww2-map-game', v:1, exported:Date.now(),
+            ach:ACH_SAVE||{},
+            save:localStorage.getItem('e1939_save')||null,
+            tut:localStorage.getItem('e1939_tut')||null };
+    var blob=new Blob([JSON.stringify(b)], {type:'application/json'});
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    var d=new Date(), p=function(n){ return (n<10?'0':'')+n; };
+    a.download='map-game-backup-'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); },1500);
+    flash('Backup downloaded. Keep it somewhere safe.');
+  }catch(e){ flash('Export failed: '+e.message); }
+}
+function importBackup(file){
+  if(!file) return;
+  var r=new FileReader();
+  r.onload=function(){
+    try{
+      var b=JSON.parse(r.result);
+      if(!b || b.app!=='europe-ww2-map-game'){ flash('That is not a recognised backup file.'); return; }
+      if(b.ach && typeof b.ach==='object'){ localStorage.setItem('e1939_ach', JSON.stringify(b.ach)); }
+      if(b.save!=null){ localStorage.setItem('e1939_save', typeof b.save==='string'?b.save:JSON.stringify(b.save)); }
+      else { try{ localStorage.removeItem('e1939_save'); }catch(e){} }
+      if(b.tut!=null){ localStorage.setItem('e1939_tut', b.tut); }
+      achLoad(); achBadge(); renderAchList();
+      var cb=document.getElementById('bContinue');
+      if(cb) cb.style.display=hasSave()?'inline-block':'none';
+      flash('Backup restored.');
+    }catch(e){ flash('Import failed: '+e.message); }
+  };
+  r.readAsText(file);
 }
 
 
@@ -4315,7 +4358,10 @@ document.getElementById('bMail').onclick=openMailModal;
 document.getElementById('bHelp').onclick=openTutorial;
 (function(){ var b=document.getElementById('bAch'); if(b) b.onclick=openAchModal;
              var c=document.getElementById('achClose'); if(c) c.onclick=closeAchModal;
-             var s=document.getElementById('bAchStart'); if(s) s.onclick=openAchModal; })();
+             var s=document.getElementById('bAchStart'); if(s) s.onclick=openAchModal;
+             var ex=document.getElementById('bExport'); if(ex) ex.onclick=exportBackup;
+             var im=document.getElementById('bImport'); if(im) im.onclick=function(){ var f=document.getElementById('bImportFile'); if(f) f.click(); };
+             var fi=document.getElementById('bImportFile'); if(fi) fi.onchange=function(){ importBackup(fi.files&&fi.files[0]); fi.value=''; }; })();
 document.getElementById('bSound').onclick=function(){
   sndInit(); sndToggle();
   document.getElementById('bSound').innerHTML=SND.on?'&#128266; Sound':'&#128263; Sound';
