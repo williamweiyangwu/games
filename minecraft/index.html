@@ -507,7 +507,9 @@ const IT = { BEEF: 100, PORK: 101, MUTTON: 102, CHICKEN: 103, LEATHER: 104, WOOL
              SPICK: 124, SAXE: 125, SSHOVEL: 126, SSWORD: 127,
              COAL: 128, IRON: 129, GOLD: 130, DIAMOND: 131,
              IPICK: 132, IAXE: 133, ISHOVEL: 134, ISWORD: 135,
-             DPICK: 136, DAXE: 137, DSHOVEL: 138, DSWORD: 139 };
+             DPICK: 136, DAXE: 137, DSHOVEL: 138, DSWORD: 139,
+             CPICK: 140, CAXE: 141, CSHOVEL: 142, CSWORD: 143,
+             GPICK: 144, GAXE: 145, GSHOVEL: 146, GSWORD: 147 };
 const ITEM = {};
 function rect(g, x, y, w, h, c) { g.fillStyle = c; g.fillRect(x, y, w, h); }
 function toolIcon(kind, c1, c2) {
@@ -564,6 +566,15 @@ function defineItems() {
   R(IT.DAXE, 'Diamond Axe', D1, 0, toolIcon('axe', D1, D2));
   R(IT.DSHOVEL, 'Diamond Shovel', D1, 0, toolIcon('shovel', D1, D2));
   R(IT.DSWORD, 'Diamond Sword', D1, 0, toolIcon('sword', D1, D2));
+  const C1 = '#4a4a50', C2 = '#6a6a72', G1 = '#f0cc33', G2 = '#ffe97a';
+  R(IT.CPICK, 'Coal Pickaxe', C1, 0, toolIcon('pick', C1, C2));
+  R(IT.CAXE, 'Coal Axe', C1, 0, toolIcon('axe', C1, C2));
+  R(IT.CSHOVEL, 'Coal Shovel', C1, 0, toolIcon('shovel', C1, C2));
+  R(IT.CSWORD, 'Coal Sword', C1, 0, toolIcon('sword', C1, C2));
+  R(IT.GPICK, 'Gold Pickaxe', G1, 0, toolIcon('pick', G1, G2));
+  R(IT.GAXE, 'Gold Axe', G1, 0, toolIcon('axe', G1, G2));
+  R(IT.GSHOVEL, 'Gold Shovel', G1, 0, toolIcon('shovel', G1, G2));
+  R(IT.GSWORD, 'Gold Sword', G1, 0, toolIcon('sword', G1, G2));
 }
 const DROPBLK = {}; DROPBLK[GRASS] = DIRT; DROPBLK[STONE] = COBBLE; DROPBLK[LEAVES] = 0; DROPBLK[GLASS] = 0; DROPBLK[BEDROCK] = 0;
 DROPBLK[COAL_ORE] = IT.COAL; DROPBLK[IRON_ORE] = IT.IRON; DROPBLK[GOLD_ORE] = IT.GOLD; DROPBLK[DIAMOND_ORE] = IT.DIAMOND;
@@ -605,7 +616,15 @@ const RECIPES = [
   { out: [IT.DPICK, 1], shape: [[IT.DIAMOND, IT.DIAMOND, IT.DIAMOND], [0, IT.STICK, 0], [0, IT.STICK, 0]] },
   { out: [IT.DAXE, 1], shape: [[IT.DIAMOND, IT.DIAMOND, 0], [IT.DIAMOND, IT.STICK, 0], [0, IT.STICK, 0]] },
   { out: [IT.DSHOVEL, 1], shape: [[0, IT.DIAMOND, 0], [0, IT.STICK, 0], [0, IT.STICK, 0]] },
-  { out: [IT.DSWORD, 1], shape: [[0, IT.DIAMOND, 0], [0, IT.DIAMOND, 0], [0, IT.STICK, 0]] }
+  { out: [IT.DSWORD, 1], shape: [[0, IT.DIAMOND, 0], [0, IT.DIAMOND, 0], [0, IT.STICK, 0]] },
+  { out: [IT.CPICK, 1], shape: [[IT.COAL, IT.COAL, IT.COAL], [0, IT.STICK, 0], [0, IT.STICK, 0]] },
+  { out: [IT.CAXE, 1], shape: [[IT.COAL, IT.COAL, 0], [IT.COAL, IT.STICK, 0], [0, IT.STICK, 0]] },
+  { out: [IT.CSHOVEL, 1], shape: [[0, IT.COAL, 0], [0, IT.STICK, 0], [0, IT.STICK, 0]] },
+  { out: [IT.CSWORD, 1], shape: [[0, IT.COAL, 0], [0, IT.COAL, 0], [0, IT.STICK, 0]] },
+  { out: [IT.GPICK, 1], shape: [[IT.GOLD, IT.GOLD, IT.GOLD], [0, IT.STICK, 0], [0, IT.STICK, 0]] },
+  { out: [IT.GAXE, 1], shape: [[IT.GOLD, IT.GOLD, 0], [IT.GOLD, IT.STICK, 0], [0, IT.STICK, 0]] },
+  { out: [IT.GSHOVEL, 1], shape: [[0, IT.GOLD, 0], [0, IT.STICK, 0], [0, IT.STICK, 0]] },
+  { out: [IT.GSWORD, 1], shape: [[0, IT.GOLD, 0], [0, IT.GOLD, 0], [0, IT.STICK, 0]] }
 ];
 function trimShape(rows) {
   let minR = 3, maxR = -1, minC = 3, maxC = -1;
@@ -661,7 +680,7 @@ for (const f of FACE) {
 const STRIDE = 30, C_TILE = 27, C_UO = 28;
 
 /* ------------------------------------------------------------- world */
-const W = 128, H = 40, SEA = 13, CH = 16, CW = W / CH, CD = W / CH;
+const W = 160, H = 64, SEA = 13, CH = 16, CW = W / CH, CD = W / CH;
 const world = new Uint8Array(W * H * W);
 const topY = new Int16Array(W * W);
 let seedOff = 0;
@@ -1532,13 +1551,17 @@ function waterNear(x, z, r) {
 /* --------------------------------------------------- inventory + items */
 function heldId() { return INV[sel] ? INV[sel].id : 0; }
 const TOOLDEF = {};
-TOOLDEF[IT.WPICK] = { k: 'pick', s: 2.5, tier: 0 }; TOOLDEF[IT.SPICK] = { k: 'pick', s: 5, tier: 1 };
+TOOLDEF[IT.WPICK] = { k: 'pick', s: 2.5, tier: 0 }; TOOLDEF[IT.CPICK] = { k: 'pick', s: 3.5, tier: 0 };
+TOOLDEF[IT.SPICK] = { k: 'pick', s: 5, tier: 1 }; TOOLDEF[IT.GPICK] = { k: 'pick', s: 8, tier: 1 };
 TOOLDEF[IT.IPICK] = { k: 'pick', s: 7.5, tier: 2 }; TOOLDEF[IT.DPICK] = { k: 'pick', s: 10, tier: 3 };
-TOOLDEF[IT.WAXE] = { k: 'axe', s: 2.5 }; TOOLDEF[IT.SAXE] = { k: 'axe', s: 5 };
+TOOLDEF[IT.WAXE] = { k: 'axe', s: 2.5 }; TOOLDEF[IT.CAXE] = { k: 'axe', s: 3.5 };
+TOOLDEF[IT.SAXE] = { k: 'axe', s: 5 }; TOOLDEF[IT.GAXE] = { k: 'axe', s: 8 };
 TOOLDEF[IT.IAXE] = { k: 'axe', s: 7.5 }; TOOLDEF[IT.DAXE] = { k: 'axe', s: 10 };
-TOOLDEF[IT.WSHOVEL] = { k: 'shovel', s: 2.5 }; TOOLDEF[IT.SSHOVEL] = { k: 'shovel', s: 5 };
+TOOLDEF[IT.WSHOVEL] = { k: 'shovel', s: 2.5 }; TOOLDEF[IT.CSHOVEL] = { k: 'shovel', s: 3.5 };
+TOOLDEF[IT.SSHOVEL] = { k: 'shovel', s: 5 }; TOOLDEF[IT.GSHOVEL] = { k: 'shovel', s: 8 };
 TOOLDEF[IT.ISHOVEL] = { k: 'shovel', s: 7.5 }; TOOLDEF[IT.DSHOVEL] = { k: 'shovel', s: 10 };
-TOOLDEF[IT.WSWORD] = { k: 'sword', dmg: 6 }; TOOLDEF[IT.SSWORD] = { k: 'sword', dmg: 8 };
+TOOLDEF[IT.WSWORD] = { k: 'sword', dmg: 6 }; TOOLDEF[IT.CSWORD] = { k: 'sword', dmg: 7 };
+TOOLDEF[IT.SSWORD] = { k: 'sword', dmg: 8 }; TOOLDEF[IT.GSWORD] = { k: 'sword', dmg: 9 };
 TOOLDEF[IT.ISWORD] = { k: 'sword', dmg: 10 }; TOOLDEF[IT.DSWORD] = { k: 'sword', dmg: 13 };
 function heldTool() { return mode === 'survival' ? TOOLDEF[heldId()] || null : null; }
 function toolSpeed(blk) {
@@ -2520,13 +2543,19 @@ function loadWorld(o) {
   flowL.fill(0); wq.length = 0;
   try {
     const bin = atob(o.w);
-    if (o.v >= 3) rleDecode(bin, world);
-    else {
-      /* legacy 96-wide save: regrow the larger world from the seed, then overlay the saved region */
+    const sW = o.v >= 3 ? (o.W || 128) : 96;
+    const sH = o.v >= 3 ? (o.H || 40) : 40;
+    if (sW === W && sH === H) {
+      if (o.v >= 3) rleDecode(bin, world);
+      else for (let i = 0; i < world.length; i++) world[i] = bin.charCodeAt(i) || 0;
+    } else {
+      /* saved world is a different size: regrow from seed, then overlay the saved region */
       generate(worldSeed);
-      const OLDW = 96;
-      for (let y = 0; y < H; y++) for (let z = 0; z < OLDW && z < W; z++) for (let x = 0; x < OLDW && x < W; x++)
-        world[(y * W + z) * W + x] = bin.charCodeAt((y * OLDW + z) * OLDW + x) || 0;
+      const tmp = new Uint8Array(sW * sH * sW);
+      if (o.v >= 3) rleDecode(bin, tmp);
+      else for (let i = 0; i < tmp.length; i++) tmp[i] = bin.charCodeAt(i) || 0;
+      for (let y = 0; y < sH && y < H; y++) for (let z = 0; z < sW && z < W; z++) for (let x = 0; x < sW && x < W; x++)
+        world[(y * W + z) * W + x] = tmp[(y * sW + z) * sW + x];
     }
   } catch (e) {
     for (let i = 0; i < world.length; i++) world[i] = 0;
