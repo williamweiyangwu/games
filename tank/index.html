@@ -166,6 +166,19 @@
   .codebox { font-size:32px; letter-spacing:12px; font-weight:bold; color:#8fd0ff; text-align:center;
     margin:8px 0 4px; text-shadow:0 0 18px #3b82f688; }
   .nmsg { text-align:center; font-size:11.5px; color:#ffd76a; min-height:17px; margin-top:8px; }
+  #garage, #trophies { position:fixed; inset:0; z-index:85; display:none; align-items:center; justify-content:center;
+    background:#02040acc; }
+  #garage.on, #trophies.on { display:flex; }
+  #garage .panel, #trophies .panel { width:min(720px,94vw); max-height:92vh; overflow:auto; }
+  .card.equipped { border-color:#ffd76a; box-shadow:0 0 16px #ffd76a66; }
+  .card.locked { opacity:.4; cursor:not-allowed; }
+  .card.locked:hover { transform:none; border-color:#27456f; background:#101d33; }
+  #toast { position:fixed; left:50%; top:14px; transform:translateX(-50%) translateY(-160%); z-index:120;
+    background:#0b1424; border:2px solid #ffd76a; border-radius:6px; padding:10px 18px;
+    text-align:center; font-size:13px; color:#fff; box-shadow:0 8px 30px #000c; transition:transform .3s;
+    pointer-events:none; max-width:92vw; }
+  #toast.on { transform:translateX(-50%) translateY(0); }
+  #toast span { font-size:11px; color:#9fc0e8; }
 </style>
 </head>
 <body>
@@ -196,6 +209,7 @@
 <button id="boostBtn" title="hold to boost">BOOST</button>
 <div class="hud" id="netbadge" style="display:none"></div>
 <div class="hud" id="weather" style="display:none"></div>
+<div id="toast"></div>
 <div id="tut" style="display:none"></div>
 <div class="hud" id="left"></div>
 <div class="hud" id="right"></div>
@@ -240,6 +254,10 @@
   <div style="text-align:center;margin-top:14px">
     <button class="nbtn" id="mOnline" style="border-color:#c9a3ff;box-shadow:0 0 18px #a855f755">ONLINE — PLAY WITH FRIENDS</button>
     <button class="nbtn" id="mTut" style="border-color:#ffd76a;box-shadow:0 0 18px #ffd76a55;margin-left:10px">TUTORIAL — LEARN TO PLAY</button>
+  </div>
+  <div style="text-align:center;margin-top:10px">
+    <button class="nbtn" id="mGarage" style="border-color:#8fd0ff;margin-left:10px">SKINS</button>
+    <button class="nbtn" id="mAch" style="border-color:#b6ff8a;margin-left:10px">TROPHIES</button>
   </div>
   <div style="text-align:center;margin-top:16px;font-size:11px;color:#7d90ad">
     WASD move &nbsp;•&nbsp; MOUSE aim &nbsp;•&nbsp; CLICK fire &nbsp;•&nbsp; B shop &nbsp;•&nbsp; 1-6 quick buy</div>
@@ -338,6 +356,22 @@
   <div style="text-align:center;color:#9fc0e8;font-size:13px;letter-spacing:2px" id="overSub"></div>
   <div style="text-align:center;color:#cfe3ff;font-size:13px;letter-spacing:1px;margin-top:14px;line-height:2" id="overStats"></div>
   <button class="big" id="again">PLAY AGAIN</button>
+</div></div>
+<div id="garage"><div class="panel">
+  <h2>GARAGE</h2>
+  <p class="sub">Customize your tank. Progress is saved on this device — it survives closing the browser.</p>
+  <div class="cards" id="skinCards"></div>
+  <button id="garageClose" style="margin-top:14px;padding:10px 26px;font-size:14px;font-family:inherit;
+    cursor:pointer;background:#1b3b63;color:#fff;border:2px solid #8fd0ff;border-radius:4px;
+    touch-action:manipulation;">CLOSE</button>
+</div></div>
+<div id="trophies"><div class="panel">
+  <h2>TROPHIES</h2>
+  <p class="sub">Your achievements. Progress is saved on this device — it survives closing the browser.</p>
+  <div class="cards" id="achCards"></div>
+  <button id="trophiesClose" style="margin-top:14px;padding:10px 26px;font-size:14px;font-family:inherit;
+    cursor:pointer;background:#1b3b63;color:#fff;border:2px solid #8fd0ff;border-radius:4px;
+    touch-action:manipulation;">CLOSE</button>
 </div></div>
 <script type="importmap">
 { "imports": { "three": "./lib/three.module.min.js" } }
@@ -691,13 +725,18 @@ const BOT_LOADOUT = ['medium','flame','heavy','scout','arty','sniper'];
    TANK
 ============================================================ */
 let uid = 1;
-function buildTankMesh(team, key){
+function buildTankMesh(team, key, skin){
   const c = CLASSES[key], T = TEAMS[team];
   const g = new THREE.Group();
   const mat_  = mat(T.color, { r:0.42, m:0.32 });
   const dark = mat(0x1e242c, { r:0.35, m:0.5 });
-  const trim = mat(T.trim, { r:0.3, m:0.45 });
+  const trim = mat((skin && skin.accent) ? skin.accent : T.trim, { r:0.3, m:0.45 });
   const r = c.radius;
+  if(skin && skin.glow){
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(r*1.4, 0.13, 8, 26),
+      new THREE.MeshBasicMaterial({ color: skin.glow, transparent:true, opacity:0.85 }));
+    ring.rotation.x = -Math.PI/2; ring.position.y = 0.07; g.add(ring);
+  }
   const body = new THREE.Mesh(new THREE.BoxGeometry(r*2.05, 0.95, r*2.25), mat_);
   body.position.y = 0.95; body.castShadow=true; g.add(body);
   const skirt = new THREE.Mesh(new THREE.BoxGeometry(r*2.3, 0.5, r*2.45), dark);
@@ -740,7 +779,7 @@ class Tank {
   setClass(key){
     if(this.mesh) scene.remove(this.mesh.group);
     this.key=key; this.c=CLASSES[key];
-    this.mesh = buildTankMesh(this.team, key);
+    this.mesh = buildTankMesh(this.team, key, this.isPlayer ? equippedSkin() : null);
     this.hp = this.c.hp; this.maxHp = this.c.hp;
   }
   spawn(){
@@ -856,7 +895,104 @@ function addFeed(txt,col){ feed.unshift({txt,col,t:4.5}); if(feed.length>5) feed
 let money = 0, kills=[0,0], gameOver=false, shake=0, time=0;
 let pstats = { kills:0, deaths:0, damage:0, credits:0 };
 let netWinner=-2, netReason='';
-function addMoney(t,amt){ if(!t||!amt) return; if(t.isPlayer){ money += amt; pstats.credits += amt; } else t.money = (t.money||0)+amt; }
+function addMoney(t,amt){ if(!t||!amt) return; if(t.isPlayer){ money += amt; pstats.credits += amt; SAVE.credits += amt; checkAchievements(); } else t.money = (t.money||0)+amt; }
+
+/* ============================================================
+   PERSISTENCE — achievements & skins (survive browser restarts)
+   ============================================================ */
+const SAVE_KEY = 'tw.save';
+const ACHIEVEMENTS = [
+  { id:'firstBlood', name:'FIRST BLOOD',  desc:'Destroy your first enemy',      col:'#ff8f7a', check:s=>s.kills>=1 },
+  { id:'kills10',    name:'SHARPSHOOTER', desc:'Destroy 10 enemies',            col:'#ffd76a', check:s=>s.kills>=10 },
+  { id:'kills50',    name:'ACE',          desc:'Destroy 50 enemies',            col:'#ffb347', check:s=>s.kills>=50 },
+  { id:'kills200',   name:'WAR MACHINE',  desc:'Destroy 200 enemies',           col:'#ff6a6a', check:s=>s.kills>=200 },
+  { id:'win1',       name:'FIRST VICTORY',desc:'Win your first match',          col:'#8fd0ff', check:s=>s.wins>=1 },
+  { id:'win10',      name:'VETERAN',      desc:'Win 10 matches',                col:'#9fd4ff', check:s=>s.wins>=10 },
+  { id:'survivor',   name:'UNTOUCHABLE',  desc:'Win a match without dying',     col:'#b6ff8a', check:s=>!!s.survivor },
+  { id:'credits1k',  name:'WAR CHEST',    desc:'Earn $1,000 in total',          col:'#ffe9a8', check:s=>s.credits>=1000 },
+  { id:'credits20k', name:'MOGUL',        desc:'Earn $20,000 in total',         col:'#ffd76a', check:s=>s.credits>=20000 },
+  { id:'upgrader',   name:'UPGRADED',     desc:'Buy your first tank upgrade',   col:'#c9a3ff', check:s=>s.bought.length>=1 },
+  { id:'collector',  name:'COLLECTOR',    desc:'Buy every tank class',          col:'#ffb0a0', check:s=>ORDER.every(k=>s.bought.includes(k)) },
+  { id:'demolisher', name:'DEMOLISHER',   desc:'Destroy an enemy HQ',           col:'#ff9a8a', check:s=>!!s.hq },
+];
+const SKINS = [
+  { id:'default', name:'STANDARD', accent:null,      glow:null,      hint:'Default loadout',                  unlock:()=>true },
+  { id:'gold',    name:'GOLD',     accent:0xffd76a,  glow:0xffb340,  hint:'Destroy 25 enemies',                unlock:s=>s.kills>=25 },
+  { id:'inferno', name:'INFERNO',  accent:0xff7a3a,  glow:0xff4a1a,  hint:'Destroy an enemy HQ',               unlock:s=>!!s.hq },
+  { id:'stealth', name:'STEALTH',  accent:0x37d0c0,  glow:0x18f0d0,  hint:'Win a match without dying',         unlock:s=>!!s.survivor },
+  { id:'toxic',   name:'TOXIC',    accent:0x7aff4a,  glow:0x46e020,  hint:'Earn $20,000 in total',             unlock:s=>s.credits>=20000 },
+  { id:'ice',     name:'ICE',      accent:0x9fd4ff,  glow:0x4abfff,  hint:'Destroy 50 enemies',                unlock:s=>s.kills>=50 },
+];
+function defaultSave(){ return { skin:'default', skins:['default'], bought:[], ach:{}, kills:0, wins:0, games:0, credits:0, survivor:false, hq:false }; }
+function normalizeSave(o){
+  return {
+    skin: (o.skin && SKINS.some(s=>s.id===o.skin)) ? o.skin : 'default',
+    skins: Array.isArray(o.skins) && o.skins.length ? o.skins.filter(id=>SKINS.some(s=>s.id===id)) : ['default'],
+    bought: Array.isArray(o.bought) ? o.bought.filter(k=>ORDER.includes(k)) : [],
+    ach: (o.ach && typeof o.ach==='object') ? o.ach : {},
+    kills: Math.max(0, +o.kills||0),
+    wins: Math.max(0, +o.wins||0),
+    games: Math.max(0, +o.games||0),
+    credits: Math.max(0, +o.credits||0),
+    survivor: !!o.survivor,
+    hq: !!o.hq,
+  };
+}
+let SAVE = (()=>{ try{ const raw=localStorage.getItem(SAVE_KEY); if(raw) return normalizeSave(JSON.parse(raw)); }catch(e){} return defaultSave(); })();
+function saveGame(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(SAVE)); }catch(e){} }
+function equippedSkin(){ return SKINS.find(s=>s.id===SAVE.skin) || SKINS[0]; }
+
+function toast(title, sub){
+  const t=document.getElementById('toast'); if(!t) return;
+  t.innerHTML = `<b>${title}</b>${sub?'<br><span>'+sub+'</span>':''}`;
+  t.classList.add('on');
+  clearTimeout(toast._t);
+  toast._t=setTimeout(()=>t.classList.remove('on'), 3400);
+}
+
+function checkAchievements(){
+  const newly=[];
+  for(const a of ACHIEVEMENTS){ if(!SAVE.ach[a.id] && a.check(SAVE)){ SAVE.ach[a.id]=Date.now(); newly.push(a); } }
+  for(const s of SKINS){ if(s.id!=='default' && !SAVE.skins.includes(s.id) && s.unlock(SAVE)) SAVE.skins.push(s.id); }
+  if(newly.length){ saveGame(); newly.forEach(a=>toast('ACHIEVEMENT UNLOCKED — '+a.name, a.desc)); buildAchievements(); buildGarage(); }
+}
+
+function buildGarage(){
+  const c=document.getElementById('skinCards'); if(!c) return;
+  c.innerHTML='';
+  SKINS.forEach(sk=>{
+    const unlocked = SAVE.skins.includes(sk.id);
+    const equipped = SAVE.skin===sk.id;
+    const d=document.createElement('div');
+    d.className='card'+(unlocked?'':' locked')+(equipped?' equipped':'');
+    const hex = sk.accent ? '#'+sk.accent.toString(16).padStart(6,'0') : '#fff';
+    d.innerHTML=`<div class="k">SKIN</div><div class="n" style="color:${hex}">${sk.name}</div>
+      <div class="s">${unlocked ? (equipped?'EQUIPPED':'Tap to equip') : ('LOCKED — '+sk.hint)}</div>`;
+    if(unlocked) d.onclick=()=>{ SAVE.skin=sk.id; saveGame(); buildGarage(); if(player) player.setClass(player.key); };
+    c.appendChild(d);
+  });
+}
+function buildAchievements(){
+  const c=document.getElementById('achCards'); if(!c) return;
+  c.innerHTML='';
+  ACHIEVEMENTS.forEach(a=>{
+    const got=!!SAVE.ach[a.id];
+    const d=document.createElement('div');
+    d.className='card'+(got?'':' locked');
+    d.innerHTML=`<div class="k" style="color:${got?a.col:'#7d90ad'}">TROPHY</div>
+      <div class="n">${a.name}</div><div class="s">${a.desc}</div>
+      <div class="own" style="color:${got?'#ffd76a':'#7d90ad'}">${got?'UNLOCKED':'LOCKED'}</div>`;
+    c.appendChild(d);
+  });
+}
+function openGarage(){ const g=document.getElementById('garage'); if(g){ g.classList.add('on'); buildGarage(); } }
+function openTrophies(){ const t=document.getElementById('trophies'); if(t){ t.classList.add('on'); buildAchievements(); } }
+document.getElementById('garage').addEventListener('click', e=>{ if(e.target.id==='garage') document.getElementById('garage').classList.remove('on'); });
+document.getElementById('trophies').addEventListener('click', e=>{ if(e.target.id==='trophies') document.getElementById('trophies').classList.remove('on'); });
+document.getElementById('garageClose').onclick = ()=>document.getElementById('garage').classList.remove('on');
+document.getElementById('trophiesClose').onclick = ()=>document.getElementById('trophies').classList.remove('on');
+document.getElementById('mGarage').onclick = openGarage;
+document.getElementById('mAch').onclick = openTrophies;
 
 /* ============================================================
    TUTORIAL  —  a guided first match (offline)
@@ -1207,7 +1343,7 @@ function damage(t, dmg, from){
     if(from){
       const i = from.team===0?0:1;
       kills[i]++;
-      if(from.isPlayer) pstats.kills++;
+      if(from.isPlayer){ pstats.kills++; SAVE.kills++; checkAchievements(); }
       if(from.isHuman) addMoney(from, 260);
       netFeed(`${from.name} destroyed ${t.name}`, from.team===0?'#8fd0ff':'#ff9a8a');
       SFX.alarm();
@@ -1230,6 +1366,7 @@ function damageHQ(hq, dmg, from){
   if(from && from.isHuman){ addMoney(from, Math.round(dmg*0.9)); }
   if(hq.hp<=0){
     hq.alive=false; hq.hp=0;
+    if(from && from.isPlayer){ SAVE.hq=true; checkAchievements(); }
     boom(hq.x,6,hq.z, 7, 0xff7733);
     boom(hq.x,4,hq.z+6, 4, 0xffaa33);
     if(MODE==='siege'){
@@ -1547,6 +1684,7 @@ function buyFor(t,key){
   if(t.key===key){ if(t.isPlayer) addFeed('Already equipped', '#ffd76a'); return; }
   if(have<c.cost){ if(t.isPlayer){ addFeed('Not enough credits', '#ff7a7a'); SFX.hit(); } return; }
   if(t.isPlayer) money-=c.cost; else t.money-=c.cost;
+  if(t.isPlayer){ if(!SAVE.bought.includes(key)) SAVE.bought.push(key); checkAchievements(); }
   if(t.isPlayer) SFX.buy();
   if(t.alive){ scene.remove(t.mesh.group); t.alive=false; }
   t.key=key; t.hp=0; t.setClass(key); t.alive=false;
@@ -1586,6 +1724,12 @@ function finish(winTeam, reason){
     t.textContent = youWon ? 'VICTORY' : 'DEFEAT';
     t.style.color = youWon ? '#8fd0ff' : '#ff7a7a';
   }
+  SAVE.games++;
+  if(winTeam>=0){
+    const youWon = player ? (winTeam===player.team) : (winTeam===0);
+    if(youWon){ SAVE.wins++; if(pstats.deaths===0) SAVE.survivor=true; }
+  }
+  checkAchievements();
   document.getElementById('overSub').textContent = reason || '';
   const ps = pstats;
   document.getElementById('overStats').innerHTML =
@@ -2447,6 +2591,8 @@ window.__T = { get player(){return player;}, get money(){return money;}, set mon
   toggleShop, closeShop, get shopEl(){return shopEl;},
   get shopCloseBtn(){return document.getElementById('shopClose');},
   finish, startGame,
+  ACHIEVEMENTS, SKINS, get SAVE(){return SAVE;}, set SAVE(v){SAVE=v;},
+  checkAchievements, equippedSkin, saveGame, buildGarage, buildAchievements, openGarage, openTrophies,
   get gfx(){return { q:Q, dpr:renderer.getPixelRatio(),
     rt:rt? [rt.width,rt.height]:null, tone:renderer.toneMapping, shadow:renderer.shadowMap.type,
     bg: (scene.background && scene.background.isTexture)? 'sky':'color',
