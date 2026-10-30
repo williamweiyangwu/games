@@ -250,8 +250,8 @@
   .dbtns .btn { padding: 6px 14px; font-size: 11px; }
   .dbtns .btn.active { background: rgba(201,180,88,.35); color: #fff; border-color: #ffd95e; }
   .fpgroup { font-size: 12px; letter-spacing: 2px; color: #c9b458; text-align: center; margin: 12px 0 8px; }
-  #achieve { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75); align-items: center; justify-content: center; z-index: 60; }
-  #achieve.show { display: flex; }
+  #achieve, #stats { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75); align-items: center; justify-content: center; z-index: 60; }
+  #achieve.show, #stats.show { display: flex; }
   .abox {
     position: relative; width: 500px; max-width: 92vw; max-height: 84vh; overflow: auto;
     background: linear-gradient(160deg, #33371f, #1c2012);
@@ -265,6 +265,11 @@
   .arow.locked .aico { color: #5a5f4a; }
   .arow .aname { font-weight: bold; color: #ffd95e; }
   .arow .adesc { font-size: 11px; color: #8a917c; }
+  .dstat { font-size: 11px; color: #c9b458; width: 66px; text-align: right; letter-spacing: 1px; }
+  .srow { display: flex; justify-content: space-between; padding: 7px 2px; border-bottom: 1px solid #2c3322; font-size: 13px; color: #e6e9d5; }
+  .srow .sl { color: #8a917c; }
+  .srow .sv { color: #ffd95e; font-weight: bold; }
+  .shead { font-size: 12px; letter-spacing: 2px; color: #c9b458; margin: 12px 0 6px; }
   #toast {
     position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 100;
     background: #2a2f18; border: 2px solid #c9b458; color: #ffd95e; padding: 10px 18px;
@@ -291,7 +296,7 @@
   <div id="fit">
     <div id="stage">
       <header>
-        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v20</span></h1>
+        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v21</span></h1>
         <div id="turnbar">Player 1's Turn</div>
       </header>
 
@@ -299,6 +304,7 @@
         <div class="mgroup">
           <button class="btn mmode active" id="modeLocal" onclick="setMode('local')">LOCAL</button>
           <button class="btn mmode" id="modeAi" onclick="setMode('ai')">VS AI</button>
+          <button class="btn mmode" id="aiLevelBtn" onclick="cycleAILevel()">AI: NORMAL</button>
           <button class="btn mmode" id="modeOnline" onclick="setMode('online')">ONLINE</button>
           <button class="btn mmode" onclick="openTutorial()">TUTORIAL</button>
           <button class="btn mmode" id="soundBtn" onclick="toggleSound()">SOUND ON</button>
@@ -307,6 +313,7 @@
           <button class="btn mmode" onclick="openFactionPick()">NATION</button>
           <button class="btn mmode" onclick="openDeckEdit()">DECK</button>
           <button class="btn mmode" onclick="openAchievements()">ACHIEVEMENTS</button>
+          <button class="btn mmode" onclick="openStats()">STATS</button>
         </div>
         <div id="onlinePanel">
           <input id="nameIn" maxlength="12" value="Player#1" onfocus="if(this.value==='Player#1'){this.value='';}" onblur="if(this.value===''){this.value='Player#1';}">
@@ -409,13 +416,22 @@
     </div>
   </div>
 
+  <div id="stats">
+    <div class="abox">
+      <div class="tclose" onclick="closeStats()">✕</div>
+      <h2>STATISTICS</h2>
+      <div id="statsRows"></div>
+      <div class="dbtns"><button class="btn" onclick="closeStats()">CLOSE</button></div>
+    </div>
+  </div>
+
   <div id="toast"></div>
 
   <div id="flash"></div>
 
 <script>
 // ---------------- Card definitions ----------------
-// fx kinds (units): haste | heal | hq | aoe | snipe | random | buff | draw
+// fx kinds (units): haste | heal | hq | aoe | random | buff | draw
 // fx kinds (orders): target | hq | aoe | heal | draw | res | rally
 var DEFS = {
   // ---- USA ----
@@ -529,7 +545,7 @@ function defaultProfile() {
     decks: {},
     stats: { games: 0, wins: 0, losses: 0, aiWins: 0, localWins: 0, onlineWins: 0, byFaction: {}, flawlessWins: 0, blitzWins: 0, closeWins: 0, heals: 0, fullBoards: 0, bigUnits: 0, decksSaved: 0, tutDone: 0 },
     ach: {},
-    sfx: true, tut: false
+    sfx: true, tut: false, aiLevel: "normal"
   };
 }
 
@@ -562,6 +578,7 @@ function loadProfile() {
   p.ach = p.ach || {};
   if (typeof p.sfx !== "boolean") p.sfx = true;
   if (typeof p.tut !== "boolean") p.tut = false;
+  if (["easy", "normal", "hard"].indexOf(p.aiLevel) === -1) p.aiLevel = "normal";
   return p;
 }
 
@@ -575,6 +592,7 @@ var FACTION = PROFILE.fact1, FACTION2 = PROFILE.fact2;
 if (FACTION_KEYS.indexOf(FACTION) === -1) FACTION = "usa";
 if (FACTION_KEYS.indexOf(FACTION2) === -1) FACTION2 = "germany";
 PROFILE.fact1 = FACTION; PROFILE.fact2 = FACTION2;
+var AI_LEVEL = PROFILE.aiLevel || "normal";
 
 function saveFaction() {
   PROFILE.fact1 = FACTION; PROFILE.fact2 = FACTION2;
@@ -653,7 +671,7 @@ function buildDeck(faction) {
 
 function makeInst(key) {
   var d = DEFS[key];
-  return { key: key, name: d.name, cost: d.cost, type: d.type || "unit", atk: d.atk, hp: d.hp, maxHp: d.hp, guard: !!d.guard, air: !!d.air, canAttack: false };
+  return { key: key, name: d.name, cost: d.cost, type: d.type || "unit", atk: d.atk, baseAtk: d.atk, auraN: 0, hp: d.hp, maxHp: d.hp, guard: !!d.guard, air: !!d.air, canAttack: false };
 }
 
 function other(p) { return 1 - p; }
@@ -824,9 +842,10 @@ function play(hidx) {
   }
   pl.board.push(inst);
   if (pl.board.length >= MAX_BOARD) track("fullBoards");
-  if (inst.atk >= 6) track("bigUnits");
   sfx("play");
   resolveBattlecry(inst, S.cur);
+  recomputeAura(pl);
+  if (hasBigUnit(pl)) track("bigUnits");
   syncPub(S.cur);
   render();
   if (MODE === "online") publish();
@@ -909,16 +928,6 @@ function resolveBattlecry(inst, p) {
     foe.board.forEach(function (u) { u.hp -= n; });
     say(inst.name + " strikes all Enemy units for " + n + "!");
     cleanBoard(foe);
-  } else if (k === "snipe") {
-    var best = null;
-    foe.board.forEach(function (u) { if (!best || u.atk > best.atk) best = u; });
-    if (best) {
-      best.hp -= n;
-      say(inst.name + " hits " + best.name + " for " + n + "!");
-      cleanBoard(foe);
-    } else {
-      say(inst.name + " finds no target.");
-    }
   } else if (k === "random") {
     if (foe.board.length > 0) {
       var t = foe.board[Math.floor(Math.random() * foe.board.length)];
@@ -930,8 +939,8 @@ function resolveBattlecry(inst, p) {
       say(inst.name + " shells the enemy HQ for " + n + "!");
     }
   } else if (k === "buff") {
-    var cnt = 0;
-    me.board.forEach(function (u) { if (u !== inst) { u.atk += n; if (u.atk >= 6 && isHuman(p)) track("bigUnits"); cnt++; } });
+    inst.auraN = n;
+    var cnt = me.board.length - 1;
     say(cnt > 0 ? inst.name + " rallies Your units: +" + n + " attack!" : inst.name + " takes the field.");
   } else if (k === "draw") {
     draw(me, n);
@@ -941,6 +950,25 @@ function resolveBattlecry(inst, p) {
 
 function cleanBoard(p) {
   p.board = p.board.filter(function (u) { return u.hp > 0; });
+  recomputeAura(p);
+}
+
+function recomputeAura(pl) {
+  var auras = [];
+  for (var i = 0; i < pl.board.length; i++) {
+    var u = pl.board[i];
+    u.atk = (u.baseAtk !== undefined) ? u.baseAtk : u.atk;
+    if (u.auraN) auras.push(u);
+  }
+  for (var j = 0; j < pl.board.length; j++) {
+    var t = pl.board[j];
+    for (var k = 0; k < auras.length; k++) { if (auras[k] !== t) t.atk += auras[k].auraN; }
+  }
+}
+
+function hasBigUnit(pl) {
+  for (var i = 0; i < pl.board.length; i++) { if (pl.board[i].atk >= 6) return true; }
+  return false;
 }
 
 // ---------------- AI OPPONENT ----------------
@@ -965,23 +993,26 @@ function aiStep(t) {
   aiFinish();
 }
 
-function aiPlayOne(ai) {
-  ACTOR = 1;
+function aiUnitChoice(ai) {
+  var cands = [];
   for (var i = 0; i < ai.hand.length; i++) {
     var c = ai.hand[i];
-    if (c.type === "order") continue;
-    if (c.cost <= ai.res && ai.board.length < MAX_BOARD) {
-      ai.res -= c.cost;
-      ai.hand.splice(i, 1);
-      ai.board.push(c);
-      sfx("play");
-      resolveBattlecry(c, 1);
-      syncPub(1);
-      return true;
-    }
+    if (c.type !== "order" && c.cost <= ai.res && ai.board.length < MAX_BOARD) cands.push(i);
   }
-  for (var j = 0; j < ai.hand.length; j++) {
-    var o = ai.hand[j];
+  if (!cands.length) return -1;
+  if (AI_LEVEL === "easy") return cands[Math.floor(Math.random() * cands.length)];
+  if (AI_LEVEL === "hard") {
+    var bi = 0;
+    for (var j = 1; j < cands.length; j++) { if (ai.hand[cands[j]].cost > ai.hand[cands[bi]].cost) bi = j; }
+    return cands[bi];
+  }
+  return cands[0];
+}
+
+function aiOrderChoice(ai) {
+  var cands = [];
+  for (var i = 0; i < ai.hand.length; i++) {
+    var o = ai.hand[i];
     if (o.type !== "order") continue;
     if (o.cost > ai.res) continue;
     if (orderNeedsTarget(o.key) && S.players[0].board.length === 0) continue;
@@ -993,8 +1024,32 @@ function aiPlayOne(ai) {
     }
     if (ofx.k === "draw" && ai.hand.length >= MAX_HAND) continue;
     if (ofx.k === "res" && ai.res >= MAX_RES) continue;
+    cands.push(i);
+  }
+  if (!cands.length) return -1;
+  if (AI_LEVEL === "easy") return cands[Math.floor(Math.random() * cands.length)];
+  return cands[0];
+}
+
+function aiPlayOne(ai) {
+  ACTOR = 1;
+  var ui = aiUnitChoice(ai);
+  if (ui >= 0) {
+    var c = ai.hand[ui];
+    ai.res -= c.cost;
+    ai.hand.splice(ui, 1);
+    ai.board.push(c);
+    sfx("play");
+    resolveBattlecry(c, 1);
+    recomputeAura(ai);
+    syncPub(1);
+    return true;
+  }
+  var oi = aiOrderChoice(ai);
+  if (oi >= 0) {
+    var o = ai.hand[oi];
     ai.res -= o.cost;
-    ai.hand.splice(j, 1);
+    ai.hand.splice(oi, 1);
     sfx("order");
     if (orderNeedsTarget(o.key)) {
       var foes = S.players[0].board;
@@ -1020,6 +1075,15 @@ function aiAttackOne(ai) {
     var u = ai.board[i];
     if (!u.canAttack) continue;
     var tgt = legalTargets(u);
+    if (AI_LEVEL === "hard" && tgt.hq && S.players[0].hq <= u.atk) {
+      S.players[0].hq -= u.atk;
+      say("Your " + u.name + " strikes the enemy HQ for " + u.atk + "!");
+      u.canAttack = false;
+      shakeFX();
+      sfx("attack"); sfx("hit"); flashFX();
+      syncPub(1);
+      return true;
+    }
     if (tgt.units.length > 0) {
       var def = aiPickDef(tgt.units, u);
       def.hp -= u.atk;
@@ -1046,6 +1110,8 @@ function aiAttackOne(ai) {
 }
 
 function aiPickTarget(foes) {
+  if (!foes.length) return null;
+  if (AI_LEVEL === "easy") return foes[Math.floor(Math.random() * foes.length)];
   var best = null;
   for (var i = 0; i < foes.length; i++) {
     if (!best || foes[i].atk > best.atk) best = foes[i];
@@ -1054,11 +1120,21 @@ function aiPickTarget(foes) {
 }
 
 function aiPickDef(units, u) {
+  if (AI_LEVEL === "easy") return units[Math.floor(Math.random() * units.length)];
+  if (AI_LEVEL === "hard") {
+    var best = units[0], bestScore = -1e9;
+    for (var i = 0; i < units.length; i++) {
+      var d = units[i];
+      var score = (d.hp <= u.atk ? 100 : 0) + (u.atk - d.atk) - d.atk;
+      if (score > bestScore) { bestScore = score; best = d; }
+    }
+    return best;
+  }
   var killable = units.filter(function (d) { return d.hp <= u.atk; });
   var pool = killable.length ? killable : units;
-  var best = pool[0];
-  for (var i = 1; i < pool.length; i++) { if (pool[i].atk > best.atk) best = pool[i]; }
-  return best;
+  var nb = pool[0];
+  for (var j = 1; j < pool.length; j++) { if (pool[j].atk > nb.atk) nb = pool[j]; }
+  return nb;
 }
 
 function aiFinish() {
@@ -1184,13 +1260,15 @@ function syncPub(p) {
 }
 
 function boardArr(p) {
-  return p.board.map(function (u) { return { key: u.key, hp: u.hp, atk: u.atk }; });
+  return p.board.map(function (u) { return { key: u.key, hp: u.hp, atk: u.atk, baseAtk: u.baseAtk, auraN: u.auraN || 0 }; });
 }
 
 function boardFromSnap(arr) {
   return (arr || []).map(function (s) {
     var u = makeInst(s.key);
     u.hp = s.hp; u.atk = s.atk;
+    if (s.baseAtk !== undefined && s.baseAtk !== null) u.baseAtk = s.baseAtk;
+    u.auraN = s.auraN || 0;
     return u;
   });
 }
@@ -1238,12 +1316,15 @@ function applyPublic(snap) {
   if (snap.reset) { onlineInit(); return; }
   S.over = !!snap.over;
   S.winner = snap.winner || 0;
+  recomputeAura(S.players[0]);
+  recomputeAura(S.players[1]);
   if (snap.msg) log(flipPOV(snap.msg));
   render();
   if (!S.over && snap.turn === NET.id) {
     onlineBeginMyTurn();
   } else if (S.over && !S.overShown) {
     S.overShown = true;
+    awardVictory(S.winner);
     showModal("GAME OVER", pName(S.winner) + " has destroyed the enemy HQ!",
       (MODE === "online" ? "Rematch" : "New Game"),
       function () { hideModal(); if (MODE === "online") resetOnline(); else newGame(); });
@@ -1344,7 +1425,7 @@ function genSess() { return Math.random().toString(36).slice(2, 10); }
 function hostGame() {
   if (BROWSE) closeRooms();
   var name = (document.getElementById("nameIn").value || "").trim() || "Player#1";
-  NET = { code: genCode(), id: 0, sess: genSess(), ver: 0, meName: name, foeName: "", f: FACTION, foeF: "", started: false };
+  NET = { code: genCode(), id: 0, sess: genSess(), ver: 0, meName: name, foeName: "", f: FACTION, foeF: "", started: false, lastHeard: Date.now() };
   S = { cur: NET.id, turn: NET.id, over: false, winner: 0, attackSel: null, readyOrder: null, started: false, overShown: false, pub: { hand: [0, 0], deck: [0, 0] } };
   S.players = [freshPlayer(), freshPlayer()];
   status("Connecting to relay...");
@@ -1356,7 +1437,7 @@ function joinGame() {
   var name = (document.getElementById("nameIn").value || "").trim() || "Player#2";
   var code = (document.getElementById("roomIn").value || "").trim().toUpperCase();
   if (!code) { status("Enter the room code."); return; }
-  NET = { code: code, id: 1, sess: genSess(), ver: 0, meName: name, foeName: "", f: FACTION, foeF: "", started: false };
+  NET = { code: code, id: 1, sess: genSess(), ver: 0, meName: name, foeName: "", f: FACTION, foeF: "", started: false, lastHeard: Date.now() };
   S = { cur: NET.id, turn: NET.id, over: false, winner: 0, attackSel: null, readyOrder: null, started: false, overShown: false, pub: { hand: [0, 0], deck: [0, 0] } };
   S.players = [freshPlayer(), freshPlayer()];
   status("Connecting to relay...");
@@ -1429,6 +1510,7 @@ function mqConnect() {
 
 function mqClose() {
   if (MQ.pingT) { clearInterval(MQ.pingT); MQ.pingT = null; }
+  if (MQ.dcT) { clearInterval(MQ.dcT); MQ.dcT = null; }
   if (MQ.ws) { MQ.ws.onclose = null; try { MQ.ws.close(); } catch (e) {} MQ.ws = null; }
   MQ.connected = false;
 }
@@ -1525,6 +1607,7 @@ function mqReady() {
     mqPublish(mqTarget("lobby"), { t: "j", s: NET.sess, c: NET.code, n: NET.meName, f: NET.f }, true);
   }
   showLobby();
+  if (!MQ.dcT) MQ.dcT = setInterval(onlineWatchdog, 5000);
   if (NET.id === 0) status("Waiting for opponent... Room code: " + NET.code);
   else status("Joining room " + NET.code + "...");
 }
@@ -1563,9 +1646,19 @@ function mqOnMessage(topic, msg) {
   if (topic === mqTarget("in" + NET.id)) {
     if (msg.t !== "snap" || msg.s !== NET.sess) return;
     if (msg.v <= NET.ver) return;
+    NET.lastHeard = Date.now();
     if (!NET.started) { NET.started = true; onlineInit(); }
     NET.ver = msg.v;
     applyPublic(msg.snap);
+  }
+}
+
+function onlineWatchdog() {
+  if (MODE !== "online" || !NET || !NET.started || !S || S.over) return;
+  if (S.turn === NET.id) { NET.lastHeard = Date.now(); return; }
+  if (Date.now() - (NET.lastHeard || 0) > 45000) {
+    showModal("DISCONNECTED", NET.foeName + " has stopped responding and may have disconnected.",
+      "BACK TO MENU", function () { hideModal(); setMode("local"); });
   }
 }
 
@@ -1869,8 +1962,8 @@ var TUT_STEPS = [
   { t: "4. UNITS", h: "<p>Units fill your front row (max 4). Blue circle = cost, red = attack, green = HP. Hover a card to read its power. Each nation's units are different \u2014 here are the shared <b>keywords</b>:</p><ul><li><b>Haste</b> \u2014 can attack the turn it is played.</li><li><b>Guard</b> \u2014 enemies must fight it first; it shields your HQ.</li><li><b>Air</b> \u2014 ignores Guard and can always strike the HQ.</li><li><b>Battlecries</b> \u2014 many units have an effect on play: healing your HQ, damaging the enemy HQ or their units, drawing cards, or giving your other units +1 attack.</li></ul>" },
   { t: "5. ATTACKING", h: "<ul><li>Click your unit, then click an enemy unit or the enemy HQ.</li><li>Each unit attacks <b>once per turn</b>. When two units fight, <b>both</b> deal their attack to each other.</li><li><b>Guard</b> units must be fought first \u2014 they shield the enemy HQ.</li><li><b>Air</b> units ignore Guard and can always hit the HQ.</li><li>A unit normally can't attack the turn it's played \u2014 unless it has <b>Haste</b>.</li></ul>" },
   { t: "6. ORDERS", h: "<p>Orders are one-shot cards \u2014 they resolve, then vanish. Each nation has its own orders. The shared effects are:</p><ul><li><b>Damage a unit</b> \u2014 click the order, then pick an enemy unit.</li><li><b>Damage the enemy HQ</b> \u2014 a direct strike.</li><li><b>Damage all enemy units</b> \u2014 a sweeping barrage (hits the HQ if their board is empty).</li><li><b>Heal your HQ</b> \u2014 recover hit points.</li><li><b>Draw cards</b> \u2014 refill your hand.</li><li><b>Gain resource</b> \u2014 bank energy for bigger plays.</li><li><b>Rally</b> \u2014 all your units can attack again.</li></ul>" },
-  { t: "7. DECK BUILDER", h: "<ul><li>Open <b>DECK</b> to customize <b>your nation's</b> cards with the <b>+</b> and <b>-</b> buttons.</li><li>Your deck must have <b>exactly 40 cards</b>, with at most <b>3 copies</b> of any card.</li><li><b>USE DEFAULT</b> restores the standard 40-card deck, <b>SAVE</b> keeps your changes, <b>CLOSE</b> cancels.</li><li>A custom deck applies to your nation in the next LOCAL or VS AI game (the opponent uses their own nation's default deck).</li></ul>" },
-  { t: "8. PLAY & MENU", h: "<ul><li><b>LOCAL</b> \u2014 two players share one screen (hot-seat).</li><li><b>VS AI</b> \u2014 battle the computer single-player.</li><li><b>ONLINE</b> \u2014 HOST gives you a room code to share, or press <b>ROOMS</b> to join a waiting game.</li><li><b>NATION</b> \u2014 choose your nation. <b>DECK</b> \u2014 build your deck.</li><li><b>TUTORIAL</b> reopens this guide, <b>\u2715</b>/<b>CLOSE</b> shuts it, <b>SOUND</b> toggles audio.</li></ul><p>Good luck, Commander!</p>" }
+  { t: "7. DECK BUILDER", h: "<ul><li>Open <b>DECK</b> to customize your cards with the <b>+</b> and <b>-</b> buttons \u2014 each row shows a card's <b>cost</b> (and <b>attack/HP</b> for units).</li><li>Each nation keeps its <b>own saved deck</b>. In LOCAL, use the <b>PLAYER 1 / PLAYER 2</b> toggle to build a deck for either player.</li><li>A deck must have <b>exactly 40 cards</b>, with at most <b>3 copies</b> of any card.</li><li><b>USE DEFAULT</b> restores the standard 40-card deck, <b>SAVE</b> keeps your changes, <b>CLOSE</b> cancels.</li></ul>" },
+  { t: "8. PLAY & MENU", h: "<ul><li><b>LOCAL</b> \u2014 two players share one screen (hot-seat); choose <b>both</b> players' nations.</li><li><b>VS AI</b> \u2014 battle the computer; use <b>AI: EASY/NORMAL/HARD</b> to set its skill.</li><li><b>ONLINE</b> \u2014 HOST gives you a room code to share, or press <b>ROOMS</b> to join a waiting game.</li><li><b>NATION</b> \u2014 choose your nation. <b>DECK</b> \u2014 build your deck.</li><li><b>ACHIEVEMENTS</b> and <b>STATS</b> \u2014 track your unlocks, wins and records.</li><li><b>TUTORIAL</b> reopens this guide, <b>SOUND</b> toggles audio.</li></ul><p>Good luck, Commander!</p>" }
 ];
 var TUT_PAGE = 0;
 
@@ -2005,7 +2098,8 @@ function renderDeckRows() {
   keys.forEach(function (k) {
     var d = DEFS[k];
     var n = DECK_WORK[k] || 0;
-    html += '<div class="drow"><span class="dname">' + d.name + '</span><span class="dtag">' + (d.type === "order" ? "ORDER" : "UNIT") + '</span>' +
+    var stat = (d.type === "order") ? (d.cost + "c") : (d.cost + "c  " + d.atk + "/" + d.hp);
+    html += '<div class="drow"><span class="dname">' + d.name + '</span><span class="dstat">' + stat + '</span><span class="dtag">' + (d.type === "order" ? "ORDER" : "UNIT") + '</span>' +
       '<button class="btn dbtn" onclick="deckDec(\'' + k + '\')">-</button><span class="dnum">' + n + '</span>' +
       '<button class="btn dbtn" onclick="deckInc(\'' + k + '\')">+</button></div>';
   });
@@ -2139,7 +2233,45 @@ function showToast(msg) {
   showToast._t = setTimeout(function () { t.classList.remove("show"); }, 2600);
 }
 
+// ---------------- AI difficulty ----------------
+function cycleAILevel() {
+  var order = ["easy", "normal", "hard"];
+  var idx = order.indexOf(AI_LEVEL);
+  AI_LEVEL = order[(idx + 1) % order.length];
+  PROFILE.aiLevel = AI_LEVEL; saveProfile();
+  updateAILevelBtn();
+}
+
+function updateAILevelBtn() {
+  var b = document.getElementById("aiLevelBtn");
+  if (b) b.textContent = "AI: " + AI_LEVEL.toUpperCase();
+}
+
+// ---------------- Statistics ----------------
+function openStats() { renderStats(); document.getElementById("stats").classList.add("show"); }
+function closeStats() { document.getElementById("stats").classList.remove("show"); }
+
+function renderStats() {
+  var st = PROFILE.stats;
+  var games = st.games || 0, wins = st.wins || 0, losses = st.losses || 0;
+  var rate = games > 0 ? Math.round(wins / games * 100) + "%" : "—";
+  var html = "";
+  html += '<div class="srow"><span class="sl">Games</span><span class="sv">' + games + '</span></div>';
+  html += '<div class="srow"><span class="sl">Wins</span><span class="sv">' + wins + '</span></div>';
+  html += '<div class="srow"><span class="sl">Losses</span><span class="sv">' + losses + '</span></div>';
+  html += '<div class="srow"><span class="sl">Win rate</span><span class="sv">' + rate + '</span></div>';
+  html += '<div class="srow"><span class="sl">VS AI wins</span><span class="sv">' + (st.aiWins || 0) + '</span></div>';
+  html += '<div class="srow"><span class="sl">Local wins</span><span class="sv">' + (st.localWins || 0) + '</span></div>';
+  html += '<div class="srow"><span class="sl">Online wins</span><span class="sv">' + (st.onlineWins || 0) + '</span></div>';
+  html += '<div class="shead">WINS BY NATION</div>';
+  FACTION_KEYS.forEach(function (k) {
+    html += '<div class="srow"><span class="sl">' + FACTIONS[k].name + '</span><span class="sv">' + ((st.byFaction || {})[k] || 0) + '</span></div>';
+  });
+  document.getElementById("statsRows").innerHTML = html;
+}
+
 (function () { var b = document.getElementById("soundBtn"); if (b) b.textContent = "SOUND " + (SFX ? "ON" : "OFF"); })();
+updateAILevelBtn();
 
 newGame();
 maybeShowTutorial();
