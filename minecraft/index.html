@@ -317,7 +317,7 @@ function fbm(x, y, oct) {
 }
 
 /* ---------------------------------------------------------- textures */
-const TS = 16, TN = 16;
+const TS = 16, TN = 20;
 const TEX = new Uint32Array(TS * TS * TN);
 const tileCanvas = new Array(TN);
 
@@ -432,6 +432,19 @@ function buildTextures() {
     const cx = (R(18, i) * 15) | 0, cy = (R(19, i) * 15) | 0, d = -24 - R(20, i) * 26;
     for (let y = 0; y < 2; y++) for (let x = 0; x < 2; x++) putc(14, cx + x, cy + y, [132 + d, 128 + d, 126 + d]);
   }
+  /* 15..18 ores: stone base with coloured nuggets */
+  const oreCol = [[30, 30, 34], [188, 160, 132], [250, 210, 90], [80, 220, 210]];
+  for (let o = 0; o < 4; o++) {
+    const t = 15 + o, c = oreCol[o];
+    fillTile(t, [128, 128, 132]); speckle(t, [128, 128, 132], 16, 280);
+    for (let i = 0; i < 7; i++) {
+      const cx = (R(30 + o * 7, i) * 15) | 0, cy = (R(31 + o * 7, i) * 15) | 0;
+      for (let y = -1; y <= 1; y++) for (let x = -1; x <= 1; x++) {
+        if (hash2(cx + x * 13 + o, cy + y * 29) > 0.35) putc(t, cx + x, cy + y, [c[0] + 24, c[1] + 24, c[2] + 24]);
+        else putc(t, cx + x, cy + y, c);
+      }
+    }
+  }
 }
 function tileImg(t) {
   if (tileCanvas[t]) return tileCanvas[t];
@@ -456,9 +469,11 @@ function paintWater(st) {
 
 /* ------------------------------------------------------------ blocks */
 const T = { GRASS_TOP: 0, GRASS_SIDE: 1, DIRT: 2, STONE: 3, SAND: 4, LOG_TOP: 5, LOG_SIDE: 6,
-            LEAVES: 7, PLANKS: 8, COBBLE: 9, BRICK: 10, GLASS: 11, WATER: 12, BEDROCK: 13, GRAVEL: 14 };
+            LEAVES: 7, PLANKS: 8, COBBLE: 9, BRICK: 10, GLASS: 11, WATER: 12, BEDROCK: 13, GRAVEL: 14,
+            COAL_ORE: 15, IRON_ORE: 16, GOLD_ORE: 17, DIAMOND_ORE: 18 };
 const AIR = 0, GRASS = 1, DIRT = 2, STONE = 3, SAND = 4, LOG = 5, LEAVES = 6,
-      PLANKS = 7, COBBLE = 8, BRICK = 9, GLASS = 10, WATER = 11, BEDROCK = 12, GRAVEL = 13;
+      PLANKS = 7, COBBLE = 8, BRICK = 9, GLASS = 10, WATER = 11, BEDROCK = 12, GRAVEL = 13,
+      COAL_ORE = 14, IRON_ORE = 15, GOLD_ORE = 16, DIAMOND_ORE = 17;
 
 /* t: [top, side, bottom]   solid: collision   opaque: hides neighbour faces
    cull: drop faces between identical blocks   a: 1 = opaque pass, <1 = blended */
@@ -476,16 +491,23 @@ const BLK = [
   { n: 'Glass',        t: [T.GLASS, T.GLASS, T.GLASS],         solid: 1, opaque: 0, cull: 1, a: 0.3 },
   { n: 'Water',        t: [T.WATER, T.WATER, T.WATER],         solid: 0, opaque: 0, cull: 1, a: 0.7 },
   { n: 'Bedrock',      t: [T.BEDROCK, T.BEDROCK, T.BEDROCK],   solid: 1, opaque: 1, cull: 0, a: 1 },
-  { n: 'Gravel',       t: [T.GRAVEL, T.GRAVEL, T.GRAVEL],      solid: 1, opaque: 1, cull: 0, a: 1 }
+  { n: 'Gravel',       t: [T.GRAVEL, T.GRAVEL, T.GRAVEL],      solid: 1, opaque: 1, cull: 0, a: 1 },
+  { n: 'Coal Ore',     t: [T.COAL_ORE, T.COAL_ORE, T.COAL_ORE],           solid: 1, opaque: 1, cull: 0, a: 1 },
+  { n: 'Iron Ore',     t: [T.IRON_ORE, T.IRON_ORE, T.IRON_ORE],           solid: 1, opaque: 1, cull: 0, a: 1 },
+  { n: 'Gold Ore',     t: [T.GOLD_ORE, T.GOLD_ORE, T.GOLD_ORE],           solid: 1, opaque: 1, cull: 0, a: 1 },
+  { n: 'Diamond Ore',  t: [T.DIAMOND_ORE, T.DIAMOND_ORE, T.DIAMOND_ORE],  solid: 1, opaque: 1, cull: 0, a: 1 }
 ];
-const HOTBAR = [GRASS, DIRT, STONE, COBBLE, PLANKS, LOG, LEAVES, GLASS, BRICK];
+const CREATIVE_PALETTE = [[GRASS, 64], [DIRT, 64], [STONE, 64], [COBBLE, 64], [PLANKS, 64], [LOG, 64], [LEAVES, 64], [GLASS, 64], [BRICK, 64]];
 
 /* ------------------------------------------------- items & survival */
 const IT = { BEEF: 100, PORK: 101, MUTTON: 102, CHICKEN: 103, LEATHER: 104, WOOL: 105,
              FEATHER: 106, BONE: 107, STRING: 108, GUNPOWDER: 109, ROTTEN: 110, ARROW: 111,
              STICK: 112,
              WPICK: 120, WAXE: 121, WSHOVEL: 122, WSWORD: 123,
-             SPICK: 124, SAXE: 125, SSHOVEL: 126, SSWORD: 127 };
+             SPICK: 124, SAXE: 125, SSHOVEL: 126, SSWORD: 127,
+             COAL: 128, IRON: 129, GOLD: 130, DIAMOND: 131,
+             IPICK: 132, IAXE: 133, ISHOVEL: 134, ISWORD: 135,
+             DPICK: 136, DAXE: 137, DSHOVEL: 138, DSWORD: 139 };
 const ITEM = {};
 function rect(g, x, y, w, h, c) { g.fillStyle = c; g.fillRect(x, y, w, h); }
 function toolIcon(kind, c1, c2) {
@@ -529,13 +551,31 @@ function defineItems() {
   R(IT.SAXE, 'Stone Axe', S1, 0, toolIcon('axe', S1, S2));
   R(IT.SSHOVEL, 'Stone Shovel', S1, 0, toolIcon('shovel', S1, S2));
   R(IT.SSWORD, 'Stone Sword', S1, 0, toolIcon('sword', S1, S2));
+  R(IT.COAL, 'Coal', 0x2c2c30, 0, g => { rect(g,8,9,16,14,'#34343a'); rect(g,8,9,16,4,'#48484f'); rect(g,12,12,5,5,'#5a5a62'); rect(g,8,20,16,3,'#1c1c20'); });
+  R(IT.IRON, 'Iron Ingot', 0xd8d8d8, 0, g => { rect(g,7,10,18,12,'#c8c8cc'); rect(g,7,10,18,3,'#e8e8ec'); rect(g,7,19,18,3,'#9a9a9e'); rect(g,11,13,4,4,'#f0f0f4'); });
+  R(IT.GOLD, 'Gold Ingot', 0xf6d83e, 0, g => { rect(g,7,10,18,12,'#f0cc33'); rect(g,7,10,18,3,'#ffe97a'); rect(g,7,19,18,3,'#c09a1e'); rect(g,11,13,4,4,'#fff0a0'); });
+  R(IT.DIAMOND, 'Diamond', 0x4fd8d0, 0, g => { rect(g,12,5,8,22,'#4fd8d0'); rect(g,8,9,16,14,'#66e6de'); rect(g,8,9,4,14,'#8cf0ea'); rect(g,20,9,4,14,'#37b8b0'); });
+  const I1 = '#c8c8cc', I2 = '#e8e8ec', D1 = '#4fd8d0', D2 = '#8cf0ea';
+  R(IT.IPICK, 'Iron Pickaxe', I1, 0, toolIcon('pick', I1, I2));
+  R(IT.IAXE, 'Iron Axe', I1, 0, toolIcon('axe', I1, I2));
+  R(IT.ISHOVEL, 'Iron Shovel', I1, 0, toolIcon('shovel', I1, I2));
+  R(IT.ISWORD, 'Iron Sword', I1, 0, toolIcon('sword', I1, I2));
+  R(IT.DPICK, 'Diamond Pickaxe', D1, 0, toolIcon('pick', D1, D2));
+  R(IT.DAXE, 'Diamond Axe', D1, 0, toolIcon('axe', D1, D2));
+  R(IT.DSHOVEL, 'Diamond Shovel', D1, 0, toolIcon('shovel', D1, D2));
+  R(IT.DSWORD, 'Diamond Sword', D1, 0, toolIcon('sword', D1, D2));
 }
 const DROPBLK = {}; DROPBLK[GRASS] = DIRT; DROPBLK[STONE] = COBBLE; DROPBLK[LEAVES] = 0; DROPBLK[GLASS] = 0; DROPBLK[BEDROCK] = 0;
+DROPBLK[COAL_ORE] = IT.COAL; DROPBLK[IRON_ORE] = IT.IRON; DROPBLK[GOLD_ORE] = IT.GOLD; DROPBLK[DIAMOND_ORE] = IT.DIAMOND;
 function blockDrop(id) { return (id in DROPBLK) ? DROPBLK[id] : id; }
 const HARD = {}; HARD[GRASS] = 0.55; HARD[DIRT] = 0.5; HARD[SAND] = 0.5; HARD[GRAVEL] = 0.6;
 HARD[STONE] = 1.7; HARD[COBBLE] = 1.7; HARD[BRICK] = 1.8; HARD[LOG] = 1.1; HARD[PLANKS] = 0.9;
 HARD[LEAVES] = 0.25; HARD[GLASS] = 0.35; HARD[BEDROCK] = 1e9;
+HARD[COAL_ORE] = 1.4; HARD[IRON_ORE] = 1.8; HARD[GOLD_ORE] = 1.8; HARD[DIAMOND_ORE] = 2.0;
 function hardnessOf(id) { return HARD[id] !== undefined ? HARD[id] : 0.6; }
+/* stone-family + ores need a pickaxe; tier = minimum pickaxe tier to harvest */
+const ORE_TIER = {}; ORE_TIER[STONE] = 0; ORE_TIER[COBBLE] = 0; ORE_TIER[BRICK] = 0;
+ORE_TIER[COAL_ORE] = 0; ORE_TIER[IRON_ORE] = 1; ORE_TIER[GOLD_ORE] = 2; ORE_TIER[DIAMOND_ORE] = 2;
 const LOOT = {};
 LOOT.cow = [[IT.BEEF,1,3],[IT.LEATHER,0,2]];
 LOOT.pig = [[IT.PORK,1,3]];
@@ -557,7 +597,15 @@ const RECIPES = [
   { out: [IT.SPICK, 1], shape: [[COBBLE, COBBLE, COBBLE], [0, IT.STICK, 0], [0, IT.STICK, 0]] },
   { out: [IT.SAXE, 1], shape: [[COBBLE, COBBLE, 0], [COBBLE, IT.STICK, 0], [0, IT.STICK, 0]] },
   { out: [IT.SSHOVEL, 1], shape: [[0, COBBLE, 0], [0, IT.STICK, 0], [0, IT.STICK, 0]] },
-  { out: [IT.SSWORD, 1], shape: [[0, COBBLE, 0], [0, COBBLE, 0], [0, IT.STICK, 0]] }
+  { out: [IT.SSWORD, 1], shape: [[0, COBBLE, 0], [0, COBBLE, 0], [0, IT.STICK, 0]] },
+  { out: [IT.IPICK, 1], shape: [[IT.IRON, IT.IRON, IT.IRON], [0, IT.STICK, 0], [0, IT.STICK, 0]] },
+  { out: [IT.IAXE, 1], shape: [[IT.IRON, IT.IRON, 0], [IT.IRON, IT.STICK, 0], [0, IT.STICK, 0]] },
+  { out: [IT.ISHOVEL, 1], shape: [[0, IT.IRON, 0], [0, IT.STICK, 0], [0, IT.STICK, 0]] },
+  { out: [IT.ISWORD, 1], shape: [[0, IT.IRON, 0], [0, IT.IRON, 0], [0, IT.STICK, 0]] },
+  { out: [IT.DPICK, 1], shape: [[IT.DIAMOND, IT.DIAMOND, IT.DIAMOND], [0, IT.STICK, 0], [0, IT.STICK, 0]] },
+  { out: [IT.DAXE, 1], shape: [[IT.DIAMOND, IT.DIAMOND, 0], [IT.DIAMOND, IT.STICK, 0], [0, IT.STICK, 0]] },
+  { out: [IT.DSHOVEL, 1], shape: [[0, IT.DIAMOND, 0], [0, IT.STICK, 0], [0, IT.STICK, 0]] },
+  { out: [IT.DSWORD, 1], shape: [[0, IT.DIAMOND, 0], [0, IT.DIAMOND, 0], [0, IT.STICK, 0]] }
 ];
 function trimShape(rows) {
   let minR = 3, maxR = -1, minC = 3, maxC = -1;
@@ -754,6 +802,17 @@ function generate(seed) {
         }
       }
       set(px, ty, pz, LEAVES);
+    }
+  }
+  /* underground ore veins */
+  for (let z = 0; z < W; z++) for (let x = 0; x < W; x++) {
+    for (let y = H - 4; y >= 1; y--) {
+      if (get(x, y, z) !== STONE) continue;
+      const h = hash3(x * 7 + 13, y * 11 + 5, z * 17 + 3);
+      if (y < 14 && h > 0.9965) set(x, y, z, DIAMOND_ORE);
+      else if (y < 20 && h > 0.993) set(x, y, z, GOLD_ORE);
+      else if (y < 28 && h > 0.982) set(x, y, z, IRON_ORE);
+      else if (h > 0.965) set(x, y, z, COAL_ORE);
     }
   }
   for (const c of chunks) { c.d = null; c.n = 0; c.td = null; c.tn = 0; }
@@ -1308,16 +1367,19 @@ function texBox(cx, cy, cz, s, tiles) {
 
 /* -------------------------------------------- third-person red person */
 function drawPlayer() {
-  const r = 225, g = 48, b = 44, dk = 0.85;
-  const sw = Math.sin(pl.bob) * 0.8;
+  const r = 220, g = 50, b = 46, skin = 0.88, dark = 0.62;
+  const sw = Math.sin(pl.bob) * 0.6;
   const fx = Math.sin(cam.yaw), fz = Math.cos(cam.yaw);
+  const rx = Math.cos(cam.yaw), rz = -Math.sin(cam.yaw);   /* sideways vector (perpendicular to facing) */
   const sway = Math.abs(Math.sin(pl.bob)) * 0.05;
-  boxFaces(pl.x, pl.y + 1.55, pl.z, 0.5, 0.52, 0.5, r, g, b);
-  boxFaces(pl.x, pl.y + 1.06 + sway, pl.z, 0.6, 0.72, 0.34, r, g, b);
-  boxFaces(pl.x + 0.43 + fx * sw * 0.18, pl.y + 1.05 + sway, pl.z + fz * sw * 0.18, 0.2, 0.7, 0.2, r, g, b);
-  boxFaces(pl.x - 0.43 - fx * sw * 0.18, pl.y + 1.05 + sway, pl.z - fz * sw * 0.18, 0.2, 0.7, 0.2, r, g, b);
-  boxFaces(pl.x - 0.14 - fx * sw * 0.22, pl.y + 0.36, pl.z - fz * sw * 0.22, 0.22, 0.72, 0.22, r * dk | 0, g * dk | 0, b * dk | 0);
-  boxFaces(pl.x + 0.14 + fx * sw * 0.22, pl.y + 0.36, pl.z + fz * sw * 0.22, 0.22, 0.72, 0.22, r * dk | 0, g * dk | 0, b * dk | 0);
+  const sR = r * skin | 0, sG = g * skin | 0, sB = b * skin | 0;
+  const dR = r * dark | 0, dG = g * dark | 0, dB = b * dark | 0;
+  boxFaces(pl.x, pl.y + 1.52, pl.z, 0.5, 0.5, 0.5, r, g, b);                         /* head */
+  boxFaces(pl.x, pl.y + 1.02 + sway, pl.z, 0.62, 0.62, 0.34, sR, sG, sB);            /* torso */
+  boxFaces(pl.x + rx * 0.40 + fx * sw * 0.10, pl.y + 1.00 + sway, pl.z + rz * 0.40 + fz * sw * 0.10, 0.18, 0.52, 0.18, sR, sG, sB); /* arm */
+  boxFaces(pl.x - rx * 0.40 - fx * sw * 0.10, pl.y + 1.00 + sway, pl.z - rz * 0.40 - fz * sw * 0.10, 0.18, 0.52, 0.18, sR, sG, sB); /* arm */
+  boxFaces(pl.x + rx * 0.16 + fx * sw * 0.18, pl.y + 0.34, pl.z + rz * 0.16 + fz * sw * 0.18, 0.24, 0.68, 0.24, dR, dG, dB); /* leg */
+  boxFaces(pl.x - rx * 0.16 - fx * sw * 0.18, pl.y + 0.34, pl.z - rz * 0.16 - fz * sw * 0.18, 0.24, 0.68, 0.24, dR, dG, dB); /* leg */
 }
 
 /* --------------------------------------------------------- animals */
@@ -1468,26 +1530,31 @@ function waterNear(x, z, r) {
 }
 
 /* --------------------------------------------------- inventory + items */
-function heldId() { return mode === 'creative' ? HOTBAR[sel] : (INV[sel] ? INV[sel].id : 0); }
+function heldId() { return INV[sel] ? INV[sel].id : 0; }
 const TOOLDEF = {};
-TOOLDEF[IT.WPICK] = { k: 'pick', s: 2.5 }; TOOLDEF[IT.SPICK] = { k: 'pick', s: 5 };
+TOOLDEF[IT.WPICK] = { k: 'pick', s: 2.5, tier: 0 }; TOOLDEF[IT.SPICK] = { k: 'pick', s: 5, tier: 1 };
+TOOLDEF[IT.IPICK] = { k: 'pick', s: 7.5, tier: 2 }; TOOLDEF[IT.DPICK] = { k: 'pick', s: 10, tier: 3 };
 TOOLDEF[IT.WAXE] = { k: 'axe', s: 2.5 }; TOOLDEF[IT.SAXE] = { k: 'axe', s: 5 };
+TOOLDEF[IT.IAXE] = { k: 'axe', s: 7.5 }; TOOLDEF[IT.DAXE] = { k: 'axe', s: 10 };
 TOOLDEF[IT.WSHOVEL] = { k: 'shovel', s: 2.5 }; TOOLDEF[IT.SSHOVEL] = { k: 'shovel', s: 5 };
-TOOLDEF[IT.WSWORD] = { k: 'sword', s: 1 }; TOOLDEF[IT.SSWORD] = { k: 'sword', s: 1 };
+TOOLDEF[IT.ISHOVEL] = { k: 'shovel', s: 7.5 }; TOOLDEF[IT.DSHOVEL] = { k: 'shovel', s: 10 };
+TOOLDEF[IT.WSWORD] = { k: 'sword', dmg: 6 }; TOOLDEF[IT.SSWORD] = { k: 'sword', dmg: 8 };
+TOOLDEF[IT.ISWORD] = { k: 'sword', dmg: 10 }; TOOLDEF[IT.DSWORD] = { k: 'sword', dmg: 13 };
 function heldTool() { return mode === 'survival' ? TOOLDEF[heldId()] || null : null; }
 function toolSpeed(blk) {
   const t = heldTool(); if (!t) return 1;
-  if (t.k === 'pick' && (blk === STONE || blk === COBBLE || blk === BRICK)) return t.s;
+  if (t.k === 'pick' && ORE_TIER[blk] !== undefined) return t.s;
   if (t.k === 'axe' && (blk === LOG || blk === PLANKS)) return t.s;
   if (t.k === 'shovel' && (blk === GRASS || blk === DIRT || blk === SAND || blk === GRAVEL)) return t.s;
   return 1;
 }
 function mineable(blk) {
   if (mode === 'creative') return true;
-  if (blk === STONE || blk === COBBLE || blk === BRICK) {
-    const t = heldTool(); return !!(t && t.k === 'pick');
-  }
-  return true;
+  const tier = ORE_TIER[blk];
+  if (tier === undefined) return true;
+  const t = heldTool();
+  if (!t || t.k !== 'pick') return false;
+  return (t.tier || 0) >= tier;
 }
 function addItem(id, n) {
   if (!id || n <= 0) return n;
@@ -1536,7 +1603,7 @@ function pickEntity(maxD) {
   const dx = Math.sin(cam.yaw) * cp, dy = sp, dz = Math.cos(cam.yaw) * cp;
   let best = null, bt = maxD;
   for (const list of [animals, hostiles]) for (const e of list) {
-    const ex = e.x - cam.x, ey = (e.y + 0.45) - cam.y, ez = e.z - cam.z;
+    const ex = e.x - pl.x, ey = (e.y + 0.45) - (pl.y + EYE), ez = e.z - pl.z;
     const t = ex * dx + ey * dy + ez * dz;
     if (t < 0.2 || t > bt) continue;
     const px = ex - dx * t, py = ey - dy * t, pz = ez - dz * t;
@@ -1548,7 +1615,7 @@ function pickEntity(maxD) {
 function attack(e) {
   if (!e || e.hp === undefined) return;
   const t = heldTool();
-  e.hp -= (t && t.k === 'sword') ? (t.s >= 5 ? 8 : 6) : 5;
+  e.hp -= (t && t.k === 'sword') ? t.dmg : 5;
   e.flee = 3;
   const ax = e.x - pl.x, az = e.z - pl.z, al = Math.hypot(ax, az) || 1;
   e.kx = ax / al * 3.4; e.kz = az / al * 3.4;
@@ -1574,6 +1641,10 @@ function killMob(e) {
 
 /* ------------------------------------------------------ hostiles */
 function night() { const s = Math.sin((dayT - 0.25) * Math.PI * 2); return (s * 2.2 + 0.30) < 0.33; }
+function skyOpen(x, y, z) {
+  for (let yy = Math.floor(y) + 1; yy < H; yy++) if (opaqueAt(Math.floor(x), yy, Math.floor(z))) return false;
+  return true;
+}
 function spawnHostiles(dt) {
   if (mode !== 'survival' || dead) return;
   if (!night()) { if (hostiles.length) for (let i = hostiles.length - 1; i >= 0; i--) if (Math.random() < dt * 0.3) hostiles.splice(i, 1); return; }
@@ -1595,6 +1666,14 @@ function stepHostiles(dt) {
   for (let i = hostiles.length - 1; i >= 0; i--) {
     const h = hostiles[i], M = MOBS[h.kind];
     h.bob += dt * 7;
+    if (mode === 'survival' && !night() && (h.kind === 4 || h.kind === 5) && skyOpen(h.x, h.y, h.z)) {
+      h.burnT = (h.burnT || 0) + dt;
+      if (h.burnT >= 0.35) {
+        h.burnT = 0; h.hp -= 2;
+        if (Math.random() < 0.7) parts.push({ x: h.x + (Math.random() - 0.5) * 0.4, y: h.y + 0.6 + Math.random() * 0.8, z: h.z + (Math.random() - 0.5) * 0.4, vx: (Math.random() - 0.5) * 1.5, vy: 2 + Math.random() * 2, vz: (Math.random() - 0.5) * 1.5, s: 0.09, life: 0.35, r: 255, g: 168, b: 40 });
+        if (h.hp <= 0) { killMob(h); continue; }
+      }
+    }
     const dx = pl.x - h.x, dz = pl.z - h.z, d = Math.hypot(dx, dz);
     if (h.kx) { h.x += h.kx * dt; h.z += h.kz * dt; h.kx *= Math.max(0, 1 - 6 * dt); h.kz *= Math.max(0, 1 - 6 * dt); if (Math.abs(h.kx) < 0.02) h.kx = h.kz = 0; }
     if (h.kind === 6 && mode === 'survival' && !dead) {
@@ -1860,15 +1939,16 @@ function physics() {
 }
 
 /* ------------------------------------------------------------ raycast */
-function raycast(maxD) {
-  let x = Math.floor(cam.x), y = Math.floor(cam.y), z = Math.floor(cam.z);
+function raycast(maxD, ox, oy, oz) {
+  const px = ox !== undefined ? ox : cam.x, py = oy !== undefined ? oy : cam.y, pz = oz !== undefined ? oz : cam.z;
+  let x = Math.floor(px), y = Math.floor(py), z = Math.floor(pz);
   const sx = fw[0] > 0 ? 1 : -1, sy = fw[1] > 0 ? 1 : -1, sz = fw[2] > 0 ? 1 : -1;
   const dx = Math.abs(fw[0]) < 1e-9 ? 1e9 : 1 / Math.abs(fw[0]);
   const dy = Math.abs(fw[1]) < 1e-9 ? 1e9 : 1 / Math.abs(fw[1]);
   const dz = Math.abs(fw[2]) < 1e-9 ? 1e9 : 1 / Math.abs(fw[2]);
-  let tx = (fw[0] > 0 ? x + 1 - cam.x : cam.x - x) * dx;
-  let ty = (fw[1] > 0 ? y + 1 - cam.y : cam.y - y) * dy;
-  let tz = (fw[2] > 0 ? z + 1 - cam.z : cam.z - z) * dz;
+  let tx = (fw[0] > 0 ? x + 1 - px : px - x) * dx;
+  let ty = (fw[1] > 0 ? y + 1 - py : py - y) * dy;
+  let tz = (fw[2] > 0 ? z + 1 - pz : pz - z) * dz;
   let nx = 0, ny = 0, nz = 0, t = 0;
   for (let i = 0; i < 128; i++) {
     const id = get(x, y, z);
@@ -1899,7 +1979,7 @@ function edit(p, remove) {
     remeshAround(p.x, p.z);
     sfx(150 + Math.random() * 60, 0.06, 'square');
     const drop = blockDrop(p.id);
-    if (mode === 'survival' && drop) addItem(drop, 1);
+    if (drop) addItem(drop, 1);
   } else {
     const b = heldId();
     if (!b || b >= 100) { if (mode === 'survival' && b) toast('cannot place ' + itemName(b)); return; }
@@ -1917,7 +1997,7 @@ function edit(p, remove) {
     sfx(430, 0.05, 'triangle');
     if (mode === 'survival') consumeSel();
   }
-  hit = raycast(6.5);
+  hit = raycast(6.5, pl.x, pl.y + EYE, pl.z);
   saveDirty = 1;
 }
 
@@ -1962,8 +2042,7 @@ function refreshHotbar() {
     const d = document.createElement('div');
     d.className = 'slot';
     let iconId = 0, count = 0;
-    if (mode === 'creative') iconId = HOTBAR[i];
-    else { const s = INV[i]; if (s) { iconId = s.id; count = s.n; } }
+    const s = INV[i]; if (s) { iconId = s.id; count = s.n; }
     const c = document.createElement('canvas'); c.width = c.height = 32;
     const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
     if (iconId) g.drawImage(itemCanvas(iconId), 0, 0);
@@ -2113,7 +2192,7 @@ function dropHovered(all) {
   const hs = hoveredSlot();
   let arr, i;
   if (hs) { arr = hs.arr; i = hs.i; }
-  else if (mode === 'survival' && INV[sel]) { arr = INV; i = sel; }
+  else if (INV[sel]) { arr = INV; i = sel; }
   else return;
   const s = arr[i]; if (!s) return;
   const n = all ? s.n : 1;
@@ -2122,7 +2201,6 @@ function dropHovered(all) {
   refreshHotbar(); renderInv(); saveDirty = 1;
 }
 function dropHeld(all) {
-  if (mode !== 'survival') return;
   const s = INV[sel]; if (!s) return;
   const n = all ? s.n : 1;
   dropItem(s.id, n, pl.x, pl.y + 0.4, pl.z, Math.sin(cam.yaw) * 2.4, 2.2, Math.cos(cam.yaw) * 2.4);
@@ -2187,7 +2265,7 @@ addEventListener('keydown', e => {
   keys[k] = 1;
   if (k === 'KeyE') { if (invOpen) closeInv(); else if (running && !dead) openInv(); return; }
   if (k === 'Escape' && invOpen) { closeInv(); return; }
-  if (k === 'KeyQ') { if (invOpen) dropHovered(e.ctrlKey); else if (running && mode === 'survival' && !dead) dropHeld(e.ctrlKey); return; }
+  if (k === 'KeyQ') { if (invOpen) dropHovered(e.ctrlKey); else if (running && !dead) dropHeld(e.ctrlKey); return; }
 if (!running) {
     if (k === 'Enter') {
       const ctn = document.getElementById('continue');
@@ -2213,7 +2291,8 @@ let mining = 0, mineT = 0, swing = 0, pickHintT = 0;
 function pickHint() {
   if (pickHintT > 0) return;
   pickHintT = 1.6;
-  toast('needs a pickaxe');
+  const t = heldTool();
+  toast((t && t.k === 'pick') ? 'needs a better pickaxe' : 'needs a pickaxe');
 }
 addEventListener('mousedown', e => {
   if (!running || invOpen) return;
@@ -2225,10 +2304,7 @@ addEventListener('mousedown', e => {
     mining = 1;
   } else if (e.button === 2) { useSel(); swing = 0.34; }
   else if (e.button === 1) {
-    if (mode === 'creative') {
-      const i = hit ? HOTBAR.indexOf(hit.id) : -1;
-      if (i >= 0) select(i); else if (hit) toast('cannot hold ' + BLK[hit.id].n);
-    } else if (hit) {
+    if (hit) {
       for (let i = 0; i < 9; i++) if (INV[i] && INV[i].id === hit.id) { select(i); return; }
       toast('not in hotbar: ' + BLK[hit.id].n);
     }
@@ -2552,7 +2628,7 @@ function updateMenu() {
 function beginPlay() {
   started = true;
   savingEnabled = true;
-  if (currentId) { saveDirty = 1; saveTimer = 0; }
+  saveDirty = 1; saveTimer = 0;
   view.requestPointerLock();
   if (!AC && !muted) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
 }
@@ -2566,6 +2642,7 @@ function newWorld(seed, m) {
   parts.length = 0;
   mode = (m === 'creative') ? 'creative' : 'survival';
   hp = MAXHP; food = MAXFOOD; INV = new Array(36).fill(null); craftSlots = new Array(9).fill(null);
+  if (mode === 'creative') for (let i = 0; i < CREATIVE_PALETTE.length && i < 36; i++) INV[i] = { id: CREATIVE_PALETTE[i][0], n: CREATIVE_PALETTE[i][1] };
   hostiles = []; arrows = []; drops = []; dead = 0; hurtT = 0; regenT = 0; starveT = 0; drownT = 0; fallY = 0;
   hudMode = ''; refreshHotbar(); select(0); updateHUD();
   genQueue = chunks.slice();
@@ -2595,7 +2672,7 @@ function frame(now) {
 
   if (running) {
     physics();
-    hit = raycast(6.5);
+    hit = raycast(6.5, pl.x, pl.y + EYE, pl.z);
     if (mining && hit) {
       if (hit.id === BEDROCK) mineT = 0;
       else if (!mineable(hit.id)) { mineT = 0; pickHint(); }
@@ -2661,7 +2738,8 @@ defineItems();
 refreshHotbar();
 select(0);
 resize(rscale);
-newWorld(worldSeed, 'survival');
+if (currentId && loadWorldById(currentId)) { /* resume current world; menu shows after gen */ }
+else newWorld(worldSeed, 'survival');
 requestAnimationFrame(frame);
 </script>
 </body>
