@@ -109,8 +109,9 @@
     text-align:center; display:none; }
   #respawn .n { font-size:56px; font-weight:bold; color:#ff5a5a; text-shadow:0 0 20px #f00a; }
   #respawn .l { font-size:13px; letter-spacing:3px; color:#ffb0b0; }
-  #mode { position:fixed; inset:0; z-index:90; display:flex; align-items:center; justify-content:center;
-    background:#02040af2; }
+  #mode { position:fixed; inset:0; z-index:90; display:flex; align-items:flex-start; justify-content:center;
+    background:#02040af2; overflow-y:auto; padding:16px 0; }
+  #mode > div { margin:auto; }
   #mode.off { display:none; }
   .mcard { width:250px; background:#0b1424; border:3px solid #2b4a7a; border-radius:6px; padding:18px;
     text-align:center; cursor:pointer; transition:.12s; }
@@ -166,7 +167,7 @@
   .codebox { font-size:32px; letter-spacing:12px; font-weight:bold; color:#8fd0ff; text-align:center;
     margin:8px 0 4px; text-shadow:0 0 18px #3b82f688; }
   .nmsg { text-align:center; font-size:11.5px; color:#ffd76a; min-height:17px; margin-top:8px; }
-  #garage, #trophies { position:fixed; inset:0; z-index:85; display:none; align-items:center; justify-content:center;
+  #garage, #trophies { position:fixed; inset:0; z-index:100; display:none; align-items:center; justify-content:center;
     background:#02040acc; }
   #garage.on, #trophies.on { display:flex; }
   #garage .panel, #trophies .panel { width:min(720px,94vw); max-height:92vh; overflow:auto; }
@@ -304,6 +305,7 @@
       <button class="tab" id="copyLink">COPY INVITE LINK</button>
       <span class="slothp" id="netPing" style="width:auto;color:#d9b8ff">— ms</span>
     </div>
+    <div id="lobbyStatus" style="text-align:center;font-size:11px;letter-spacing:2px;color:#9fc0e8;margin:2px 0 12px"></div>
     <div class="nfield"><label>YOUR TANK (free pick for online)</label>
       <div class="row" id="netKeyRow">
         <button class="dbtn" data-nkey="scout">SCOUT</button>
@@ -336,6 +338,7 @@
     <div class="seats" id="seats"></div>
     <div class="nrow">
       <button class="nbtn" id="netReady">READY</button>
+      <button class="nbtn" id="netSwap" style="background:#152a44;border-color:#8fd0ff">SWAP SIDE</button>
       <button class="nbtn" id="netStart" style="display:none">START GAME</button>
       <button class="nbtn" id="netLeave" style="background:#3a1620;border-color:#ff8f7a">LEAVE</button>
     </div>
@@ -2116,11 +2119,28 @@ const NET = {
   inputs:{}, snap:null, snapT:0, seq:0, ping:0, pingT:0, inAt:0,
   selMap:'classic',
   events:[], nextEv:1, evSeen:0, bulletId:1,
+  watchdog:null, connOpen:false,
 };
 let lastShotSfx=0;
 function escapeHtml(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function genCode(){ let s=''; for(let i=0;i<5;i++) s+=NKEY[(Math.random()*NKEY.length)|0]; return s; }
 function netSetMsg(id,txt,col){ const e=el(id); if(e){ e.textContent=txt||''; e.style.color=col||'#ffd76a'; } }
+function netClearWatchdog(){ if(NET.watchdog){ clearTimeout(NET.watchdog); NET.watchdog=null; } }
+function netWatchdog(label){
+  netClearWatchdog();
+  NET.watchdog=setTimeout(()=>{
+    NET.watchdog=null;
+    if(NET.state==='lobby' || NET.state==='playing' || NET.connOpen) return;
+    netSetMsg('netMsg', label+' timed out. Check the room code and your internet, then try again.', '#ff7a7a');
+    try{ if(NET.peer) NET.peer.destroy(); }catch(e){}
+    NET.peer=null; NET.connOpen=false;
+  }, 22000);
+}
+function netCancelPeer(){
+  netClearWatchdog();
+  try{ if(NET.peer) NET.peer.destroy(); }catch(e){}
+  NET.peer=null; NET.hostConn=null; NET.conns={}; NET.inputs={}; NET.connOpen=false;
+}
 function r1(v){ return Math.round(v*10)/10; }
 function r2(v){ return Math.round(v*100)/100; }
 function tankAt(team,slot){ return tanks.find(t=>t.team===team && t.slot===slot); }
@@ -2154,49 +2174,96 @@ function showView(v){
 }
 function netCreate(){
   if(typeof Peer==='undefined'){ netSetMsg('netMsg','Networking library failed to load — check your connection'); return; }
+  if(NET.state==='lobby' || NET.state==='playing') return;
+  netCancelPeer();
   const name=(el('netNameC').value||'PLAYER').trim().slice(0,12)||'PLAYER';
   NET.name=name; try{ localStorage.setItem('tw-name',name); }catch(e){}
   NET.selMode = (document.querySelector('#netModeRow .dbtn.on')||{}).dataset?.nmode || 'skirmish';
   NET.selAi   = (document.querySelector('#netAiRow .dbtn.on')||{}).dataset?.nai || 'normal';
   NET.role='host'; NET.mode='host'; NET.code=genCode();
   netSetMsg('netMsg','Opening room '+NET.code+'…');
-  const peer = new Peer('tw'+NET.code, { debug:1 });
+  let peer;
+  try{ peer = new Peer('tw'+NET.code, { debug:1 }); }
+  catch(e){ netSetMsg('netMsg','Could not start networking: '+e.message,'#ff7a7a'); return; }
   NET.peer=peer;
+  netWatchdog('Opening the room');
   peer.on('open', id=>{
-    NET.myId=id;
+    netClearWatchdog();
+    NET.myId=id; NET.localId=id;
     NET.roster=[{ id, name, team:0, slot:0, ready:true, host:true, key:NET.selKey }];
     enterLobby();
     netSetMsg('netMsg','');
   });
   peer.on('connection', hostConn);
   peer.on('error', e=>{
-    if(e.type==='unavailable-id'){ netSetMsg('netMsg','Code collision — please try again','#ff7a7a'); netLeave(); }
-    else netSetMsg('netMsg','Network error: '+e.type,'#ff7a7a');
+    if(e.type==='unavailable-id'){
+      // extremely rare: the generated code is already taken — pick a fresh one and retry
+      netSetMsg('netMsg','Code collision — picking a new room code…');
+      try{ peer.destroy(); }catch(x){}
+      NET.peer=null;
+      setTimeout(netCreate, 500);
+      return;
+    }
+    netClearWatchdog();
+    if(e.type==='network' || e.type==='server-error' || e.type==='socket-error' || e.type==='socket-closed'){
+      netSetMsg('netMsg','Cannot reach the matchmaking server ('+e.type+'). Check your internet and try again.', '#ff7a7a');
+    } else {
+      netSetMsg('netMsg','Network error: '+e.type, '#ff7a7a');
+    }
   });
   peer.on('disconnected', ()=>{ try{ peer.reconnect(); }catch(e){} });
 }
 function netJoin(){
   if(typeof Peer==='undefined'){ netSetMsg('netMsg','Networking library failed to load — check your connection'); return; }
+  if(NET.state==='lobby' || NET.state==='playing') return;
   const name=(el('netNameJ').value||'PLAYER').trim().slice(0,12)||'PLAYER';
   const code=(el('netCode').value||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,5);
   if(code.length<5){ netSetMsg('netMsg','Enter the 5-character room code','#ff7a7a'); return; }
+  netCancelPeer();
   NET.name=name; NET.code=code; NET.role='guest'; NET.mode='guest';
   try{ localStorage.setItem('tw-name',name); }catch(e){}
   netSetMsg('netMsg','Connecting to '+code+'…');
-  const peer = new Peer({ debug:1 });
+  let peer;
+  try{ peer = new Peer({ debug:1 }); }
+  catch(e){ netSetMsg('netMsg','Could not start networking: '+e.message,'#ff7a7a'); return; }
   NET.peer=peer;
+  netWatchdog('Connecting to '+code);
   peer.on('open', ()=>{
-    const c = peer.connect('tw'+code, { reliable:true });
+    let c;
+    try{ c = peer.connect('tw'+code, { reliable:true }); }
+    catch(e){ netSetMsg('netMsg','Could not open a connection','#ff7a7a'); return; }
     NET.hostConn=c;
-    c.on('open', ()=>{ try{ c.send({t:'hello', name, key:NET.selKey}); }catch(e){} netSetMsg('netMsg',''); enterLobby(); });
+    c.on('open', ()=>{
+      NET.connOpen=true; netClearWatchdog();
+      try{ c.send({t:'hello', name, key:NET.selKey}); }catch(e){}
+      netSetMsg('netMsg',''); enterLobby();
+    });
     c.on('data', guestOnData);
-    c.on('close', ()=>{ netSetMsg('lobbyMsg','Host disconnected','#ff7a7a'); setTimeout(()=>{ netLeave(); netEl.classList.remove('on'); modeEl.classList.remove('off'); },1400); });
-    c.on('error', ()=>{ netSetMsg('netMsg','Connection error','#ff7a7a'); });
+    c.on('close', ()=>{
+      NET.connOpen=false;
+      if(NET.state==='lobby' || NET.state==='playing'){
+        netSetMsg('lobbyMsg','Host disconnected','#ff7a7a');
+        setTimeout(()=>{ netLeave(); netEl.classList.remove('on'); modeEl.classList.remove('off'); },1400);
+      } else {
+        netSetMsg('netMsg','Could not connect to room '+code+'. Check the code and try again.','#ff7a7a');
+      }
+    });
+    c.on('error', ()=>{ netClearWatchdog(); netSetMsg('netMsg','Connection error — the room may be closed.','#ff7a7a'); });
   });
   peer.on('error', e=>{
-    if(e.type==='peer-unavailable'){ netSetMsg('netMsg','Room '+code+' not found','#ff7a7a'); netLeave(); }
-    else netSetMsg('netMsg','Network error: '+e.type,'#ff7a7a');
+    if(e.type==='peer-unavailable'){
+      netClearWatchdog();
+      netSetMsg('netMsg','Room '+code+' not found. Check the code.','#ff7a7a');
+      try{ peer.destroy(); }catch(x){}
+      NET.peer=null;
+    } else if(e.type==='network' || e.type==='server-error' || e.type==='socket-error' || e.type==='socket-closed'){
+      netClearWatchdog();
+      netSetMsg('netMsg','Cannot reach the matchmaking server ('+e.type+'). Check your internet and try again.', '#ff7a7a');
+    } else {
+      netSetMsg('netMsg','Network error: '+e.type, '#ff7a7a');
+    }
   });
+  peer.on('disconnected', ()=>{ try{ peer.reconnect(); }catch(e){} });
 }
 function freeSlot(){
   const used=(t,s)=>NET.roster.some(m=>m.team===t&&m.slot===s);
@@ -2206,6 +2273,25 @@ function freeSlot(){
   const other=team^1;
   for(let s=0;s<5;s++) if(!used(other,s)) return {team:other,slot:s};
   return null;
+}
+function moveToTeam(mem, team){
+  if(!mem || NET.state!=='lobby') return false;
+  let slot=-1;
+  for(let s=0;s<5;s++) if(!NET.roster.some(x=>x!==mem && x.team===team && x.slot===s)){ slot=s; break; }
+  if(slot<0) return false;                       // requested side is full
+  mem.team=team; mem.slot=slot;
+  netBroadcast({t:'roster', roster:NET.roster, mode:NET.selMode, ai:NET.selAi, map:NET.selMap});
+  netRenderSeats();
+  return true;
+}
+function swapSide(){
+  if(NET.state!=='lobby') return;
+  if(NET.role==='host'){
+    const me=NET.roster.find(m=>m.host);
+    if(me && !moveToTeam(me, me.team^1)) netSetMsg('lobbyMsg','The other side is full','#ff7a7a');
+  } else if(NET.hostConn){
+    try{ NET.hostConn.send({t:'team'}); }catch(e){}
+  }
 }
 function hostConn(c){
   c.on('open', ()=>{ if(!NET.conns[c.peer]) NET.conns[c.peer]=c; });
@@ -2240,6 +2326,9 @@ function hostOnData(c,m){
   } else if(m.t==='key'){
     const mem=NET.roster.find(x=>x.id===c.peer); if(!mem) return;
     if(ORDER.includes(m.key)){ mem.key=m.key; netBroadcast({t:'roster', roster:NET.roster, mode:NET.selMode, ai:NET.selAi, map:NET.selMap}); netRenderSeats(); }
+  } else if(m.t==='team'){
+    const mem=NET.roster.find(x=>x.id===c.peer); if(!mem) return;
+    moveToTeam(mem, mem.team^1);
   } else if(m.t==='in'){
     NET.inputs[c.peer]={ mx:m.mx||0, mz:m.mz||0, aim:m.aim||0, fire:m.fire?1:0, boost:m.boost?1:0 };
   } else if(m.t==='buy'){
@@ -2294,6 +2383,17 @@ function netRenderSeats(){
   box.innerHTML=html.join('');
   const isHost=NET.role==='host';
   const me=NET.roster.find(x=>x.id===NET.localId);
+  const st=el('lobbyStatus');
+  if(st){
+    const n=NET.roster.length;
+    if(n<2){
+      st.innerHTML='<span style="color:#ffd76a">WAITING FOR PLAYERS</span> — share the room code or invite link';
+    } else if(NET.roster.every(m=>m.ready)){
+      st.innerHTML='<span style="color:#b6ff8a">'+n+' PLAYERS — ALL READY</span>';
+    } else {
+      st.innerHTML='<span style="color:#8fd0ff">'+n+' PLAYERS IN ROOM</span> — waiting for everyone to ready up';
+    }
+  }
   el('hostOpts').style.display = isHost?'':'none';
   el('netStart').style.display = isHost?'':'none';
   el('netReady').style.display = isHost?'none':'';
@@ -2386,9 +2486,9 @@ function netToLobbyLocal(){
 function netLeave(){
   if(NET.role==='host') netBroadcast({t:'bye', reason:'Host closed the room'});
   for(const id in NET.conns){ try{ NET.conns[id].close(); }catch(e){} }
-  try{ if(NET.peer) NET.peer.destroy(); }catch(e){}
-  NET.mode='off'; NET.role=null; NET.state='menu'; NET.peer=null; NET.conns={}; NET.hostConn=null;
-  NET.roster=[]; NET.inputs={}; NET.snap=null; NET.code=''; NET.myId=''; NET.localId=''; NET.ping=0;
+  netCancelPeer();
+  NET.mode='off'; NET.role=null; NET.state='menu';
+  NET.roster=[]; NET.snap=null; NET.code=''; NET.myId=''; NET.localId=''; NET.ping=0;
   try{ resetGame(); }catch(e){}
   player=null;
   showBadge(false);
@@ -2550,6 +2650,7 @@ document.querySelectorAll('#netKeyRow .dbtn').forEach(b=> b.onclick=()=>selectKe
 el('netCreate').onclick = netCreate;
 el('netJoin').onclick = netJoin;
 el('netReady').onclick = toggleReady;
+el('netSwap').onclick = swapSide;
 el('netStart').onclick = netStart;
 el('copyLink').onclick = copyLink;
 el('netLeave').onclick = ()=>{ netLeave(); netEl.classList.remove('on'); modeEl.classList.remove('off'); };
@@ -2578,7 +2679,7 @@ window.__T = { get player(){return player;}, get money(){return money;}, set mon
   NET, DIFFS, CLASSES, ORDER, HQS, tanks, bullets, setup, update, netGuestUpdate, buildSnap, applySnap,
   netBeginPlay, netRenderSeats, resetGame, readLocalInput, netEvent, fire, netFeed, startGame, aiLevel:()=>aiLevel,
   damage, damageHQ, addMoney, buyFor, applySnap, applyEvent,
-  netOpen, netCreate, netJoin, netStart, toggleReady, selectKey, hostSet, netLeave, showNetTab,
+  netOpen, netCreate, netJoin, netStart, toggleReady, selectKey, hostSet, netLeave, showNetTab, swapSide, moveToTeam,
   setWeather, tickWeather, gust, buildMap, MAPS, WEATHER_KEYS, WEATHER_INFO, weatherSpd, applyWeatherVisual,
   resetTutorial, tutTick, TUT_STEPS, enableTouch, touch, worldGroup, powerups, spawnPowerup, walls,
   get weather(){return weather;}, set weatherV(v){weather=v;}, get mapName(){return mapName;},
