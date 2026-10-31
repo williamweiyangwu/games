@@ -27,6 +27,8 @@ function initInput() {
     if (k === 'e') { VM.adsOn = !VM.adsOn; Snd.tone(VM.adsOn ? 520 : 380, VM.adsOn ? 520 : 380, 0.04, 0.05, 'square'); }
     /* hold your breath behind the scope — costs stamina, steadies the reticle */
     if (k === 'q') VM.holdBreath = true;
+    /* step the AWP through 2x / 4x / 8x (no-op for every other weapon) */
+    if (k === 'z') cycleZoom(1);
     if (k === '1' || k === '2' || k === '3' || k === '4' || k === '5') selectSlot(parseInt(k, 10) - 1);
     if (k === ' ' && G.tutorial.active && G.player.onGround) G.tutorial.jumps++;
     if (k === 'tab') showScoreboard(true);
@@ -61,11 +63,18 @@ function initInput() {
   /* ---- MOUSE WHEEL: cycle the bag ------------------------------------
      Bound to the WINDOW so the wheel works whether or not the pointer is
      locked. deltaY > 0 = scroll down = next slot; deltaY < 0 = previous.
-     The sign guard means a single notch always advances exactly one slot. */
+     The sign guard means a single notch always advances exactly one slot.
+
+     While the AWP lens is up the wheel drives the magnification ring
+     instead, which is where your hand already is — changing weapon in the
+     middle of a scoped shot is never what you wanted. */
   window.addEventListener('wheel', e => {
     if (G.state !== 'playing') return;
     if (!G.player || !G.player.alive) return;
     e.preventDefault();
+    const scopedNow = VM.adsOn && VM.ads > 0.5 &&
+      (() => { const st = G.player.weapons[G.player.cur]; const w = st ? defOf(st.id) : null; return !!(w && w.scope); })();
+    if (scopedNow) { cycleZoom(e.deltaY > 0 ? 1 : -1); return; }
     const before = G.player.cur;
     if (e.deltaY > 0) cycleWeapon(1);
     else if (e.deltaY < 0) cycleWeapon(-1);
@@ -108,11 +117,15 @@ function initInput() {
     if (!G.player.alive) return;               // the bystander camera owns the view
     if (!document.pointerLockElement && !e.buttons) return;
     /* aiming slows the turn; a scoped sniper slows it much further so the
-       lens can actually be held on a target at 3x zoom */
+       lens can actually be held on a target. The scoped figure scales with
+       the magnification ring: angular sensitivity follows 1/zoom, so 8x is
+       four times finer than 2x rather than merely "slower". */
     const st = G.player.weapons[G.player.cur];
     const cw = st ? defOf(st.id) : null;
     const adsK = VM.ads || 0;
-    const slow = cw && cw.scope ? 0.72 : 0.45;
+    const slow = (cw && cw.scope)
+      ? 1 - Math.min(0.55, 1.04 / currentZoom())
+      : 0.45;
     const s = SENS_BASE * G.sensitivity * (1 - slow * adsK);
     G.player.yaw -= (e.movementX || 0) * s;
     G.player.pitch = clamp(G.player.pitch - (e.movementY || 0) * s, -1.35, 1.35);
@@ -135,9 +148,15 @@ function initInput() {
 }
 
 function requestLock() {
-  if (renderer.domElement.requestPointerLock) {
-    try { renderer.domElement.requestPointerLock(); } catch (e) { /* drag fallback */ }
-  }
+  if (!renderer.domElement.requestPointerLock) return;
+  try {
+    /* Newer browsers return a promise and reject it when the document is not
+       focused (an automated click, or a fast double-click during a transition).
+       An unhandled rejection there surfaces as a console error, so swallow it —
+       aiming still works while the pointer is over the canvas. */
+    const r = renderer.domElement.requestPointerLock();
+    if (r && typeof r.catch === 'function') r.catch(() => {});
+  } catch (e) { /* drag fallback */ }
 }
 
 /* ------------------------------------------------------------
@@ -173,7 +192,7 @@ function showScoreboard(on) {
     /* the player must appear on whichever side they picked — the blue list
        used to be built from G.bots alone, so choosing BLUE made you vanish
        from your own scoreboard */
-    const all = G.bots.concat([G.player]);
+    const all = G.bots.concat(remoteActors(), [G.player]);
     const red = all.filter(a => a.team === 'red');
     const blue = all.filter(a => a.team === 'blue');
     $('scoreboard').innerHTML = '<div class="sb-title">' + (G.mode === 'flag' ? 'FLAG RAID' : 'TEAM DEATHMATCH') + ' · ' + DIFF[G.diff].label + '</div>' +
