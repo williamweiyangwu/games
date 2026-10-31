@@ -214,7 +214,7 @@ function netRenderLobby() {
       '<div class="nr-code">' + escHtml(r.code) + '</div>' +
       '<div class="nr-main"><div class="nr-host">' + escHtml(r.hostName || 'HOST') + '</div>' +
       '<div class="nr-meta">' + (r.mode === 'flag' ? 'FLAG RAID' : 'DEATHMATCH') + ' · ' + ai + '</div></div>' +
-      '<div class="nr-players">' + (r.n || 1) + '</div>' +
+      '<div class="nr-players" title="operators in this room">' + (r.n || 1) + ' IN</div>' +
       '<div class="nr-go">JOIN →</div>' +
       '</div>';
   }).join('');
