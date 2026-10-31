@@ -131,6 +131,9 @@ function reviveDummy(b) {
 }
 
 function quitToMenu() {
+  /* leaving a match means leaving the room: the others must see us go, and
+     the host must tear the room down so it stops showing in the lobby */
+  if (NET.room) netLeave();
   G.state = 'menu';
   document.exitPointerLock && document.exitPointerLock();
   $('hud').classList.remove('show');
@@ -209,6 +212,7 @@ function update(dt) {
   updateChests(dt);
   updateFlags(dt);
   updateEffects(dt);
+  if (G.netMode) netTick(dt);
   updateHUD(dt);
   if (firing && p.alive) {
     const st = p.weapons[p.cur];
