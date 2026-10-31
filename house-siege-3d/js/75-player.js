@@ -161,9 +161,11 @@ function updateStamina(p, dt, sprinting, breathing) {
         banner('<span class="hl">OUT OF STAMINA</span> — HEALTH DRAINING', 1.8);
       }
     }
-  } else if (p.exhausted && p.stamina >= STAM.recoverAt) {
-    p.exhausted = false;
-  }
+      } else if (p.exhausted && p.stamina >= STAM.recoverAt) {
+        p.exhausted = false;
+        /* Iron Lung: got your breath back instead of bleeding out */
+        if (p.isPlayer) Ach.bump('oxygenSaves');
+      }
 
   if (p.exhausted && p.alive) {
     p.hp -= STAM.exhaustDrain * dt;
