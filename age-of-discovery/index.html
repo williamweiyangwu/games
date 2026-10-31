@@ -1666,35 +1666,50 @@ function buildIsland(def, seed) {
   const ridge2 = { f: 6 + Math.floor(rng() * 4), p: rng() * 6.283 };
   const valley = { f: 2 + Math.floor(rng() * 2), p: rng() * 6.283 };
 
-  const peak = baseR * (0.42 + rng() * 0.38);
-
+  // A low, broad island -- not a peak. These used to be `baseR * (0.42..0.80)`,
+  // i.e. a 12-25 m cone over a 20 m radius: a 45-degree wall from the waterline
+  // that you could not walk up, that a ship could not approach, and whose
+  // "beach" was two metres of shingle. Now it is a mound you can stroll up.
   function radiusAt(theta) {
     let r = 1;
     for (const h of harmonics) r += h.amp * Math.sin(h.freq * theta + h.phase);
     r += elongAmp * Math.cos(2 * (theta - elongAngle));
-    return baseR * Math.max(0.5, r);
+    return baseR * Math.max(0.72, r);   // 0.5 made the coastline too lumpy
   }
 
+  // The hill is sized to the island's OWN narrowest radius. A fixed height over
+  // a radius that varies by a factor of two put a spire on every small island.
+  let minR = Infinity;
+  for (let a = 0; a < Math.PI * 2; a += 0.08) minR = Math.min(minR, radiusAt(a));
+  const peak = Math.max(3.0, Math.min(6.0, minR * 0.30));
+
   function rawHeight(theta, t) {
-    const dome = Math.pow(Math.max(0, 1 - Math.pow(t, 2.2)), 1.25);
+    // flat-topped: the height holds near the middle and falls away slowly, so
+    // the flanks are a slope rather than a cliff
+    const dome = Math.pow(Math.max(0, 1 - Math.pow(t, 2.6)), 1.2);
     const fade = Math.pow(Math.max(0, 1 - t), 0.8);
     const ridges =
       Math.sin(theta * ridge1.f + ridge1.p) * 0.18 +
       Math.sin(theta * ridge2.f + ridge2.p) * 0.09 -
       Math.sin(theta * valley.f + valley.p) * 0.13;
-    return peak * dome * (1 + ridges * fade);
+    return peak * dome * (1 + ridges * fade * 0.6);
   }
 
-  const SHORE_T0 = 0.80, SHORE_T1 = 1.06, SHORE_DEPTH = 1.7;
+  // t = 1 is the base radius. BEACH_T is where the dry sand runs out, SHELF_T
+  // is the water's edge, and beyond that the bottom falls away at 1:6 -- gentle
+  // enough that a ship can stand close in and a swimmer is ashore in a stroke
+  // or two. The old profile dropped 14 m per radius past the shore.
+  const BEACH_T = 0.98, SHELF_T = 1.16, SHELF_DEPTH = 1.2;
 
   function heightAtTheta(theta, t) {
-    if (t <= SHORE_T0) return rawHeight(theta, t);
-    const hEdge = rawHeight(theta, SHORE_T0);
-    if (t <= SHORE_T1) {
-      const k = (t - SHORE_T0) / (SHORE_T1 - SHORE_T0);
-      return hEdge * (1 - k) - k * SHORE_DEPTH;
+    if (t <= BEACH_T) return rawHeight(theta, t);
+    const hEdge = rawHeight(theta, BEACH_T);
+    if (t <= SHELF_T) {
+      const k = (t - BEACH_T) / (SHELF_T - BEACH_T);
+      const s = k * k * (3 - 2 * k);           // smoothstep: no kink at either end
+      return hEdge * (1 - s) - s * SHELF_DEPTH;
     }
-    return -SHORE_DEPTH - (t - SHORE_T1) * 14;
+    return -SHELF_DEPTH - (t - SHELF_T) * 6;
   }
 
   function heightAt(x, z) {
@@ -1704,7 +1719,9 @@ function buildIsland(def, seed) {
     return heightAtTheta(theta, r / R);
   }
 
-  const NA = 88, NR = 17, T_MAX = 1.38;
+  // the mesh has to reach as far out as the shallow shelf, or the water ends in
+  // a visible rim where the geometry stops and the analytic bed keeps going
+  const NA = 88, NR = 24, T_MAX = 2.05;
   const positions = [];
   positions.push(0, heightAtTheta(0, 0), 0);
 
@@ -1753,18 +1770,24 @@ function buildIsland(def, seed) {
     vc.fromBufferAttribute(pos, i + 2);
     e1.subVectors(vb, va);
     e2.subVectors(vc, va);
-    nrm.cross(e1, e2).normalize();
+    // crossVectors, not cross: Vector3.cross(v) takes ONE argument and ignores
+    // the rest, so `nrm.cross(e1, e2)` left nrm at (0,0,0) and every single
+    // triangle on every island counted as "steep" -- the whole world was rock.
+    nrm.crossVectors(e1, e2).normalize();
 
     const h = (va.y + vb.y + vc.y) / 3;
     const cx = (va.x + vb.x + vc.x) / 3;
     const cz = (va.z + vb.z + vc.z) / 3;
-    const steep = Math.abs(nrm.y) < 0.55;
+    // the sand band is wider now that there is a beach to colour, and "steep"
+    // means steeper than 44 degrees -- at 0.55 nothing on these low islands
+    // qualified, so every slope came out grass
+    const steep = Math.abs(nrm.y) < 0.72;
 
-    if (h < 0.2)              col.copy(TERRAIN_COLORS.wetSand);
-    else if (h < 1.1)         col.copy(TERRAIN_COLORS.sand);
+    if (h < 0.25)             col.copy(TERRAIN_COLORS.wetSand);
+    else if (h < 0.55)        col.copy(TERRAIN_COLORS.sand);
     else if (steep)           col.copy(TERRAIN_COLORS.rock);
     else if (h > peak * 0.80) col.copy(TERRAIN_COLORS.rockDk);
-    else if (h > peak * 0.42) col.copy(TERRAIN_COLORS.grassDk);
+    else if (h > peak * 0.45) col.copy(TERRAIN_COLORS.grassDk);
     else                      col.copy(TERRAIN_COLORS.grass);
 
     const v = 0.93 + (Math.abs(Math.sin(cx * 12.9898 + cz * 78.233) * 43758.5453) % 1) * 0.14;
@@ -2089,6 +2112,9 @@ function buildPorts() {
       const pt = pointAt(a, t);
       if (pt.y < 0.9 || pt.y > island.peak * 0.7) continue;
       group.add(makePalm(pt.x, pt.y - 0.15, pt.z, 0.75 + island.rng() * 0.55, island.rng() * 6));
+      // a palm trunk is a tree, not a suggestion: every one of these used to be
+      // walk-through, on every island but Lisbon
+      addColliderBox(def.x + pt.x, def.z + pt.z, 0.55, 0.55, pt.y + 2.2);
     }
 
     if (isHome) {
@@ -2914,8 +2940,20 @@ function buildTradePost(group, island, pointAt, def) {
   const deckCz = start + deckLen / 2;
   add(deck, jx * (start + deckLen / 2), deckY, jz * (start + deckLen / 2), -ja);
   deck.castShadow = true; deck.receiveShadow = true;
-  addPlatform(OX + jx * (start + deckLen / 2), OZ + jz * (start + deckLen / 2), deckLen, 3.0, deckY + 0.14);
-  addColliderBox(OX + jx * (start + deckLen / 2), OZ + jz * (start + deckLen / 2), deckLen, 3.0, deckY + 0.14, -ja);
+  // Neither addPlatform nor addColliderBox can rotate anything -- both take the
+  // axis-aligned footprint -- so one long jetty box became a 13x3 slab of
+  // invisible floor lying across the beach, pointing the wrong way. Short
+  // squares along her length keep the walkway where the timbers are.
+  for (let i = 0; i < 5; i++) {
+    const t = start + 1.3 + i * ((deckLen - 2.6) / 4);
+    addPlatform(OX + jx * t, OZ + jz * t, 3.2, 3.2, deckY + 0.14);
+    addColliderBox(OX + jx * t, OZ + jz * t, 3.0, 3.2, deckY + 0.14, -ja);
+  }
+  // where the jetty ends -- goAshore moors your ship just off it
+  island.jetty = {
+    angle: ja, start, deckLen, deckY,
+    headX: jx * (start + deckLen), headZ: jz * (start + deckLen),
+  };
   for (let i = 0; i <= 3; i++) {
     const t = start + 1.5 + i * ((deckLen - 3) / 3);
     for (const side of [-1, 1]) {
@@ -2985,18 +3023,27 @@ function buildTradePost(group, island, pointAt, def) {
   }
 
   // ---- a palisade of sharpened stakes round the village ----
-  const stakeCount = 26;
+  // With 26 stakes on a 2.4 m chord there was a 3.5 m gap between every pair:
+  // the fence was scenery you strolled through. Each stake now carries a
+  // collider as wide as the gap it guards, and a gate is left where the path
+  // from the jetty runs.
+  const stakeCount = 34;
+  const fenceR = R * 0.82;
+  const chord = (Math.PI * 2 * fenceR) / stakeCount;
   for (let i = 0; i < stakeCount; i++) {
     const pa = a + (i / stakeCount) * Math.PI * 2;
-    const sr = R * 0.82;
-    const sx2 = Math.cos(pa) * sr, sz2 = Math.sin(pa) * sr;
+    const sx2 = Math.cos(pa) * fenceR, sz2 = Math.sin(pa) * fenceR;
     const sy = island.heightAt(sx2, sz2);
     if (sy < 0.4) continue;                       // no stakes in the lagoon
+    // the gate: leave the stretch facing the jetty open
+    const da = Math.abs(((pa - ja + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+    const gate = da < 0.30;
     const stake = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.1, 1.7 + (i % 3) * 0.2, 5), CITY_MAT.timber);
     add(stake, sx2, sy + 0.85, sz2, pa);
     stake.castShadow = true;
+    if (gate) continue;
     // sharpened stakes are sharp: they stop you
-    addColliderBox(OX + sx2, OZ + sz2, 0.3, 0.3, sy + 1.95);
+    addColliderBox(OX + sx2, OZ + sz2, chord * 1.15, 0.4, sy + 1.95, pa + Math.PI / 2);
   }
 
   // ---- totems: carved and painted, the village's pride ----
@@ -3034,6 +3081,38 @@ function buildTradePost(group, island, pointAt, def) {
   const other = makePerson(0x6a5a3a, null);
   const op = plaza[1] || tp;
   add(other, op.x + Math.cos(a - 1.2) * 2.0, op.y - 0.02, op.z + Math.sin(a - 1.2) * 2.0, -a + 1.2 + Math.PI);
+
+  // ---- the village people ----
+  // There used to be two figures here who were scenery: no names, nothing to
+  // say. Every island now has folk you can walk up to and talk with, exactly
+  // like the citizens of Lisbon -- same dice, same riddles, same patience.
+  const FOLK = [
+    { name: 'Anauá',  job: 'fisherman',     portrait: '\u{1F3A3}', talk: 'the tide, and the shoals beyond the reef' },
+    { name: 'Kuaray', job: 'canoe-builder', portrait: '\u{1F6F6}', talk: 'cedar, and which tree will float' },
+    { name: 'Pirá',   job: 'potter',        portrait: '\u{1F3FA}', talk: 'clay from the river mouth' },
+    { name: 'Yara',   job: 'weaver',        portrait: '\u{1F9F5}', talk: 'fibres, and the dyes of this shore' },
+    { name: 'Ité',    job: 'elder',         portrait: '\u{1F9D3}', talk: 'the ships that came before yours' },
+    { name: 'Aruan',  job: 'hunter',        portrait: '\u{1F3F9}', talk: 'the forest paths inland' },
+  ];
+  const folkStart = Math.floor(island.rng() * FOLK.length);
+  for (let i = 0; i < 3; i++) {
+    const id = FOLK[(folkStart + i) % FOLK.length];
+    const fa = a + 0.5 + i * 1.7;
+    const fr = R * (0.50 + (i % 2) * 0.10);
+    const vx = Math.cos(fa) * fr, vz = Math.sin(fa) * fr;
+    const vy = island.heightAt(vx, vz);
+    const villager = makePerson([0x8a5a2a, 0x6a5a3a, 0x7a6a4a][i % 3], i % 2 ? 0x2a2a1a : null);
+    add(villager, vx, vy, vz, -fa);
+    // `static` keeps the Lisbon walker loop off them; everything else -- the
+    // prompt, the dialog, the collision -- is the citizen system unchanged
+    walkers.push({
+      obj: villager, ox: OX, oz: OZ, static: true, port: def.name,
+      phase: 0, speed: 0, path: null, seg: 0,
+      name: id.name, job: id.job, portrait: id.portrait, talk: id.talk,
+      skill: 0.34 + island.rng() * 0.28, met: false, talkT: 0,
+      riddle: null, riddleRight: false,
+    });
+  }
 
   addInteractable(OX + person.position.x, OZ + person.position.z, tp.y, 3.6,
     "Trade with the natives", () => openDialog('trade_post', { port: { def, group } }));
@@ -3560,7 +3639,9 @@ function talkToCitizen(w) {
   // capture the greeting BEFORE marking them met, or "Well met" never shows
   talkerGreet = w.met
     ? `"Back again? ${w.name} knows your face now."`
-    : `${w.name} the ${w.job} slows their step. "Well met, citizen. They call me ${w.name}."`;
+    : w.port
+      ? `${w.name} the ${w.job} looks up from their work. "You came off that ship. I am ${w.name}."`
+      : `${w.name} the ${w.job} slows their step. "Well met, citizen. They call me ${w.name}."`;
   if (!w.met) { w.met = true; Game.stats.talked++; }
   openDialog('citizen');
 }
@@ -3940,9 +4021,13 @@ const DLG = {
     }
     const greet = talkerGreet ||
       `${w.name} the ${w.job} slows their step. "Well met, citizen. They call me ${w.name}."`;
+    // a villager on a far island is not a citizen of Lisbon
+    const home = w.port || 'Lisbon';
     return {
-      who: w.name, role: `A ${w.job} of Lisbon`, portrait: w.portrait,
-      text: `${greet} The street roars around you both.`,
+      who: w.name, role: `A ${w.job} of ${home}`, portrait: w.portrait,
+      text: w.port
+        ? `${greet} The village goes about its business around you both.`
+        : `${greet} The street roars around you both.`,
       options: [
         { label: `Talk with ${w.name}`, hint: "Rumor, and sometimes cheer", stay: true,
           action: () => {
@@ -4476,10 +4561,11 @@ function currentTarget() {
     return null;
   }
 
-  // On foot: boarding your ship
+  // On foot: boarding your ship. Twelve metres, not nine: she lies moored a
+  // few paces off the sand now, and on a shallow shore that can be ten.
   if (Game.ship && dockedAt) {
     const d = Math.hypot(playerShip.position.x - Player.x, playerShip.position.z - Player.z);
-    if (d < 9) return { label: 'Board your ship', use: boardShip };
+    if (d < 12) return { label: 'Board your ship', use: boardShip };
   }
 
   // On foot: the nearest interactable — or a citizen of Lisbon within
@@ -4542,13 +4628,88 @@ function goAshore(port) {
       Game.ship.heading = Ship.heading;
     }
   } else {
-    const dx = playerShip.position.x - port.position.x;
-    const dz = playerShip.position.z - port.position.z;
-    const d = Math.hypot(dx, dz) || 1;
-    const coast = port.radiusAt(Math.atan2(dz, dx)) + 5;
-    Player.x = port.position.x + (dx / d) * coast;
-    Player.z = port.position.z + (dz / d) * coast;
-    Player.lookYaw = Math.atan2(dx / d, dz / d);
+    // Where does the shore actually run? radiusAt() is the BASE radius, and the
+    // waterline sits inside it. The old "+5 m" dropped you four metres down the
+    // shelf, so every landfall began with a swim to the sand.
+    // Land on the side you sailed in from, not on a fixed compass bearing:
+    // mooring her by the jetty instead left her on the far side of the island,
+    // where the course home ran straight through the sand.
+    const baseAng = Math.atan2(playerShip.position.z - port.position.z,
+                               playerShip.position.x - port.position.x);
+    const hullR = playerShip ? 3.2 * (SHIP_CLASSES[Game.ship.cls].scale || 1) : 4;
+
+    // Try the approach bearing first, then either side of it. A jetty, a palm
+    // or a hut's deck within the hull's beam means she cannot be left there --
+    // the jetty once landed on top of her and she could never move again.
+    let pick = null;
+    for (const off of [0, 0.3, -0.3, 0.6, -0.6, 0.95, -0.95]) {
+      const ang = baseAng + off;
+      const ox = Math.cos(ang), oz = Math.sin(ang);
+      const R = port.radiusAt(ang);
+      const at = (t) => ({ x: port.position.x + ox * R * t, z: port.position.z + oz * R * t });
+
+      // dry sand: walk in from the waterline until the ground clears your ankles
+      let t = 1.12;
+      for (; t > 0.45; t -= 0.02) { const q = at(t); if (port.heightAt(q.x, q.z) >= 0.55) break; }
+      // A hut's deck or the jetty can sit over the sand, and you should not be
+      // set down on somebody's floorboards. Look either way along the shore for
+      // the nearest spot that is dry AND bare.
+      let found = null;
+      for (let k = 0; k <= 26 && !found; k++) {
+        for (const dir of [1, -1]) {
+          const tt = t + dir * k * 0.012;
+          if (tt < 0.45 || tt > 1.14) continue;
+          const q = at(tt);
+          const g = port.heightAt(q.x, q.z);
+          if (g < 0.35) continue;                          // that is the sea
+          if (supportY(q.x, q.z, 20) - g > 0.35) continue; // that is a deck
+          found = { t: tt };
+          break;
+        }
+      }
+      if (found) t = found.t;
+
+      // the berth: seven metres off the sand, in water deep enough to float her
+      let mt = t + 7 / R;
+      for (; mt < t + 30 / R; mt += 0.5 / R) { const q = at(mt); if (port.heightAt(q.x, q.z) <= -1.9) break; }
+      const berth = at(mt);
+
+      let blocked = false;
+      for (const c of COLLIDERS) {
+        if (c.top <= -1.9) continue;
+        const nx = Math.max(c.x0, Math.min(berth.x, c.x1));
+        const nz = Math.max(c.z0, Math.min(berth.z, c.z1));
+        if (Math.hypot(berth.x - nx, berth.z - nz) < hullR + 1.2) { blocked = true; break; }
+      }
+      pick = { ox, oz, R, at, t, berth, blocked };
+      if (!blocked) break;
+    }
+
+    const { ox, oz, at, t, berth } = pick;
+    const land = at(t);
+    Player.x = land.x;
+    Player.z = land.z;
+    Player.lookYaw = Math.atan2(ox, oz);        // facing inland, toward the village
+
+    // Moor her alongside, not out in the roads. She used to stay wherever she
+    // had grounded -- often fifty metres out -- so getting back aboard meant
+    // swimming. Seven metres off the sand is a step through the shallows; on a
+    // big island a fixed FRACTION of the radius would be thirty metres, so the
+    // berth is measured in metres and only pushed out if the water is thin.
+    if (playerShip) {
+      playerShip.position.x = berth.x;
+      playerShip.position.z = berth.z;
+      playerShip.position.y = waveHeightAt(berth.x, berth.z, elapsed);
+      // Bow to seaward, ready to sail. Bow-on to the sand and her grounding
+      // probe (6 m off the bow) always found the beach, so she was aground the
+      // moment you stepped off and could never turn away again.
+      Ship.heading = Math.atan2(ox, oz);
+      SHIP_PHYS.vf = 0; SHIP_PHYS.vl = 0; SHIP_PHYS.yawRate = 0;
+      Ship.speed = 0;
+      Game.ship.x = berth.x;
+      Game.ship.z = berth.z;
+      Game.ship.heading = Ship.heading;
+    }
   }
   Player.vx = Player.vy = Player.vz = 0;
   // the boats put you in the shallows, not on the seabed: starting at the
@@ -4910,11 +5071,15 @@ function updateShipPhysics(dt) {
   let vz = fz * SHIP_PHYS.vf + rz * SHIP_PHYS.vl;
 
   // ---------------- grounding: the keel needs water ----------------
+  // The keel wants 1.5 m under it, not 1.1 -- at -1.1 she could be driven
+  // right up onto an island's beach and left there, which read as "sailing
+  // onto the dock". The old thresholds also assumed a 1:14 shore; the shelf is
+  // 1:6 now, so the same numbers would have put her aground in the shallows.
   const hullR = 3.2 * cls.scale;
   const probe = 6 * cls.scale;
   const bedAhead = groundY(playerShip.position.x + fx * probe, playerShip.position.z + fz * probe);
   const bedHere = groundY(playerShip.position.x, playerShip.position.z);
-  if (bedAhead > -1.3 || bedHere > -1.1) {
+  if (bedAhead > -1.7 || bedHere > -1.5) {
     SHIP_PHYS.grounded = 1;
     if (Math.abs(SHIP_PHYS.vf) > 2.2) {
       showToast('The keel strikes bottom — you are aground!', 2600);
@@ -5693,6 +5858,16 @@ function animate() {
         w.gull.position.y = 15 + Math.sin(u.a * 2.4) * 1.6;
         w.gull.rotation.y = -u.a;
         w.gull.children.forEach(c => { c.rotation.z = Math.sin(elapsed * 6 + w.phase) * 0.5; });
+        continue;
+      }
+      // villagers stand where they live: they have no path to walk
+      if (w.static) {
+        if (w.talkT > 0) {
+          w.talkT -= dt;
+          const px = Player.x - (w.obj.position.x + (w.ox || 0));
+          const pz = Player.z - (w.obj.position.z + (w.oz || 0));
+          w.obj.rotation.y = Math.atan2(px, pz);
+        }
         continue;
       }
       const path = w.path;
