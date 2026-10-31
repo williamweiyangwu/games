@@ -167,6 +167,16 @@
   .codebox { font-size:32px; letter-spacing:12px; font-weight:bold; color:#8fd0ff; text-align:center;
     margin:8px 0 4px; text-shadow:0 0 18px #3b82f688; }
   .nmsg { text-align:center; font-size:11.5px; color:#ffd76a; min-height:17px; margin-top:8px; }
+  .roomlist { display:flex; flex-direction:column; gap:7px; max-height:196px; overflow:auto; padding:2px;
+    background:#060b16; border:2px solid #27456f; border-radius:4px; min-height:56px; }
+  .roomrow { display:flex; justify-content:space-between; align-items:center; gap:10px;
+    background:#0d1728; border:1px solid #223a5c; border-radius:4px; padding:8px 10px; }
+  .roomrow > div { display:flex; flex-direction:column; min-width:0; }
+  .roomrow b { font-size:15px; letter-spacing:3px; color:#8fd0ff; }
+  .roomrow span { font-size:10px; letter-spacing:1px; color:#9fc0e8; white-space:nowrap;
+    overflow:hidden; text-overflow:ellipsis; }
+  .roomrow .roomJoin { font-size:11px; padding:6px 14px; flex:none; }
+  .roomEmpty { text-align:center; font-size:11px; color:#7d90ad; padding:16px 8px; letter-spacing:1px; }
   #garage, #trophies { position:fixed; inset:0; z-index:100; display:none; align-items:center; justify-content:center;
     background:#02040acc; }
   #garage.on, #trophies.on { display:flex; }
@@ -286,12 +296,20 @@
           <button class="dbtn on" data-nai="normal">NORMAL</button>
           <button class="dbtn" data-nai="hard">HARD</button>
         </div></div>
+      <div class="nfield"><label>VISIBILITY</label>
+        <div class="row" id="netVisRow">
+          <button class="dbtn on" data-nvis="public">PUBLIC — LISTED</button>
+          <button class="dbtn" data-nvis="private">PRIVATE — CODE ONLY</button>
+        </div></div>
       <div class="nrow"><button class="nbtn" id="netCreate">CREATE ROOM</button></div>
     </div>
     <div id="tabJoin" style="display:none">
       <div class="nfield"><label>YOUR CALLSIGN</label>
         <input class="ninput" id="netNameJ" maxlength="12" value="PLAYER"></div>
-      <div class="nfield"><label>ROOM CODE</label>
+      <div class="nfield"><label>PUBLIC ROOMS
+          <button class="tab" id="netRefresh" style="margin-left:8px;padding:3px 12px;font-size:10px">REFRESH</button></label>
+        <div class="roomlist" id="roomList"><div class="roomEmpty">Looking for rooms…</div></div></div>
+      <div class="nfield"><label>OR JOIN BY ROOM CODE</label>
         <input class="ninput" id="netCode" maxlength="5" placeholder="ABCDE"></div>
       <div class="nrow"><button class="nbtn" id="netJoin">JOIN ROOM</button></div>
     </div>
@@ -2108,6 +2126,7 @@ function hud(){
    ONLINE — peer-to-peer, host-authoritative (PeerJS / WebRTC)
 =========================================================== */
 const NKEY = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const NET_HUB_ID = 'tankwar-directory-v1';   // well-known peer that lists public rooms
 const netEl = el('online');
 const netBadge = el('netbadge');
 const netBulletMeshes = new Map();
@@ -2120,6 +2139,9 @@ const NET = {
   selMap:'classic',
   events:[], nextEv:1, evSeen:0, bulletId:1,
   watchdog:null, connOpen:false,
+  visibility:'public',
+  dirRooms:{}, dirBusy:false, dirError:'',
+  hubPeer:null, hubConns:{}, hubConn:null, hubRooms:{}, hubPending:null, hubClientPeer:null,
 };
 let lastShotSfx=0;
 function escapeHtml(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -2140,6 +2162,129 @@ function netCancelPeer(){
   netClearWatchdog();
   try{ if(NET.peer) NET.peer.destroy(); }catch(e){}
   NET.peer=null; NET.hostConn=null; NET.conns={}; NET.inputs={}; NET.connOpen=false;
+}
+/* ---- server-free room directory ---------------------------------------
+   A well-known "directory" peer keeps the list of public rooms. Public
+   hosts connect to it to register; browsers connect to it to list. If no
+   directory is reachable when browsing, this browser claims the id and
+   serves an (initially empty) list. Best effort — no backend required. */
+function netSend(conn,msg){ try{ if(conn && conn.open) conn.send(msg); }catch(e){} }
+function netSelf(){ return NET.roster.find(m=>m.id===NET.localId) || null; }
+function netHubInfo(){
+  const self=netSelf();
+  return { code:NET.code, host:self?self.name:NET.name, players:NET.roster.length,
+           max:10, mode:NET.selMode, map:NET.selMap };
+}
+function netHubRegister(){
+  if(NET.role!=='host' || !NET.code || NET.visibility!=='public' || NET.state!=='lobby') return;
+  netHubConnect(conn=>{ if(conn) netSend(conn,{type:'register', room:netHubInfo()}); });
+}
+function netHubUnregister(){
+  if(NET.code && NET.hubConn) netSend(NET.hubConn,{type:'unregister', code:NET.code});
+}
+function netHubClose(){
+  netHubUnregister();
+  if(NET.hubClientPeer){ try{ NET.hubClientPeer.destroy(); }catch(e){} }
+  NET.hubClientPeer=null; NET.hubConn=null; NET.hubPending=null;
+}
+function netHubConnect(cb){
+  const HubPeer = window.Peer;
+  if(!HubPeer){ if(cb) cb(null); return; }
+  if(NET.hubConn && NET.hubConn.open){ if(cb) cb(NET.hubConn); return; }
+  if(NET.hubPending){ NET.hubPending.push(cb); return; }
+  NET.hubPending=[cb];
+  if(NET.hubClientPeer){ try{ NET.hubClientPeer.destroy(); }catch(e){} }
+  const p = new HubPeer({ debug:0 });
+  NET.hubClientPeer=p;
+  const flush=conn=>{ const cbs=NET.hubPending||[]; NET.hubPending=null; cbs.forEach(f=>{ try{ f&&f(conn); }catch(e){} }); };
+  p.on('open', ()=>{
+    let conn;
+    try{ conn=p.connect(NET_HUB_ID,{reliable:true}); }catch(e){ flush(null); return; }
+    conn.on('open', ()=>{ NET.hubConn=conn; flush(conn); });
+    conn.on('data', msg=>{ if(msg && msg.type==='rooms') netApplyDir(msg.rooms); });
+    conn.on('close', ()=>{ if(NET.hubConn===conn) NET.hubConn=null; });
+    conn.on('error', ()=>{ if(NET.hubConn===conn) NET.hubConn=null; });
+  });
+  p.on('error', ()=>{ NET.hubConn=null; flush(null); });
+}
+function netApplyDir(rooms){
+  NET.dirRooms={};
+  (rooms||[]).forEach(r=>{ if(r && r.code && r.code!==NET.code) NET.dirRooms[r.code]=r; });
+  NET.dirBusy=false; NET.dirError='';
+  netRenderRoomList();
+}
+function netDirArray(){ return Object.keys(NET.hubRooms).map(k=>NET.hubRooms[k]); }
+function netHubHandle(conn){
+  conn.on('data', msg=>{
+    if(!msg) return;
+    if(msg.type==='register' && msg.room && msg.room.code){
+      NET.hubRooms[msg.room.code]=msg.room; conn.__code=msg.room.code; netHubBroadcast();
+    } else if(msg.type==='unregister'){
+      delete NET.hubRooms[msg.code||conn.__code]; netHubBroadcast();
+    } else if(msg.type==='list'){
+      netSend(conn,{type:'rooms', rooms:netDirArray()});
+    }
+  });
+  conn.on('close', ()=>{ if(conn.__code){ delete NET.hubRooms[conn.__code]; netHubBroadcast(); } });
+}
+function netHubBroadcast(){ for(const id in NET.hubConns) netSend(NET.hubConns[id],{type:'rooms', rooms:netDirArray()}); }
+function netBecomeHub(then){
+  if(NET.hubPeer){ if(then) then(); return; }
+  const HubPeer=window.Peer;
+  if(!HubPeer){ if(then) then(); return; }
+  let ok=false;
+  try{ NET.hubPeer=new HubPeer(NET_HUB_ID,{debug:0}); }
+  catch(e){ NET.hubPeer=null; if(then) then(); return; }
+  NET.hubPeer.on('connection', conn=>{
+    const id='h'+Math.random().toString(36).slice(2);
+    NET.hubConns[id]=conn;
+    conn.on('close', ()=>{ delete NET.hubConns[id]; });
+    netHubHandle(conn);
+  });
+  NET.hubPeer.on('open', ()=>{ ok=true; if(then) then(); });
+  NET.hubPeer.on('error', ()=>{ if(!ok){ try{ NET.hubPeer.destroy(); }catch(x){} NET.hubPeer=null; } if(then) then(); });
+}
+function netBrowse(tries){
+  tries = tries|0;
+  if(typeof Peer==='undefined'){ NET.dirBusy=false; NET.dirError='Networking library unavailable'; netRenderRoomList(); return; }
+  NET.dirBusy=true; NET.dirError=''; netRenderRoomList();
+  netHubConnect(conn=>{
+    if(conn){
+      netSend(conn,{type:'list'});
+      setTimeout(()=>{ if(NET.dirBusy){ NET.dirBusy=false; netRenderRoomList(); } },6000);
+    } else if(tries<1){
+      netBecomeHub(()=>netBrowse(tries+1));
+    } else {
+      NET.dirBusy=false; NET.dirError='Room directory unavailable — join by code.'; netRenderRoomList();
+    }
+  });
+  setTimeout(()=>{
+    if(NET.dirBusy && !NET.hubConn){
+      NET.dirBusy=false;
+      NET.dirError='Room directory unavailable — join by code.';
+      netRenderRoomList();
+    }
+  },11000);
+}
+function netRefreshRoomList(){
+  if(NET.hubConn && NET.hubConn.open) netSend(NET.hubConn,{type:'list'});
+  else netBrowse();
+}
+function netRenderRoomList(){
+  const box=el('roomList'); if(!box) return;
+  if(NET.dirBusy){ box.innerHTML='<div class="roomEmpty">Looking for rooms…</div>'; return; }
+  if(NET.dirError){ box.innerHTML='<div class="roomEmpty">'+escapeHtml(NET.dirError)+'</div>'; return; }
+  const codes=Object.keys(NET.dirRooms);
+  if(!codes.length){ box.innerHTML='<div class="roomEmpty">No public rooms right now — create one, or join by code.</div>'; return; }
+  box.innerHTML=codes.map(code=>{
+    const r=NET.dirRooms[code];
+    const n=r.players||1, max=r.max||10, full=n>=max;
+    const meta=[r.host||'HOST', n+'/'+max,
+      String(r.mode||'').toUpperCase()+(r.map?' · '+String(r.map).toUpperCase():'')].join(' · ');
+    return `<div class="roomrow"><div><b>${escapeHtml(code)}</b><span>${escapeHtml(meta)}</span></div>`
+      + `<button class="tab roomJoin" data-code="${escapeHtml(code)}"${full?' disabled':''}>${full?'FULL':'JOIN'}</button></div>`;
+  }).join('');
+  box.querySelectorAll('.roomJoin').forEach(b=>{ b.onclick=()=>{ el('netCode').value=b.dataset.code; netJoin(); }; });
 }
 function r1(v){ return Math.round(v*10)/10; }
 function r2(v){ return Math.round(v*100)/100; }
@@ -2167,6 +2312,7 @@ function showNetTab(t){
   el('tabCreate').style.display = t==='create'?'':'none';
   el('tabJoin').style.display = t==='join'?'':'none';
   document.querySelectorAll('#online .tab[data-tab]').forEach(b=> b.classList.toggle('on', b.dataset.tab===t));
+  if(t==='join' && NET.state==='menu') netBrowse();   // refresh public rooms on open
 }
 function showView(v){
   el('netEntry').style.display = v==='entry'?'':'none';
@@ -2180,6 +2326,7 @@ function netCreate(){
   NET.name=name; try{ localStorage.setItem('tw-name',name); }catch(e){}
   NET.selMode = (document.querySelector('#netModeRow .dbtn.on')||{}).dataset?.nmode || 'skirmish';
   NET.selAi   = (document.querySelector('#netAiRow .dbtn.on')||{}).dataset?.nai || 'normal';
+  NET.visibility = (document.querySelector('#netVisRow .dbtn.on')||{}).dataset?.nvis || 'public';
   NET.role='host'; NET.mode='host'; NET.code=genCode();
   netSetMsg('netMsg','Opening room '+NET.code+'…');
   let peer;
@@ -2405,6 +2552,7 @@ function netRenderSeats(){
   document.querySelectorAll('#hostMapRow .dbtn').forEach(b=> b.classList.toggle('on', b.dataset.map===NET.selMap));
   if(me) document.querySelectorAll('#netKeyRow .dbtn').forEach(b=> b.classList.toggle('on', b.dataset.nkey===me.key));
   el('netPing').textContent = NET.ping? NET.ping+' ms':'— ms';
+  if(NET.role==='host') netHubRegister();   // keep the public-room listing current
 }
 function toggleReady(){
   if(NET.role==='host') return;
@@ -2469,6 +2617,7 @@ function netBeginPlay(mode, roster, localId){
       : 'WASD / ARROWS — move<br>MOUSE — aim &nbsp;|&nbsp; CLICK / SPACE — fire<br>B — shop &nbsp;|&nbsp; 1-6 — quick buy');
   showBadge(true);
   netSetMsg('lobbyMsg','');
+  netHubUnregister();   // a room in progress is no longer joinable
 }
 function netToLobby(){
   NET.state='lobby';
@@ -2485,6 +2634,7 @@ function netToLobbyLocal(){
 }
 function netLeave(){
   if(NET.role==='host') netBroadcast({t:'bye', reason:'Host closed the room'});
+  netHubClose();
   for(const id in NET.conns){ try{ NET.conns[id].close(); }catch(e){} }
   netCancelPeer();
   NET.mode='off'; NET.role=null; NET.state='menu';
@@ -2655,6 +2805,22 @@ el('netStart').onclick = netStart;
 el('copyLink').onclick = copyLink;
 el('netLeave').onclick = ()=>{ netLeave(); netEl.classList.remove('on'); modeEl.classList.remove('off'); };
 el('netCancel').onclick = ()=>{ netLeave(); netEl.classList.remove('on'); modeEl.classList.remove('off'); };
+el('netRefresh').onclick = ()=>{ if(NET.state==='menu') netRefreshRoomList(); };
+document.querySelectorAll('#netVisRow .dbtn').forEach(b=> b.onclick=()=>{
+  el('netVisRow').querySelectorAll('.dbtn').forEach(x=> x.classList.toggle('on', x===b));
+  NET.visibility = b.dataset.nvis==='private' ? 'private' : 'public';
+  if(NET.role==='host' && NET.state==='lobby'){
+    if(NET.visibility==='public') netHubRegister(); else netHubUnregister();
+  }
+});
+/* directory upkeep: public hosts re-publish their room every 7s, and the
+   join tab asks for a fresh list every 8s while it is on screen. */
+setInterval(()=>{
+  if(NET.role==='host' && NET.state==='lobby' && NET.visibility==='public') netHubRegister();
+}, 7000);
+setInterval(()=>{
+  if(NET.state==='menu' && netEl.classList.contains('on') && el('tabJoin').style.display!=='none') netRefreshRoomList();
+}, 8000);
 /* ============================================================
    LOOP
 =========================================================== */
@@ -2680,6 +2846,7 @@ window.__T = { get player(){return player;}, get money(){return money;}, set mon
   netBeginPlay, netRenderSeats, resetGame, readLocalInput, netEvent, fire, netFeed, startGame, aiLevel:()=>aiLevel,
   damage, damageHQ, addMoney, buyFor, applySnap, applyEvent,
   netOpen, netCreate, netJoin, netStart, toggleReady, selectKey, hostSet, netLeave, showNetTab, swapSide, moveToTeam,
+  netBrowse, netRefreshRoomList, netRenderRoomList, netHubRegister, netHubUnregister, netHubClose, netApplyDir,
   setWeather, tickWeather, gust, buildMap, MAPS, WEATHER_KEYS, WEATHER_INFO, weatherSpd, applyWeatherVisual,
   resetTutorial, tutTick, TUT_STEPS, enableTouch, touch, worldGroup, powerups, spawnPowerup, walls,
   get weather(){return weather;}, set weatherV(v){weather=v;}, get mapName(){return mapName;},
