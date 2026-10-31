@@ -55,6 +55,14 @@ function endMatch() {
   $('nameplates').innerHTML = '';
   for (const b of G.bots) b.np = null;
   Snd.tone(win === 'DRAW' ? 400 : 300, win === 'DRAW' ? 400 : 600, 0.5, 0.2, 'triangle');
+
+  /* lifetime record: a match only counts once it actually reaches the end
+     screen, so quitting to the menu mid-game cannot farm wins */
+  Ach.bump('matches');
+  const mine = teamLabel(G.team);
+  if (win === 'DRAW') Ach.bump('draws');
+  else if (win === mine) Ach.bump('wins');
+  else Ach.bump('losses');
 }
 
 
@@ -117,7 +125,7 @@ function updateRoster(dt) {
 function updateNameplates() {
   const w = window.innerWidth, h = window.innerHeight;
   const camPos = camera.position;
-  for (const b of G.bots) {
+  for (const b of G.bots.concat(remoteActors())) {
     if (!b.np) continue;
     if (!b.alive) { b.np.style.display = 'none'; continue; }
     const d = camPos.distanceTo(b.mesh.position);
