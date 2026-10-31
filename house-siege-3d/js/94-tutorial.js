@@ -58,6 +58,7 @@ function completeTask(id) {
     setTimeout(() => {
       banner('<span class="hl">TRAINING COMPLETE</span> — you are ready. Press ESC to return to the menu.', 6);
     }, 400);
+    Ach.mark('tutorialDone');
   }
 }
 
