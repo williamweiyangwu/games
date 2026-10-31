@@ -43,6 +43,8 @@ function boot() {
   G.flags.blue.group.visible = false;
   initInput();
   initMenu();
+  initAchievements();
+  initNet();
   scene.add(camera);
   clock = new THREE.Clock();
   G.clock = clock;
@@ -87,6 +89,11 @@ function staleShellGuard() {
 window.__wh = {
   G, startGame, groundAt, resolveHorizontal, moveActor,
   NODES, findPath, nearestNode, planPath,
+  /* achievements and online, for the test suites */
+  get Ach() { return Ach; },
+  get NET() { return NET; },
+  netConnect, netHost, netJoin, netLeave, netRenderLobby, netTick, netSendState,
+  remoteActors, Ach_wipe() { Ach.wipe(); },
   get camera() { return camera; },
   get scene() { return scene; },
   get renderer() { return renderer; },
