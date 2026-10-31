@@ -9,7 +9,8 @@
    ------------------------------------------------------------ */
 function rayActors(ox, oy, oz, dx, dy, dz, maxD, shooter) {
   let best = null, bestT = maxD, head = false;
-  const list = G.bots;
+  /* bots, then the human players on the wire, then the local player */
+  const list = G.bots.concat(remoteActors());
   for (let i = 0; i < list.length + 1; i++) {
     const a = i < list.length ? list[i] : G.player;
     if (!a || !a.alive || a === shooter) continue;
@@ -37,6 +38,13 @@ function escHtml(s) {
 
 function damage(target, amount, attacker, head, weaponName) {
   if (!target.alive) return;
+  /* A remote human's HP belongs to them, not to us. Send the hit over the
+     wire and let their own client apply it, so two machines can never both
+     decide they killed the same person. */
+  if (target.isRemote) {
+    if (attacker && attacker.isPlayer) netHitRemote(target, amount, head, weaponName);
+    return;
+  }
   target.hp -= amount;
   target.hitFlash = 0.12;
   target.lastHurtT = G.t;
@@ -70,6 +78,23 @@ function killActor(victim, attacker, head, weaponName) {
 
   if (attacker && attacker !== victim) {
     attacker.kills++;
+    /* lifetime achievement bookkeeping — only the human's kills count, and
+       the weapon is read from what they were actually holding (a grenade is
+       credited by name because the thrower may have swapped slots since) */
+    if (attacker.isPlayer) {
+      /* the weapon that did the damage wins; only fall back to whatever is
+         in hand when the name is unrecognised (a test stub, say) */
+      const held = attacker.weapons[attacker.cur];
+      const wid = weaponIdFromName(weaponName) || (held ? held.id : '');
+      Ach.onPlayerKill({
+        head: !!head,
+        weaponId: wid,
+        zoom: (wid === 'sniper' && VM.ads > 0.75) ? currentZoom() : 0,
+        dist: Math.hypot(victim.pos.x - attacker.pos.x,
+                        victim.pos.y - attacker.pos.y,
+                        victim.pos.z - attacker.pos.z)
+      });
+    }
     /* only a real match scores: flag mode counts captures, training counts
        nothing (its dummies respawn forever, so they used to inflate the
        scoreboard to double digits during a lesson) */
@@ -88,6 +113,8 @@ function killActor(victim, attacker, head, weaponName) {
 
   if (victim.dummy && attacker && attacker.isPlayer && G.tutorial.active) G.tutorial.kills++;
   if (victim.isPlayer) {
+    Ach.bump('deaths');
+    Ach.resetStreak();
     /* remember the opponent so the bystander camera can watch them */
     G.killer = (attacker && attacker !== victim) ? attacker : null;
     G.killerWeapon = weaponName || '';
