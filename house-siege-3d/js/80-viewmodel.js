@@ -7,7 +7,42 @@
 /* ------------------------------------------------------------
    VIEW MODEL (first person weapon)
    ------------------------------------------------------------ */
-const VM = { group: null, models: {}, recoil: 0, recoilV: 0, kick: 0, cur: null, flash: null, ads: 0, adsTarget: 0, adsOn: false, sway: new THREE.Vector2(), holdBreath: false, breathK: 0 };
+const VM = { group: null, models: {}, recoil: 0, recoilV: 0, kick: 0, cur: null, flash: null, ads: 0, adsTarget: 0, adsOn: false, sway: new THREE.Vector2(), holdBreath: false, breathK: 0, zoomIdx: 1 };
+
+/* ------------------------------------------------------------
+   SCOPE MAGNIFICATION
+   ------------------------------------------------------------
+   The AWP used to be locked to a single 3.7x lens. It now has three
+   settings you can step through while scoped: 2x for close work, 4x for
+   general use and 8x for the length of the maze.
+
+   The FOV is derived from the magnification rather than hard-coded, so the
+   numbers on the lens are honest: a "4x" setting really does magnify four
+   times relative to the 78-degree hip FOV. */
+const SCOPE_ZOOMS = [2, 4, 8];
+const HIP_FOV = 78;
+
+function fovForZoom(z) {
+  /* half-angle tangent shrinks by exactly the magnification factor */
+  const half = (HIP_FOV / 2) * Math.PI / 180;
+  return 2 * Math.atan(Math.tan(half) / z) * 180 / Math.PI;
+}
+
+/* Step the AWP through its magnification ring. dir is +1 / -1; it wraps, so
+   a player holding the key or flicking the wheel keeps cycling. */
+function cycleZoom(dir) {
+  const p = G.player;
+  if (!p) return false;
+  const st = p.weapons[p.cur];
+  const w = st ? defOf(st.id) : null;
+  if (!w || !w.scope) return false;
+  const n = SCOPE_ZOOMS.length;
+  VM.zoomIdx = ((VM.zoomIdx + (dir || 1)) % n + n) % n;
+  Snd.tone(660, 760, 0.035, 0.06, 'square');
+  return true;
+}
+
+function currentZoom() { return SCOPE_ZOOMS[VM.zoomIdx] || SCOPE_ZOOMS[1]; }
 
 const GM = {};
 function gunMats() {
@@ -410,7 +445,9 @@ function updateViewModel(dt, speed) {
   /* tutorial: count each time the lens actually comes up */
   if (scoped && !VM.wasScoped && G.tutorial.active) G.tutorial.scopes++;
   VM.wasScoped = scoped;
-  const targetFov = 78 - (78 - (ADS_FOV[st.id] || 55)) * VM.ads;
+  const targetFov = w.scope
+    ? lerp(HIP_FOV, fovForZoom(currentZoom()), VM.ads)
+    : 78 - (78 - (ADS_FOV[st.id] || 55)) * VM.ads;
   if (Math.abs(camera.fov - targetFov) > 0.15) {
     camera.fov = lerp(camera.fov, targetFov, Math.min(1, dt * 14));
     camera.updateProjectionMatrix();
@@ -443,6 +480,22 @@ function updateViewModel(dt, speed) {
         if (txt && txt.textContent !== label) txt.textContent = label;
         const fill = $('scbFill');
         if (fill) fill.style.width = clamp(p.stamina / STAM.max * 100, 0, 100).toFixed(1) + '%';
+      }
+
+      /* magnification ring readout — the current setting and the one a
+         further turn of the wheel would give you */
+      const zEl = $('scZoom');
+      if (zEl) {
+        const z = currentZoom();
+        const txt = z.toFixed(0) + '×';
+        if (zEl.textContent !== txt) zEl.textContent = txt;
+        zEl.dataset.zoom = String(z);
+      }
+      const zHint = $('scZoomHint');
+      if (zHint) {
+        const nxt = SCOPE_ZOOMS[(VM.zoomIdx + 1) % SCOPE_ZOOMS.length];
+        const label = 'Z / WHEEL → ' + nxt.toFixed(0) + '×';
+        if (zHint.textContent !== label) zHint.textContent = label;
       }
     } else {
       VM.scopeT = 0;
