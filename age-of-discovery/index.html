@@ -4023,8 +4023,9 @@ const DLG = {
       `${w.name} the ${w.job} slows their step. "Well met, citizen. They call me ${w.name}."`;
     // a villager on a far island is not a citizen of Lisbon
     const home = w.port || 'Lisbon';
+    const article = /^[aeiou]/i.test(w.job) ? 'An' : 'A';   // "An elder", not "A elder"
     return {
-      who: w.name, role: `A ${w.job} of ${home}`, portrait: w.portrait,
+      who: w.name, role: `${article} ${w.job} of ${home}`, portrait: w.portrait,
       text: w.port
         ? `${greet} The village goes about its business around you both.`
         : `${greet} The street roars around you both.`,
@@ -4561,11 +4562,13 @@ function currentTarget() {
     return null;
   }
 
-  // On foot: boarding your ship. Twelve metres, not nine: she lies moored a
-  // few paces off the sand now, and on a shallow shore that can be ten.
+  // On foot: boarding your ship. Fifteen metres, not nine. She lies moored a
+  // few paces off the sand now, but on a gently shelving shore the water only
+  // reaches her draft ten or eleven metres out, and measuring from where you
+  // actually stand that left a wade and a swim between you and your own deck.
   if (Game.ship && dockedAt) {
     const d = Math.hypot(playerShip.position.x - Player.x, playerShip.position.z - Player.z);
-    if (d < 12) return { label: 'Board your ship', use: boardShip };
+    if (d < 15) return { label: 'Board your ship', use: boardShip };
   }
 
   // On foot: the nearest interactable — or a citizen of Lisbon within
