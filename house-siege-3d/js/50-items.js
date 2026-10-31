@@ -382,7 +382,7 @@ function explodeGrenade(pos, owner) {
   }
 
   /* damage falls off with distance; a wall between you and the blast saves you */
-  for (const a of allActors()) {
+  for (const a of allActors().concat(remoteActors())) {
     if (!a || !a.alive) continue;
     if (owner && a !== owner && a.team === owner.team) continue;
     const dx = a.pos.x - pos.x, dy = (a.pos.y + 0.9) - pos.y, dz = a.pos.z - pos.z;
