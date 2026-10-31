@@ -10,6 +10,9 @@
 const G = {
   scene: null, camera: null, renderer: null, clock: null,
   mode: 'tdm', diff: 'normal', team: 'red', state: 'menu',
+  /* online: netMode turns on remote-player sync, netAi decides whether this
+     machine also simulates a bot squad */
+  netMode: false, netAi: false,
   colliders: [], ramps: [], bots: [], chests: [], flags: null,
   player: null, tracers: [], particles: [], projectiles: [], blasts: [],
   shake: 0, aimLine: null, aimPts: null,
