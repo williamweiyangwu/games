@@ -104,6 +104,24 @@ const ITEMS = {
 };
 const defOf = id => WEAPONS[id] || ITEMS[id] || null;
 
+/* Kill events carry a *display* name, and the call sites are inconsistent
+   about it: firing passes a stripped name ("SNIPER", "PISTOL") while melee
+   and grenades pass the full one ("COMBAT KNIFE", "GRENADE"). Achievements
+   need the stable id, so resolve both spellings instead of guessing from
+   whatever the killer happens to be holding at that instant. */
+function weaponIdFromName(name) {
+  if (!name) return '';
+  const n = String(name).toUpperCase().trim();
+  if (!n) return '';
+  if (n.indexOf('GRENADE') >= 0) return 'grenade';
+  for (const id in WEAPONS) {
+    const full = WEAPONS[id].name.toUpperCase();
+    const short = full.replace(/^(M9|MP5|AK-47|SPAS-12|AWP)\s*/, '');
+    if (n === full || n === short) return id;
+  }
+  return '';
+}
+
 const CHEST_POOL = ['smg','rifle','shotgun','sniper','crossbow'];
 /* weighted: aid and grenades show up most often */
 const ITEM_POOL  = ['aid','aid','aid','grenade','grenade','ammo','stim'];
