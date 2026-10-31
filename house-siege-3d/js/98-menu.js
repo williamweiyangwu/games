@@ -47,8 +47,9 @@ const HT_PAGES = [
       <tr><td><kbd>MOUSE</kbd></td><td>Look / aim</td></tr>
       <tr><td><kbd>LEFT CLICK</kbd></td><td>Fire · use an item · <b>hold</b> to draw the crossbow or aim a grenade</td></tr>
       <tr><td><kbd>RIGHT CLICK</kbd></td><td>Open a crate when standing on one</td></tr>
-      <tr><td><kbd>E</kbd></td><td>Aim down sights — tighter spread, slight zoom, slower turn. The <b>AWP</b> gets a full scope: mil-dot reticle, 3.7× zoom, very slow turn</td></tr>
+      <tr><td><kbd>E</kbd></td><td>Aim down sights — tighter spread, slight zoom, slower turn. The <b>AWP</b> gets a full scope: mil-dot reticle, selectable <b>2× / 4× / 8×</b> magnification, very slow turn</td></tr>
       <tr><td><kbd>Q</kbd></td><td><b>Hold your breath</b> while scoped — costs stamina, steadies the wobble</td></tr>
+      <tr><td><kbd>Z</kbd></td><td>Cycle the AWP magnification — <b>2× / 4× / 8×</b>. While scoped the mouse wheel does the same thing</td></tr>
       <tr><td><kbd>R</kbd></td><td>Reload</td></tr>
       <tr><td><kbd>SHIFT</kbd></td><td>Sprint (forward) — <b>drains stamina</b></td></tr>
       <tr><td><kbd>SPACE</kbd></td><td>Jump</td></tr>
@@ -70,7 +71,7 @@ const HT_PAGES = [
       <tr><td>MP5 SMG</td><td>17</td><td>30</td><td>Fast full-auto, great indoors</td></tr>
       <tr><td>AK-47 Rifle</td><td>31</td><td>30</td><td>Best all-rounder</td></tr>
       <tr><td>SPAS-12</td><td>12×8</td><td>6</td><td>Up to 96 damage when every pellet lands — drops an Easy bot outright, but not a Normal bot or a player</td></tr>
-      <tr><td>AWP Sniper</td><td>115</td><td>5</td><td>One body shot drops an Easy, Normal or Hard bot; Legend (125 HP) survives one. Punishing reload. <b>E for the scope</b> — mil-dot reticle, 3.7× zoom. <b>Hold Q</b> to steady the wobble (costs stamina)</td></tr>
+      <tr><td>AWP Sniper</td><td>115</td><td>5</td><td>One body shot drops an Easy, Normal or Hard bot; Legend (125 HP) survives one. Punishing reload. <b>E for the scope</b> — mil-dot reticle, <b>2× / 4× / 8×</b> magnification, finer aim the further you zoom. <b>Hold Q</b> to steady the wobble (costs stamina)</td></tr>
       <tr><td>Crossbow</td><td>105</td><td>3</td><td><b>2 s draw</b> per bolt, only 30 m of range — a duelling weapon</td></tr>
     </table>
     <h4>ITEMS — the teal crates</h4>
@@ -139,6 +140,33 @@ const HT_PAGES = [
       <li>On Legend, never cross an open doorway without an escape route.</li>
       <li>Grab a rifle from a crate in the first 20 seconds. The pistol will not win a 1v1 at range.</li>
     </ul>`
+  },
+  {
+    t: 'ONLINE & PROGRESS',
+    h: `<h3>Online rooms</h3>
+    <p><b>PLAY ONLINE</b> on the main menu opens the room browser. Rooms are relayed through a public MQTT
+    broker over WebSockets — there is no game server, and nothing to sign up for.</p>
+    <ul>
+      <li><b>Hosting</b> — pick a visibility, a mode, whether AI squads join, and how hard they are. You get a
+      four-character <b>invite code</b> the moment the room opens.</li>
+      <li><b>Public</b> rooms appear in the room list for everyone connected, and can also be joined by code.</li>
+      <li><b>Private</b> rooms never appear in the list. The invite code is the only way in.</li>
+      <li><b>AI squads</b> — with AI on, your machine also simulates a bot squad that fights you and the other
+      bots. With AI off the match is humans only. The host decides, and the setting reaches everyone in the room.</li>
+      <li>Leaving, or the host closing the room, returns everyone to the menu.</li>
+    </ul>
+    <h4>What to expect from the netcode</h4>
+    <p>Each player owns their own body: your position and health are yours, and a hit you land is sent to the
+    person you hit. The host owns the scoreboard and the clock, so two machines can never disagree about the
+    score. Other players are drawn by interpolating the last position they sent, which keeps them smooth even
+    when a public broker is slow — a round trip of 100–700 ms is normal, so lead your shots at range.</p>
+    <h4>Achievements</h4>
+    <p>Twenty-two badges, from <b>First Blood</b> to <b>Full House</b>. Everything is saved on this device the
+    moment you earn it, so closing the browser or shutting the machine down does not lose progress. The
+    <b>ACHIEVEMENTS</b> screen shows lifetime kills, headshots, wins, captures, best streak and longest kill,
+    plus how far you are from each locked badge.</p>
+    <p>Kills are attributed to the weapon that actually did the damage, so a knife kill counts toward
+    <b>Close Quarters</b> and a grenade toward <b>Demolition</b>. <b>Sharpshooter</b> needs the AWP at 8×.</p>`
   }
 ];
 let htPage = 0;
@@ -201,6 +229,11 @@ function initMenu() {
     htPage = 0; renderHowTo(); $('howto').classList.add('show');
   });
   $('htClose').addEventListener('click', () => $('howto').classList.remove('show'));
+  $('btnAch').addEventListener('click', () => {
+    Ach.renderPanel();
+    $('achievements').classList.add('show');
+  });
+  $('btnAchClose').addEventListener('click', () => $('achievements').classList.remove('show'));
   $('htPrev').addEventListener('click', () => { if (htPage > 0) { htPage--; renderHowTo(); } });
   $('htNext').addEventListener('click', () => {
     if (htPage < HT_PAGES.length - 1) { htPage++; renderHowTo(); }
