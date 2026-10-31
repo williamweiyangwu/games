@@ -196,6 +196,10 @@ function takeChest(c, a) {
   if (a.isPlayer) {
     Snd.chest(); Snd.pickup();
     if (G.tutorial.active) G.tutorial.chests++;
+    Ach.bump('chests');
+    /* Pack Rat: every slot occupied at once. Checked here because this is the
+       only place the bag can grow. */
+    if (a.weapons.length >= CFG.slots) Ach.mark('fullBags');
     let msg = 'PICKED UP <span class="hl">' + def.name + '</span>';
     if (res.dropped) {
       const d = defOf(res.dropped.id);
