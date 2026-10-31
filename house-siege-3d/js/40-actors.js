@@ -148,6 +148,14 @@ function ensureBotGroup() {
 function createTeams() {
   ensureBotGroup();
 
+  /* Online with AI squads switched off: no bots at all, just the humans.
+     The group is still created above, because remote bodies are parented to
+     it and would otherwise have nowhere to live. */
+  if (G.netMode && !G.netAi) {
+    G.bots.length = 0;
+    return;
+  }
+
   const names = BOT_NAMES.slice().sort(() => Math.random() - 0.5);
   let ni = 0;
   const mine = G.team, foe = otherTeam(mine);
