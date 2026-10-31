@@ -110,6 +110,7 @@ function updateFlags(dt) {
         if (a.capT >= 2.4) {
           a.capT = 0;
           G.score[a.team]++;
+          if (a.isPlayer) Ach.bump('captures');
           returnFlag(a.carrying);
           a.carrying = null;
           if (a.isPlayer) {
