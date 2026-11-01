@@ -48,7 +48,7 @@ const PERF = {
   scale: 1,       // 1 -> 0.55, the part the governor can take back
   min: 0.55,
   fps: 0, ms: 0,
-  frames: 0, time: 0, cooldown: 0,
+  frames: 0, time: 0, cooldown: 0, warm: 0,
   level: 0,       // 0 full, 1 shadows off, 2 shadows off + minimum resolution
   show: false
 };
