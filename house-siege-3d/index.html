@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>WHITE MAZE 5v5</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230a0d13'/%3E%3Cpath d='M16 5l9 6v10l-9 6-9-6V11z' fill='none' stroke='%23ff4a4a' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23ffc44d'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="css/style.css?v=31">
+<link rel="stylesheet" href="css/style.css?v=32">
 </head>
 <body>
 
@@ -203,6 +203,7 @@
       <div><b>SHIFT</b> Sprint · stamina</div><div><b>SPACE</b> Jump</div>
       <div><b>1–5</b> Weapons</div><div><b>WHEEL</b> Cycle weapons</div>
       <div><b>TAB</b> Scoreboard</div><div><b>ESC</b> Pause</div>
+      <div><b>F3</b> Performance readout</div><div></div>
     </div>
     <div class="panel-btns">
       <button class="btn" id="btnResume">RESUME</button>
@@ -317,6 +318,11 @@
   <span class="nc-info" id="netChipInfo">CONNECTING</span>
 </div>
 
+<!-- F3 performance readout -->
+<div id="perf">
+  <span id="perfFps">--</span> FPS<i>·</i><span id="perfMs">--</span> MS<i>·</i><span id="perfRes">1.00x</span>
+</div>
+
 <!-- ================= ACHIEVEMENTS ================= -->
 <div id="achievements" class="screen">
   <div class="panel wide ach-panel">
@@ -338,27 +344,27 @@
 
 <script src="lib/three.min.js"></script>
 <script src="lib/mqtt.min.js"></script>
-<script src="js/00-core.js?v=31"></script>
-<script src="js/10-render.js?v=31"></script>
-<script src="js/20-world.js?v=31"></script>
-<script src="js/30-nav.js?v=31"></script>
-<script src="js/35-physics.js?v=31"></script>
-<script src="js/40-actors.js?v=31"></script>
-<script src="js/45-combat.js?v=31"></script>
-<script src="js/50-items.js?v=31"></script>
-<script src="js/55-effects.js?v=31"></script>
-<script src="js/60-loot.js?v=31"></script>
-<script src="js/65-flags.js?v=31"></script>
-<script src="js/70-ai.js?v=31"></script>
-<script src="js/75-player.js?v=31"></script>
-<script src="js/80-viewmodel.js?v=31"></script>
-<script src="js/90-hud.js?v=31"></script>
-<script src="js/93-achieve.js?v=31"></script>
-<script src="js/94-tutorial.js?v=31"></script>
-<script src="js/95-input.js?v=31"></script>
-<script src="js/96-flow.js?v=31"></script>
-<script src="js/97-net.js?v=31"></script>
-<script src="js/98-menu.js?v=31"></script>
-<script src="js/99-boot.js?v=31"></script>
+<script src="js/00-core.js?v=32"></script>
+<script src="js/10-render.js?v=32"></script>
+<script src="js/20-world.js?v=32"></script>
+<script src="js/30-nav.js?v=32"></script>
+<script src="js/35-physics.js?v=32"></script>
+<script src="js/40-actors.js?v=32"></script>
+<script src="js/45-combat.js?v=32"></script>
+<script src="js/50-items.js?v=32"></script>
+<script src="js/55-effects.js?v=32"></script>
+<script src="js/60-loot.js?v=32"></script>
+<script src="js/65-flags.js?v=32"></script>
+<script src="js/70-ai.js?v=32"></script>
+<script src="js/75-player.js?v=32"></script>
+<script src="js/80-viewmodel.js?v=32"></script>
+<script src="js/90-hud.js?v=32"></script>
+<script src="js/93-achieve.js?v=32"></script>
+<script src="js/94-tutorial.js?v=32"></script>
+<script src="js/95-input.js?v=32"></script>
+<script src="js/96-flow.js?v=32"></script>
+<script src="js/97-net.js?v=32"></script>
+<script src="js/98-menu.js?v=32"></script>
+<script src="js/99-boot.js?v=32"></script>
 </body>
 </html>
