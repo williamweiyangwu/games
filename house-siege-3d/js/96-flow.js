@@ -236,9 +236,14 @@ function perfReset() {
   }
 }
 
-function adaptQuality(dt) {
-  PERF.frames++; PERF.time += dt;
-  if (PERF.cooldown > 0) PERF.cooldown -= dt;
+function adaptQuality(raw) {
+  /* A hidden tab, a GC pause or the first frame after a load are not evidence
+     about the machine: throw those samples away instead of averaging them in.
+     `raw` is the true frame delta — the clamped step used for simulation would
+     report 20 fps on a machine actually running at 3. */
+  if (!(raw > 0) || raw > 0.75) { PERF.frames = 0; PERF.time = 0; return; }
+  PERF.frames++; PERF.time += raw;
+  if (PERF.cooldown > 0) PERF.cooldown -= raw;
   if (PERF.time < 1.5) return;
   const fps = PERF.frames / PERF.time;
   PERF.fps = Math.round(fps);
@@ -280,9 +285,11 @@ function perfToggle(on) {
 
 function loop(ts) {
   requestAnimationFrame(loop);
-  const dt = Math.min(0.05, (ts - lastT) / 1000 || 0.016);
+  const raw = (ts - lastT) / 1000 || 0.016;
+  const dt = Math.min(0.05, raw);
   lastT = ts;
-  adaptQuality(dt);
+  adaptQuality(raw);
+  syncLockHint(dt);        // also clears itself in menu/pause, so it cannot stick
   PERF.uiT = (PERF.uiT || 0) + dt;
   if (PERF.show && PERF.uiT > 0.25) { PERF.uiT = 0; updatePerfReadout(); }
   if (G.state === 'playing') {
