@@ -94,6 +94,9 @@ window.__wh = {
   get NET() { return NET; },
   netConnect, netHost, netJoin, netLeave, netRenderLobby, netTick, netSendState,
   remoteActors, Ach_wipe() { Ach.wipe(); },
+  /* performance governor, for the diagnostics */
+  get PERF() { return PERF; },
+  perfToggle, perfApply,
   get camera() { return camera; },
   get scene() { return scene; },
   get renderer() { return renderer; },
