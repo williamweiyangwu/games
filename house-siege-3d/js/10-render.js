@@ -32,6 +32,34 @@ const G = {
 let renderer, scene, camera, clock = null;
 const V3 = THREE.Vector3;
 
+/* ------------------------------------------------------------
+   PERFORMANCE GOVERNOR
+   A laptop panel at 150-200% Windows scaling gives devicePixelRatio 1.5-2,
+   so "full resolution" here is four times the pixels of a 1080p window, with
+   soft shadows on top. When that lands at 20 fps the mouse does not feel
+   slow, it feels like the view snaps between angles, because each frame
+   applies 50 ms worth of turn in one step.
+   PERF.scale is the resolution multiplier the governor trades away: it only
+   ever steps DOWN inside a match (stepping back up oscillates, and each step
+   resizes the canvas), and it is reset to 1 when a new match starts.
+   ------------------------------------------------------------ */
+const PERF = {
+  base: 1,        // min(devicePixelRatio, 1.5) — the most we will ever ask for
+  scale: 1,       // 1 -> 0.55, the part the governor can take back
+  min: 0.55,
+  fps: 0, ms: 0,
+  frames: 0, time: 0, cooldown: 0,
+  level: 0,       // 0 full, 1 shadows off, 2 shadows off + minimum resolution
+  show: false
+};
+
+function perfApply() {
+  if (!renderer) return;
+  const r = PERF.base * PERF.scale;
+  renderer.setPixelRatio(Math.max(0.5, Math.round(r * 100) / 100));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
 /* Materials in MAT are shared by hundreds of meshes; a per-object material is
    owned by that object alone. Disposing a shared one would blank every wall
    that still uses it, so the helper below skips them. */
@@ -60,8 +88,10 @@ function disposeTree(obj) {
 
 function initThree() {
   renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  /* 1.5 rather than 2: above that the extra pixels are invisible at arm's
+     length on a laptop and cost a quarter of the frame budget each step. */
+  PERF.base = Math.min(window.devicePixelRatio || 1, 1.5);
+  perfApply();
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputEncoding = THREE.sRGBEncoding;
@@ -131,7 +161,7 @@ function initThree() {
   window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    perfApply();
   });
 }
 
