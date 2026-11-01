@@ -154,6 +154,11 @@ function initInput() {
       lockSettle = 2;              // drop the acquisition jump, see mousemove
     } else if (hadLock && G.state === 'playing') { hadLock = false; pauseGame(); }
   });
+  /* A refusal (no gesture, or the ~1 s cooldown after ESC) is not fatal: the
+     hint asks for a click and the next mousedown takes the mouse back. */
+  document.addEventListener('pointerlockerror', () => {
+    if (G.state === 'playing') lockWait = 1;
+  });
 
   renderer.domElement.addEventListener('click', () => {
     if (G.state === 'playing' && !document.pointerLockElement) requestLock();
@@ -176,6 +181,25 @@ function requestLock() {
     const r = renderer.domElement.requestPointerLock();
     if (r && typeof r.catch === 'function') r.catch(() => {});
   } catch (e) { /* drag fallback */ }
+}
+
+/* Browsers refuse to re-capture the pointer for about a second after ESC, so a
+   resume can drop you into a live match with a free cursor: the keys move you,
+   the view will not turn, and nothing on screen explains why. Rather than trust
+   the request, watch the actual lock state and say what to do. Any click on the
+   arena already re-requests it (see mousedown below). */
+let lockWait = 0;
+function syncLockHint(dt) {
+  const el = $('lockHint');
+  if (!el) return;
+  if (G.state !== 'playing' || document.pointerLockElement) {
+    lockWait = 0;
+    if (el.classList.contains('show')) el.classList.remove('show');
+    return;
+  }
+  lockWait += dt;
+  const on = lockWait > 0.7;              // do not blink during a normal capture
+  if (on !== el.classList.contains('show')) el.classList.toggle('show', on);
 }
 
 /* ------------------------------------------------------------
