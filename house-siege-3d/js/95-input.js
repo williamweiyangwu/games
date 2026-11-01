@@ -197,7 +197,7 @@ function syncLockHint(dt) {
     if (el.classList.contains('show')) el.classList.remove('show');
     return;
   }
-  lockWait += dt;
+  lockWait += Math.min(0.5, dt);          // a tab-switch stall is not a second
   const on = lockWait > 0.7;              // do not blink during a normal capture
   if (on !== el.classList.contains('show')) el.classList.toggle('show', on);
 }
