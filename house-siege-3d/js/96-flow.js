@@ -229,7 +229,7 @@ let lastT = 0;
 function perfReset() {
   PERF.scale = 1;
   PERF.level = 0;
-  PERF.frames = 0; PERF.time = 0; PERF.cooldown = 1.5;
+  PERF.frames = 0; PERF.time = 0; PERF.cooldown = 1.5; PERF.warm = 2.0;
   if (renderer) {
     renderer.shadowMap.enabled = true;
     perfApply();
@@ -240,8 +240,13 @@ function adaptQuality(raw) {
   /* A hidden tab, a GC pause or the first frame after a load are not evidence
      about the machine: throw those samples away instead of averaging them in.
      `raw` is the true frame delta — the clamped step used for simulation would
-     report 20 fps on a machine actually running at 3. */
-  if (!(raw > 0) || raw > 0.75) { PERF.frames = 0; PERF.time = 0; return; }
+     report 20 fps on a machine actually running at 3. The cut-off sits at 2 s,
+     not at a single bad frame, so a genuinely drowning machine still counts. */
+  if (!(raw > 0) || raw > 2.0) { PERF.frames = 0; PERF.time = 0; return; }
+  /* Shaders compile and textures upload in the first seconds of a match. That
+     spike says nothing about the hardware, and acting on it used to drop the
+     shadows for the whole match on a machine that then ran at 60 fps. */
+  if (PERF.warm > 0) { PERF.warm -= raw; PERF.frames = 0; PERF.time = 0; return; }
   PERF.frames++; PERF.time += raw;
   if (PERF.cooldown > 0) PERF.cooldown -= raw;
   if (PERF.time < 1.5) return;
@@ -289,7 +294,10 @@ function loop(ts) {
   const dt = Math.min(0.05, raw);
   lastT = ts;
   adaptQuality(raw);
-  syncLockHint(dt);        // also clears itself in menu/pause, so it cannot stick
+  /* raw, not the clamped step: on a 4 fps machine dt is pinned at 50 ms, and
+     the prompt would take fourteen frames — three and a half seconds — to show
+     up, exactly on the machines that most need it. */
+  syncLockHint(raw);
   PERF.uiT = (PERF.uiT || 0) + dt;
   if (PERF.show && PERF.uiT > 0.25) { PERF.uiT = 0; updatePerfReadout(); }
   if (G.state === 'playing') {
