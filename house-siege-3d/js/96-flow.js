@@ -36,6 +36,7 @@ function startGame(mode) {
   G.bots.length = 0;
   clearProjectiles();
   G.shake = 0;
+  perfReset();
 
   createPlayer();
   if (mode === 'tutorial') { ensureBotGroup(); spawnTutorialDummies(); }
@@ -222,22 +223,59 @@ function update(dt) {
 }
 
 let lastT = 0;
-let qFrames = 0, qTime = 0, qLevel = 0;
-function adaptQuality(dt) {
-  qFrames++; qTime += dt;
-  if (qTime < 2.2) return;
-  const fps = qFrames / qTime;
-  qFrames = 0; qTime = 0;
-  if (fps < 38 && qLevel === 0) {
-    qLevel = 1;
-    renderer.shadowMap.enabled = false;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
-    scene.traverse(o => { if (o.isMesh) o.castShadow = false; });
-  } else if (fps < 26 && qLevel === 1) {
-    qLevel = 2;
-    renderer.setPixelRatio(0.75);
-    renderer.setSize(window.innerWidth, window.innerHeight);
+/* Quality ladder. Each rung is only taken when the measured frame rate says
+   the previous one was not enough, and only downward inside a match: stepping
+   back up resizes the canvas and oscillates around the threshold. */
+function perfReset() {
+  PERF.scale = 1;
+  PERF.level = 0;
+  PERF.frames = 0; PERF.time = 0; PERF.cooldown = 1.5;
+  if (renderer) {
+    renderer.shadowMap.enabled = true;
+    perfApply();
   }
+}
+
+function adaptQuality(dt) {
+  PERF.frames++; PERF.time += dt;
+  if (PERF.cooldown > 0) PERF.cooldown -= dt;
+  if (PERF.time < 1.5) return;
+  const fps = PERF.frames / PERF.time;
+  PERF.fps = Math.round(fps);
+  PERF.ms = Math.round(1000 / Math.max(1, fps) * 10) / 10;
+  PERF.frames = 0; PERF.time = 0;
+  if (PERF.cooldown > 0) return;
+
+  /* rung 1: shadows are the single most expensive thing we own */
+  if (fps < 40 && PERF.level === 0) {
+    PERF.level = 1;
+    renderer.shadowMap.enabled = false;
+    PERF.cooldown = 2.0;
+    return;
+  }
+  /* rung 2+: trade resolution for frame rate, 15% at a time */
+  if (fps < 48 && PERF.scale > PERF.min) {
+    PERF.scale = Math.max(PERF.min, Math.round((PERF.scale - 0.15) * 100) / 100);
+    perfApply();
+    PERF.cooldown = 2.0;
+  }
+}
+
+/* F3 readout — the only way to tell "the game is slow" from "the mouse is
+   jumping" from the outside. */
+function updatePerfReadout() {
+  if (!PERF.show) return;
+  const f = $('perfFps'), m = $('perfMs'), r = $('perfRes');
+  if (f) f.textContent = PERF.fps || '--';
+  if (m) m.textContent = PERF.ms || '--';
+  if (r) r.textContent = (PERF.base * PERF.scale).toFixed(2) + 'x' + (PERF.level ? ' · no shadows' : '');
+}
+
+function perfToggle(on) {
+  PERF.show = on === undefined ? !PERF.show : !!on;
+  const el = $('perf');
+  if (el) el.classList.toggle('show', PERF.show);
+  updatePerfReadout();
 }
 
 function loop(ts) {
@@ -245,6 +283,8 @@ function loop(ts) {
   const dt = Math.min(0.05, (ts - lastT) / 1000 || 0.016);
   lastT = ts;
   adaptQuality(dt);
+  PERF.uiT = (PERF.uiT || 0) + dt;
+  if (PERF.show && PERF.uiT > 0.25) { PERF.uiT = 0; updatePerfReadout(); }
   if (G.state === 'playing') {
     update(dt);
   } else if (G.state === 'paused' || G.state === 'ended') {
