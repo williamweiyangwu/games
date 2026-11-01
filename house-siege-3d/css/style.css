@@ -594,3 +594,17 @@ b{font-weight:700}
 #perf.show{display:flex}
 #perf span{color:#cfe0ff;font-variant-numeric:tabular-nums}
 #perf i{color:#4c5769;font-style:normal;margin:0 2px}
+
+/* ============================================================
+   POINTER LOCK HINT
+   Browsers refuse a re-capture for about a second after ESC, so
+   "resume" can land the player in a live match with a free cursor.
+   Say so instead of leaving them stuck.
+   ============================================================ */
+#lockHint{position:fixed;left:50%;top:calc(50% + 44px);transform:translateX(-50%);
+  display:none;padding:9px 18px;border-radius:2px;
+  background:rgba(8,11,17,.82);border:1px solid rgba(255,255,255,.16);
+  font:700 10px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.22em;
+  color:#cfe0ff;z-index:42;pointer-events:none;white-space:nowrap}
+#lockHint.show{display:block}
+#lockHint b{color:#ffd76a}
