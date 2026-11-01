@@ -8,6 +8,8 @@
    INPUT
    ------------------------------------------------------------ */
 let firing = false, hadLock = false;
+/* how many mousemove events to ignore right after the pointer is captured */
+let lockSettle = 0;
 const SENS_BASE = 0.0022;
 
 function initInput() {
@@ -15,6 +17,10 @@ function initInput() {
     const k = e.key.toLowerCase();
     if (k === 'tab') e.preventDefault();
     keys[k] = true;
+
+    /* F3 works in every state: it is the diagnostic you reach for when the
+       game itself is the thing that is misbehaving. */
+    if (k === 'f3') { e.preventDefault(); perfToggle(); return; }
 
     if (k === 'escape') {
       if (G.state === 'playing') pauseGame();
@@ -116,6 +122,17 @@ function initInput() {
     if (G.state !== 'playing' || !G.player) return;
     if (!G.player.alive) return;               // the bystander camera owns the view
     if (!document.pointerLockElement && !e.buttons) return;
+    /* The first events after the pointer is captured carry the whole distance
+       the cursor travelled since it was last free, and some touchpad drivers
+       emit a single huge delta on a palm touch. Either one whips the view to a
+       random angle, which reads as "the camera keeps snapping". A hand cannot
+       travel a third of a turn inside one 16 ms event, so anything bigger is
+       an artefact: swallow it instead of turning. */
+    if (lockSettle > 0) { lockSettle--; return; }
+    let mx = e.movementX || 0, my = e.movementY || 0;
+    const CAP = 300;                            // ~38 deg at default sensitivity
+    if (mx > CAP) mx = CAP; else if (mx < -CAP) mx = -CAP;
+    if (my > CAP) my = CAP; else if (my < -CAP) my = -CAP;
     /* aiming slows the turn; a scoped sniper slows it much further so the
        lens can actually be held on a target. The scoped figure scales with
        the magnification ring: angular sensitivity follows 1/zoom, so 8x is
@@ -127,13 +144,15 @@ function initInput() {
       ? 1 - Math.min(0.55, 1.04 / currentZoom())
       : 0.45;
     const s = SENS_BASE * G.sensitivity * (1 - slow * adsK);
-    G.player.yaw -= (e.movementX || 0) * s;
-    G.player.pitch = clamp(G.player.pitch - (e.movementY || 0) * s, -1.35, 1.35);
+    G.player.yaw -= mx * s;
+    G.player.pitch = clamp(G.player.pitch - my * s, -1.35, 1.35);
   });
 
   document.addEventListener('pointerlockchange', () => {
-    if (document.pointerLockElement) { hadLock = true; }
-    else if (hadLock && G.state === 'playing') { hadLock = false; pauseGame(); }
+    if (document.pointerLockElement) {
+      hadLock = true;
+      lockSettle = 2;              // drop the acquisition jump, see mousemove
+    } else if (hadLock && G.state === 'playing') { hadLock = false; pauseGame(); }
   });
 
   renderer.domElement.addEventListener('click', () => {
