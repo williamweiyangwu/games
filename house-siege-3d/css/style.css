@@ -582,3 +582,15 @@ b{font-weight:700}
   font:600 11px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.1em;
   z-index:160;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s}
 #netToast.show{opacity:1;transform:translate(-50%,0)}
+
+/* ============================================================
+   PERFORMANCE READOUT (F3)
+   ============================================================ */
+#perf{position:fixed;left:50%;bottom:44px;transform:translateX(-50%);
+  display:none;align-items:center;gap:5px;padding:4px 10px;border-radius:2px;
+  background:rgba(8,11,17,.78);border:1px solid rgba(255,255,255,.1);
+  font:700 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.16em;
+  color:#93a0b4;z-index:41;pointer-events:none;white-space:nowrap}
+#perf.show{display:flex}
+#perf span{color:#cfe0ff;font-variant-numeric:tabular-nums}
+#perf i{color:#4c5769;font-style:normal;margin:0 2px}
