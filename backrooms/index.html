@@ -781,21 +781,21 @@ const LEVELS=[
   {n:0,name:'THE LOBBY',short:'LOBBY',style:'paper',
    wall:'#a4924c',grime:'58,44,18',floor:'#6d6039',ceil:'#a9a48d',ceilTint:0x8d897a,
    fog:0x080704,fogD:.050,amb:0x5a5038,ambI:.20,fix:.62,fixOn:.88,exposure:.92,
-   step:'carpet',monCount:5,
+   step:'carpet',monCount:3,monCap:3,
    weights:[['smiler',30],['hound',25],['clump',15],['wretch',20],['moth',10]],
    desc:'Saturated yellow rooms. Damp carpet. The hum never stops.'},
 
   {n:1,name:'WAREHOUSE',short:'WAREHOUSE',style:'concrete',
    wall:'#5d6660',grime:'26,34,30',floor:'#3f4441',ceil:'#5f6864',ceilTint:0x7b847f,
    fog:0x050706,fogD:.052,amb:0x3a4a44,ambI:.18,fix:.50,fixOn:.85,exposure:.88,
-   step:'concrete',monCount:6,
+   step:'concrete',monCount:4,monCap:4,
    weights:[['hound',34],['clump',24],['wretch',26],['smiler',10],['moth',6]],
    desc:'Damp concrete and stacked crates. Something here can run.'},
 
   {n:2,name:'PIPE DREAMS',short:'PIPE DREAMS',style:'metal',
    wall:'#4a5563',grime:'20,28,40',floor:'#2e343d',ceil:'#454d59',ceilTint:0x6a7484,
    fog:0x04060a,fogD:.055,amb:0x33405a,ambI:.17,fix:.44,fixOn:.74,exposure:.84,
-   step:'metal',monCount:7,
+   step:'metal',monCount:4,monCap:4,
    weights:[['moth',26],['wretch',30],['hound',22],['clump',12],['smiler',10]],
    desc:'Narrow service tunnels. Steam in the dark. Pipes that knock back.'}
 ];
@@ -1642,6 +1642,13 @@ function clearLevel(){
   clearDecals();
   if(hallu){scene.remove(hallu.mesh);hallu=null;}
   collidersExtra=[];
+  for(const m of propMats.values())m.dispose();
+  propMats.clear();
+  propCells.clear();
+  /* these sheets are shared by every prop mesh, so the loop above has already
+     disposed them — drop the references or the next floor paints with dead
+     textures */
+  for(const k in propTexCache){propTexCache[k].dispose();delete propTexCache[k];}
   fixtures=[];wallSegs=[];
   exitInfo=null;wallMesh=null;fixtureInst=null;
   scene.fog.density=LV().fogD;
@@ -2921,6 +2928,342 @@ function updateValves(dt){
   }
 }
 
+/* ══════════════════════════════════════════════════════════════
+   SET DRESSING — the halls are not empty, and not everything in
+   them is alive.
+
+   Furniture and junk, scattered once per floor. Solid things go
+   into collidersExtra, which means three systems agree about them
+   for free: you cannot walk through a cabinet, a monster cannot
+   either, and a tall one breaks line of sight, so a stack of
+   crates is somewhere to hide. Low things carry `low`, so a jump
+   clears them — the pallet and the pipe stack are the only cover
+   in the game you can hop over.
+   ══════════════════════════════════════════════════════════════ */
+let propCells=new Set();
+const propMats=new Map();
+const propTexCache={};
+
+/* A flat box reads as a placeholder next to a textured wall, so every prop
+   material gets a tiny canvas texture: planks, seams, tape, rust. One 128px
+   sheet per kind, drawn once per floor and tinted by the material colour. */
+function ptex(key){
+  if(propTexCache[key])return propTexCache[key];
+  const[c,x]=cnv(128,128);
+  const noise=(n,a)=>{for(let i=0;i<n;i++){
+    x.fillStyle=`rgba(0,0,0,${rand(.03,a)})`;
+    x.fillRect(rand(0,128),rand(0,128),rand(2,16),1);
+  }};
+  if(key==='crate'){
+    x.fillStyle='#8f7a55';x.fillRect(0,0,128,128);
+    for(let i=0;i<4;i++){
+      const y=i*32;
+      x.fillStyle=`rgba(0,0,0,${.04+Math.random()*.09})`;x.fillRect(0,y,128,32);
+      x.fillStyle='rgba(0,0,0,.42)';x.fillRect(0,y,128,2);
+    }
+    x.strokeStyle='rgba(0,0,0,.5)';x.lineWidth=7;x.strokeRect(4,4,120,120);
+    x.fillStyle='rgba(25,18,10,.55)';
+    for(const p of[[12,12],[116,12],[12,116],[116,116]])x.fillRect(p[0]-2,p[1]-2,4,4);
+    noise(50,.1);
+  }else if(key==='card'){
+    x.fillStyle='#a08a63';x.fillRect(0,0,128,128);
+    x.fillStyle='rgba(0,0,0,.16)';x.fillRect(0,60,128,8);      // tape band
+    x.fillStyle='rgba(255,255,255,.06)';x.fillRect(0,58,128,3);
+    x.strokeStyle='rgba(0,0,0,.22)';x.lineWidth=2;x.strokeRect(1,1,126,126);
+    noise(40,.12);
+  }else if(key==='cab'){
+    x.fillStyle='#b6b2a0';x.fillRect(0,0,128,128);
+    for(let i=1;i<3;i++){
+      const y=i*42;
+      x.fillStyle='rgba(0,0,0,.55)';x.fillRect(6,y,116,3);
+      x.fillStyle='rgba(0,0,0,.22)';x.fillRect(6,y+3,116,2);
+    }
+    for(let i=0;i<3;i++){                                       // handles
+      x.fillStyle='rgba(30,28,22,.75)';x.fillRect(56,i*42+28,16,4);
+    }
+    x.strokeStyle='rgba(0,0,0,.28)';x.lineWidth=3;x.strokeRect(2,2,124,124);
+    noise(30,.07);
+  }else if(key==='plank'){
+    x.fillStyle='#9c8154';x.fillRect(0,0,128,128);
+    for(let i=0;i<5;i++){
+      const y=i*26;
+      x.fillStyle=`rgba(0,0,0,${.05+Math.random()*.1})`;x.fillRect(0,y,128,26);
+      x.fillStyle='rgba(0,0,0,.35)';x.fillRect(0,y,128,2);
+    }
+    noise(70,.12);
+  }else if(key==='metal'){
+    x.fillStyle='#9aa39a';x.fillRect(0,0,128,128);
+    for(let i=0;i<40;i++){                                      // vertical streaks
+      x.fillStyle=`rgba(0,0,0,${rand(.03,.12)})`;
+      x.fillRect(rand(0,128),0,rand(1,3),128);
+    }
+    for(let i=0;i<14;i++){                                      // rust
+      x.fillStyle=`rgba(120,64,30,${rand(.1,.3)})`;
+      x.beginPath();x.arc(rand(0,128),rand(0,128),rand(2,9),0,6.3);x.fill();
+    }
+  }else if(key==='fabric'){
+    x.fillStyle='#b0b0a8';x.fillRect(0,0,128,128);
+    for(let i=0;i<128;i+=4){
+      x.fillStyle='rgba(0,0,0,.07)';x.fillRect(i,0,1,128);
+      x.fillRect(0,i,128,1);
+    }
+    noise(60,.1);
+  }else{
+    x.fillStyle='#b0b0b0';x.fillRect(0,0,128,128);noise(40,.08);
+  }
+  const t=new THREE.CanvasTexture(c);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  propTexCache[key]=t;
+  return t;
+}
+function pmat(key,color,rough,metal,tex){
+  let m=propMats.get(key);
+  if(!m){
+    m=new THREE.MeshStandardMaterial({color,roughness:rough==null?.86:rough,metalness:metal||0});
+    if(tex)m.map=ptex(tex);
+    propMats.set(key,m);
+  }
+  return m;
+}
+function pbox(g,w,h,d,x,y,z,mat,ry){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+  m.position.set(x,y,z);
+  if(ry)m.rotation.y=ry;
+  g.add(m);return m;
+}
+function pcyl(g,rt,rb,h,seg,x,y,z,mat){
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg||10),mat);
+  m.position.set(x,y,z);
+  g.add(m);return m;
+}
+/* one soft blob, reused for every stain and drag mark on every floor */
+function getStainTex(){
+  if(propTexCache.stain)return propTexCache.stain;
+  const[c,x]=cnv(64,64);
+  const grd=x.createRadialGradient(32,32,2,32,32,31);
+  grd.addColorStop(0,'rgba(255,255,255,.95)');
+  grd.addColorStop(.5,'rgba(255,255,255,.5)');
+  grd.addColorStop(1,'rgba(255,255,255,0)');
+  x.fillStyle=grd;x.fillRect(0,0,64,64);
+  const t=new THREE.CanvasTexture(c);
+  propTexCache.stain=t;
+  return t;
+}
+
+function propChair(){
+  const g=new THREE.Group();
+  const fab=pmat('chair',0x2f312b,.95,0,'fabric');
+  const met=pmat('darkmetal',0x2a2b28,.5,.55);
+  pbox(g,.5,.07,.5,0,.45,0,fab);
+  pbox(g,.5,.56,.07,0,.73,-.24,fab);
+  pcyl(g,.035,.035,.42,8,0,.22,0,met);
+  pcyl(g,.28,.3,.05,12,0,.03,0,met);
+  return{g,hx:.32,hz:.32};
+}
+function propBoxes(){
+  const g=new THREE.Group();
+  const a=pmat('card',0x9a7a4c,.95,0,'card'),b=pmat('card2',0x836442,.95,0,'card');
+  pbox(g,.62,.4,.5,0,.2,0,a,rand(-.3,.3));
+  pbox(g,.46,.34,.42,.04,.57,.02,b,rand(-.4,.4));
+  pbox(g,.34,.26,.32,-.03,.87,-.04,a,rand(-.5,.5));
+  return{g,hx:.34,hz:.29};
+}
+function propCabinet(th){
+  const g=new THREE.Group();
+  const paper=th.style==='paper';
+  /* pmat caches by key, so each theme needs its own key or the first
+     cabinet to spawn would paint every cabinet after it */
+  const body=pmat(paper?'cab':'cab2',paper?0x736d5c:0x464c45,.74,.24,'cab');
+  const seam=pmat('seam',0x191b16,.85,.1);
+  pbox(g,.62,1.28,.46,0,.64,0,body);
+  for(let k=0;k<3;k++)pbox(g,.56,.025,.02,0,.38+k*.33,.235,seam);
+  pbox(g,.16,.03,.03,0,.52,.24,pmat('handle',0x9a9276,.4,.7));
+  return{g,hx:.31,hz:.24};
+}
+function propTable(){
+  const g=new THREE.Group();
+  const top=pmat('tabletop',0x6b573b,.92,0,'plank');
+  const leg=pmat('darkmetal',0x2a2b28,.5,.55);
+  pbox(g,.9,.06,1.1,0,.72,0,top);               // flat top
+  pbox(g,.78,.1,.06,0,.65,.5,top);              // apron, hides the leg joints
+  pbox(g,.78,.1,.06,0,.65,-.5,top);
+  for(const sx of[-1,1])for(const sz of[-1,1])
+    pbox(g,.055,.69,.055,sx*.39,.345,sz*.48,leg);
+  return{g,hx:.45,hz:.55};
+}
+function propSign(){
+  const g=new THREE.Group();
+  const y=pmat('sign',0xb8a02c,.7,0);
+  for(const s of[-1,1]){
+    const m=pbox(g,.46,.62,.015,0,.32,s*.13,y);
+    m.rotation.x=s*.3;
+  }
+  return{g,hx:.26,hz:.22};
+}
+function propPapers(){
+  const g=new THREE.Group();
+  const p=pmat('paper',0xbdb595,.96,0);
+  for(let k=0;k<9;k++){
+    const m=new THREE.Mesh(new THREE.PlaneGeometry(rand(.16,.3),rand(.2,.32)),p);
+    m.rotation.x=-Math.PI/2;m.rotation.z=rand(0,TAU);
+    m.position.set(rand(-.95,.95),.012+k*.0008,rand(-.95,.95));
+    g.add(m);
+  }
+  return{g,noCol:true};
+}
+function propStain(th){
+  const g=new THREE.Group();
+  const dark=th.style==='paper'?0x241d0e:0x0d120e;
+  for(let k=0;k<randInt(1,2);k++){
+    const m=new THREE.Mesh(new THREE.PlaneGeometry(rand(1.1,2.1),rand(.9,1.7)),
+      new THREE.MeshBasicMaterial({map:getStainTex(),color:dark,transparent:true,
+        opacity:rand(.5,.78),depthWrite:false}));
+    m.rotation.x=-Math.PI/2;m.rotation.z=rand(0,TAU);
+    m.position.set(rand(-.7,.7),.006+k*.0012,rand(-.7,.7));
+    g.add(m);
+  }
+  return{g,noCol:true};
+}
+function propCrate(){
+  const g=new THREE.Group();
+  const w=pmat('crate',0x8a6d45,.94,0,'crate'),d=pmat('crate2',0x5c4728,.94,0,'crate');
+  pbox(g,.8,.8,.8,0,.4,0,w);
+  pbox(g,.84,.07,.84,0,.77,0,d);
+  pbox(g,.84,.07,.84,0,.07,0,d);
+  return{g,hx:.4,hz:.4};
+}
+function propBarrel(color,key){
+  const g=new THREE.Group();
+  const body=pmat(key,color,.62,.42,'metal');
+  const rim=pmat('barrelrim',0x2a2a26,.5,.6);
+  pcyl(g,.3,.3,.88,12,0,.44,0,body);
+  pcyl(g,.315,.315,.045,12,0,.24,0,rim);
+  pcyl(g,.315,.315,.045,12,0,.64,0,rim);
+  pcyl(g,.3,.3,.02,12,0,.885,0,rim);
+  return{g,hx:.3,hz:.3};
+}
+function propPallet(){
+  const g=new THREE.Group();
+  const w=pmat('pallet',0x9a7f4c,.95,0,'plank');
+  for(let k=0;k<3;k++)pbox(g,1.0,.05,.15,0,.1,-.32+k*.32,w);
+  for(let k=0;k<3;k++)pbox(g,.13,.1,.8,-.38+k*.38,.05,0,w);
+  return{g,hx:.5,hz:.4,low:true};
+}
+function propPipes(){
+  const g=new THREE.Group();
+  const met=pmat('pipe',0x6b736a,.45,.7,'metal');
+  for(let k=0;k<3;k++){
+    const m=pcyl(g,.11,.11,1.1,8,0,.12+k*.2,(k-1)*.05,met);
+    m.rotation.z=Math.PI/2;
+  }
+  return{g,hx:.56,hz:.27,low:true};
+}
+function propCable(){
+  const g=new THREE.Group();
+  const c=pmat('cable',0x14161a,.88,0);
+  for(let k=0;k<3;k++){
+    const m=new THREE.Mesh(new THREE.TorusGeometry(.3-k*.06,.032,6,14),c);
+    m.rotation.x=Math.PI/2;m.position.y=.04+k*.05;
+    g.add(m);
+  }
+  return{g,noCol:true};
+}
+function propChain(){
+  const g=new THREE.Group();
+  const c=pmat('chain',0x3a3f3a,.42,.78);
+  const n=randInt(5,9);
+  for(let k=0;k<n;k++){
+    const m=new THREE.Mesh(new THREE.TorusGeometry(.06,.013,4,8),c);
+    m.position.y=WALL_H-.22-k*.11;
+    m.rotation.y=k%2?Math.PI/2:0;
+    g.add(m);
+  }
+  return{g,noCol:true};
+}
+/* a bare bulb on a wire: the best-lit thing in a dark hall, and it flickers */
+function propBulb(){
+  const g=new THREE.Group();
+  pcyl(g,.008,.008,.5,4,0,WALL_H-.26,0,pmat('wire',0x101010,.9,0));
+  const b=new THREE.Mesh(new THREE.SphereGeometry(.07,8,6),
+    new THREE.MeshBasicMaterial({color:0xffdca8}));
+  b.position.y=WALL_H-.55;
+  g.add(b);
+  return{g,noCol:true,bulb:{x:0,z:0}};
+}
+
+const PROP_BUILD={
+  chair:propChair,boxes:propBoxes,cabinet:propCabinet,table:propTable,sign:propSign,
+  papers:propPapers,stain:propStain,crate:propCrate,pallet:propPallet,pipes:propPipes,
+  cable:propCable,chain:propChain,bulb:propBulb,
+  barrel:()=>propBarrel(0x3d4a3a,'barrelA'),
+  drum:()=>propBarrel(0x5a3a26,'barrelB')
+};
+/* how much of each kind a floor gets — solid pieces first, atmosphere on top */
+const PROP_BAG={
+  0:['chair','chair','chair','chair','chair','boxes','boxes','boxes','boxes',
+     'cabinet','cabinet','cabinet','table','table','table','sign','sign','sign',
+     'papers','papers','stain','stain','bulb','bulb'],
+  1:['crate','crate','crate','crate','crate','crate','barrel','barrel','barrel','barrel',
+     'barrel','pallet','pallet','pallet',
+     'stain','stain','stain','cable','cable','bulb','bulb'],
+  2:['crate','crate','crate','crate','crate','drum','drum','drum','drum','drum',
+     'pipes','pipes','pipes',
+     'stain','stain','stain','chain','chain','bulb','bulb']
+};
+
+function spawnProps(lv){
+  propCells=new Set();
+  const th=LEVELS[lv]||LEVELS[0];
+  const bag=PROP_BAG[lv]||PROP_BAG[0];
+  const{dist}=bfs(1,1);
+  const cands=[];
+  for(let i=0;i<GX;i++)for(let j=0;j<GZ;j++){
+    if(dist[i+j*GX]<2)continue;
+    const x=cx(i),z=cz(j);
+    if(Math.hypot(x-player.pos.x,z-player.pos.z)<7)continue;       // never box the player in
+    if(exitCell&&Math.hypot(x-cx(exitCell[0]),z-cz(exitCell[1]))<6)continue;
+    /* furniture goes down before loot, so these two only matter on the
+       reload path — populate() is what actually keeps a locker out of a
+       crate, by treating propCells as taken */
+    if(chests.some(c=>Math.hypot(c.x-x,c.z-z)<2.2))continue;
+    if(items.some(t=>Math.hypot(t.x-x,t.z-z)<2.0))continue;
+    cands.push({i,j,x,z});
+  }
+  for(let k=cands.length-1;k>0;k--){const j=randInt(0,k);[cands[k],cands[j]]=[cands[j],cands[k]];}
+  const mix=bag.slice();
+  for(let k=mix.length-1;k>0;k--){const j=randInt(0,k);[mix[k],mix[j]]=[mix[j],mix[k]];}
+  const want=Math.min(mix.length,cands.length);
+  for(let k=0;k<want;k++){
+    const c=cands[k];
+    const kind=mix[k];
+    const b=PROP_BUILD[kind];
+    if(!b)continue;
+    let p;
+    try{p=b(th);}catch(e){continue;}
+    const g=p.g;
+    const ox=rand(-1.05,1.05),oz=rand(-1.05,1.05);
+    g.position.set(c.x+ox,0,c.z+oz);
+    /* colliders are axis-aligned, so a long prop spun 45° would stand its
+       box across the corridor. Square-ish things can face any way; long ones
+       snap to quarter turns and trade extents with the spin. */
+    const long=Math.abs(p.hx-p.hz)>Math.min(p.hx,p.hz)*.15;
+    const q=long?randInt(0,3):0;
+    g.rotation.y=long?q*Math.PI/2+rand(-.05,.05):rand(0,TAU);
+    scene.add(g);levelObjs.push(g);
+    propCells.add(c.i+','+c.j);
+    if(p.bulb){
+      /* the bulb is its own light source: hand it to the fixture pool so the
+         nearest eight lights chase it like any ceiling fixture */
+      fixtures.push({x:c.x+ox,z:c.z+oz,on:true,bright:.9,base:.55,flick:0,flickT:rand(1.5,7)});
+      continue;
+    }
+    if(p.noCol)continue;
+    let hx=p.hx,hz=p.hz;
+    if(long&&(q&1)){hx=p.hz;hz=p.hx;}
+    collidersExtra.push({x:c.x+ox,z:c.z+oz,hx,hz,low:!!p.low,prop:kind});
+  }
+}
+
 function openChest(c){
   if(!c||c.open)return;
   c.open=true;c.openT=0;
@@ -2979,17 +3322,27 @@ function populate(){
   }
   far.sort((a,b)=>b.d-a.d);
 
-  // fuses: far, spread
+  // fuses: far, spread, and never inside a piece of furniture — props are
+  // already standing by the time we get here
   const chosen=[];
   for(const c of far){
     if(chosen.length>=3)break;
+    if(propCells.has(c.i+','+c.j))continue;
     if(chosen.every(o=>Math.hypot(o.i-c.i,o.j-c.j)>6))chosen.push(c);
   }
-  while(chosen.length<3)chosen.push(far[randInt(0,Math.min(30,far.length-1))]);
+  for(let tries=0;chosen.length<3&&tries<40;tries++){          // fall back on density
+    const c=pick(far.slice(0,Math.min(30,far.length)));
+    if(propCells.has(c.i+','+c.j))continue;
+    chosen.push(c);
+  }
+  for(let k=0;chosen.length<3&&k<far.length;k++){              // a floor always gets three
+    if(!chosen.includes(far[k]))chosen.push(far[k]);
+  }
   chosen.forEach(c=>spawnItem('fuse',c.x,c.z));
 
   // ---- weapons & supplies: locked in chests spread through the maze ----
   const taken=new Set(chosen.map(c=>c.i+','+c.j));
+  for(const k of propCells)taken.add(k);        // a locker inside a cabinet is a bug
   if(exitInfo)taken.add(exitInfo.cell[0]+','+exitInfo.cell[1]);
   const spots=[];
   const pool=far.filter(c=>!taken.has(c.i+','+c.j)&&c.d>2);
@@ -3045,7 +3398,7 @@ function populate(){
 }
 
 function spawnMonsters(n){
-  n=n==null?Math.max(3,LV().monCount+DIF().mons):n;
+  n=n==null?Math.max(2,LV().monCount+DIF().mons):n;
   const{dist}=bfs(spawnCell[0],spawnCell[1]);
   // Bands are measured in maze steps (1 step = CELL units of walking).
   // The first two are deliberately close so the player meets something early.
@@ -4309,7 +4662,7 @@ function powerExit(){
   if(level>=LAST_LEVEL){startEscape();return;}
   setTimeout(()=>{
     if(state!=='playing')return;
-    for(let k=0;k<2;k++){
+    for(let k=0;k<1;k++){
       let c=null,tries=0;
       do{c={i:randInt(0,GX-1),j:randInt(0,GZ-1)};tries++;}
       while(tries<40&&Math.hypot(cx(c.i)-player.pos.x,cz(c.j)-player.pos.z)<12);
@@ -5040,7 +5393,7 @@ function renderTut(){
 function tutAdvance(){
   const i=tutPick();
   if(i<0){tutFinish();return;}
-  tutIdx=i;tutShown=0;tutOkT=0;
+  tutIdx=i;tutShown=performance.now();tutOkT=0;
   /* every step measures against where you were when it appeared */
   tutBase={x:player.pos.x,z:player.pos.z,sprint:tutSprintT,torch:tutTorchFlips,
            chests:player.chests,fuses:player.fuses,kills:player.kills};
@@ -5048,7 +5401,7 @@ function tutAdvance(){
 }
 function tutStart(){
   if(tutMode!=='on')return;
-  tutActive=true;tutIdx=-1;tutShown=0;tutOkT=0;
+  tutActive=true;tutIdx=-1;tutShown=performance.now();tutOkT=0;
   tutAdvance();
 }
 function tutFinish(){
@@ -5070,8 +5423,9 @@ function updateTutorial(dt){
   }
   const s=TUT_STEPS[tutIdx];
   if(!s)return;
-  tutShown+=dt;
-  if(tutShown<1.1)return;               // let the line be read before it retires
+  /* wall clock, not frame time: dt is clamped for the physics, so on a slow
+     machine "show it for a second" would quietly become fifteen */
+  if(performance.now()-tutShown<1100)return;    // let the line be read before it retires
   if(s.when&&!s.when()){tutAdvance();return;}   // whatever it waited for left
   if(!s.cond())return;
   tutDone.add(s.id);
@@ -5139,9 +5493,10 @@ function tick(){
       muzzleFlashT-=dt;
       if(muzzleFlashT<=0)muzzle.intensity=0;
     }
-    // monsters respawn to keep pressure
+    // monsters trickle back in, but the floor holds far fewer of them than it
+    // used to: the halls are supposed to feel empty right up until they aren't
     const alive=monsters.filter(m=>!m.dead).length;
-    if(alive<5&&Math.random()<dt*.2){
+    if(alive<(LV().monCap||3)&&Math.random()<dt*.11){
       let c=null,tries=0;
       do{c={i:randInt(0,GX-1),j:randInt(0,GZ-1)};tries++;}
       while(tries<60&&Math.hypot(cx(c.i)-player.pos.x,cz(c.j)-player.pos.z)<15);
@@ -5269,8 +5624,10 @@ function loadLevel(lv,sv){
   buildLevel(level,sv&&sv.maze?sv.maze:null);
   if(sv){
     applySave(sv);
+    spawnProps(level);
   }else{
     placePlayer();
+    spawnProps(level);              // before populate, so loot avoids the furniture
     populate();
     spawnMonsters();
     playT=0;hunterActive=false;nextHunt=22;lastTickW=performance.now();
@@ -5386,6 +5743,14 @@ window.__BR={player,get monsters(){return monsters;},get state(){return state;},
   get escape(){return{active:escapeActive,t:escapeT,sealed:escapeSealed};},
   startEscape,sealExit,forceExit,tryPowerExit,nearExit,makeNoise,objMissing,
   resolveCollision,get colliders(){return collidersExtra;},
+  get props(){return collidersExtra.filter(c=>c.prop)
+    .map(c=>{const i=Math.floor((c.x+HALF_W)/CELL),j=Math.floor((c.z+HALF_D)/CELL);
+      return{kind:c.prop,x:c.x,z:c.z,hx:c.hx,hz:c.hz,low:!!c.low,
+             i,j,cell:{x:cx(i),z:cz(j)}};});},
+  get propCells(){return [...propCells];},
+  spawnProps,
+  get monCap(){return LV().monCap;},
+  get aliveMonsters(){return monsters.filter(m=>!m.dead).length;},
   updateLevelHUD,
   get noteOpen(){return noteOpen;},showNote,closeNote,LORE,
   get keycard(){return player.keycard;},get noteIds(){return player.noteIds;},
@@ -5402,6 +5767,7 @@ window.__BR={player,get monsters(){return monsters;},get state(){return state;},
   descend,loadLevel,startReload,finishReload,runSeconds,loadRec,recordRun,renderTitleRec,
   powerExit,attack,damagePlayer,
   get pos(){return{x:player.pos.x,z:player.pos.z,yaw:player.yaw,y:player.y};},
+  setLook(yaw,pitch){player.yaw=yaw;player.pitch=pitch||0;},
   setPos(x,z){player.pos.set(x,0,z);},
   get reloadT(){return player.reloadT;},get touchMode(){return touchMode;},
   get levelName(){return LV().name;},
