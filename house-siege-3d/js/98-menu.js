@@ -58,8 +58,10 @@ const HT_PAGES = [
       <tr><td><kbd>MIDDLE CLICK</kbd></td><td>Cycle to the next bag slot</td></tr>
       <tr><td><kbd>TAB</kbd></td><td>Scoreboard (kills / deaths / HP)</td></tr>
       <tr><td><kbd>ESC</kbd></td><td>Pause</td></tr>
+      <tr><td><kbd>F3</kbd></td><td>Performance readout — frame rate, frame time and the current render scale</td></tr>
     </table>
-    <p>The mouse is captured when you click the arena. If your browser blocks it, just keep the pointer over the game window — aiming still works.</p>`
+    <p>The mouse is captured when you click the arena. If your browser blocks it, just keep the pointer over the game window — aiming still works.</p>
+    <p>If the game feels heavy, watch <kbd>F3</kbd>: it shows what the frame rate actually is, and the resolution scale it has dropped to. The game lowers shadows and render resolution on its own when frames get long, so a slow laptop degrades instead of stuttering.</p>`
   },
   {
     t: 'WEAPONS & CRATES',
