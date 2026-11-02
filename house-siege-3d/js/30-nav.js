@@ -43,14 +43,17 @@ function buildWaypoints() {
     if (j < N - 1 && grid[j + 1][i] && !cells[j][i].S) link(grid[j][i], grid[j + 1][i]);
   }
 
-  /* catwalk ring */
-  const xs = [];
-  for (let x = -26; x <= 26.01; x += 6.5) xs.push(x);
-  const S = xs.map(x => addNode(x, D, PY));
-  const Nn = xs.map(x => addNode(x, -D, PY));
-  const E = xs.map(x => addNode(D, x, PY));
-  const W = xs.map(x => addNode(-D, x, PY));
-  for (const arr of [S, Nn, E, W]) for (let k = 0; k + 1 < arr.length; k++) link(arr[k], arr[k + 1]);
+  /* catwalk ring — only maps that have a catwalk */
+  const S = [], Nn = [], E = [], W = [];
+  if (MAP.catwalk) {
+    const xs = [];
+    for (let x = -26; x <= 26.01; x += 6.5) xs.push(x);
+    S.push(...xs.map(x => addNode(x, D, PY)));
+    Nn.push(...xs.map(x => addNode(x, -D, PY)));
+    E.push(...xs.map(x => addNode(D, x, PY)));
+    W.push(...xs.map(x => addNode(-D, x, PY)));
+    for (const arr of [S, Nn, E, W]) for (let k = 0; k + 1 < arr.length; k++) link(arr[k], arr[k + 1]);
+  }
   /* Corners: the inner railings seal each corner, so route around them along the
      deck midline via a corner node.
      The west side had the two corner links swapped — cNW was joined to W[last]
@@ -59,10 +62,12 @@ function buildWaypoints() {
      which is exactly the "AI stuck on a wall" behaviour. W[0] is the NORTH end
      and W[last] the SOUTH end, so NW takes W[0] and SW takes W[last]. */
   const cSE = addNode(D, D, PY), cNE = addNode(D, -D, PY), cNW = addNode(-D, -D, PY), cSW = addNode(-D, D, PY);
-  link(S[S.length - 1], cSE); link(cSE, E[E.length - 1]);
-  link(E[0], cNE); link(cNE, Nn[Nn.length - 1]);
-  link(Nn[0], cNW); link(cNW, W[0]);
-  link(W[W.length - 1], cSW); link(cSW, S[0]);
+  if (MAP.catwalk) {
+    link(S[S.length - 1], cSE); link(cSE, E[E.length - 1]);
+    link(E[0], cNE); link(cNE, Nn[Nn.length - 1]);
+    link(Nn[0], cNW); link(cNW, W[0]);
+    link(W[W.length - 1], cSW); link(cSW, S[0]);
+  }
 
   /* stairs: chain the four ramps to the floor and to the ring */
   const groundNodes = [];
@@ -97,6 +102,23 @@ function buildWaypoints() {
     const pN = nearestIn(platNodes, high.x, high.z);
     if (gN) link(low, gN);
     if (pN) link(high, pN);
+  }
+
+  /* The plinth on the flat maps is the only high ground there is, so give it
+     its own node plus four around the base — otherwise the bots treat the
+     middle of the map as an obstacle and never contest it. */
+  if (G.plinth) {
+    const top = addNode(0, 0, G.plinth.y);
+    const rim = [];
+    for (let k = 0; k < 4; k++) {
+      const a = k * Math.PI / 2 + Math.PI / 4;
+      rim.push(addNode(Math.cos(a) * (G.plinth.r + 1.7), Math.sin(a) * (G.plinth.r + 1.7), 0));
+    }
+    for (const n of rim) {
+      link(n, top);
+      const gN = nearestIn(groundNodes, n.x, n.z);
+      if (gN) link(n, gN);
+    }
   }
 
   G.rampsNode = null;
