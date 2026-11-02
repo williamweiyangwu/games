@@ -7,14 +7,17 @@
 /* ------------------------------------------------------------
    GAME FLOW
    ------------------------------------------------------------ */
-function startGame(mode) {
+function startGame(mode, mapId) {
   Snd.init();
   if (Snd.ctx && Snd.ctx.state === 'suspended') Snd.ctx.resume();
-  G.mode = mode;
+  const def = modeDef(mode);
+  G.mode = def.id;
+  G.mapId = mapDef(mapId || G.mapId || 'white').id;
   G.state = 'playing';
-  G.timeLeft = CFG.matchTime;
+  G.timeLeft = def.clock;
   G.golden = false;
   G.score.red = 0; G.score.blue = 0;
+  G.round = { n: 1, hold: 0, winner: '' };
   $('clock').classList.remove('gold');
   G.tutorial.active = false;
   $('tutTasks').classList.remove('show');
@@ -38,20 +41,28 @@ function startGame(mode) {
   G.shake = 0;
   perfReset();
 
+  /* the level has to be standing before anything is placed on it: spawns,
+     crates and HQ positions all come out of the build */
+  ensureWorld(G.mapId);
+
   createPlayer();
-  if (mode === 'tutorial') { ensureBotGroup(); spawnTutorialDummies(); }
+  if (def.id === 'tutorial') { ensureBotGroup(); spawnTutorialDummies(); }
   else createTeams();
   createChests();
   createFlags();
-  for (const t of ['red', 'blue']) G.flags[t].group.visible = (mode === 'flag');
+  for (const t of ['red', 'blue']) G.flags[t].group.visible = (def.id === 'flag');
+  createHill();
 
   buildRoster();
   buildMapBase();
 
-  $('modeName').textContent = mode === 'flag' ? 'FLAG RAID' : 'TEAM DEATHMATCH';
+  $('modeName').textContent = def.id === 'tutorial' ? 'TRAINING' : def.name;
+  $('mapName').textContent = mapDef(G.mapId).name;
+  /* the hill meter belongs to one mode only */
+  $('hillBar').classList.toggle('show', def.id === 'koth');
   /* paint the score strip now instead of waiting for the first HUD tick, so
      the previous match's numbers and label are never visible for a frame */
-  const cap0 = mode === 'flag' ? 'CAPTURES' : 'KILLS';
+  const cap0 = def.scoreLabel;
   $('capRed').textContent = cap0;
   $('capBlue').textContent = cap0;
   $('scoreRed').textContent = '0';
@@ -63,24 +74,64 @@ function startGame(mode) {
   G.player.pos.copy(sp0);
   G.player.pos.y = groundAt(sp0.x, sp0.z, 1);
   G.player.vel.set(0, 0, 0);
-  G.player.yaw = mode === 'tutorial' ? -Math.PI / 2 : -Math.PI / 4;
+  G.player.yaw = def.id === 'tutorial' ? -Math.PI / 2 : -Math.PI / 4;
   G.player.pitch = 0;
   G.player.hp = CFG.playerHp;
   G.player.lastHurtT = 0;
   VM.adsOn = false;
 
-  if (mode === 'tutorial') {
-    $('modeName').textContent = 'TRAINING';
-    startTutorial();
-  }
+  if (def.id === 'tutorial') startTutorial();
   requestLock();
-  banner(mode === 'flag' ? 'STEAL THE <span class="hl">ENEMY FLAG</span> AND RETURN IT TO YOUR HQ' :
-    mode === 'tutorial' ? 'FOLLOW THE <span class="hl">TRAINING OBJECTIVES</span> ON SCREEN' :
-      'ELIMINATE THE <span class="hl">' + teamLabel(otherTeam(G.team)) + ' TEAM</span> — MOST KILLS WINS', 4);
+  banner(def.id === 'tutorial'
+    ? 'FOLLOW THE <span class="hl">TRAINING OBJECTIVES</span> ON SCREEN'
+    : def.objective.replace('{FOE}', teamLabel(otherTeam(G.team))), 4);
 }
 
-function spawnTutorialDummies() {
-  const h = G.hq[G.team], cs = MAP.cs;
+/* ------------------------------------------------------------
+   LAST STAND ROUNDS
+   ------------------------------------------------------------
+   No respawns inside a round: the first team to lose everybody drops the
+   round, then everybody comes back for the next one. First to the mode's
+   limit takes the match. */
+function updateRounds(dt) {
+  if (G.mode !== 'survival' || G.state !== 'playing') return;
+  const r = G.round || (G.round = { n: 1, hold: 0, winner: '' });
+
+  if (r.hold > 0) {
+    r.hold -= dt;
+    if (r.hold <= 0) startSurvivalRound();
+    return;
+  }
+
+  let red = 0, blue = 0;
+  for (const a of allActors()) if (a.alive) { if (a.team === 'red') red++; else blue++; }
+  if (red > 0 && blue > 0) return;          // still a live round
+  if (red === 0 && blue === 0) return;      // mutual wipe: nobody scores
+
+  const winner = red > 0 ? 'red' : 'blue';
+  G.score[winner]++;
+  r.winner = winner;
+  r.hold = 4.5;
+  const mine = G.player ? G.player.team : 'red';
+  banner(teamLabel(winner) + ' TEAM TAKES <span class="hl">ROUND ' + r.n + '</span>', 3.2);
+  Snd.tone(winner === mine ? 520 : 300, winner === mine ? 900 : 220, 0.4, 0.22, 'triangle');
+  checkRoundEnd();
+}
+
+function startSurvivalRound() {
+  if (G.state !== 'playing' || G.mode !== 'survival') return;
+  G.round.n++;
+  for (const a of allActors()) {
+    if (!a.alive) respawnActor(a);
+    else { a.hp = a.maxHp; a.carrying = null; a.capT = 0; }
+    a.hitFlash = 0;
+  }
+  $('respawn').classList.remove('show');
+  if (G.player) $('rsSub').innerHTML = 'Respawning in <span id="rsNum">3</span>';
+  banner('<span class="hl">ROUND ' + G.round.n + '</span> — NO RESPAWNS', 2.4);
+}
+
+function spawnTutorialDummies() {  const h = G.hq[G.team], cs = MAP.cs;
   /* six targets spread around the HQ plaza, all inside the open corner so
      none of them hide behind a wall */
   const spots = [
@@ -135,6 +186,7 @@ function quitToMenu() {
   /* leaving a match means leaving the room: the others must see us go, and
      the host must tear the room down so it stops showing in the lobby */
   if (NET.room) netLeave();
+  if (typeof VOTE !== 'undefined' && VOTE.active) voteEnd();
   G.state = 'menu';
   document.exitPointerLock && document.exitPointerLock();
   $('hud').classList.remove('show');
@@ -195,6 +247,8 @@ function update(dt) {
   }
   for (const b of G.bots) {
     if (!b.alive) {
+      /* LAST STAND: the dead stay down until the round is decided */
+      if (G.mode === 'survival' && !b.dummy) continue;
       b.respawnT -= dt;
       if (b.respawnT <= 0) {
         if (b.dummy) reviveDummy(b);
@@ -212,6 +266,8 @@ function update(dt) {
   updateProjectiles(dt);
   updateChests(dt);
   updateFlags(dt);
+  updateHill(dt);
+  updateRounds(dt);
   updateEffects(dt);
   if (G.netMode) netTick(dt);
   updateHUD(dt);
@@ -308,5 +364,11 @@ function loop(ts) {
     updateNameplates();
   }
   if (G.renderer) G.renderer.render(G.scene, G.camera);
+  /* The vote runs on the end screen, where update() is not called. It counts
+     in real seconds, not in the clamped physics step: at 60 fps the two are the
+     same, but on a machine crawling at 2 fps a 25 s vote would take six minutes
+     and the "deploying" countdown would never end. Capped at a second so a
+     backgrounded tab does not skip the vote the instant it is focused. */
+  if (typeof VOTE !== 'undefined' && VOTE.active) updateVote(Math.min(1, raw));
 }
 
