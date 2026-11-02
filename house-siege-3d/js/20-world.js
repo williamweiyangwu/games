@@ -7,6 +7,11 @@
 /* ------------------------------------------------------------
    WORLD BUILDING
    ------------------------------------------------------------ */
+/* Everything the level builder creates hangs off one group, so switching map
+   is a single removal instead of a hunt through the scene graph. */
+let WORLD = null;
+function addWorld(o) { (WORLD || scene).add(o); return o; }
+
 function addBox(cx, cy, cz, w, h, d, mat, opt) {
   opt = opt || {};
   const geo = new THREE.BoxGeometry(w, h, d);
@@ -15,7 +20,7 @@ function addBox(cx, cy, cz, w, h, d, mat, opt) {
   m.position.set(cx, cy, cz);
   m.castShadow = opt.shadow !== false;
   m.receiveShadow = opt.receive !== false;
-  scene.add(m);
+  addWorld(m);
   if (!opt.noBase && h > 2.6 && Math.min(w, d) <= 0.55 && cy - h / 2 < 0.2 && h < 9) {
     const along = w > d ? 'x' : 'z';
     const bw = along === 'x' ? w : 0.07;
@@ -25,7 +30,7 @@ function addBox(cx, cy, cz, w, h, d, mat, opt) {
     const bb = new THREE.Mesh(new THREE.BoxGeometry(bw, 0.14, bd), MAT.base);
     bb.position.set(bxp, 0.11, bzp);
     bb.receiveShadow = true;
-    scene.add(bb);
+    addWorld(bb);
   }
   if (opt.collide !== false) {
     G.colliders.push({
@@ -72,7 +77,11 @@ function splitSegments(a, b, gaps) {
    WORLD — an enclosed white maze. Level 1 is the labyrinth,
    level 2 is a catwalk platform running right around the edge.
    ------------------------------------------------------------ */
+/* The live map. Fields are copied in from a preset by applyMapPreset(), and
+   every module reads this object rather than the preset — so switching map is
+   a mutation plus a rebuild, not a reload. */
 const MAP = {
+  id: 'white',
   B: 36,             // outer wall centreline
   outerT: 0.7,       // outer wall thickness
   platY: 4.2,        // catwalk deck height
@@ -80,10 +89,28 @@ const MAP = {
   N: 13,             // maze cells per side
   wallH: 3.0,        // maze wall height
   wallT: 0.42,       // maze wall thickness
-  railH: 1.15        // catwalk railing height
+  railH: 1.15,       // catwalk railing height
+  seed: 20261018,
+  loops: 0.20,
+  catwalk: true,
+  plinth: false
 };
-MAP.cs = (MAP.mazeHalf * 2) / MAP.N;
-MAP.g0 = -MAP.mazeHalf;
+
+function applyMapPreset(id) {
+  const m = mapDef(id);
+  MAP.id = m.id;
+  MAP.N = m.N;
+  MAP.wallH = m.wallH;
+  MAP.platY = m.catwalk ? m.platY : 0;
+  MAP.catwalk = !!m.catwalk;
+  MAP.plinth = !!m.plinth;
+  MAP.seed = m.seed;
+  MAP.loops = m.loops;
+  MAP.cs = (MAP.mazeHalf * 2) / MAP.N;
+  MAP.g0 = -MAP.mazeHalf;
+  return MAP;
+}
+applyMapPreset('white');
 
 function mulberry32(a) {
   return function () {
@@ -100,7 +127,8 @@ function cellCenter(i, j) {
 /* Perfect maze from a randomised depth-first search, then a share of the walls
    knocked back out so there are loops — a pure tree maze makes every fight a
    cornering, which is miserable in a shooter. */
-function genMaze(N, rnd) {
+function genMaze(N, rnd, loops) {
+  const open = loops === undefined ? 0.20 : loops;
   const cells = [];
   for (let j = 0; j < N; j++) {
     const row = [];
@@ -124,8 +152,8 @@ function genMaze(N, rnd) {
     stack.push([p[0], p[1]]);
   }
   for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
-    if (i < N - 1 && cells[j][i].E && rnd() < 0.20) { cells[j][i].E = false; cells[j][i + 1].W = false; }
-    if (j < N - 1 && cells[j][i].S && rnd() < 0.20) { cells[j][i].S = false; cells[j + 1][i].N = false; }
+    if (i < N - 1 && cells[j][i].E && rnd() < open) { cells[j][i].E = false; cells[j][i + 1].W = false; }
+    if (j < N - 1 && cells[j][i].S && rnd() < open) { cells[j][i].S = false; cells[j + 1][i].N = false; }
   }
   return cells;
 }
@@ -136,19 +164,39 @@ function buildWorld() {
   const outer = B + OT / 2;                 // outer face of the perimeter
   const deckC = (MH + outer) / 2;           // catwalk centreline
   const deckW = outer - MH;                 // catwalk width
+  const preset = mapDef(MAP.id);
+
+  /* a fresh group per build; disposeWorld() removed the previous one */
+  WORLD = new THREE.Group();
+  WORLD.name = 'world:' + MAP.id;
+  scene.add(WORLD);
+  G.world = WORLD;
+
+  /* atmosphere belongs to the map, not the engine */
+  if (scene.fog) {
+    scene.fog.color.setHex(preset.fog);
+    scene.fog.near = preset.fogNear;
+    scene.fog.far = preset.fogFar;
+  }
+  if (G.sky && G.sky.material && G.sky.material.uniforms) {
+    const u = G.sky.material.uniforms;
+    u.botCol.value.setHex(preset.fog);
+    u.midCol.value.setHex(preset.fog).lerp(new THREE.Color(0x9cc4e4), 0.5);
+  }
+  if (G.sun) G.sun.color.setHex(preset.light);
 
   /* --- ground --- */
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(420, 420), MAT.ground);
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.06;          // sit under the maze slab, no z-fighting
   ground.receiveShadow = true;
-  scene.add(ground);
+  addWorld(ground);
 
   /* --- maze floor --- */
   addBox(0, -0.08, 0, MH * 2 + 0.5, 0.16, MH * 2 + 0.5, MAT.mazeFloor, { name: 'mazefloor' });
 
   /* --- maze layout --- */
-  const cells = genMaze(N, mulberry32(20261018));
+  const cells = genMaze(N, mulberry32(MAP.seed), MAP.loops);
   G.maze = cells;
 
   const openCell = (i, j) => {
@@ -170,11 +218,12 @@ function buildWorld() {
       if (x1 > minX && x0 < maxX && z1 > minZ && z0 < maxZ) openCell(i, j);
     }
   };
-  well(-RW, RW, MH - RUN, MH);
-  well(-RW, RW, -MH, -MH + RUN);
-  well(MH - RUN, MH, -RW, RW);
-  well(-MH, -MH + RUN, -RW, RW);
-
+  if (MAP.catwalk) {
+    well(-RW, RW, MH - RUN, MH);
+    well(-RW, RW, -MH, -MH + RUN);
+    well(MH - RUN, MH, -RW, RW);
+    well(-MH, -MH + RUN, -RW, RW);
+  }
   /* open corner plazas: 3x3 cells knocked out so each HQ has room to fight in.
      red takes the south-west corner, blue the north-east. */
   const plaza = (i0, j0) => {
@@ -183,12 +232,32 @@ function buildWorld() {
   plaza(0, N - 3);
   plaza(N - 3, 0);
 
-  const ramps = [
-    { axis: 'z', minX: -RW, maxX: RW, minZ: MH - RUN, maxZ: MH, yAtMinZ: 0, yAtMaxZ: PY },
-    { axis: 'z', minX: -RW, maxX: RW, minZ: -MH, maxZ: -MH + RUN, yAtMinZ: PY, yAtMaxZ: 0 },
-    { axis: 'x', minX: MH - RUN, maxX: MH, minZ: -RW, maxZ: RW, yAtMinX: 0, yAtMaxX: PY },
-    { axis: 'x', minX: -MH, maxX: -MH + RUN, minZ: -RW, maxZ: RW, yAtMinX: PY, yAtMaxX: 0 }
-  ];
+  /* The plinth needs its ground cleared BEFORE the walls are built. Calling
+     openCell down in the plinth block would only edit the cell data — the wall
+     meshes are already standing by then, and you get a 4 m slab of maze wall
+     erupting out of the top tier. Half width has to be the same number the
+     plinth block uses, so it is computed once here and reused there. */
+  const plinthBase = MAP.plinth ? Math.min(Math.max(cs * 2.3, 7.4), 10.2) : 0;
+  if (MAP.plinth) {
+    const pb = plinthBase + cs * 0.5;
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const c = cellCenter(i, j);
+      if (Math.abs(c.x) < pb && Math.abs(c.z) < pb) openCell(i, j);
+    }
+  }
+
+  /* Only maps with a catwalk get the four stair ramps. A flat map has no deck
+     to reach, and a ramp there would just be a 9 m solid bulkhead in the
+     middle of the maze for no reason. */
+  const ramps = [];
+  if (MAP.catwalk) {
+    ramps.push(
+      { axis: 'z', minX: -RW, maxX: RW, minZ: MH - RUN, maxZ: MH, yAtMinZ: 0, yAtMaxZ: PY },
+      { axis: 'z', minX: -RW, maxX: RW, minZ: -MH, maxZ: -MH + RUN, yAtMinZ: PY, yAtMaxZ: 0 },
+      { axis: 'x', minX: MH - RUN, maxX: MH, minZ: -RW, maxZ: RW, yAtMinX: 0, yAtMaxX: PY },
+      { axis: 'x', minX: -MH, maxX: -MH + RUN, minZ: -RW, maxZ: RW, yAtMinX: PY, yAtMaxX: 0 }
+    );
+  }
   for (const r of ramps) G.ramps.push(r);
 
   /* The four stair ramps are solid bulkheads that swallow the two cells they run
@@ -258,6 +327,7 @@ function buildWorld() {
   }
 
   /* --- catwalk: solid parapet block all round, deck on top --- */
+  if (MAP.catwalk) {
   addBox(0, PY / 2, deckC, outer * 2, PY, deckW, MAT.mazeWall, { name: 'deckS' });
   addBox(0, PY / 2, -deckC, outer * 2, PY, deckW, MAT.mazeWall, { name: 'deckN' });
   addBox(deckC, PY / 2, 0, deckW, PY, MH * 2, MAT.mazeWall, { name: 'deckE' });
@@ -266,7 +336,7 @@ function buildWorld() {
   /* dark trim along the inner lip so the two levels read apart */
   const trim = (x, z, w, d) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.07, d), MAT.deckEdge);
-    m.position.set(x, PY + 0.035, z); m.receiveShadow = true; scene.add(m);
+    m.position.set(x, PY + 0.035, z); m.receiveShadow = true; addWorld(m);
   };
   trim(0, MH - 0.09, MH * 2, 0.18);
   trim(0, -MH + 0.09, MH * 2, 0.18);
@@ -276,7 +346,7 @@ function buildWorld() {
   /* metal deck plate on top of the white parapet */
   const plate = (x, z, w, d) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.05, d), MAT.deck);
-    m.position.set(x, PY + 0.025, z); m.receiveShadow = true; scene.add(m);
+    m.position.set(x, PY + 0.025, z); m.receiveShadow = true; addWorld(m);
   };
   plate(0, deckC, outer * 2 - 0.1, deckW - 0.1);
   plate(0, -deckC, outer * 2 - 0.1, deckW - 0.1);
@@ -331,12 +401,48 @@ function buildWorld() {
       }
     }
   }
+  }   /* end catwalk block */
+
+  /* --- plinth: the flat maps need somewhere to climb, or every fight is a
+     corridor duel at the same height. A stepped platform in the middle of the
+     map, built as a ziggurat of shallow tiers: each rise is 0.45 m, which is
+     under the 0.5 m step-up the collision code allows, so it is walked rather
+     than jumped. --- */
+  if (MAP.plinth) {
+    const base = plinthBase;                   // half width of the bottom tier
+    const RISE = 0.45, TIERS = 6;
+    let topHalf = base;
+    for (let k = 0; k < TIERS; k++) {
+      const h = RISE * (k + 1);
+      topHalf = base * (1 - k * 0.13);
+      addBox(0, h / 2, 0, topHalf * 2, h, topHalf * 2,
+        MAT.mazeWall, { noBase: true, name: 'plinth' });
+      /* a dark lip along the top edge of every tier — without it six 0.45 m
+         steps in the same stone read as one flat ramp from any distance, and
+         you cannot tell how high you are or where the next step starts */
+      const t = 0.16, y = h - 0.03;
+      for (const s of [-1, 1]) {
+        addBox(0, y, s * (topHalf - t / 2), topHalf * 2, 0.1, t, MAT.deckEdge, { collide: false, shadow: false });
+        addBox(s * (topHalf - t / 2), y, 0, t, 0.1, topHalf * 2, MAT.deckEdge, { collide: false, shadow: false });
+      }
+    }
+    /* the ground under it was already cleared up with the plazas — see the
+       plinthBase block before the wall runs */
+    const cap = new THREE.Mesh(new THREE.RingGeometry(topHalf * 0.72, topHalf * 0.9, 40),
+      new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.45, side: THREE.DoubleSide }));
+    cap.rotation.x = -Math.PI / 2;
+    cap.position.y = RISE * TIERS + 0.03;
+    addWorld(cap);
+    G.plinth = { r: topHalf, y: RISE * TIERS };
+  } else {
+    G.plinth = null;
+  }
 
   /* --- lighting --- */
   const fill = (x, y, z, i) => {
-    const l = new THREE.PointLight(0xfff0d8, i, 30, 1.5);
+    const l = new THREE.PointLight(preset.light, i, 30, 1.5);
     l.position.set(x, y, z);
-    scene.add(l);
+    addWorld(l);
   };
   fill(0, PY + 2.4, 0, 0.45);
   fill(0, 3.0, MH - 4, 0.55);
@@ -355,7 +461,7 @@ function buildWorld() {
       new THREE.MeshBasicMaterial({ color: t === 'red' ? 0xff4a4a : 0x4d8dff, transparent: true, opacity: 0.7, side: THREE.DoubleSide }));
     ring.rotation.x = -Math.PI / 2;
     ring.position.set(h.x, 0.14, h.z);
-    scene.add(ring);
+    addWorld(ring);
     G[t + 'Ring'] = ring;
   }
 
@@ -401,8 +507,18 @@ function buildWorld() {
     const p = cellCenter(3 + spots.length * 2, 3 + spots.length * 2);
     spots.push(p);
   }
-  spots.push({ x: -deckC, z: 11, y: PY });
-  spots.push({ x: deckC, z: -11, y: PY });
+  /* two up on the deck — only where there is a deck to put them on */
+  if (MAP.catwalk) {
+    spots.push({ x: -deckC, z: 11, y: PY });
+    spots.push({ x: deckC, z: -11, y: PY });
+  } else {
+    /* flat maps trade those for two more maze junctions, so the crate count
+       stays the same whatever the map */
+    for (const j of junctions) {
+      if (spots.length >= 8) break;
+      if (spots.indexOf(j) < 0) spots.push(j);
+    }
+  }
   G.chestSpots = spots.map(s => [s.x, s.y || 0, s.z]);
 
   mergeStaticWorld();
@@ -422,7 +538,7 @@ function buildWorld() {
 function mergeStaticWorld() {
   const byMat = new Map();
   const victims = [];
-  scene.traverse(o => {
+  (WORLD || scene).traverse(o => {
     if (!o.isMesh || o.userData.dyn) return;
     if (!o.geometry || !o.material || Array.isArray(o.material)) return;
     if (o.material.type === 'ShaderMaterial') return;
@@ -473,7 +589,45 @@ function mergeStaticWorld() {
     mesh.receiveShadow = rec.recv;
     mesh.userData.dyn = false;
     mesh.frustumCulled = false;
-    scene.add(mesh);
+    addWorld(mesh);
   }
 }
 
+
+/* ------------------------------------------------------------
+   MAP SWITCHING
+   ------------------------------------------------------------
+   The level is procedurally built from a preset, so switching map means
+   tearing the old group down and building the new one. Everything the
+   builder writes into G is cleared here too — leaving a stale collider or
+   spawn list behind is how you get bots walking into walls that are not
+   there any more. */
+function disposeWorld() {
+  if (!WORLD) return;
+  const geos = [];
+  WORLD.traverse(o => { if (o.isMesh && o.geometry) geos.push(o.geometry); });
+  scene.remove(WORLD);
+  for (const g of geos) { try { g.dispose(); } catch (e) { /* already gone */ } }
+  WORLD = null;
+  G.world = null;
+  G.colliders.length = 0;
+  G.ramps.length = 0;
+  G.maze = null;
+  G.chestSpots = [];
+  G.spawns = { red: [], blue: [] };
+  G.hq = null;
+  G.plinth = null;
+  G.redRing = null;
+  G.blueRing = null;
+  NODES.length = 0;
+}
+
+/* Build the requested map only if it is not the one already standing. */
+function ensureWorld(id) {
+  const want = mapDef(id).id;
+  if (MAP.id === want && WORLD) return false;
+  disposeWorld();
+  applyMapPreset(want);
+  buildWorld();
+  return true;
+}
