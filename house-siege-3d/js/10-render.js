@@ -9,7 +9,7 @@
    ------------------------------------------------------------ */
 const G = {
   scene: null, camera: null, renderer: null, clock: null,
-  mode: 'tdm', diff: 'normal', team: 'red', state: 'menu',
+  mode: 'tdm', mapId: 'white', diff: 'normal', team: 'red', state: 'menu',
   /* online: netMode turns on remote-player sync, netAi decides whether this
      machine also simulates a bot squad */
   netMode: false, netAi: false,
@@ -17,6 +17,8 @@ const G = {
   player: null, tracers: [], particles: [], projectiles: [], blasts: [],
   shake: 0, aimLine: null, aimPts: null,
   timeLeft: CFG.matchTime, score: { red: 0, blue: 0 },
+  /* LAST STAND round counter; ignored by every other mode */
+  round: { n: 1, hold: 0, winner: '' },
   /* sudden death after a level full-time score: the next kill (TDM) or the
      next capture (flag) decides the match */
   golden: false,
