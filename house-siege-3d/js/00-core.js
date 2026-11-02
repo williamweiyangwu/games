@@ -81,6 +81,107 @@ const STAM = {
 };
 
 
+/* ------------------------------------------------------------
+   MODES
+   ------------------------------------------------------------
+   One entry per playable ruleset. Everything mode-specific that the HUD, the
+   clock, the score strip and the vote screen need lives here, so adding a mode
+   is a data change plus (at most) one objective module — not a set of ifs
+   scattered through the flow.
+
+   `limit` is the score that ends the match early; 9999 means "the clock
+   decides". `clock` is the match length in seconds. */
+const MODES = {
+  tdm: {
+    id: 'tdm', name: 'TEAM DEATHMATCH', title: 'Team Deathmatch', short: 'DEATHMATCH',
+    tag: 'DEATHMATCH', tagClass: 'red', time: '5:00',
+    blurb: 'Kill the enemy team. Most kills when the clock hits zero wins. 3 second respawn.',
+    clock: 300, scoreLabel: 'KILLS', limit: 9999, respawn: true,
+    kicker: 'DEATHMATCH COMPLETE',
+    objective: 'ELIMINATE THE <span class="hl">{FOE} TEAM</span> — MOST KILLS WINS',
+    golden: 'THE NEXT KILL WINS'
+  },
+  flag: {
+    id: 'flag', name: 'FLAG RAID', title: 'Flag Raid', short: 'FLAG',
+    tag: 'CAPTURE THE FLAG', tagClass: 'blue', time: '5:00',
+    blurb: 'Steal the enemy flag and carry it to your HQ. Most captures wins. 3 second respawn.',
+    clock: 300, scoreLabel: 'CAPTURES', limit: 9999, respawn: true,
+    kicker: 'FLAG RAID COMPLETE',
+    objective: 'STEAL THE <span class="hl">ENEMY FLAG</span> AND RETURN IT TO YOUR HQ',
+    golden: 'THE NEXT CAPTURE WINS'
+  },
+  koth: {
+    id: 'koth', name: 'KING OF THE HILL', title: 'King of the Hill', short: 'THE HILL',
+    tag: 'HOLD THE ZONE', tagClass: 'gold', time: '5:00',
+    blurb: 'Stand in the marked zone to bank it. The zone jumps to a new point every time it is taken. First to 5 hills.',
+    clock: 300, scoreLabel: 'HILLS', limit: 5, respawn: true,
+    kicker: 'HILL SERIES COMPLETE',
+    objective: 'HOLD THE <span class="hl">MARKED ZONE</span> — THE ZONE MOVES WHEN TAKEN',
+    golden: 'THE NEXT HILL WINS'
+  },
+  survival: {
+    id: 'survival', name: 'LAST STAND', title: 'Last Stand', short: 'LAST STAND',
+    tag: 'ONE LIFE', tagClass: 'blue', time: '3 ROUNDS',
+    blurb: 'No respawns. Wipe the enemy team to take the round; the dead stay down until it is over. First to 3 rounds.',
+    clock: 900, scoreLabel: 'ROUNDS', limit: 3, respawn: false,
+    kicker: 'LAST STAND COMPLETE',
+    objective: 'NO RESPAWNS — <span class="hl">WIPE THE ENEMY TEAM</span> TO TAKE THE ROUND',
+    golden: 'THE NEXT ROUND DECIDES IT'
+  },
+  /* Not a competitive mode and deliberately absent from MODE_ORDER, but it has
+     to live here all the same: startGame() resolves every mode through this
+     table, and a missing entry used to silently fall back to deathmatch —
+     which is how the training course stopped being reachable at all. */
+  tutorial: {
+    id: 'tutorial', name: 'TRAINING', title: 'Tutorial', short: 'TRAINING',
+    tag: 'TRAINING', tagClass: 'gold', time: 'SAFE',
+    blurb: 'Learn the controls with live targets.',
+    clock: 300, scoreLabel: 'KILLS', limit: 9999, respawn: true,
+    kicker: 'TRAINING COMPLETE',
+    objective: 'FOLLOW THE <span class="hl">TRAINING OBJECTIVES</span> ON SCREEN',
+    golden: 'THE NEXT KILL WINS'
+  }
+};
+/* the order the menu and the vote screen list them in */
+const MODE_ORDER = ['tdm', 'flag', 'koth', 'survival'];
+function modeDef(id) { return MODES[id] || MODES.tdm; }
+
+/* ------------------------------------------------------------
+   MAPS
+   ------------------------------------------------------------
+   A preset is a recipe for the maze builder, not hand-placed geometry: the
+   seed drives the maze, `N` the cell count, `wallH`/`platY` the verticality.
+   Maps without a catwalk get a central plinth instead, so they are still not
+   flat. `fog` and `sky` retint the level without touching the materials. */
+const MAPS = {
+  white: {
+    id: 'white', name: 'WHITE MAZE', tag: 'THE ORIGINAL', time: '13 × 13',
+    blurb: 'The original: a 13 × 13 maze under a catwalk ring. Long sightlines from the deck, knife corners underneath.',
+    seed: 20261018, N: 13, wallH: 3.0, platY: 4.2, catwalk: true,
+    loops: 0.20, plinth: false, fog: 0xc6d6e4, fogNear: 90, fogFar: 235, light: 0xfff0d8
+  },
+  ash: {
+    id: 'ash', name: 'ASH GARDEN', tag: 'OPEN', time: '15 × 15',
+    blurb: 'Wider cells and lower walls with far more loops through them. Fights break up fast and the catwalk sits higher.',
+    seed: 771103, N: 15, wallH: 2.35, platY: 5.1, catwalk: true,
+    loops: 0.36, plinth: false, fog: 0xd6c9b6, fogNear: 70, fogFar: 210, light: 0xffe6c0
+  },
+  vault: {
+    id: 'vault', name: 'THE VAULT', tag: 'CLOSE QUARTERS', time: '11 × 11',
+    blurb: 'Few cells, tall walls, no catwalk. Everything happens at arm’s length — bring a shotgun or the knife.',
+    seed: 441122, N: 11, wallH: 4.0, platY: 0, catwalk: false,
+    loops: 0.12, plinth: true, fog: 0xb9c3cf, fogNear: 45, fogFar: 130, light: 0xdfe8ff
+  },
+  sectors: {
+    id: 'sectors', name: 'DEEP SECTORS', tag: 'LABYRINTH', time: '17 × 17',
+    blurb: 'A dense 17 × 17 lattice around a raised central platform. The longest routes, the most places to be ambushed.',
+    seed: 9091337, N: 17, wallH: 2.6, platY: 0, catwalk: false,
+    loops: 0.42, plinth: true, fog: 0xbfc9c0, fogNear: 55, fogFar: 165, light: 0xe8ffe8
+  }
+};
+const MAP_ORDER = ['white', 'ash', 'vault', 'sectors'];
+function mapDef(id) { return MAPS[id] || MAPS.white; }
+
 const WEAPONS = {
   knife:  { id:'knife',  name:'COMBAT KNIFE', melee:true, dmg:58, rate:0.40, range:2.5, tier:0 },
   pistol: { id:'pistol', name:'M9 PISTOL',    dmg:26, rate:0.20, mag:12, reserve:120, reload:1.35, spread:0.012, auto:false, range:90, tier:1, snd:'pistol' },
