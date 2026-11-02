@@ -237,6 +237,7 @@ function netHost(opts) {
     host: NET.cid,
     hostName: NET.name,
     mode: opts.mode || 'tdm',
+    map: opts.map || G.mapId || 'white',
     diff: opts.diff || 'normal',
     ai: !!opts.ai,
     pub: !!opts.pub,
@@ -259,7 +260,7 @@ function netHost(opts) {
 function netAdvert(cfg, n) {
   return {
     code: cfg.code, host: cfg.host, hostName: cfg.hostName,
-    mode: cfg.mode, diff: cfg.diff, ai: cfg.ai ? 1 : 0,
+    mode: cfg.mode, map: cfg.map, diff: cfg.diff, ai: cfg.ai ? 1 : 0,
     /* the lobby filter drops anything not marked public, so this has to be
        carried on the advert itself and not only on the room config */
     pub: !!cfg.pub,
@@ -325,7 +326,7 @@ function netStartMatch(cfg) {
   G.netAi = !!cfg.ai;
   G.diff = cfg.diff || 'normal';
   Ach.bump('onlineMatches');
-  startGame(cfg.mode || 'tdm');
+  startGame(cfg.mode || 'tdm', cfg.map || 'white');
   netShowChip(true);
   netUpdateChip();
   netToast('Joined room ' + cfg.code + (cfg.ai ? ' · AI ' + (DIFF[cfg.diff] ? DIFF[cfg.diff].label : cfg.diff) : ' · no AI'));
@@ -453,6 +454,23 @@ function netOnMessage(topic, payload) {
     return;
   }
 
+  if (rest.startsWith('vote/')) {
+    /* only the host counts; a guest ignores other guests' picks and waits for
+       the tally instead, so the two can never disagree */
+    if (!NET.isHost) return;
+    const cid = rest.slice(5);
+    if (cid === NET.cid) return;
+    netHostVote(cid, m.k, m.v);
+    return;
+  }
+
+  if (rest === 'tally') {
+    if (NET.isHost) return;
+    VOTE.hostTally = { mode: m.mode || {}, map: m.map || {}, count: m.n || 0 };
+    if (VOTE.active) voteRender();
+    return;
+  }
+
   if (rest === 'ev') { netEvent(m); return; }
 }
 
@@ -484,6 +502,20 @@ function netPeerState(cid, st) {
 
 function netEvent(ev) {
   if (!ev || !ev.k) return;
+
+  /* the host has finished counting: everybody deploys to the same match */
+  if (ev.k === 'next') {
+    if (NET.isHost) return;
+    const mode = ev.mode || G.mode, map = ev.map || G.mapId;
+    netToast('Next match: ' + modeDef(mode).name + ' on ' + mapDef(map).name);
+    /* the host's decision is final, but it arrives while the host still has a
+       three-second "deploying" countdown to run — show the same card and the
+       same countdown here, so both players enter the match together instead of
+       the guest standing in a level the host has not loaded yet */
+    if (VOTE.active && !VOTE.done) voteAnnounce(mode, map);
+    else { voteEnd(); startGame(mode, map); }
+    return;
+  }
 
   /* somebody is trying to join: resend the room config and our own state so
      they do not have to rely on retained delivery alone */
@@ -877,4 +909,42 @@ function initNet() {
       netPub(netTopic('room/' + NET.room.code + '/ev'), { k: 'left', cid: NET.cid, name: NET.name });
     }
   });
+}
+
+/* ------------------------------------------------------------
+   VOTING OVER THE WIRE
+   ------------------------------------------------------------
+   The host counts. A guest publishes its own pick on its own retained topic;
+   the host folds it in with its local bots and republishes the running total,
+   which every guest renders. The host is the only one that starts the match,
+   and it announces the winner so nobody has to guess. */
+function netSendVote(kind, pick) {
+  if (!NET.room || !NET.connected) return;
+  netPub(netTopic('room/' + NET.room.code + '/vote/' + NET.cid),
+    { k: kind, v: pick, n: NET.name }, { retain: true });
+}
+
+function netHostVote(cid, kind, pick) {
+  if (!NET.isHost || !VOTE.active) return;
+  if (kind !== 'mode' && kind !== 'map') return;
+  const rec = VOTE.votes[cid] || (VOTE.votes[cid] = { mode: '', map: '' });
+  rec[kind] = pick;
+  voteRender();
+  netPublishTally();
+  voteCheckAll();
+}
+
+function netPublishTally() {
+  if (!NET.isHost || !NET.room) return;
+  const t = voteTally();
+  netPub(netTopic('room/' + NET.room.code + '/tally'),
+    { mode: t.mode, map: t.map, n: t.count }, { retain: true });
+}
+
+function netAnnounceNext(mode, map) {
+  if (!NET.isHost || !NET.room) return;
+  NET.room.mode = mode;
+  NET.room.map = map;
+  netPub(netTopic('room/' + NET.room.code + '/ev'), { k: 'next', mode: mode, map: map });
+  netPub(netTopic('room/' + NET.room.code + '/cfg'), NET.room, { retain: true });
 }
