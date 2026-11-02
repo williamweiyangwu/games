@@ -149,12 +149,21 @@ function netConnect() {
       NET.connected = true;
       netSetStatus('online');
       netSubscribeLobby();
-      /* a room we were in before a drop gets rejoined */
-      if (NET._wantRoom) {
-        const code = NET._wantRoom;
-        NET._wantRoom = null;
+      /* A room we were in before a drop gets rejoined. NET.room survives the
+         drop but its SUBSCRIPTION does not — netJoin would bail out on "already
+         in this room" and leave us connected but deaf, hearing nothing the host
+         published. So re-subscribe here and ask the host to say hello again. */
+      const code = (NET.room && NET.room.code) || NET._wantRoom;
+      NET._wantRoom = null;
+      if (code && NET.room && NET.room.code === code) {
+        netSubscribe(netTopic('room/' + code + '/#'));
+        netPub(netTopic('room/' + code + '/ev'), { k: 'who', cid: NET.cid, code: code });
+        if (G.player && G.state === 'playing') netSendState(true);
+      } else if (code) {
         netJoin(code, true);
       }
+      /* and anything we tried to send while the socket was down */
+      netFlushPendingVote();
       finish(true);
     });
 
@@ -169,6 +178,11 @@ function netConnect() {
         if (NET.room) NET._wantRoom = NET.room.code;
         netSetStatus('offline', 'connection lost');
         netShowChip(false);
+        /* A public broker drops idle sockets all the time, and a laptop that
+           sleeps comes back with a dead one. The client is configured not to
+           reconnect on its own, so without this the session was simply over:
+           the room still looked joined and every message after it vanished. */
+        if (NET._wantRoom) netScheduleReconnect();
       }
     });
 
@@ -181,6 +195,25 @@ function netConnect() {
 function netSubscribe(topic) {
   if (!NET.client || !NET.connected) return;
   try { NET.client.subscribe(topic, { qos: 0 }); } catch (e) { /* ignore */ }
+}
+
+/* Deliberate reconnect with a short backoff. The MQTT client is opened with
+   reconnectPeriod: 0 so a dead socket is never retried behind the game's back,
+   which means the retry has to live here. Backs off to 15 s and stops as soon
+   as the connection is back; the connect handler rejoins the room itself. */
+function netScheduleReconnect() {
+  if (NET._retryT || NET.connected) return;
+  const n = NET._retryN = (NET._retryN || 0) + 1;
+  const delay = Math.min(15000, 1200 * Math.pow(1.6, Math.min(n, 6)));
+  netSetStatus('offline', 'reconnecting…');
+  NET._retryT = setTimeout(() => {
+    NET._retryT = 0;
+    if (NET.connected) return;
+    netConnect().then(ok => {
+      if (ok) NET._retryN = 0;
+      else netScheduleReconnect();
+    });
+  }, delay);
 }
 
 function netSubscribeLobby() {
@@ -343,6 +376,8 @@ function netStartMatch(cfg) {
     k: 'join', cid: NET.cid, name: NET.name, team: G.team
   });
   netSendState(true);
+  /* a vote cast while the socket was down goes out the moment we are back */
+  netFlushPendingVote();
 }
 
 /* ------------------------------------------------------------
@@ -927,9 +962,30 @@ function initNet() {
    which every guest renders. The host is the only one that starts the match,
    and it announces the winner so nobody has to guess. */
 function netSendVote(kind, pick) {
-  if (!NET.room || !NET.connected) return;
-  netPub(netTopic('room/' + NET.room.code + '/vote/' + NET.cid),
-    { k: kind, v: pick, n: NET.name }, { retain: true });
+  if (!NET.room) return;
+  /* Remember the pick even if the socket is down: a dropped connection during
+     the vote is exactly when a guest would otherwise lose their say silently.
+     One entry per kind, so a mode and a map picked offline both survive. */
+  const q = (NET._pendingVotes || []).filter(v => !(v.code === NET.room.code && v.kind === kind));
+  q.push({ kind: kind, pick: pick, code: NET.room.code });
+  NET._pendingVotes = q;
+  if (!NET.connected) {
+    netToast('Vote saved — it goes out when the connection is back');
+    return;
+  }
+  netFlushPendingVote();
+}
+
+function netFlushPendingVote() {
+  const q = NET._pendingVotes;
+  if (!q || !q.length || !NET.room || !NET.connected) return;
+  const code = NET.room.code, keep = [];
+  for (const p of q) {
+    if (p.code !== code) { keep.push(p); continue; }
+    netPub(netTopic('room/' + code + '/vote/' + NET.cid),
+      { k: p.kind, v: p.pick, n: NET.name }, { retain: true });
+  }
+  NET._pendingVotes = keep;
 }
 
 function netHostVote(cid, kind, pick) {
