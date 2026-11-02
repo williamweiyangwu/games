@@ -15,7 +15,7 @@ function checkRoundEnd() {
     if (G.score.red !== G.score.blue) endMatch();
     return;
   }
-  const limit = G.mode === 'flag' ? CFG.flagLimit : CFG.killLimit;
+  const limit = modeDef(G.mode).limit;
   if (G.score.red >= limit || G.score.blue >= limit) endMatch();
 }
 
@@ -37,19 +37,18 @@ function endMatch() {
   document.exitPointerLock && document.exitPointerLock();
   const red = G.score.red, blue = G.score.blue;
   const win = red > blue ? 'RED' : blue > red ? 'BLUE' : 'DRAW';
-  $('endKicker').textContent = G.golden
-    ? 'GOLDEN POINT'
-    : (G.mode === 'flag' ? 'FLAG RAID COMPLETE' : 'DEATHMATCH COMPLETE');
+  $('endKicker').textContent = G.golden ? 'GOLDEN POINT' : modeDef(G.mode).kicker;
   $('endTitle').textContent = win === 'DRAW' ? 'DRAW' : win + ' TEAM WINS';
   $('endTitle').style.color = win === 'RED' ? '#ff6b6b' : win === 'BLUE' ? '#7fabff' : '#fff';
   $('endScore').textContent = red + '  —  ' + blue;
   const p = G.player;
   const acc = p.shots ? Math.round(p.hits / p.shots * 100) : 0;
+  const md = modeDef(G.mode);
   $('endStats').innerHTML =
     '<div class="es"><b>' + p.kills + '</b><span>KILLS</span></div>' +
     '<div class="es"><b>' + p.deaths + '</b><span>DEATHS</span></div>' +
     '<div class="es"><b>' + acc + '%</b><span>ACCURACY</span></div>' +
-    '<div class="es"><b>' + (G.mode === 'flag' ? G.score[G.player.team] : p.kills) + '</b><span>' + (G.mode === 'flag' ? 'CAPTURES' : 'SCORE') + '</span></div>';
+    '<div class="es"><b>' + G.score[G.player.team] + '</b><span>' + md.scoreLabel + '</span></div>';
   $('end').classList.add('show');
   $('hud').classList.remove('show');
   $('nameplates').innerHTML = '';
@@ -63,6 +62,9 @@ function endMatch() {
   if (win === 'DRAW') Ach.bump('draws');
   else if (win === mine) Ach.bump('wins');
   else Ach.bump('losses');
+
+  /* hand over to the vote for the next match */
+  voteBegin(win);
 }
 
 
