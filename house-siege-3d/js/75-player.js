@@ -22,7 +22,16 @@ function updatePlayer(dt) {
   const p = G.player;
   if (!p.alive) {
     hideAimLine();
+    /* LAST STAND has no respawns: stay on the death cam until the round
+       resolves, so the overlay must not promise a countdown that never comes */
+    if (G.mode === 'survival') {
+      $('rsSub').innerHTML = 'NO RESPAWN — WAITING FOR THE ROUND';
+      SPEC.t += dt;
+      updateSpectator(dt);
+      return;
+    }
     p.respawnT -= dt;
+    $('rsSub').innerHTML = 'Respawning in <span id="rsNum">' + Math.max(0, Math.ceil(p.respawnT)) + '</span>';
     $('rsNum').textContent = Math.max(0, Math.ceil(p.respawnT));
     /* bystander camera: watch the opponent who killed you */
     SPEC.t += dt;
