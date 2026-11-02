@@ -292,11 +292,19 @@ function netJoin(code, quiet) {
   ping();
   const t1 = setTimeout(ping, 700);
   const t2 = setTimeout(ping, 1800);
+  /* On a public broker a subscribe that lands before the socket finished its
+     handshake is silently dropped, and then the invite code looks dead. Ask
+     again — re-subscribing is cheap and idempotent — before giving up. */
+  const t3 = setTimeout(() => {
+    if (NET._pendingJoin !== code) return;
+    netSubscribe(netTopic('room/' + code + '/#'));
+    ping();
+  }, 3800);
 
   const giveUp = () => {
     if (NET._pendingJoin !== code) return;
     NET._pendingJoin = null;
-    clearTimeout(t1); clearTimeout(t2);
+    clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
     const adv = NET.rooms.get(code);
     if (adv) {
       netAdoptRoom({
@@ -307,7 +315,7 @@ function netJoin(code, quiet) {
     }
     netToast('No room with code ' + code + '. It may have closed.');
   };
-  setTimeout(giveUp, 7000);
+  setTimeout(giveUp, 11000);
 }
 
 /* the config arrived: become a member of this room */
