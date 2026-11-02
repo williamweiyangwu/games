@@ -70,11 +70,9 @@
   .bigbtn.secondary { background: linear-gradient(180deg, #4a4234, #2e2820); color: #d8c8a0; border-color: #6a5c40; }
 
   #hud { position: fixed; inset: 0; pointer-events: none; z-index: 20; }
-  #crosshair {
-    position: absolute; left: 50%; top: 50%; width: 5px; height: 5px;
-    margin: -2.5px 0 0 -2.5px; border-radius: 50%;
-    background: rgba(255,255,255,0.8); box-shadow: 0 0 5px rgba(0,0,0,0.9);
-  }
+  /* third person: there is no aiming reticle, and the character stands where
+     the dot used to be */
+  #crosshair { display: none; }
   #stats { position: absolute; left: 14px; top: 14px; padding: 9px 13px; font-size: 13.5px; min-width: 178px; }
   #stats .row { display: flex; justify-content: space-between; gap: 16px; line-height: 1.65; }
   #stats .k { color: #b3a378; }
@@ -847,9 +845,13 @@ function buildShipModel(scale = 1) {
   addYard(1.85 + mizzenH * 0.75, 3.1, 1.6);
 
   const sails = [];
+  // a per-ship cloth: the canvas has to be able to go see-through when it
+  // stands between the third-person lens and the man walking the deck
+  const sailMat = MAT.sail.clone();
+  sailMat.transparent = true;
   function addSail(w, h, y, z, curve = 0.35) {
     const geo = new THREE.PlaneGeometry(w, h, 10, 10);
-    const mesh = new THREE.Mesh(geo, MAT.sail);
+    const mesh = new THREE.Mesh(geo, sailMat);
     mesh.position.set(0, y, z);
     mesh.castShadow = true;
     shipModel.add(mesh);
@@ -1022,6 +1024,7 @@ function buildShipModel(scale = 1) {
   shipModel.userData.flag = flag;
   shipModel.userData.flagGeo = flagGeo;
   shipModel.userData.sails = sails;
+  shipModel.userData.sailMat = sailMat;
 
   const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.06, 6, 14), MAT.trim);
   wheel.position.set(0, 2.35, 1.5);
@@ -1038,6 +1041,7 @@ function buildShipModel(scale = 1) {
   outer.scale.setScalar(scale);
   // userData must live on the OUTER group - that is what the game drives
   outer.userData.sails = shipModel.userData.sails;
+  outer.userData.sailMat = shipModel.userData.sailMat;
   outer.userData.flag = shipModel.userData.flag;
   outer.userData.flagGeo = shipModel.userData.flagGeo;
   return outer;
@@ -2067,7 +2071,178 @@ function makePerson(robeColor, hatColor) {
   return g;
 }
 
-// A bobbing marker so NPCs are easy to spot in first person
+// ============================================================
+//  THE PLAYER'S OWN BODY
+// ============================================================
+// A first-person game never needs one. The camera now stands behind your
+// shoulder, so there had better be somebody standing there: legs that walk,
+// arms that swing, and a hat that tells you which way you are facing.
+let avatar = null;
+const AVATAR = { stride: 0, swim: 0 };
+
+function makeSailor() {
+  const g = new THREE.Group();
+  const coat  = new THREE.MeshStandardMaterial({ color: 0x2f4062, roughness: 0.92 });
+  const shirt = new THREE.MeshStandardMaterial({ color: 0xc9bc9c, roughness: 0.95 });
+  const skin  = new THREE.MeshStandardMaterial({ color: 0xd8b08a, roughness: 0.9 });
+  const leather = new THREE.MeshStandardMaterial({ color: 0x3a2a1c, roughness: 0.95 });
+
+  // everything that bobs rides in `body`, so the walk cycle can lift the torso
+  const body = new THREE.Group();
+  g.add(body);
+
+  // legs pivot at the hip: the geometry hangs BELOW the pivot, so rotation.x
+  // swings the foot and not the whole leg about its middle
+  const legs = [];
+  for (const sx of [-0.12, 0.12]) {
+    const hip = new THREE.Group();
+    hip.position.set(sx, 0.82, 0);
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.08, 0.72, 6), leather);
+    leg.position.y = -0.40;
+    leg.castShadow = true;
+    hip.add(leg);
+    const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.09, 0.26), leather);
+    shoe.position.set(0, -0.78, 0.05);
+    shoe.castShadow = true;
+    hip.add(shoe);
+    body.add(hip);
+    legs.push(hip);
+  }
+
+  const tunic = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.31, 0.92, 10), coat);
+  tunic.position.y = 1.12;
+  tunic.castShadow = true;
+  body.add(tunic);
+  // a shirt at the collar and a belt at the waist
+  const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.17, 0.16, 8), shirt);
+  collar.position.y = 1.58;
+  body.add(collar);
+  const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.315, 0.315, 0.10, 10), leather);
+  belt.position.y = 0.86;
+  body.add(belt);
+  const shoulders = new THREE.Mesh(new THREE.SphereGeometry(0.27, 8, 6), coat);
+  shoulders.scale.set(1, 0.55, 0.8);
+  shoulders.position.y = 1.55;
+  shoulders.castShadow = true;
+  body.add(shoulders);
+
+  // arms pivot at the shoulder, same trick as the legs
+  const arms = [];
+  for (const sx of [-0.29, 0.29]) {
+    const sh = new THREE.Group();
+    sh.position.set(sx, 1.53, 0);
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.072, 0.06, 0.68, 6), coat);
+    arm.position.y = -0.34;
+    arm.castShadow = true;
+    sh.add(arm);
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 6), skin);
+    hand.position.y = -0.70;
+    sh.add(hand);
+    body.add(sh);
+    arms.push(sh);
+  }
+
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.1, 6), skin);
+  neck.position.y = 1.62;
+  body.add(neck);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.145, 12, 10), skin);
+  head.scale.set(0.94, 1.1, 0.96);
+  head.position.y = 1.76;
+  head.castShadow = true;
+  body.add(head);
+
+  // a plain traveller's hat — you are a citizen yet, not a fidalgo
+  const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.035, 12), leather);
+  brim.position.y = 1.86;
+  body.add(brim);
+  const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.155, 0.17, 10), leather);
+  crown.position.y = 1.95;
+  crown.castShadow = true;
+  body.add(crown);
+
+  g.userData = { body, legs, arms, head };
+  return g;
+}
+
+function ensureAvatar() {
+  if (avatar) return avatar;
+  avatar = makeSailor();
+  scene.add(avatar);
+  return avatar;
+}
+
+// Where the body stands, which way it faces, and how its limbs are going.
+// `yaw` here is a THREE rotation.y, i.e. local +Z maps to (sin, cos) -- the
+// movement convention is forward = (-sin lookYaw, -cos lookYaw), hence the
+// half turn on foot.
+function updateAvatar(dt) {
+  const a = ensureAvatar();
+  const ud = a.userData;
+  const sc = Game.ship ? SHIP_CLASSES[Game.ship.cls].scale : 1;
+
+  let yaw, moving = false, speed = 0;
+  if (Player.mode === 'helm' && playerShip) {
+    // at the wheel, facing the bow
+    const h = Ship.heading, lx = -0.55 * sc, lz = -2.4 * sc;
+    a.position.set(
+      playerShip.position.x + lx * Math.cos(h) + lz * Math.sin(h),
+      playerShip.position.y + 1.80 * sc,
+      playerShip.position.z - lx * Math.sin(h) + lz * Math.cos(h));
+    yaw = h;
+    // both hands on the wheel
+    const reach = 0.95 + Math.sin(elapsed * 1.7) * 0.04;
+    ud.arms[0].rotation.x = -reach; ud.arms[1].rotation.x = -reach;
+    ud.arms[0].rotation.z = 0.30;   ud.arms[1].rotation.z = -0.30;
+    ud.legs[0].rotation.x = 0.05;   ud.legs[1].rotation.x = -0.05;
+    ud.body.position.y = 0;
+    ud.body.rotation.z = 0;
+    a.rotation.set(0, yaw, 0);
+    return;
+  }
+
+  a.position.set(Player.x, Player.mode === 'deck' ? Player.y - 1.7 : Player.y, Player.z);
+  if (Player.mode === 'deck' && playerShip) {
+    yaw = Ship.heading + Math.PI + Player.lookYaw;
+  } else {
+    yaw = Player.lookYaw + Math.PI;
+  }
+
+  speed = Math.hypot(Player.vx, Player.vz);
+  moving = speed > 0.5 && Player.onGround && !Player.inWater;
+  // the stride is driven by DISTANCE covered, so the feet do not skate
+  AVATAR.stride += dt * speed * 3.4;
+
+  if (Player.inWater) {
+    // a breaststroke, and no walking on the river bed
+    AVATAR.swim += dt * 3.2;
+    const s = Math.sin(AVATAR.swim);
+    ud.arms[0].rotation.x = -0.9 + s * 0.5; ud.arms[1].rotation.x = -0.9 - s * 0.5;
+    ud.arms[0].rotation.z = 0.45;           ud.arms[1].rotation.z = -0.45;
+    ud.legs[0].rotation.x = s * 0.28;       ud.legs[1].rotation.x = -s * 0.28;
+    ud.body.position.y = 0;
+    ud.body.rotation.z = 0;
+  } else if (moving) {
+    const sw = Math.sin(AVATAR.stride);
+    ud.legs[0].rotation.x = sw * 0.62;
+    ud.legs[1].rotation.x = -sw * 0.62;
+    ud.arms[0].rotation.x = -sw * 0.5;
+    ud.arms[1].rotation.x = sw * 0.5;
+    ud.arms[0].rotation.z = 0.06; ud.arms[1].rotation.z = -0.06;
+    ud.body.position.y = Math.abs(Math.cos(AVATAR.stride)) * 0.045;
+    ud.body.rotation.z = sw * 0.03;
+  } else {
+    // standing: let the arms fall, breathe a little
+    const ease = (o, v) => { o.rotation.x += (v - o.rotation.x) * Math.min(1, dt * 8); };
+    ease(ud.legs[0], 0); ease(ud.legs[1], 0);
+    ease(ud.arms[0], 0); ease(ud.arms[1], 0);
+    ud.arms[0].rotation.z = 0.06; ud.arms[1].rotation.z = -0.06;
+    ud.body.position.y = Math.sin(elapsed * 1.5) * 0.012;
+    ud.body.rotation.z = 0;
+  }
+  a.rotation.set(0, yaw, 0);
+}
+
+// A bobbing marker so NPCs are easy to spot in third person
 function makeMarker(color) {
   const m = new THREE.Mesh(
     new THREE.OctahedronGeometry(0.22),
@@ -5193,31 +5368,110 @@ function updateShipPhysics(dt) {
 // ============================================================
 //  CAMERA RIG (first person)
 // ============================================================
+// ============================================================
+//  THE CAMERA: a boom over your shoulder
+// ============================================================
+// Third person, the way the age-of-discovery games do it: the lens stands a
+// few paces behind and above your hat, and astern of the ship when you take
+// the wheel. The boom is cut short by walls and ground, so it never puts the
+// lens inside a house.
+const camRig = { x: 0, y: 0, z: 0, ready: false };
+
+function boomClearance(fromX, fromY, fromZ, dirX, dirY, dirZ, len, minLen) {
+  const STEPS = 10, floor = minLen === undefined ? 1.0 : minLen;
+  for (let i = 1; i <= STEPS; i++) {
+    const t = (len * i) / STEPS;
+    const x = fromX + dirX * t, y = fromY + dirY * t, z = fromZ + dirZ * t;
+    let solid = y < groundY(x, z) + 0.32;
+    if (!solid) {
+      for (let c = 0; c < COLLIDERS.length; c++) {
+        const b = COLLIDERS[c];
+        if (x > b.x0 && x < b.x1 && z > b.z0 && z < b.z1 && y < b.top + 0.3) { solid = true; break; }
+      }
+    }
+    if (solid) return Math.max(floor, t - len / STEPS);
+  }
+  return len;
+}
+
 function updateCameraRig(dt) {
   camera.rotation.order = 'YXZ';
-  if (Player.mode === 'helm' && playerShip) {
-    const h = Ship.heading;
+  const step = (dt === undefined || dt <= 0) ? 1 / 60 : Math.min(0.1, dt);
+  let px, py, pz, yaw, pitch;
+  let aim = null;                 // aboard, the lens is aimed at the ship
+  let nearCut = false;            // the boom is jammed: hide your own back
+
+  if ((Player.mode === 'helm' || Player.mode === 'deck') && playerShip && Game.ship) {
+    // ---- aboard: the lens stands off her starboard quarter, so you see the
+    // whole ship and the water past her bow. Dead astern, the mainsail sat in
+    // the middle of the screen and hid exactly what you were steering into.
     const sc = SHIP_CLASSES[Game.ship.cls].scale;
-    // the helmsman stands on the quarterdeck, a little to port of the wheel
-    const lx = -0.55 * sc, lz = -2.4 * sc;
-    const wx = playerShip.position.x + lx * Math.cos(h) + lz * Math.sin(h);
-    const wz = playerShip.position.z - lx * Math.sin(h) + lz * Math.cos(h);
-    const eyeY = Math.max(1.85 * sc + 1.7, 3.28 * sc + 1.15);
-    camera.position.set(wx, playerShip.position.y + eyeY, wz);
-    // rigidly attached to the hull: the horizon heels and pitches with her
-    camera.quaternion.copy(playerShip.quaternion);
-    camera.rotateY(Math.PI + Player.lookYaw);
-    camera.rotateX(Player.lookPitch);
-  } else if (Player.mode === 'deck' && playerShip) {
-    camera.position.set(Player.x, Player.y + Player.bobY, Player.z);
-    camera.quaternion.copy(playerShip.quaternion);
-    camera.rotateY(Math.PI + Player.lookYaw);
-    camera.rotateX(Player.lookPitch);
+    const helm = Player.mode === 'helm';
+    const h = Ship.heading + Player.lookYaw;
+    // she is 13 m long and her mainmast stands 16 m over the water, so from
+    // astern the lens has to stand well off to get her in the frame at all.
+    // Walking her deck is different: there the boom drops to shoulder height
+    // and the canvas goes see-through, or the sails hide the man entirely.
+    const back = (helm ? 18 : 16) * sc;              // the stern is at local z = -4.4
+    const side = (helm ? 6.0 : 5.0) * sc;
+    const lift = (helm ? 8.0 : 7.0) * sc;
+    yaw = h + Math.PI;
+    pitch = Player.lookPitch;
+    const ax = -Math.sin(h), az = -Math.cos(h);      // astern
+    const rx = Math.cos(h), rz = -Math.sin(h);       // starboard
+    const ox = playerShip.position.x, oz = playerShip.position.z;
+    const oy = playerShip.position.y + lift;
+    const dx = ax * back + rx * side;
+    const dz = az * back + rz * side;
+    const dy = -Math.sin(pitch) * back * 0.5;        // look up, sink the lens
+    const bl = Math.hypot(dx, dy, dz) || 1;
+    const clear = boomClearance(ox, oy, oz, dx / bl, dy / bl, dz / bl, bl, 5.0 * sc);
+    px = ox + (dx / bl) * clear;
+    py = oy + (dy / bl) * clear;
+    pz = oz + (dz / bl) * clear;
+    // aim at the foredeck when steering, at your own back when walking her
+    aim = helm
+      ? { x: ox + Math.sin(h) * 3.0 * sc, y: playerShip.position.y + 3.4 * sc,
+          z: oz + Math.cos(h) * 3.0 * sc }
+      : { x: Player.x, y: Player.y - 0.5, z: Player.z };
   } else {
-    // on foot the eye rides 1.7 m above the feet, and sinks when you swim
-    const eye = Player.inWater ? 1.6 : 1.7;
-    camera.position.set(Player.x, Player.y + eye + Player.bobY, Player.z);
-    camera.rotation.set(Player.lookPitch, Player.lookYaw, 0, 'YXZ');
+    // ---- on foot: over the shoulder
+    yaw = Player.lookYaw;
+    pitch = Player.lookPitch;
+    const pivotY = Player.y + (Player.inWater ? 1.15 : 1.50);
+    const D = 4.3;
+    const cp = Math.cos(pitch);
+    // looking up (pitch > 0) lowers the lens, so the sky is not filled by hat
+    let dx = Math.sin(yaw) * cp, dz = Math.cos(yaw) * cp, dy = 0.22 - Math.sin(pitch);
+    const bl = Math.hypot(dx, dy, dz) || 1;
+    dx /= bl; dy /= bl; dz /= bl;
+    const clear = boomClearance(Player.x, pivotY, Player.z, dx, dy, dz, D, 1.2);
+    px = Player.x + dx * clear;
+    py = pivotY + dy * clear;
+    pz = Player.z + dz * clear;
+    // backed into an alley, the boom collapses onto your shoulders; there is no
+    // point filling the screen with the back of your own coat
+    nearCut = clear < 1.7;
+  }
+
+  // ---- smooth the walk, but never lag a cut: a mode change is a teleport
+  const jump = Math.hypot(px - camRig.x, py - camRig.y, pz - camRig.z);
+  const k = 1 - Math.exp(-16 * step);
+  if (!camRig.ready || jump > 2.4) {
+    camRig.x = px; camRig.y = py; camRig.z = pz;
+  } else {
+    camRig.x += (px - camRig.x) * k;
+    camRig.y += (py - camRig.y) * k;
+    camRig.z += (pz - camRig.z) * k;
+  }
+  camRig.ready = true;
+  camera.position.set(camRig.x, camRig.y, camRig.z);
+  if (avatar) avatar.visible = !nearCut;
+  if (aim) {
+    camera.lookAt(aim.x, aim.y, aim.z);
+    camera.rotateX(pitch);
+  } else {
+    camera.rotation.set(pitch, yaw, 0, 'YXZ');
   }
 }
 
@@ -5894,6 +6148,7 @@ function animate() {
       w.obj.position.y = LIS_CITY.Y + Math.abs(Math.sin(w.phase)) * 0.05;
     }
 
+    updateAvatar(dt);
     updateCameraRig(dt);
     updateDayNight();
     updatePrompt();
@@ -5951,6 +6206,7 @@ window.__voyage = {
   get dlgTalkLeft() { return dlgTalkLeft; },
   get dlgIdle() { return dlgIdle; },
   cargoUnits, cargoCapacity, cargoRoom, drawMinimap, updateDayNight, updateCameraRig,
+  updateAvatar, boomClearance, camRig, get avatar() { return avatar; },
   updateHUD, updateCargoBox, applyEffect, cargoValue, fmtClock, stepPhysics,
   get ship() { return playerShip; }
 };
