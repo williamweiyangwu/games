@@ -112,14 +112,58 @@ const HT_PAGES = [
       <li>The team with the most captures when the clock hits 0:00 wins.</li>
       <li>Respawn after <b>3 seconds</b>. Carriers are marked on the HUD.</li>
     </ul>
+    <h3><span class="g">KING OF THE HILL</span> — first to 5 hills</h3>
+    <ul>
+      <li>One <b>marked zone</b> is live at a time — a lit column you can see over the maze walls.</li>
+      <li>Stand in it with <b>no enemy inside</b> for <b>4 seconds</b> and the hill is yours: your team scores 1.</li>
+      <li>The zone then <b>jumps to a new point</b>, so the match keeps moving instead of becoming a siege of one doorway.</li>
+      <li>Both teams inside = <span class="accent">contested</span>. Nobody scores and the hold bar drains.</li>
+      <li>The bar above your crosshair shows your hold and the enemy's. First team to <b>5</b> wins; most hills at 0:00 otherwise.</li>
+    </ul>
+    <h3><span class="b">LAST STAND</span> — first to 3 rounds</h3>
+    <ul>
+      <li><b>No respawns inside a round.</b> Die and you stay down, watching, until the round is decided.</li>
+      <li>Wipe the enemy team to take the round. First team to <b>3 rounds</b> wins the match.</li>
+      <li>When a round ends everyone comes back for the next one, weapons and health reset.</li>
+      <li>There is no clock pressure per round — but the match clock still runs, and golden point applies at 0:00.</li>
+    </ul>
     <h4>GOLDEN POINT</h4>
     <p>If the clock runs out with the scores <b>level</b>, the match does not end in a draw — it goes to
     <span class="accent">golden point</span>. The next score wins it outright: the next kill in Team Deathmatch,
-    the next capture in Flag Raid. A suicide leaves both scores untouched, so the round simply plays on.</p>
+    the next capture in Flag Raid, the next hill in King of the Hill. A suicide leaves both scores untouched,
+    so the round simply plays on.</p>
+    <h4>AFTER THE MATCH — THE VOTE</h4>
+    <p>Every match ends on a <b>vote</b>, not a menu. Everyone in the room gets a say — you by clicking a mode
+    and a map, every AI operator on a timer of its own. The counts update live, the timer runs
+    <b>25 seconds</b>, and whatever won is what you play next. <b>DEPLOY NOW</b> skips the wait and starts the
+    current leader immediately.</p>
     <h4>WHEN YOU GO DOWN</h4>
     <p>The camera stays in the arena: first over your own body, then it swings onto
     <span class="accent">whoever killed you</span> and follows them until you respawn —
-    so you always learn who got you, and from where.</p>`
+    so you always learn who got you, and from where. In Last Stand there is no respawn to wait for, so the
+    camera stays with the killer until the round resolves.</p>`
+  },
+  {
+    t: 'THE MAPS',
+    h: `<h3>Four arenas, all built from the same rules</h3>
+    <p>Every map is generated from a seed, so the layout is fixed and fair rather than random each match.
+    What changes is the size of the cells, how tall the walls are, how many loops are cut through them,
+    and whether there is a catwalk over your head.</p>
+    <table>
+      <tr><th>MAP</th><th>SIZE</th><th>HEIGHT</th><th>WHAT IT PLAYS LIKE</th></tr>
+      <tr><td><b>WHITE MAZE</b></td><td>13 × 13</td><td>Catwalk at 4.2 m</td><td>The original. Long sightlines from the deck, knife corners underneath.</td></tr>
+      <tr><td><b>ASH GARDEN</b></td><td>15 × 15</td><td>Catwalk at 5.1 m</td><td>Wider cells, lower walls, far more loops. Fights break up fast.</td></tr>
+      <tr><td><b>THE VAULT</b></td><td>11 × 11</td><td>Tall walls, no deck</td><td>Close quarters. Bring a shotgun or the knife.</td></tr>
+      <tr><td><b>DEEP SECTORS</b></td><td>17 × 17</td><td>Central platform</td><td>The longest routes and the most places to be ambushed.</td></tr>
+    </table>
+    <h4>CATWALK OR PLINTH</h4>
+    <p>White Maze and Ash Garden have a <b>catwalk ring</b> over the maze, reached by four stair ramps in the
+    middle of each side. The Vault and Deep Sectors have no deck — instead a stepped <b>plinth</b> stands in the
+    centre of the map, three tiers of 0.45 m that you walk up rather than jump. Either way there is high ground,
+    and either way standing on it makes you the easiest target on the map.</p>
+    <h4>WHAT CARRIES OVER</h4>
+    <p>Your team, difficulty and loadout rules are the same on every map. Crates are placed on junctions and
+    plazas, never in dead ends, so a crate is always reachable without turning your back on a corridor.</p>`
   },
   {
     t: 'AI DIFFICULTY',
@@ -162,6 +206,11 @@ const HT_PAGES = [
     person you hit. The host owns the scoreboard and the clock, so two machines can never disagree about the
     score. Other players are drawn by interpolating the last position they sent, which keeps them smooth even
     when a public broker is slow — a round trip of 100–700 ms is normal, so lead your shots at range.</p>
+    <h4>Voting in a room</h4>
+    <p>The end-of-match vote works online too, and <b>the host counts</b>. You pick a mode and a map, the host
+    folds your vote in with its own squad's and sends the running total back, so everybody sees the same numbers.
+    When the host's timer runs out it announces the winner and every machine deploys to it — you cannot start a
+    different match by yourself, and <b>DEPLOY NOW</b> only works for the host.</p>
     <h4>Achievements</h4>
     <p>Twenty-two badges, from <b>First Blood</b> to <b>Full House</b>. Everything is saved on this device the
     moment you earn it, so closing the browser or shutting the machine down does not lose progress. The
@@ -193,8 +242,20 @@ function showTeamDesc() {
 }
 
 function initMenu() {
+  renderModeCards();
+  renderMapCards();
   document.querySelectorAll('.mode-card').forEach(el => {
-    el.addEventListener('click', () => startGame(el.dataset.mode));
+    el.addEventListener('click', () => {
+      if (el.dataset.mode === 'tutorial') startGame('tutorial');
+      else startGame(el.dataset.mode, G.mapId);
+    });
+  });
+  document.querySelectorAll('.map-card').forEach(el => {
+    el.addEventListener('click', () => {
+      G.mapId = el.dataset.map;
+      renderMapCards();
+      Snd.tone(520, 640, 0.04, 0.08, 'square');
+    });
   });
   document.querySelectorAll('#diffRow button').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -242,9 +303,14 @@ function initMenu() {
     else $('howto').classList.remove('show');
   });
   $('btnResume').addEventListener('click', resumeGame);
-  $('btnRestart').addEventListener('click', () => startGame(G.mode));
+  $('btnRestart').addEventListener('click', () => startGame(G.mode, G.mapId));
   $('btnQuit').addEventListener('click', quitToMenu);
-  $('btnAgain').addEventListener('click', () => startGame(G.mode));
+  /* the end screen now leads with a vote, so "play again" means "deploy the
+     result now" rather than silently skipping the vote */
+  $('btnAgain').addEventListener('click', () => {
+    if (typeof VOTE !== 'undefined' && VOTE.active) voteSkip();
+    else startGame(G.mode, G.mapId);
+  });
   $('btnMenu').addEventListener('click', quitToMenu);
 
   const sens = $('sens');
@@ -262,3 +328,47 @@ function initMenu() {
   $('hud').appendChild(sb);
 }
 
+
+/* ------------------------------------------------------------
+   MENU CARDS
+   ------------------------------------------------------------
+   Built from the MODES / MAPS registries so adding a mode or a map is a data
+   change in 00-core.js and nothing else. */
+function renderModeCards() {
+  const host = $('modeGrid');
+  if (!host) return;
+  let html = '';
+  for (const id of MODE_ORDER) {
+    const d = modeDef(id);
+    html += '<div class="mode-card" data-mode="' + id + '">' +
+      '<div class="mc-top"><span class="mc-tag ' + d.tagClass + '">' + d.tag +
+      '</span><span class="mc-time">' + d.time + '</span></div>' +
+      '<h3>' + d.title + '</h3>' +
+      '<p>' + d.blurb + '</p>' +
+      '<div class="mc-go">DEPLOY →</div></div>';
+  }
+  html += '<div class="mode-card tut" data-mode="tutorial">' +
+    '<div class="mc-top"><span class="mc-tag gold">TRAINING</span><span class="mc-time">SAFE</span></div>' +
+    '<h3>Tutorial</h3>' +
+    '<p>Learn movement, sprinting and stamina, shooting, crates, weapon switching, ' +
+    'the AWP scope and its breath hold — with live targets.</p>' +
+    '<div class="mc-go">START →</div></div>';
+  host.innerHTML = html;
+}
+
+function renderMapCards() {
+  const host = $('mapRow');
+  if (!host) return;
+  let html = '';
+  for (const id of MAP_ORDER) {
+    const d = mapDef(id);
+    const on = G.mapId === id ? ' on' : '';
+    html += '<button class="map-card' + on + '" data-map="' + id + '">' +
+      '<span class="mp-name">' + d.name + '</span>' +
+      '<span class="mp-tag">' + d.tag + '</span>' +
+      '<span class="mp-size">' + d.time + '</span></button>';
+  }
+  host.innerHTML = html;
+  const desc = $('mapDesc');
+  if (desc) desc.textContent = mapDef(G.mapId).blurb;
+}
