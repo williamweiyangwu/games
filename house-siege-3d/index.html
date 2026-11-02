@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>WHITE MAZE 5v5</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230a0d13'/%3E%3Cpath d='M16 5l9 6v10l-9 6-9-6V11z' fill='none' stroke='%23ff4a4a' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23ffc44d'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="css/style.css?v=36">
+<link rel="stylesheet" href="css/style.css?v=37">
 </head>
 <body>
 
@@ -29,25 +29,12 @@
       <div class="brand-sub">5 v 5 · WHITE MAZE · CATWALK · CHEST WEAPONS</div>
     </div>
 
-    <div class="menu-grid">
-      <div class="mode-card" data-mode="tdm">
-        <div class="mc-top"><span class="mc-tag red">DEATHMATCH</span><span class="mc-time">5:00</span></div>
-        <h3>Team Deathmatch</h3>
-        <p>Kill the enemy team. Most kills when the clock hits zero wins. 3 second respawn.</p>
-        <div class="mc-go">DEPLOY →</div>
-      </div>
-      <div class="mode-card" data-mode="flag">
-        <div class="mc-top"><span class="mc-tag blue">CAPTURE THE FLAG</span><span class="mc-time">5:00</span></div>
-        <h3>Flag Raid</h3>
-        <p>Steal the enemy flag and carry it to your HQ. Most captures wins. 3 second respawn.</p>
-        <div class="mc-go">DEPLOY →</div>
-      </div>
-      <div class="mode-card tut" data-mode="tutorial">
-        <div class="mc-top"><span class="mc-tag gold">TRAINING</span><span class="mc-time">SAFE</span></div>
-        <h3>Tutorial</h3>
-        <p>Learn movement, sprinting and stamina, shooting, crates, weapon switching, the AWP scope and its breath hold — with live targets.</p>
-        <div class="mc-go">START →</div>
-      </div>
+    <div class="menu-grid" id="modeGrid"></div>
+
+    <div class="map-block">
+      <div class="diff-label">MAP</div>
+      <div class="map-row" id="mapRow"></div>
+      <div class="map-desc" id="mapDesc"></div>
     </div>
 
     <div class="menu-bottom">
@@ -93,8 +80,16 @@
     <div class="clockbox">
       <div class="clock" id="clock">5:00</div>
       <div class="mode-name" id="modeName">TEAM DEATHMATCH</div>
+      <div class="map-name" id="mapName">WHITE MAZE</div>
     </div>
     <div class="teamscore blue"><span class="ts-num" id="scoreBlue">0</span><span class="ts-cap" id="capBlue">KILLS</span><span class="ts-name">BLUE</span></div>
+  </div>
+
+  <!-- king of the hill progress -->
+  <div id="hillBar">
+    <div class="hb-head"><span id="hillState">ZONE EMPTY</span><span class="hb-tag">THE HILL</span></div>
+    <div class="hb-track"><div class="hb-fill" id="hillFill"></div></div>
+    <div class="hb-track foe"><div class="hb-fill" id="hillFoe"></div></div>
   </div>
 
   <!-- roster -->
@@ -180,7 +175,7 @@
   <div id="respawn">
     <div class="rs-title">ELIMINATED</div>
     <div class="rs-killer" id="killBy"></div>
-    <div class="rs-sub">Respawning in <span id="rsNum">3</span></div>
+    <div class="rs-sub" id="rsSub">Respawning in <span id="rsNum">3</span></div>
   </div>
 
   <!-- tutorial checklist -->
@@ -220,8 +215,29 @@
     <h2 id="endTitle">RED TEAM WINS</h2>
     <div class="end-score" id="endScore">75 — 61</div>
     <div class="end-stats" id="endStats"></div>
+
+    <!-- next match: everybody in the room votes, bots included -->
+    <div id="votePanel">
+      <div class="vote-head">
+        <span class="vote-kicker" id="voteKicker">VOTE THE NEXT MATCH</span>
+        <span class="vote-clock" id="voteClock"></span>
+      </div>
+      <div class="vote-bar"><i id="voteBar"></i></div>
+      <div class="vote-cols">
+        <div class="vote-col">
+          <div class="vote-col-h">MODE</div>
+          <div class="vote-list" id="voteModes"></div>
+        </div>
+        <div class="vote-col">
+          <div class="vote-col-h">MAP</div>
+          <div class="vote-list" id="voteMaps"></div>
+        </div>
+      </div>
+      <div class="vote-result" id="voteResult"></div>
+    </div>
+
     <div class="panel-btns">
-      <button class="btn" id="btnAgain">PLAY AGAIN</button>
+      <button class="btn" id="btnAgain">DEPLOY NOW</button>
       <button class="btn ghost" id="btnMenu">MAIN MENU</button>
     </div>
   </div>
@@ -347,27 +363,29 @@
 
 <script src="lib/three.min.js"></script>
 <script src="lib/mqtt.min.js"></script>
-<script src="js/00-core.js?v=36"></script>
-<script src="js/10-render.js?v=36"></script>
-<script src="js/20-world.js?v=36"></script>
-<script src="js/30-nav.js?v=36"></script>
-<script src="js/35-physics.js?v=36"></script>
-<script src="js/40-actors.js?v=36"></script>
-<script src="js/45-combat.js?v=36"></script>
-<script src="js/50-items.js?v=36"></script>
-<script src="js/55-effects.js?v=36"></script>
-<script src="js/60-loot.js?v=36"></script>
-<script src="js/65-flags.js?v=36"></script>
-<script src="js/70-ai.js?v=36"></script>
-<script src="js/75-player.js?v=36"></script>
-<script src="js/80-viewmodel.js?v=36"></script>
-<script src="js/90-hud.js?v=36"></script>
-<script src="js/93-achieve.js?v=36"></script>
-<script src="js/94-tutorial.js?v=36"></script>
-<script src="js/95-input.js?v=36"></script>
-<script src="js/96-flow.js?v=36"></script>
-<script src="js/97-net.js?v=36"></script>
-<script src="js/98-menu.js?v=36"></script>
-<script src="js/99-boot.js?v=36"></script>
+<script src="js/00-core.js?v=37"></script>
+<script src="js/10-render.js?v=37"></script>
+<script src="js/20-world.js?v=37"></script>
+<script src="js/30-nav.js?v=37"></script>
+<script src="js/35-physics.js?v=37"></script>
+<script src="js/40-actors.js?v=37"></script>
+<script src="js/45-combat.js?v=37"></script>
+<script src="js/50-items.js?v=37"></script>
+<script src="js/55-effects.js?v=37"></script>
+<script src="js/60-loot.js?v=37"></script>
+<script src="js/65-flags.js?v=37"></script>
+<script src="js/67-hill.js?v=37"></script>
+<script src="js/70-ai.js?v=37"></script>
+<script src="js/75-player.js?v=37"></script>
+<script src="js/80-viewmodel.js?v=37"></script>
+<script src="js/90-hud.js?v=37"></script>
+<script src="js/91-vote.js?v=37"></script>
+<script src="js/93-achieve.js?v=37"></script>
+<script src="js/94-tutorial.js?v=37"></script>
+<script src="js/95-input.js?v=37"></script>
+<script src="js/96-flow.js?v=37"></script>
+<script src="js/97-net.js?v=37"></script>
+<script src="js/98-menu.js?v=37"></script>
+<script src="js/99-boot.js?v=37"></script>
 </body>
 </html>
