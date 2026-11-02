@@ -43,6 +43,7 @@ function boot() {
   G.flags.blue.group.visible = false;
   initInput();
   initMenu();
+  initVote();
   initAchievements();
   initNet();
   scene.add(camera);
@@ -94,6 +95,15 @@ window.__wh = {
   get NET() { return NET; },
   netConnect, netHost, netJoin, netLeave, netRenderLobby, netTick, netSendState,
   remoteActors, Ach_wipe() { Ach.wipe(); },
+  /* modes, maps and the end-of-match vote */
+  get MODES() { return MODES; },
+  get MAPS() { return MAPS; },
+  get MAP() { return MAP; },
+  get VOTE() { return VOTE; },
+  get HILL() { return HILL; },
+  modeDef, mapDef, ensureWorld, disposeWorld,
+  voteBegin, voteCast, voteClick, voteSkip, voteResolve, voteTally, voteLaunch,
+  updateVote, botPick,
   /* performance governor, for the diagnostics */
   get PERF() { return PERF; },
   perfToggle, perfApply,
