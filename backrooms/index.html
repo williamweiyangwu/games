@@ -447,6 +447,40 @@ body.touch #cross{opacity:.35}
 #escapehud b{display:block;font-size:26px;letter-spacing:6px;margin-top:6px;
   font-weight:400;color:#ffd8cc}
 #escapehud.sealed{color:#e8dcae;text-shadow:0 0 18px rgba(216,194,124,.6)}
+
+/* ---------- online lobby ---------- */
+.lobbywrap{display:flex;gap:26px;margin-top:26px;width:min(880px,94vw);
+  align-items:flex-start;text-align:left}
+.lobbycol{flex:1;min-width:0}
+.lobbycol.wide{flex:1.35}
+.lh{font-size:9px;letter-spacing:3px;color:#6d6547;margin:16px 0 8px}
+.lh:first-child{margin-top:0}
+.netin{width:100%;box-sizing:border-box;background:rgba(0,0,0,.45);
+  border:1px solid rgba(216,194,124,.28);color:#e8dcae;padding:11px 13px;
+  font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;letter-spacing:3px;
+  outline:none;text-transform:uppercase}
+.netin:focus{border-color:#d8c27c;box-shadow:0 0 18px rgba(216,194,124,.15)}
+.netin.code{letter-spacing:9px;text-align:center;font-size:19px;padding:9px}
+.joinrow{display:flex;gap:8px}
+.joinrow .netin{flex:1}
+.btn.sm{margin-top:0;padding:10px 20px;font-size:10px;letter-spacing:3px}
+.diffrow{display:flex;gap:6px;margin-bottom:10px}
+.diffrow .diff{margin:0;flex:1;padding:9px 4px;font-size:9px;letter-spacing:1.5px}
+.roomlist{height:250px;overflow-y:auto;border:1px solid rgba(216,194,124,.18);
+  background:rgba(0,0,0,.32);padding:8px}
+.roomlist .empty{font-size:10px;letter-spacing:2px;color:#4d4732;padding:16px 8px;text-align:center}
+.room{display:flex;justify-content:space-between;align-items:center;gap:10px;
+  padding:9px 10px;border:1px solid transparent;cursor:pointer;
+  font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:#b6ab84}
+.room:hover{background:rgba(216,194,124,.08);border-color:rgba(216,194,124,.3)}
+.room b{color:#f0e2b2;letter-spacing:4px;font-size:13px}
+.room i{font-style:normal;color:#6d6547;font-size:9px;letter-spacing:1.5px}
+.room .rp{color:#8fa88c;font-size:10px;white-space:nowrap}
+.netbar{position:absolute;top:14px;right:18px;font-size:9px;letter-spacing:2.5px;
+  color:#8fa88c;text-align:right;opacity:0;transition:opacity .3s;line-height:1.9}
+.netbar.on{opacity:1}
+.netbar b{color:#d8e8c4;letter-spacing:4px}
+.netbar.bad{color:#e08a6a}
 </style>
 </head>
 <body>
@@ -474,6 +508,7 @@ body.touch #cross{opacity:.35}
 
 <div id="hud">
   <div id="danger"></div>
+  <div class="netbar" id="netbar"></div>
   <div id="objective">
     <div id="objlevel">LEVEL 0 · THE LOBBY</div>
     <span id="objtext">SEARCH THE LOCKERS &nbsp;·&nbsp; FIND <b>3 FUSES</b> &nbsp;·&nbsp; POWER THE DESCENT</span>
@@ -682,8 +717,37 @@ body.touch #cross{opacity:.35}
   <button class="btn ops" id="opsbtn">OPERATOR MODE</button>
   <button class="btn ops" id="achbtn">ACHIEVEMENTS · 0/13</button>
   <button class="btn ops" id="setbtn">SETTINGS</button>
+  <button class="btn ops" id="netbtn">PLAY ONLINE</button>
   <div class="warn" id="storewarn" style="display:none"></div>
   <div class="warn">CONTAINS FLASHING LIGHTS &amp; SUDDEN LOUD NOISES · HEADPHONES RECOMMENDED</div>
+</div>
+
+<div class="screen hide" id="lobby">
+  <h1 style="font-size:32px">THE NETWORK</h1>
+  <div class="sub" id="netstat">NOT CONNECTED</div>
+  <div class="lobbywrap">
+    <div class="lobbycol">
+      <div class="lh">YOUR NAME</div>
+      <input class="netin" id="netname" maxlength="12" placeholder="WANDERER" autocomplete="off">
+      <div class="lh">HOST A ROOM</div>
+      <div class="diffrow" id="netlv">
+        <button class="diff on" data-lv="0">BLOCK</button>
+        <button class="diff" data-lv="1">YARD</button>
+        <button class="diff" data-lv="2">UNDERPASS</button>
+      </div>
+      <button class="btn sm" id="hostbtn" style="width:100%">HOST</button>
+      <div class="lh">JOIN WITH A CODE</div>
+      <div class="joinrow">
+        <input class="netin code" id="joincode" maxlength="4" placeholder="CODE" autocomplete="off">
+        <button class="btn sm" id="joinbtn">JOIN</button>
+      </div>
+    </div>
+    <div class="lobbycol wide">
+      <div class="lh">LIVE ROOMS <span id="roomcount"></span></div>
+      <div class="roomlist" id="roomlist"><div class="empty">SCANNING…</div></div>
+    </div>
+  </div>
+  <button class="btn ops" id="netback">BACK</button>
 </div>
 
 <div class="screen hide" id="pause">
@@ -713,6 +777,7 @@ body.touch #cross{opacity:.35}
   <button class="btn" id="againbtn">GO BACK IN</button>
 </div>
 
+<script src="mqtt.min.js"></script>
 <script type="importmap">
 { "imports": { "three": "./three.module.min.js" } }
 </script>
@@ -778,26 +843,41 @@ function reportStoreState(){
    LEVELS — three floors, each with its own palette, roster and bed
    ══════════════════════════════════════════════════════════════ */
 const LEVELS=[
-  {n:0,name:'THE LOBBY',short:'LOBBY',style:'paper',
+  {n:0,name:'THE BLOCK',short:'THE BLOCK',style:'paper',
    wall:'#a4924c',grime:'58,44,18',floor:'#6d6039',ceil:'#a9a48d',ceilTint:0x8d897a,
    fog:0x080704,fogD:.050,amb:0x5a5038,ambI:.20,fix:.62,fixOn:.88,exposure:.92,
    step:'carpet',monCount:3,monCap:3,
+   city:{block:3,street:2,shave:.10,alleys:6,roomChance:.40,
+     hMin:14,hMax:26,lampGap:2,lampY:5.4,lit:.42,deck:0,fogD:.0135,
+     fogCol:0x1b2233,amb:0x46506e,ambI:.95,exposure:1.18,
+     ground:'#33373e',facade:'#4b463a',skyTop:'#0e1730',skyMid:'#3d4a72',skyLow:'#96704e',
+     skyline:0x0c1018},
    weights:[['smiler',30],['hound',25],['clump',15],['wretch',20],['moth',10]],
-   desc:'Saturated yellow rooms. Damp carpet. The hum never stops.'},
+   desc:'A downtown that never got a morning. Broken shopfronts. Lamps that hum.'},
 
-  {n:1,name:'WAREHOUSE',short:'WAREHOUSE',style:'concrete',
+  {n:1,name:'THE YARD',short:'THE YARD',style:'concrete',
    wall:'#5d6660',grime:'26,34,30',floor:'#3f4441',ceil:'#5f6864',ceilTint:0x7b847f,
    fog:0x050706,fogD:.052,amb:0x3a4a44,ambI:.18,fix:.50,fixOn:.85,exposure:.88,
    step:'concrete',monCount:4,monCap:4,
+   city:{block:4,street:2,shave:.15,alleys:5,roomChance:.42,
+     hMin:17,hMax:34,lampGap:3,lampY:6.4,lit:.26,deck:0,fogD:.019,
+     fogCol:0x111a20,amb:0x394a50,ambI:.80,exposure:1.08,
+     ground:'#2a2e2d',facade:'#3c4240',skyTop:'#080d16',skyMid:'#1d2a32',skyLow:'#4e5a4c',
+     skyline:0x080b0c},
    weights:[['hound',34],['clump',24],['wretch',26],['smiler',10],['moth',6]],
-   desc:'Damp concrete and stacked crates. Something here can run.'},
+   desc:'Loading bays and container stacks. Wide streets, long sightlines.'},
 
-  {n:2,name:'PIPE DREAMS',short:'PIPE DREAMS',style:'metal',
+  {n:2,name:'THE UNDERPASS',short:'UNDERPASS',style:'metal',
    wall:'#4a5563',grime:'20,28,40',floor:'#2e343d',ceil:'#454d59',ceilTint:0x6a7484,
    fog:0x04060a,fogD:.055,amb:0x33405a,ambI:.17,fix:.44,fixOn:.74,exposure:.84,
    step:'metal',monCount:4,monCap:4,
+   city:{block:2,street:3,shave:.05,alleys:4,roomChance:.25,
+     hMin:8.6,hMax:9.2,lampGap:3,lampY:4.6,lit:.12,deck:8.2,fogD:.030,
+     fogCol:0x0d131c,amb:0x36465e,ambI:.55,exposure:1.00,
+     ground:'#262b32',facade:'#3a4048',skyTop:'#060a12',skyMid:'#111a26',skyLow:'#202a36',
+     skyline:0x05080c},
    weights:[['moth',26],['wretch',30],['hound',22],['clump',12],['smiler',10]],
-   desc:'Narrow service tunnels. Steam in the dark. Pipes that knock back.'}
+   desc:'Concrete pillars under a road that never ends. Sodium light and drip.'}
 ];
 const LAST_LEVEL=LEVELS.length-1;
 let level=0;
@@ -1367,7 +1447,7 @@ const FOG=0x080704;
 scene.background=new THREE.Color(FOG);
 scene.fog=new THREE.FogExp2(FOG,0.05);
 
-const camera=new THREE.PerspectiveCamera(74,innerWidth/innerHeight,.05,120);
+const camera=new THREE.PerspectiveCamera(74,innerWidth/innerHeight,.05,900);
 camera.rotation.order='YXZ';
 scene.add(camera);
 
@@ -1436,12 +1516,101 @@ function generateMaze(){
     }
   }
 }
+/* ══════════════════════════════════════════════════════════════
+   CITY
+   The floors are not corridors any more. Every grid cell is one of
+   three things: open street, solid building mass, or a hollow
+   ground-floor room whose only way in is a broken window. The
+   window's sill is a `low` collider, so a walking body is stopped
+   by it and a jumping one clears it — the same rule the pipe
+   stacks on the old level 2 already used.
+   ══════════════════════════════════════════════════════════════ */
+const CT_STREET=0,CT_BLOCK=1,CT_ROOM=2;
+const SILL_H=.55,HEAD_H=2.35,ROOM_H=3.2;   // a shopfront you can vault
+const WIN_OPEN=1.8,WIN_T=.4;               // opening width, facade thickness
+
+let cellKind=null;          // Int8Array(GX*GZ): street / block / room
+let cellTop=null;           // Float32Array: mass height over each cell
+let rooms=[];               // {i,j,x,z,dirs:[{nx,nz}]}
+let winCols=[];             // extra colliders the windows need
+
+const inCity=(i,j)=>i>=0&&j>=0&&i<GX&&j<GZ;
+/* outside the grid counts as building, so the player can never walk off the map */
+const ck=(i,j)=>inCity(i,j)?cellKind[i+j*GX]:CT_BLOCK;
+
+function generateCity(lv){
+  const th=LEVELS[lv]||LEVELS[0];
+  const C=th.city;
+  cellKind=new Int8Array(GX*GZ);
+  cellTop=new Float32Array(GX*GZ);
+  rooms=[];winCols=[];
+  const P=C.block+C.street;
+
+  // ---- the block grid ----
+  for(let i=0;i<GX;i++)for(let j=0;j<GZ;j++){
+    const li=i%P,lj=j%P;
+    cellKind[i+j*GX]=(li<C.block&&lj<C.block)?CT_BLOCK:CT_STREET;
+  }
+  // ---- shave corners, then cut alleys, so it does not read as graph paper ----
+  for(let i=1;i<GX-1;i++)for(let j=1;j<GZ-1;j++){
+    if(cellKind[i+j*GX]===CT_BLOCK&&Math.random()<C.shave)cellKind[i+j*GX]=CT_STREET;
+  }
+  for(let k=0;k<C.alleys;k++){
+    const i=randInt(2,GX-3),j=randInt(2,GZ-3);
+    const horiz=Math.random()<.5;
+    const len=randInt(2,C.block);
+    for(let t=0;t<len;t++){
+      const a=horiz?i+t:i, b=horiz?j:j+t;
+      if(inCity(a,b))cellKind[a+b*GX]=CT_STREET;
+    }
+  }
+  // ---- the rim is always open street, so the exit has a place to sit ----
+  for(let i=0;i<GX;i++){cellKind[i]=CT_STREET;cellKind[i+(GZ-1)*GX]=CT_STREET;}
+  for(let j=0;j<GZ;j++){cellKind[j*GX]=CT_STREET;cellKind[(GX-1)+j*GX]=CT_STREET;}
+
+  // ---- one height per footprint, so a block reads as one building ----
+  const heights=new Map();
+  for(let i=0;i<GX;i++)for(let j=0;j<GZ;j++){
+    const id=i+j*GX;
+    if(cellKind[id]!==CT_BLOCK)continue;
+    const key=Math.floor(i/P)+','+Math.floor(j/P);
+    if(!heights.has(key))heights.set(key,rand(C.hMin,C.hMax));
+    cellTop[id]=heights.get(key);
+  }
+
+  // ---- hollow ground-floor rooms ----
+  for(let i=1;i<GX-1;i++)for(let j=1;j<GZ-1;j++){
+    if(cellKind[i+j*GX]!==CT_BLOCK)continue;
+    if(Math.random()>C.roomChance)continue;
+    const dirs=[],walls=[];
+    for(const d of[{nx:1,nz:0},{nx:-1,nz:0},{nx:0,nz:1},{nx:0,nz:-1}]){
+      const k=ck(i+d.nx,j+d.nz);
+      // every side has to be closed: a window to the street, a plain wall to
+      // another room, or the neighbour's own mass if it is solid
+      if(k===CT_STREET)dirs.push(d);
+      else if(k===CT_ROOM)walls.push(d);
+    }
+    if(!dirs.length)continue;                       // sealed cells stay solid
+    cellKind[i+j*GX]=CT_ROOM;
+    cellTop[i+j*GX]=heights.get(Math.floor(i/P)+','+Math.floor(j/P))||rand(C.hMin,C.hMax);
+    rooms.push({i,j,x:cx(i),z:cz(j),dirs,walls});
+  }
+
+  // ---- collision for the windows ----
+  buildWinCols();
+  // the old maze arrays stay around as a fully-open graph so the
+  // operator map, save format and BFS plumbing keep working
+  vWall=Array.from({length:GX+1},()=>new Array(GZ).fill(0));
+  hWall=Array.from({length:GX},()=>new Array(GZ+1).fill(0));
+}
+
 function neighbors(i,j){
   const out=[];
-  if(i>0&&!vWall[i][j])out.push([i-1,j]);
-  if(i<GX-1&&!vWall[i+1][j])out.push([i+1,j]);
-  if(j>0&&!hWall[i][j])out.push([i,j-1]);
-  if(j<GZ-1&&!hWall[i][j+1])out.push([i,j+1]);
+  const ok=(a,b)=>{const k=ck(a,b);return k===CT_STREET;};   // rooms are window-only
+  if(i>0&&ok(i-1,j))out.push([i-1,j]);
+  if(i<GX-1&&ok(i+1,j))out.push([i+1,j]);
+  if(j>0&&ok(i,j-1))out.push([i,j-1]);
+  if(j<GZ-1&&ok(i,j+1))out.push([i,j+1]);
   return out;
 }
 function bfs(si,sj){
@@ -1468,9 +1637,41 @@ let levelObjs=[];                      // everything belonging to the current fl
 let LEVEL_MAZES=[null,null,null];
 let exitCell=null;
 
+/* the window colliders are derived from the room list, so a layout that is
+   restored from a save gets the same sills as one that was just generated */
+function buildWinCols(){
+  winCols=[];
+  for(const r of rooms){
+    for(const d of r.dirs){
+      const ex=r.x+d.nx*CELL/2, ez=r.z+d.nz*CELL/2;
+      const ax=d.nx!==0?'x':'z';                   // which way the facade faces
+      const pier=(CELL-WIN_OPEN)/2;
+      winCols.push({x:ex,z:ez,
+        hx:ax==='x'?WIN_T/2:WIN_OPEN/2, hz:ax==='x'?WIN_OPEN/2:WIN_T/2, low:true});
+      for(const s of[-1,1]){
+        winCols.push({x:ex+(ax==='x'?0:s*(CELL/2-pier/2)),
+                      z:ez+(ax==='x'?s*(CELL/2-pier/2):0),
+                      hx:ax==='x'?WIN_T/2:pier/2, hz:ax==='x'?pier/2:WIN_T/2});
+      }
+    }
+    for(const d of (r.walls||[])){                 // room-to-room: plain wall
+      const ex=r.x+d.nx*CELL/2, ez=r.z+d.nz*CELL/2;
+      const ax=d.nx!==0?'x':'z';
+      winCols.push({x:ex,z:ez,
+        hx:ax==='x'?WIN_T/2:CELL/2, hz:ax==='x'?CELL/2:WIN_T/2});
+    }
+  }
+}
+
 function restoreMaze(mz){
   vWall=mz.v.map(r=>typeof r==='string'?r.split('').map(Number):r.slice());
   hWall=mz.h.map(r=>typeof r==='string'?r.split('').map(Number):r.slice());
+  if(!mz.kinds)return false;                 // an older save: regenerate instead
+  cellKind=Int8Array.from(mz.kinds);
+  cellTop=Float32Array.from(mz.tops||new Array(GX*GZ).fill(20));
+  rooms=(mz.rooms||[]).map(r=>({i:r.i,j:r.j,x:cx(r.i),z:cz(r.j),dirs:r.dirs,walls:r.walls||[]}));
+  buildWinCols();
+  return true;
 }
 // saved mazes come back as strings; live ones as number arrays
 function normalizeMaze(M){
@@ -1479,13 +1680,28 @@ function normalizeMaze(M){
     v:M.v.map(r=>typeof r==='string'?r.split('').map(Number):r.slice()),
     h:M.h.map(r=>typeof r==='string'?r.split('').map(Number):r.slice()),
     seg:M.seg||M.exitSeg||null,
-    cell:M.cell||M.exitCell||null
+    cell:M.cell||M.exitCell||null,
+    kinds:M.kinds||null,
+    tops:M.tops||null,
+    rooms:M.rooms||null
   };
+}
+
+/* the old code seeds BFS from (1,1); in a city that cell may be solid,
+   so every seed goes through here instead */
+function citySeed(){
+  for(let r=0;r<8;r++){
+    for(let i=1-r;i<=1+r;i++)for(let j=1-r;j<=1+r;j++){
+      if(inCity(i,j)&&ck(i,j)===CT_STREET)return[i,j];
+    }
+  }
+  return[0,0];
 }
 
 // farthest border cell from the start, opened into a doorway
 function computeExit(){
-  const distMap=bfs(1,1).dist;
+  const s=citySeed();
+  const distMap=bfs(s[0],s[1]).dist;
   let best=[GX-1,GZ-1],bestD=-1;
   for(let i=0;i<GX;i++)for(let j=0;j<GZ;j++){
     if(i===0||j===0||i===GX-1||j===GZ-1){
@@ -1502,13 +1718,18 @@ function computeExit(){
   return{ei,ej,seg};
 }
 
-function makeMaze(){
-  generateMaze();
+function makeMaze(lv){
+  generateCity(lv===undefined?0:lv);
   const e=computeExit();
-  return{v:vWall.map(r=>r.slice()),h:hWall.map(r=>r.slice()),seg:e.seg,cell:[e.ei,e.ej]};
+  return{
+    v:vWall.map(r=>r.slice()),h:hWall.map(r=>r.slice()),
+    seg:e.seg,cell:[e.ei,e.ej],
+    kinds:Array.from(cellKind),tops:Array.from(cellTop),
+    rooms:rooms.map(r=>({i:r.i,j:r.j,dirs:r.dirs,walls:r.walls}))
+  };
 }
 function ensureMaze(lv){
-  if(!LEVEL_MAZES[lv])LEVEL_MAZES[lv]=makeMaze();
+  if(!LEVEL_MAZES[lv])LEVEL_MAZES[lv]=makeMaze(lv);
   return LEVEL_MAZES[lv];
 }
 function levelExitCell(lv){
@@ -1516,96 +1737,304 @@ function levelExitCell(lv){
   return M?M.cell:(exitInfo?exitInfo.cell:null);
 }
 
-function buildLevel(lv,mz){
-  const th=LEVELS[lv]||LEVELS[0];
-  const M=mz?normalizeMaze(mz):ensureMaze(lv);
-  restoreMaze(M);
-  exitSeg=M.seg||null;
-  exitCell=M.cell||null;
-
-  const wallMat=new THREE.MeshStandardMaterial({map:texWall(th),roughness:.88,metalness:.03,color:0xffffff});
-
-  // ---- wall segments ----
-  wallSegs=[];
-  for(let i=0;i<=GX;i++)for(let j=0;j<GZ;j++){
-    if(!vWall[i][j])continue;
-    wallSegs.push({x:-HALF_W+i*CELL,z:cz(j),axis:'z'});
+/* ---- street and facade surfaces ---- */
+function texAsphalt(th){
+  const S=256,[c,g]=cnv(S,S);
+  const C=th.city||{};
+  g.fillStyle=C.ground||'#24262b';g.fillRect(0,0,S,S);
+  for(let k=0;k<2600;k++){
+    const light=Math.random()>.5;
+    g.fillStyle=`rgba(${light?255:0},${light?255:0},${light?255:0},${Math.random()*.075})`;
+    g.fillRect(Math.random()*S,Math.random()*S,rand(1,3),rand(1,3));
   }
-  for(let i=0;i<GX;i++)for(let j=0;j<=GZ;j++){
-    if(!hWall[i][j])continue;
-    wallSegs.push({x:cx(i),z:-HALF_D+j*CELL,axis:'x'});
+  g.strokeStyle='rgba(0,0,0,.4)';g.lineWidth=1;
+  for(let k=0;k<8;k++){
+    g.beginPath();let x=Math.random()*S,y=Math.random()*S;g.moveTo(x,y);
+    for(let t=0;t<6;t++){x+=rand(-26,26);y+=rand(-26,26);g.lineTo(x,y);}
+    g.stroke();
   }
+  for(let k=0;k<5;k++){                                     // patches
+    g.fillStyle=`rgba(0,0,0,${rand(.05,.14)})`;
+    g.beginPath();g.ellipse(Math.random()*S,Math.random()*S,rand(12,44),rand(10,32),rand(0,3),0,6.3);g.fill();
+  }
+  const t=new THREE.CanvasTexture(c);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  t.colorSpace=THREE.SRGBColorSpace;
+  return t;
+}
+function texFacade(th){
+  const S=256,[c,g]=cnv(S,S);
+  const C=th.city||{};
+  g.fillStyle=C.facade||'#4a4d52';g.fillRect(0,0,S,S);
+  for(let k=0;k<2200;k++){                                   // grain
+    g.fillStyle=`rgba(0,0,0,${Math.random()*.08})`;
+    g.fillRect(Math.random()*S,Math.random()*S,rand(1,4),rand(1,2));
+  }
+  g.fillStyle='rgba(0,0,0,.16)';                             // floor bands
+  for(let y=0;y<S;y+=64)g.fillRect(0,y,S,3);
+  g.fillStyle='rgba(255,255,255,.03)';
+  for(let y=3;y<S;y+=64)g.fillRect(0,y,S,2);
+  for(let k=0;k<9;k++){                                      // rain streaks
+    const x=Math.random()*S;
+    g.fillStyle=`rgba(0,0,0,${rand(.04,.12)})`;
+    g.fillRect(x,0,rand(2,7),S);
+  }
+  const t=new THREE.CanvasTexture(c);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  t.colorSpace=THREE.SRGBColorSpace;
+  return t;
+}
+function texGlass(){
+  const S=64,[c,g]=cnv(S,S);
+  g.fillStyle='#ffffff';g.fillRect(0,0,S,S);
+  g.fillStyle='rgba(0,0,0,.55)';g.fillRect(0,0,S,4);g.fillRect(0,S-4,S,4);
+  g.fillRect(0,0,4,S);g.fillRect(S-4,0,4,S);
+  const t=new THREE.CanvasTexture(c);
+  t.colorSpace=THREE.SRGBColorSpace;
+  return t;
+}
+function texSky(th){
+  const C=th.city||{};
+  const[c,g]=cnv(8,256);
+  const grd=g.createLinearGradient(0,0,0,256);
+  grd.addColorStop(0,C.skyTop||'#0b1020');
+  grd.addColorStop(.62,C.skyMid||'#2a2f45');
+  grd.addColorStop(1,C.skyLow||'#6a5a52');
+  g.fillStyle=grd;g.fillRect(0,0,8,256);
+  const t=new THREE.CanvasTexture(c);
+  t.colorSpace=THREE.SRGBColorSpace;
+  return t;
+}
 
-  const geo=new THREE.BoxGeometry(CELL,WALL_H,WALL_T);
-  wallMesh=new THREE.InstancedMesh(geo,wallMat,wallSegs.length);
-  wallMesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
-  const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),sc=new THREE.Vector3(1,1,1),up=new THREE.Vector3(0,1,0);
-  wallSegs.forEach((s,i)=>{
-    q.setFromAxisAngle(up,s.axis==='z'?Math.PI/2:0);
-    m4.compose(new THREE.Vector3(s.x,WALL_H/2,s.z),q,sc);
-    wallMesh.setMatrixAt(i,m4);
-  });
-  wallMesh.instanceMatrix.needsUpdate=true;
-  scene.add(wallMesh);levelObjs.push(wallMesh);
+/* ══════════════════════════════════════════════════════════════
+   BUILDING THE CITY
+   Everything solid — mass, facades, sills, decks — goes into one
+   instanced box, so a whole district is a handful of draw calls.
+   ══════════════════════════════════════════════════════════════ */
+function buildCity(lv,th){
+  const C=th.city;
+  const m4=new THREE.Matrix4(),q=new THREE.Quaternion();
+  const v3=new THREE.Vector3(),sc=new THREE.Vector3();
 
-  // ---- floor + ceiling ----
+  // ---------- ground ----------
+  const groundTex=texAsphalt(th);
+  groundTex.repeat.set(120,120);
   const floor=new THREE.Mesh(
-    new THREE.PlaneGeometry(GX*CELL,GZ*CELL),
-    new THREE.MeshStandardMaterial({map:texCarpet(th),roughness:.97,metalness:0})
+    new THREE.PlaneGeometry(520,520),
+    new THREE.MeshStandardMaterial({map:groundTex,roughness:.96,metalness:0})
   );
-  floor.rotation.x=-Math.PI/2;floor.position.y=0;scene.add(floor);levelObjs.push(floor);
+  floor.rotation.x=-Math.PI/2;floor.position.y=0;
+  scene.add(floor);levelObjs.push(floor);
 
-  const ceil=new THREE.Mesh(
-    new THREE.PlaneGeometry(GX*CELL,GZ*CELL),
-    new THREE.MeshStandardMaterial({map:texCeiling(th),roughness:.95,metalness:0,color:th.ceilTint})
-  );
-  ceil.rotation.x=Math.PI/2;ceil.position.y=WALL_H;scene.add(ceil);levelObjs.push(ceil);
+  // ---------- the mass ----------
+  const boxes=[];
+  const addBox=(x,y,z,w,h,d)=>boxes.push({x,y,z,w,h,d});
 
-  // ---- baseboards ----
-  const baseMat=new THREE.MeshStandardMaterial({color:th.style==='paper'?0x2a2416:0x191d1c,roughness:.9});
-  const bgeo=new THREE.BoxGeometry(CELL,.14,.05);
-  const binst=new THREE.InstancedMesh(bgeo,baseMat,wallSegs.length*2);
-  let bi=0;
-  wallSegs.forEach(s=>{
-    const off=WALL_T/2+.03;
-    for(const sign of[1,-1]){
-      const px=s.axis==='z'?s.x+sign*off:s.x;
-      const pz=s.axis==='z'?s.z:s.z+sign*off;
-      q.setFromAxisAngle(up,s.axis==='z'?Math.PI/2:0);
-      m4.compose(new THREE.Vector3(px,.07,pz),q,sc);
-      binst.setMatrixAt(bi++,m4);
-    }
-  });
-  binst.count=bi;binst.instanceMatrix.needsUpdate=true;scene.add(binst);levelObjs.push(binst);
-
-  // ---- light fixtures ----
-  fixtures=[];
   for(let i=0;i<GX;i++)for(let j=0;j<GZ;j++){
-    if(Math.random()<th.fix){
-      fixtures.push({
-        x:cx(i),z:cz(j),on:Math.random()<th.fixOn,
-        bright:rand(.75,1.05),flick:0,flickT:rand(4,40),base:1
-      });
+    const id=i+j*GX,kind=cellKind[id];
+    if(kind===CT_STREET)continue;
+    const top=cellTop[id]||18,x=cx(i),z=cz(j);
+    if(kind===CT_BLOCK){
+      addBox(x,top/2,z,CELL,top,CELL);
+      continue;
+    }
+    // a room: mass sits on top of the ceiling, facades close the open sides
+    addBox(x,(top+ROOM_H)/2,z,CELL,Math.max(.4,top-ROOM_H),CELL);
+    const R=rooms.find(r=>r.i===i&&r.j===j);
+    for(const d of R.dirs){
+      const ex=x+d.nx*CELL/2, ez=z+d.nz*CELL/2;
+      const ax=d.nx!==0?'x':'z';
+      const fw=ax==='x'?WIN_T:CELL, fd=ax==='x'?CELL:WIN_T;
+      // sill, head, and the two piers beside the opening
+      addBox(ex,SILL_H/2,ez,fw,SILL_H,fd);
+      addBox(ex,(HEAD_H+ROOM_H)/2,ez,fw,ROOM_H-HEAD_H,fd);
+      const pier=(CELL-WIN_OPEN)/2;
+      for(const s of[-1,1]){
+        addBox(ex+(ax==='x'?0:s*(CELL/2-pier/2)),
+               (SILL_H+HEAD_H)/2,
+               ez+(ax==='x'?s*(CELL/2-pier/2):0),
+               ax==='x'?WIN_T:pier, HEAD_H-SILL_H, ax==='x'?pier:WIN_T);
+      }
+    }
+    for(const d of (R.walls||[])){
+      const ex=x+d.nx*CELL/2, ez=z+d.nz*CELL/2;
+      const ax=d.nx!==0?'x':'z';
+      addBox(ex,ROOM_H/2,ez,ax==='x'?WIN_T:CELL,ROOM_H,ax==='x'?CELL:WIN_T);
     }
   }
-  const fgeo=new THREE.BoxGeometry(1.25,.06,.3);
-  const fmat=new THREE.MeshBasicMaterial({color:0xffffff});
-  fixtureInst=new THREE.InstancedMesh(fgeo,fmat,fixtures.length);
-  fixtures.forEach((f,i)=>{
-    m4.compose(new THREE.Vector3(f.x,WALL_H-.06,f.z),new THREE.Quaternion(),sc);
-    fixtureInst.setMatrixAt(i,m4);
-    const c=new THREE.Color(1,0.96,0.8).multiplyScalar(f.on?f.bright*.9:.05);
-    fixtureInst.setColorAt(i,c);
+
+  // ---------- the deck (level 2 is a road overhead, not sky) ----------
+  if(C.deck){
+    addBox(0,C.deck/2,0,GX*CELL+.6,C.deck,GZ*CELL+.6);
+    // deck pillars already come from the block cells; add cross beams
+    for(let i=0;i<GX;i+=C.block+C.street){
+      addBox(cx(i),C.deck-.5,0,GX*CELL,.9,.9);
+    }
+  }
+
+  const unit=new THREE.BoxGeometry(1,1,1);
+  const massMat=new THREE.MeshStandardMaterial({
+    map:texFacade(th),roughness:.9,metalness:.04,color:0xffffff
   });
+  const massInst=new THREE.InstancedMesh(unit,massMat,boxes.length);
+  boxes.forEach((b,i)=>{
+    v3.set(b.w,b.h,b.d);sc.set(1,1,1);
+    m4.compose(new THREE.Vector3(b.x,b.y,b.z),q,v3);
+    massInst.setMatrixAt(i,m4);
+  });
+  massInst.instanceMatrix.needsUpdate=true;
+  scene.add(massInst);levelObjs.push(massInst);
+
+  // ---------- windows on every street-facing wall ----------
+  const quads=[];
+  const pushFace=(x,z,dir,top)=>{
+    const floors=Math.max(1,Math.floor((top-4.6)/3.1));
+    for(let f=0;f<floors;f++){
+      const y=4.6+f*3.1;
+      for(const off of[-1.02,1.02]){
+        const wx=x+(dir.nx?dir.nx*(CELL/2+.03):off);
+        const wz=z+(dir.nz?dir.nz*(CELL/2+.03):off);
+        quads.push({x:wx,y,z:wz,ry:dir.nx?dir.nx*Math.PI/2:(dir.nz>0?0:Math.PI),
+                    lit:Math.random()<C.lit});
+      }
+    }
+  };
+  for(let i=0;i<GX;i++)for(let j=0;j<GZ;j++){
+    if(cellKind[i+j*GX]!==CT_BLOCK)continue;
+    const top=cellTop[i+j*GX]||18,x=cx(i),z=cz(j);
+    if(ck(i+1,j)===CT_STREET)pushFace(x,z,{nx:1,nz:0},top);
+    if(ck(i-1,j)===CT_STREET)pushFace(x,z,{nx:-1,nz:0},top);
+    if(ck(i,j+1)===CT_STREET)pushFace(x,z,{nx:0,nz:1},top);
+    if(ck(i,j-1)===CT_STREET)pushFace(x,z,{nx:0,nz:-1},top);
+  }
+  if(quads.length){
+    const gmat=new THREE.MeshBasicMaterial({map:texGlass(),color:0xffffff,
+      transparent:true,opacity:.94});
+    const ginst=new THREE.InstancedMesh(new THREE.PlaneGeometry(1.16,1.6),gmat,quads.length);
+    quads.forEach((wd,i)=>{
+      q.setFromAxisAngle(new THREE.Vector3(0,1,0),wd.ry);
+      m4.compose(new THREE.Vector3(wd.x,wd.y,wd.z),q,new THREE.Vector3(1,1,1));
+      ginst.setMatrixAt(i,m4);
+      ginst.setColorAt(i,wd.lit
+        ? new THREE.Color(1,.82,.5).multiplyScalar(rand(.5,1))
+        : new THREE.Color(.10,.12,.17));
+    });
+    ginst.instanceMatrix.needsUpdate=true;
+    if(ginst.instanceColor)ginst.instanceColor.needsUpdate=true;
+    scene.add(ginst);levelObjs.push(ginst);
+  }
+
+  // ---------- sky + the city beyond the map ----------
+  const sky=new THREE.Mesh(
+    new THREE.SphereGeometry(470,24,16),
+    new THREE.MeshBasicMaterial({map:texSky(th),side:THREE.BackSide,fog:false,depthWrite:false})
+  );
+  scene.add(sky);levelObjs.push(sky);
+
+  const far=[];
+  for(let k=0;k<90;k++){
+    const a=rand(0,TAU),r=rand(105,230);
+    const w=rand(14,44),h=rand(26,120);
+    far.push({x:Math.cos(a)*r,z:Math.sin(a)*r,w,h});
+  }
+  const skyMat=new THREE.MeshBasicMaterial({color:C.skyline||0x11151d});
+  const skyInst=new THREE.InstancedMesh(unit,skyMat,far.length);
+  q.identity();
+  far.forEach((b,i)=>{
+    m4.compose(new THREE.Vector3(b.x,b.h/2,b.z),q,new THREE.Vector3(b.w,b.h,b.w));
+    skyInst.setMatrixAt(i,m4);
+  });
+  skyInst.instanceMatrix.needsUpdate=true;
+  scene.add(skyInst);levelObjs.push(skyInst);
+
+  // ---------- street lamps ----------
+  fixtures=[];
+  for(let i=1;i<GX-1;i+=C.lampGap)for(let j=1;j<GZ-1;j+=C.lampGap){
+    if(ck(i,j)!==CT_STREET)continue;
+    if(Math.random()>th.fix)continue;
+    fixtures.push({x:cx(i),z:cz(j),y:C.lampY,on:Math.random()<th.fixOn,
+      bright:rand(.75,1.05),flick:0,flickT:rand(4,40),base:1});
+  }
+  const lampCount=fixtures.length;
+  const lampGeo=new THREE.CylinderGeometry(.09,.12,C.lampY,6);
+  const lampMat=new THREE.MeshStandardMaterial({color:0x1b1d20,roughness:.7,metalness:.4});
+  const lampInst=new THREE.InstancedMesh(lampGeo,lampMat,lampCount);
+  q.identity();
+  for(let i=0;i<lampCount;i++){
+    const f=fixtures[i];
+    m4.compose(new THREE.Vector3(f.x,f.y/2,f.z),q,new THREE.Vector3(1,1,1));
+    lampInst.setMatrixAt(i,m4);
+  }
+  lampInst.instanceMatrix.needsUpdate=true;
+  scene.add(lampInst);levelObjs.push(lampInst);
+
+  // ---------- a bare bulb in every hollow room ----------
+  // without one the rooms are pitch black holes you cannot read as rooms
+  const roomFrom=fixtures.length;
+  for(const r of rooms){
+    fixtures.push({x:r.x,z:r.z,y:2.72,on:true,bright:rand(.5,.8),
+      flick:0,flickT:rand(5,30),base:1,room:true});
+  }
+  const bulbCount=fixtures.length-roomFrom;
+  if(bulbCount>0){
+    const bulbGeo=new THREE.SphereGeometry(.09,8,6);
+    const bulbMat=new THREE.MeshBasicMaterial({color:0xffd9a0});
+    const bulbInst=new THREE.InstancedMesh(bulbGeo,bulbMat,bulbCount);
+    q.identity();
+    for(let i=0;i<bulbCount;i++){
+      const f=fixtures[roomFrom+i];
+      m4.compose(new THREE.Vector3(f.x,f.y,f.z),q,new THREE.Vector3(1,1,1));
+      bulbInst.setMatrixAt(i,m4);
+    }
+    bulbInst.instanceMatrix.needsUpdate=true;
+    scene.add(bulbInst);levelObjs.push(bulbInst);
+  }
+
+  const headGeo=new THREE.BoxGeometry(.7,.22,.34);
+  const headMat=new THREE.MeshBasicMaterial({color:0xffffff});
+  fixtureInst=new THREE.InstancedMesh(headGeo,headMat,lampCount);
+  for(let i=0;i<lampCount;i++){
+    const f=fixtures[i];
+    m4.compose(new THREE.Vector3(f.x,f.y,f.z),new THREE.Quaternion(),new THREE.Vector3(1,1,1));
+    fixtureInst.setMatrixAt(i,m4);
+    fixtureInst.setColorAt(i,new THREE.Color(1,.92,.72).multiplyScalar(f.on?f.bright*.9:.05));
+  }
   fixtureInst.instanceMatrix.needsUpdate=true;
   if(fixtureInst.instanceColor)fixtureInst.instanceColor.needsUpdate=true;
   scene.add(fixtureInst);levelObjs.push(fixtureInst);
 
-  // ---- light pool ----
-  for(let k=0;k<8;k++){
+  // ---------- sky bounce ----------
+  const hemi=new THREE.HemisphereLight(C.skyMid||0x2a3350,C.ground||0x1a1c1e,2.0);
+  scene.add(hemi);levelObjs.push(hemi);
+
+  // a low key light from above, so a facade facing the sky reads lighter than
+  // one facing an alley — without it every wall is the same flat black
+  const key=new THREE.DirectionalLight(C.key||0x9fb0d8,1.25);
+  key.position.set(-70,140,55);
+  scene.add(key);levelObjs.push(key);
+
+  // ---------- light pool ----------
+  for(let k=0;k<12;k++){
     const l=new THREE.PointLight(0xffe7b4,0,17,1.9);
     scene.add(l);lightPool.push({light:l,fix:null});
   }
+}
+
+function buildLevel(lv,mz){
+  const th=LEVELS[lv]||LEVELS[0];
+  const M=mz?normalizeMaze(mz):ensureMaze(lv);
+  if(!restoreMaze(M)){
+    // an older save has no city layout in it — build a fresh district
+    const e=computeExit();
+    exitSeg=e.seg;exitCell=[e.ei,e.ej];
+    LEVEL_MAZES[lv]=makeMaze(lv);
+  }else{
+    exitSeg=M.seg||null;
+    exitCell=M.cell||null;
+  }
+  wallSegs=[];wallMesh=null;
+
+  buildCity(lv,th);
 
   // ---- exit / descent door ----
   if(exitSeg){
@@ -1651,20 +2080,27 @@ function clearLevel(){
   for(const k in propTexCache){propTexCache[k].dispose();delete propTexCache[k];}
   fixtures=[];wallSegs=[];
   exitInfo=null;wallMesh=null;fixtureInst=null;
-  scene.fog.density=LV().fogD;
-  scene.fog.color.setHex(LV().fog);
-  scene.background.setHex(LV().fog);
+  scene.fog.density=fogDensity();
+  const _fc=LV().city&&LV().city.fogCol!=null?LV().city.fogCol:LV().fog;
+  scene.fog.color.setHex(_fc);
+  scene.background.setHex(_fc);
 }
 
 /* ---- palette / atmosphere for a floor ---- */
+function fogDensity(){
+  const th=LV();
+  return th.city&&th.city.fogD?th.city.fogD:th.fogD;
+}
 function applyTheme(lv){
   const th=LEVELS[lv]||LEVELS[0];
-  scene.fog.color.setHex(th.fog);
-  scene.background.setHex(th.fog);
-  scene.fog.density=th.fogD;
-  ambientLight.color.setHex(th.amb);
-  ambientLight.intensity=th.ambI;
-  renderer.toneMappingExposure=th.exposure;
+  const C=th.city||{};
+  const fogCol=C.fogCol!=null?C.fogCol:th.fog;
+  scene.fog.color.setHex(fogCol);
+  scene.background.setHex(fogCol);
+  scene.fog.density=C.fogD||th.fogD;
+  ambientLight.color.setHex(C.amb!=null?C.amb:th.amb);
+  ambientLight.intensity=C.ambI!=null?C.ambI:th.ambI;
+  renderer.toneMappingExposure=C.exposure||th.exposure;
   if(AU.ready)AU.setTheme(lv);
 }
 
@@ -1717,13 +2153,13 @@ function cellOf(x,z){
 function wallsNear(x,z){
   const out=[];
   const ci=Math.floor((x+HALF_W)/CELL),cj=Math.floor((z+HALF_D)/CELL);
+  // a building is a solid cell; a room is hollow, and its walls are the
+  // facade pieces registered in winCols
   for(let i=ci-1;i<=ci+2;i++)for(let j=cj-1;j<=cj+2;j++){
-    if(i>=0&&i<=GX&&j>=0&&j<GZ&&vWall[i]&&vWall[i][j]){
-      out.push({x:-HALF_W+i*CELL,z:cz(j),hx:WALL_T/2,hz:CELL/2});
-    }
-    if(i>=0&&i<GX&&j>=0&&j<=GZ&&hWall[i]&&hWall[i][j]){
-      out.push({x:cx(i),z:-HALF_D+j*CELL,hx:CELL/2,hz:WALL_T/2});
-    }
+    if(ck(i,j)===CT_BLOCK)out.push({x:cx(i),z:cz(j),hx:CELL/2,hz:CELL/2});
+  }
+  for(const c of winCols){
+    if(Math.abs(c.x-x)<CELL*1.6&&Math.abs(c.z-z)<CELL*1.6)out.push(c);
   }
   for(const c of collidersExtra)out.push(c);
   return out;
@@ -1756,14 +2192,14 @@ function resolveCollision(p,r,passLow){
 function solidAt(x,z){
   const ci=Math.floor((x+HALF_W)/CELL),cj=Math.floor((z+HALF_D)/CELL);
   if(ci<0||cj<0||ci>=GX||cj>=GZ)return true;
+  if(ck(ci,cj)===CT_BLOCK)return true;
   for(const c of collidersExtra){
     if(Math.abs(x-c.x)<c.hx+.02&&Math.abs(z-c.z)<c.hz+.02)return true;
   }
-  const lx=x-(-HALF_W+ci*CELL),lz=z-(-HALF_D+cj*CELL);
-  if(vWall[ci][cj]&&lx<WALL_T/2)return true;
-  if(vWall[ci+1][cj]&&lx>CELL-WALL_T/2)return true;
-  if(hWall[ci][cj]&&lz<WALL_T/2)return true;
-  if(hWall[ci][cj+1]&&lz>CELL-WALL_T/2)return true;
+  for(const c of winCols){
+    if(c.low)continue;                 // a broken window is see-through and shoot-through
+    if(Math.abs(x-c.x)<c.hx+.02&&Math.abs(z-c.z)<c.hz+.02)return true;
+  }
   return false;
 }
 function los(x1,z1,x2,z2){
@@ -2522,6 +2958,7 @@ class Monster{
   }
   hurt(d){
     if(this.dead)return;
+    if(this.ghost&&this.netIdx!=null)NET.ghostHit(this.netIdx,d);
     this.hp-=d*(1-this.def.def);          // armor: the smiler just soaks it
     this.alert=6;
     addBlood(this.pos.x,this.pos.z,rand(.75,1.15),this.hp<=0);
@@ -2633,20 +3070,45 @@ function makeItemMesh(type){
     const m=new THREE.Mesh(new THREE.CylinderGeometry(.11,.11,.22,12),
       new THREE.MeshStandardMaterial({color:0x9a9a92,roughness:.55,metalness:.6}));
     g.add(m);
+    // a paper label so the can reads as food, not a grey tube
+    const label=new THREE.Mesh(new THREE.CylinderGeometry(.113,.113,.12,12),
+      new THREE.MeshStandardMaterial({color:0x8a5a3a,roughness:.85}));
+    g.add(label);
+    const lid=new THREE.Mesh(new THREE.CylinderGeometry(.105,.105,.012,12),
+      new THREE.MeshStandardMaterial({color:0x6e6e68,roughness:.4,metalness:.8}));
+    lid.position.y=.115;g.add(lid);
+    g.userData.body=m;g.userData.label=label;
   }else if(type==='water'){
     const m=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,.28,10),
-      new THREE.MeshStandardMaterial({color:0x8fd8e8,roughness:.15,metalness:.1,transparent:true,opacity:.75}));
+      new THREE.MeshStandardMaterial({color:0x8fd8e8,roughness:.15,metalness:.1,transparent:true,opacity:.4}));
     g.add(m);
+    // the water itself, so it can slosh inside the bottle
+    const liquid=new THREE.Mesh(new THREE.CylinderGeometry(.058,.058,.19,10),
+      new THREE.MeshStandardMaterial({color:0x3fa8c8,roughness:.2,metalness:.05,
+        transparent:true,opacity:.85}));
+    liquid.position.y=-.03;g.add(liquid);
+    const cap=new THREE.Mesh(new THREE.CylinderGeometry(.045,.045,.04,10),
+      new THREE.MeshStandardMaterial({color:0x2e6f8a,roughness:.5}));
+    cap.position.y=.155;g.add(cap);
+    g.userData.liquid=liquid;g.userData.body=m;
   }else if(type==='battery'){
     const m=new THREE.Mesh(new THREE.BoxGeometry(.12,.24,.12),
       new THREE.MeshStandardMaterial({color:0x2b2b30,roughness:.5,metalness:.6}));
     g.add(m);
     const b=new THREE.Mesh(new THREE.BoxGeometry(.13,.05,.13),new THREE.MeshBasicMaterial({color:0xd8c27c}));
     b.position.y=.13;g.add(b);
+    // a charge LED that pulses
+    const led=new THREE.Mesh(new THREE.SphereGeometry(.022,8,6),
+      new THREE.MeshBasicMaterial({color:0x6ef0b0,transparent:true,opacity:.9}));
+    led.position.set(0,.075,.065);g.add(led);
+    g.userData.led=led;g.userData.body=m;
   }else if(type==='ammo'){
     const m=new THREE.Mesh(new THREE.BoxGeometry(.24,.14,.16),
       new THREE.MeshStandardMaterial({color:0x4a4020,roughness:.8}));
     g.add(m);
+    const strip=new THREE.Mesh(new THREE.BoxGeometry(.2,.03,.02),
+      new THREE.MeshBasicMaterial({color:0xc4a03a}));
+    strip.position.set(0,.08,.07);g.add(strip);
   }else if(type==='pistol'||type==='shotgun'){
     const len=type==='pistol'?.36:.62;
     const m=new THREE.Mesh(new THREE.BoxGeometry(.07,.09,len),
@@ -2655,6 +3117,11 @@ function makeItemMesh(type){
     const grip=new THREE.Mesh(new THREE.BoxGeometry(.06,.16,.1),
       new THREE.MeshStandardMaterial({color:0x1a1a1c,roughness:.7}));
     grip.position.set(0,-.11,.1);g.add(grip);
+    // a slide that racks back and forth while the weapon sits there
+    const slide=new THREE.Mesh(new THREE.BoxGeometry(.075,.05,len*.72),
+      new THREE.MeshStandardMaterial({color:0x3a3a40,roughness:.35,metalness:.9}));
+    slide.position.set(0,.065,-.02);g.add(slide);
+    g.userData.slide=slide;g.userData.body=m;
   }else if(type==='note'){
     const m=new THREE.Mesh(new THREE.BoxGeometry(.2,.006,.28),
       new THREE.MeshStandardMaterial({color:0xe8dcc0,roughness:.95}));
@@ -2682,7 +3149,8 @@ function spawnItem(type,x,z,meta){
   const g=makeItemMesh(type);
   g.position.set(x,.42,z);
   scene.add(g);
-  items.push({type,mesh:g,x,z,phase:rand(0,TAU),taken:false,meta:meta||null});
+  const id=type+'@'+Math.round(x*10)+','+Math.round(z*10);
+  items.push({id,type,mesh:g,x,z,phase:rand(0,TAU),taken:false,meta:meta||null});
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -3215,7 +3683,8 @@ function spawnProps(lv){
   propCells=new Set();
   const th=LEVELS[lv]||LEVELS[0];
   const bag=PROP_BAG[lv]||PROP_BAG[0];
-  const{dist}=bfs(1,1);
+  const s=citySeed();
+  const{dist}=bfs(s[0],s[1]);
   const cands=[];
   for(let i=0;i<GX;i++)for(let j=0;j<GZ;j++){
     if(dist[i+j*GX]<2)continue;
@@ -3759,19 +4228,24 @@ function drawOpsMap(){
   }
   c.globalAlpha=1;
 
-  // walls
-  c.strokeStyle=L.wall;c.lineWidth=Math.max(1.4,cell*.09);
-  c.lineCap='square';
-  c.beginPath();
-  for(let i=0;i<=GX;i++)for(let j=0;j<GZ;j++){
-    if(!MZ.v[i][j])continue;
-    c.moveTo(ox+i*cell,oy+j*cell);c.lineTo(ox+i*cell,oy+(j+1)*cell);
+  // buildings — solid cells as blocks, hollow rooms as a small square
+  const kinds=opsLevel===level
+    ?cellKind
+    :(LEVEL_MAZES[opsLevel]&&LEVEL_MAZES[opsLevel].kinds);
+  if(kinds){
+    c.fillStyle=L.wall;
+    for(let i=0;i<GX;i++)for(let j=0;j<GZ;j++){
+      const k=kinds[i+j*GX];
+      if(k===CT_BLOCK){
+        c.globalAlpha=.5;
+        c.fillRect(ox+i*cell,oy+j*cell,cell+.5,cell+.5);
+      }else if(k===CT_ROOM){
+        c.globalAlpha=.95;
+        c.fillRect(ox+i*cell+cell*.32,oy+j*cell+cell*.32,cell*.36,cell*.36);
+      }
+    }
+    c.globalAlpha=1;
   }
-  for(let i=0;i<GX;i++)for(let j=0;j<=GZ;j++){
-    if(!MZ.h[i][j])continue;
-    c.moveTo(ox+i*cell,oy+j*cell);c.lineTo(ox+(i+1)*cell,oy+j*cell);
-  }
-  c.stroke();
 
   // outer frame
   c.strokeStyle=L.accent;c.globalAlpha=.5;c.lineWidth=1.5;
@@ -3950,7 +4424,7 @@ const ACH_DEFS=[
   {id:'powered',name:'POWER UP',desc:'RECOVER ALL 3 FUSES'},
   {id:'survivor',name:'SURVIVOR',desc:'SURVIVE 5 MINUTES IN ONE RUN'},
   {id:'descent',name:'GOING DOWN',desc:'DESCEND TO LEVEL 1'},
-  {id:'deep',name:'PIPE DREAMS',desc:'REACH LEVEL 2'},
+  {id:'deep',name:'THE UNDERPASS',desc:'REACH LEVEL 2'},
   {id:'untouchable',name:'UNTOUCHABLE',desc:'ESCAPE WITHOUT A SCRATCH'},
   {id:'escape',name:'NO-CLIP OUT',desc:'ESCAPE ALL THREE FLOORS'}
 ];
@@ -4037,14 +4511,19 @@ function saveGame(manual){
   if((state!=='playing'&&state!=='paused')||player.dead)return;
   try{
     // keep the stored copy of this floor in sync with what is on screen
-    LEVEL_MAZES[level]={v:vWall.map(r=>r.slice()),h:hWall.map(r=>r.slice()),seg:exitSeg,cell:exitCell};
+    LEVEL_MAZES[level]={v:vWall.map(r=>r.slice()),h:hWall.map(r=>r.slice()),seg:exitSeg,cell:exitCell,
+      kinds:Array.from(cellKind),tops:Array.from(cellTop),
+      rooms:rooms.map(r=>({i:r.i,j:r.j,dirs:r.dirs,walls:r.walls}))};
     const data={
       v:2,level,diff,
       mazes:LEVEL_MAZES.map(m=>m?{v:m.v.map(c=>c.join('')),h:m.h.map(c=>c.join('')),
-            seg:m.seg,cell:m.cell}:null),
+            seg:m.seg,cell:m.cell,kinds:Array.from(m.kinds||[]),tops:Array.from(m.tops||[]),
+            rooms:m.rooms||[]}:null),
       maze:{v:vWall.map(c=>c.join('')),h:hWall.map(c=>c.join('')),
             exitSeg:exitSeg?{i:exitSeg.i,j:exitSeg.j,t:exitSeg.t}:null,
-            exitCell:exitInfo?exitInfo.cell:null,spawnCell},
+            exitCell:exitInfo?exitInfo.cell:null,spawnCell,
+            kinds:Array.from(cellKind),tops:Array.from(cellTop),
+            rooms:rooms.map(r=>({i:r.i,j:r.j,dirs:r.dirs,walls:r.walls}))},
       player:{pos:[player.pos.x,player.pos.z],yaw:player.yaw,pitch:player.pitch,
         hp:player.hp,stamina:player.stamina,battery:player.battery,
         weapon:player.weapon,owned:player.owned,ammo:player.ammo,inv:player.inv,
@@ -4215,6 +4694,30 @@ function closeSettings(){
 loadSettings();
 $('#setbtn').addEventListener('click',openSettings);
 $('#setbtn2').addEventListener('click',openSettings);
+
+/* ---- online lobby ---- */
+{
+  let netLv=0;
+  const nameIn=$('#netname'),codeIn=$('#joincode');
+  nameIn.addEventListener('input',()=>{
+    const v=nameIn.value.replace(/[^A-Za-z0-9 _-]/g,'').slice(0,12);
+    NET.setName(v);
+  });
+  codeIn.addEventListener('input',()=>{
+    codeIn.value=codeIn.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,4);
+  });
+  codeIn.addEventListener('keydown',e=>{if(e.key==='Enter')$('#joinbtn').click();});
+  document.querySelectorAll('#netlv .diff').forEach(b=>{
+    b.addEventListener('click',()=>{
+      netLv=+b.dataset.lv;
+      document.querySelectorAll('#netlv .diff').forEach(x=>x.classList.toggle('on',x===b));
+    });
+  });
+  $('#netbtn').addEventListener('click',()=>NET.open());
+  $('#netback').addEventListener('click',()=>{NET.leave();setState('menu');});
+  $('#hostbtn').addEventListener('click',()=>NET.host(netLv));
+  $('#joinbtn').addEventListener('click',()=>NET.join(codeIn.value));
+}
 {
   let armed=false;
   $('#setclose').addEventListener('pointerdown',()=>{armed=true;});
@@ -4350,6 +4853,7 @@ addEventListener('keydown',e=>{
   // overlays own the keyboard first
   if(e.code==='Escape'){
     if(setOpen){closeSettings();return;}
+    if(state==='lobby'){NET.leave();setState('menu');return;}
     if(noteOpen){closeNote();return;}
     if(opsSelectOpen){closeOpsSelect();return;}
     if(opsOpen){closeOps();return;}
@@ -4862,7 +5366,7 @@ const clock=new THREE.Clock();
 let state='menu';
 let elapsed=0,playT=0,hunterActive=false,nextHunt=22,lastTickW=performance.now();
 
-const SCREENS={menu:'#title',playing:null,paused:'#pause',dead:'#death',won:'#win'};
+const SCREENS={menu:'#title',lobby:'#lobby',playing:null,paused:'#pause',dead:'#death',won:'#win'};
 function setState(s){
   state=s;
   for(const k in SCREENS){const sel=SCREENS[k];if(sel)$(sel).classList.add('hide');}
@@ -5167,10 +5671,40 @@ function updateItems(dt){
   for(let i=items.length-1;i>=0;i--){
     const it=items[i];
     it.phase+=dt*1.6;
-    it.mesh.position.y=.42+Math.sin(it.phase)*.055;
-    it.mesh.rotation.y+=dt*.7;
+    const t=it.phase,g=it.mesh,ud=g.userData;
+    /* every pickup used to bob and spin the same way, which made a bottle
+       of water and a shotgun read as the same object. Each one now moves
+       like the thing it is. */
+    if(it.type==='water'){
+      g.position.y=.42+Math.sin(t)*.045;
+      g.rotation.y+=dt*.55;
+      g.rotation.z=Math.sin(t*.9)*.18;                 // the bottle tips
+      if(ud.liquid){
+        ud.liquid.position.y=-.03+Math.sin(t*2.4)*.028; // and the water sloshes
+        ud.liquid.rotation.z=Math.sin(t*2.4+1)*.22;
+      }
+    }else if(it.type==='battery'){
+      g.position.y=.42+Math.sin(t*.8)*.028;
+      g.rotation.y+=dt*1.15;
+      if(ud.led)ud.led.material.opacity=.35+.65*Math.abs(Math.sin(t*2.2));
+    }else if(it.type==='food'){
+      g.position.y=.42+Math.sin(t*1.1)*.03;
+      g.rotation.y+=dt*.45;
+      g.rotation.x=Math.sin(t*.75)*.14;                // a can rocking on its rim
+      if(ud.label)ud.label.rotation.y-=dt*.6;
+    }else if(it.type==='pistol'||it.type==='shotgun'){
+      g.position.y=.42+Math.sin(t*.9)*.04;
+      g.rotation.y+=dt*.9;
+      if(ud.slide){                                    // the slide racks
+        const k=Math.max(0,Math.sin(t*1.7));
+        ud.slide.position.z=-(it.type==='pistol'?.035:.055)*k;
+      }
+    }else{
+      g.position.y=.42+Math.sin(t)*.055;
+      g.rotation.y+=dt*.7;
+    }
     const d=Math.hypot(it.x-player.pos.x,it.z-player.pos.z);
-    if(d<1.25)pickup(it);
+    if(d<1.25){NET.itemTaken(it);pickup(it);}
   }
 }
 
@@ -5241,19 +5775,20 @@ function updateLights(dt){
       const c=cands[k];
       if(c){
         slot.fix=c.f;
-        slot.light.position.set(c.f.x,WALL_H-.35,c.f.z);
-        slot.light.distance=15;
-        slot.light.intensity=19*c.f.bright;
+        slot.light.position.set(c.f.x,(c.f.y||WALL_H-.35),c.f.z);
+        slot.light.distance=17;
+        slot.light.intensity=22*c.f.bright;
       }else{
         slot.fix=null;slot.light.intensity=0;
       }
     }
-    // update fixture emissive colors
-    fixtures.forEach((f,i)=>{
-      const b=f.on?f.bright:0.02;
+    // update fixture emissive colors — only the lamp instances exist
+    const lampN=fixtureInst?fixtureInst.count:0;
+    for(let i=0;i<lampN&&i<fixtures.length;i++){
+      const f=fixtures[i],b=f.on?f.bright:0.02;
       fixtureInst.setColorAt(i,new THREE.Color(1,.95,.78).multiplyScalar(b*1.05));
-    });
-    if(fixtureInst.instanceColor)fixtureInst.instanceColor.needsUpdate=true;
+    }
+    if(fixtureInst&&fixtureInst.instanceColor)fixtureInst.instanceColor.needsUpdate=true;
   }
 }
 
@@ -5338,7 +5873,7 @@ const TUT_STEPS=[
 ];
 let tutMode='on';                       // on | off | done
 let tutDone=new Set();
-let tutActive=false,tutIdx=-1,tutBase=null,tutShown=0,tutOkT=0;
+let tutActive=false,tutIdx=-1,tutBase=null,tutShown=0,tutOkAt=0;
 let tutSprintT=0,tutTorchFlips=0;
 
 function saveTut(){
@@ -5393,7 +5928,7 @@ function renderTut(){
 function tutAdvance(){
   const i=tutPick();
   if(i<0){tutFinish();return;}
-  tutIdx=i;tutShown=performance.now();tutOkT=0;
+  tutIdx=i;tutShown=performance.now();tutOkAt=0;
   /* every step measures against where you were when it appeared */
   tutBase={x:player.pos.x,z:player.pos.z,sprint:tutSprintT,torch:tutTorchFlips,
            chests:player.chests,fuses:player.fuses,kills:player.kills};
@@ -5401,7 +5936,7 @@ function tutAdvance(){
 }
 function tutStart(){
   if(tutMode!=='on')return;
-  tutActive=true;tutIdx=-1;tutShown=performance.now();tutOkT=0;
+  tutActive=true;tutIdx=-1;tutShown=performance.now();tutOkAt=0;
   tutAdvance();
 }
 function tutFinish(){
@@ -5416,9 +5951,8 @@ function tutHide(){
 }
 function updateTutorial(dt){
   if(!tutActive)return;
-  if(tutOkT>0){
-    tutOkT-=dt;
-    if(tutOkT<=0)tutAdvance();
+  if(tutOkAt){
+    if(performance.now()>=tutOkAt)tutAdvance();
     return;
   }
   const s=TUT_STEPS[tutIdx];
@@ -5432,7 +5966,7 @@ function updateTutorial(dt){
   saveTut();
   el.tut.classList.add('ok');
   if(AU.pickup)AU.pickup();
-  tutOkT=.5;
+  tutOkAt=performance.now()+500;   // wall clock: a slow frame must not stretch it
 }
 
 /* ---- main loop ---- */
@@ -5440,6 +5974,9 @@ function tick(){
   requestAnimationFrame(tick);
   const dt=Math.min(.08,clock.getDelta());
   elapsed+=dt;
+  // the network runs even while the world is frozen, so a paused host keeps
+  // answering the room instead of going silent
+  NET.tick(dt);
 
   if(state==='playing'){
     const nowW=performance.now();
@@ -5448,7 +5985,7 @@ function tick(){
     if(!invOpen&&!opsOpen&&!pwOpen&&!noteOpen){
       playT+=Math.min(2,(nowW-lastTickW)/1000);
       updatePlayer(dt);
-      for(const m of monsters)m.update(dt);
+      for(const m of monsters)if(!m.ghost)m.update(dt);
       updateItems(dt);
       updateChests(dt);
       updateValves(dt);
@@ -5556,6 +6093,543 @@ function updateViewModel(dt){
 }
 
 /* ══════════════════════════════════════════════════════════════
+   ONLINE — MQTT over a public broker
+   There is no server to referee anything, so the host is the
+   authority: it owns the monsters and the loot, publishes the
+   district layout, and broadcasts state twelve times a second.
+   Clients run their own body, draw the host's monsters as ghosts,
+   and report what they shoot or pick up.
+
+   Topics (all under brk/v2/):
+     rooms/<CODE>        retained heartbeat, one per live room
+     room/<CODE>/map     retained layout, so a late joiner gets the city
+     room/<CODE>/state   host -> everyone
+     room/<CODE>/in      everyone -> host
+   ══════════════════════════════════════════════════════════════ */
+const NET=(()=>{
+  const P='brk/v2/';
+  const BROKERS=['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt'];
+  const ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';   // no I/O/0/1
+  const TICK_MS=120, BEAT_MS=3000, ROOM_TTL=30000;
+
+  const st={
+    clis:[],status:'off',role:null,code:null,id:'',name:'',
+    rooms:new Map(),peers:new Map(),ghosts:[],avatars:new Map(),
+    subs:new Set(),seen:new Set(),uid:0,recover:null,
+    beatIv:0,sendT:0,seq:0,level:0,mapKey:null,started:false,
+    hurtT:0,netBarT:0
+  };
+
+  const rid=(n)=>{let s='';for(let i=0;i<n;i++)s+=ALPHA[Math.floor(Math.random()*ALPHA.length)];return s;};
+  const topic=(t)=>P+'room/'+st.code+'/'+t;
+
+  /* Two public brokers, joined at once. A room then survives one of them
+     being slow, rate-limiting or flapping — and, more importantly, two
+     players can never end up on opposite brokers and never meet. */
+  /* `connected` stays true for a moment while the socket is already
+     closing, and mqtt.js throws if you write to it then */
+  const liveClients=()=>st.clis.filter(c=>c&&c.connected&&!c.dead);
+  const anyLive=()=>liveClients().length>0;
+  function send(t,obj,retain){
+    const body=JSON.stringify(Object.assign({u:++st.uid},obj));
+    let ok=false;
+    for(const c of liveClients()){
+      try{c.publish(t,body,{qos:0,retain:!!retain});ok=true;}catch(e){}
+    }
+    if(ok)st.tx=(st.tx||0)+1;
+    return ok;
+  }
+  function sub(t){
+    if(st.subs.has(t))return;
+    st.subs.add(t);
+    for(const c of liveClients()){try{c.subscribe(t);}catch(e){}}
+  }
+  function unsub(t){
+    st.subs.delete(t);
+    for(const c of liveClients()){try{c.unsubscribe(t);}catch(e){}}
+  }
+
+  /* ---------- avatars ---------- */
+  function nameTag(text){
+    const S=256,[c,g]=cnv(S,64);
+    g.clearRect(0,0,S,64);
+    g.fillStyle='rgba(0,0,0,.55)';g.fillRect(0,0,S,64);
+    g.font='600 30px ui-monospace,Menlo,Consolas,monospace';
+    g.textAlign='center';g.textBaseline='middle';
+    g.fillStyle='#cfe8c4';
+    g.fillText(text.toUpperCase().slice(0,12),S/2,34);
+    const t=new THREE.CanvasTexture(c);
+    t.colorSpace=THREE.SRGBColorSpace;
+    return t;
+  }
+  function makeAvatar(name){
+    const g=new THREE.Group();
+    const skin=new THREE.MeshStandardMaterial({color:0x9fb2a8,roughness:.85,metalness:.05});
+    const coat=new THREE.MeshStandardMaterial({color:0x38423e,roughness:.9});
+    const body=new THREE.Mesh(new THREE.CylinderGeometry(.24,.3,1.02,8),coat);
+    body.position.y=.92;g.add(body);
+    const head=new THREE.Mesh(new THREE.SphereGeometry(.2,10,8),skin);
+    head.position.y=1.62;g.add(head);
+    for(const s of[-1,1]){
+      const arm=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,.82,6),coat);
+      arm.position.set(s*.32,1.05,0);arm.rotation.z=s*.12;g.add(arm);
+    }
+    const tag=new THREE.Sprite(new THREE.SpriteMaterial({map:nameTag(name),transparent:true,depthWrite:false}));
+    tag.scale.set(1.5,.38,1);tag.position.y=2.1;g.add(tag);
+    scene.add(g);
+    return g;
+  }
+  function dropAvatar(id){
+    const a=st.avatars.get(id);
+    if(a){
+      scene.remove(a);
+      a.traverse(o=>{if(o.geometry)o.geometry.dispose();
+        if(o.material){if(o.material.map)o.material.map.dispose();o.material.dispose();}});
+      st.avatars.delete(id);
+    }
+  }
+  function syncAvatar(p){
+    let a=st.avatars.get(p.i);
+    if(!a){a=makeAvatar(p.n||'PLAYER');st.avatars.set(p.i,a);}
+    a.position.set(p.x,0,p.z);
+    a.rotation.y=p.a||0;
+  }
+
+  /* ---------- monsters as ghosts (client side) ----------
+     The client keeps the host's monsters inside the ordinary `monsters`
+     array, flagged `ghost`. That way aiming, melee, gun raycasts, the
+     danger meter and the tutorial all keep working untouched — the only
+     thing the client skips is running their AI. */
+  function clearGhosts(){
+    for(const m of monsters)if(m.ghost)scene.remove(m.mesh);
+    monsters=monsters.filter(m=>!m.ghost);
+  }
+  function syncGhosts(mo){
+    // a client only ever owns ghosts: anything local is a leftover
+    if(monsters.some(m=>!m.ghost)){
+      for(const m of monsters)if(!m.ghost)scene.remove(m.mesh);
+      monsters=monsters.filter(m=>m.ghost);
+    }
+    const live=monsters.filter(m=>m.ghost);
+    if(live.length!==mo.length){
+      clearGhosts();
+      for(let i=0;i<mo.length;i++){
+        const g=new Monster(mo[i][0],0,0);
+        g.ghost=true;g.netIdx=i;g.pos.set(mo[i][1],0,mo[i][2]);
+        g.mesh.position.set(mo[i][1],0,mo[i][2]);
+        monsters.push(g);
+      }
+      return;
+    }
+    for(let i=0;i<mo.length;i++){
+      const m=mo[i],g=live[i];
+      if(g.kind!==m[0]){
+        scene.remove(g.mesh);
+        const ng=new Monster(m[0],0,0);
+        ng.ghost=true;ng.netIdx=i;ng.pos.set(m[1],0,m[2]);
+        ng.mesh.position.set(m[1],0,m[2]);
+        monsters[monsters.indexOf(g)]=ng;
+        continue;
+      }
+      g.netIdx=i;g.tx=m[1];g.tz=m[2];g.remoteDead=!!m[3];
+    }
+  }
+
+  /* ---------- connection ---------- */
+  function setStatus(s,note){
+    st.status=s;
+    const el=$('#netstat');
+    if(el)el.textContent=note||s.toUpperCase();
+  }
+  async function ensureClient(){
+    if(anyLive())return true;
+    if(st.conn)return st.conn;
+    st.conn=connect().finally(()=>{st.conn=null;});
+    return st.conn;
+  }
+  async function connect(){
+    if(typeof mqtt==='undefined'){setStatus('error','MQTT LIBRARY DID NOT LOAD');return false;}
+    setStatus('connecting','CONNECTING…');
+    for(const c of st.clis){try{c.end(true);}catch(e){}}
+    st.clis=[];
+
+    // race every broker at once and keep whichever ones answer
+    const tries=BROKERS.map((url,ix)=>new Promise((res)=>{
+      let done=false,cli=null;
+      const fin=(v)=>{
+        if(done)return;done=true;clearTimeout(to);
+        if(!v&&cli){try{cli.end(true);}catch(e){}}
+        res(v?cli:null);
+      };
+      const to=setTimeout(()=>fin(false),10000);
+      try{
+        cli=mqtt.connect(url,{
+          clientId:'brk_'+st.id+'_'+ix,clean:true,connectTimeout:9000,
+          reconnectPeriod:2500,keepalive:25
+        });
+      }catch(e){fin(false);return;}
+      cli.on('connect',()=>fin(true));
+      cli.on('error',()=>fin(false));
+      wire(cli);
+    }));
+
+    st.clis=(await Promise.all(tries)).filter(Boolean);
+    if(!st.clis.length){setStatus('error','NO BROKER REACHABLE');return false;}
+    setStatus('online','CONNECTED');
+    for(const c of st.clis)for(const t of st.subs){try{c.subscribe(t);}catch(e){}}
+    return true;
+  }
+
+  function wire(cli){
+    cli.on('connect',()=>{
+      cli.dead=false;
+      setStatus('online','CONNECTED');
+      for(const t of st.subs){try{cli.subscribe(t);}catch(e){}}
+      if(st.recover)st.recover();          // re-announce after a reconnect
+    });
+    cli.on('close',()=>{cli.dead=true;if(!anyLive())setStatus('off','RECONNECTING…');});
+    cli.on('error',()=>{});
+    cli.on('message',(t,payload)=>{
+      let m;
+      try{m=JSON.parse(payload.toString());}catch(e){return;}
+      if(!m||typeof m!=='object')return;
+      st.rx=(st.rx||0)+1;
+      // both brokers deliver the same message: act on it once
+      if(m.u!==undefined){
+        const k=t+'|'+m.u;
+        if(st.seen.has(k))return;
+        st.seen.add(k);
+        if(st.seen.size>800)st.seen=new Set([...st.seen].slice(-400));
+      }
+      if(t.startsWith(P+'rooms/'))onRoom(t,m);
+      else if(st.code&&t===topic('map'))onMap(m);
+      else if(st.code&&t===topic('state')){st.rxState=(st.rxState||0)+1;onState(m);}
+      else if(st.code&&t===topic('in')){st.rxIn=(st.rxIn||0)+1;onIn(m);}
+      else st.rxOther=(st.rxOther||0)+1;
+    });
+    st.subs.add(P+'rooms/+');
+    try{cli.subscribe(P+'rooms/+');}catch(e){}
+  }
+
+  /* ---------- the live room list ---------- */
+  function onRoom(t,m){
+    const code=t.slice((P+'rooms/').length);
+    if(!code||m.t!=='r')return;
+    if(m.close){st.rooms.delete(code);renderRooms();return;}
+    /* the beat is retained, so a host that closed its tab leaves one behind
+       for ever. Trust the sender's clock: an old beat is a dead room. */
+    const now=Date.now();
+    const sent=typeof m.ts==='number'?m.ts:now;
+    if(now-sent>ROOM_TTL)return;
+    // display age and local expiry run off our own clock, not the host's
+    st.rooms.set(code,{code,host:m.n||'—',lv:m.lv|0,n:m.p|0,ts:now});
+    renderRooms();
+  }
+  function pruneRooms(){
+    const now=Date.now();
+    let changed=false;
+    for(const[k,v]of st.rooms)if(now-v.ts>ROOM_TTL){st.rooms.delete(k);changed=true;}
+    if(changed)renderRooms();
+  }
+  function renderRooms(){
+    const box=$('#roomlist');if(!box)return;
+    const list=[...st.rooms.values()].sort((a,b)=>b.ts-a.ts);
+    const cnt=$('#roomcount');
+    if(cnt)cnt.textContent=list.length?`· ${list.length}`:'';
+    if(!list.length){
+      box.innerHTML='<div class="empty">NOBODY IS DOWN HERE YET</div>';
+      return;
+    }
+    box.innerHTML=list.map(r=>{
+      const age=Math.max(0,Math.round((Date.now()-r.ts)/1000));
+      return `<div class="room" data-code="${r.code}">
+        <span><b>${r.code}</b><br><i>${r.host}</i></span>
+        <span class="rp">LV${r.lv} · ${r.n}/6<br><i>${age}s</i></span></div>`;
+    }).join('');
+    box.querySelectorAll('.room').forEach(el=>{
+      el.addEventListener('click',()=>NET.join(el.dataset.code));
+    });
+  }
+
+  /* ---------- host ---------- */
+  function publishMap(){
+    if(!anyLive())return;
+    const maze={
+      v:vWall.map(r=>r.join('')),h:hWall.map(r=>r.join('')),
+      seg:exitSeg,cell:exitCell,
+      kinds:Array.from(cellKind),
+      tops:Array.from(cellTop).map(v=>Math.round(v*10)/10),
+      rooms:rooms.map(r=>({i:r.i,j:r.j,dirs:r.dirs,walls:r.walls}))
+    };
+    st.mapKey='k'+Date.now();
+    send(topic('map'),{t:'map',k:st.mapKey,lv:level,maze},true);
+  }
+  /* wall clock, not frame time: a heartbeat that slows down with the frame
+     rate makes a live room look dead to everyone else */
+  function startBeat(){
+    clearInterval(st.beatIv);
+    publishBeat();
+    st.beatIv=setInterval(()=>{
+      if(st.role==='host'&&st.code)publishBeat();
+      else{clearInterval(st.beatIv);st.beatIv=0;}
+    },BEAT_MS);
+  }
+  function publishBeat(){
+    send(P+'rooms/'+st.code,{t:'r',n:st.name,lv:st.level,p:1+st.peers.size,ts:Date.now()},true);
+  }
+  function publishState(){
+    if(!anyLive())return;
+    const pl=[{i:st.id,n:st.name,x:r1(player.pos.x),z:r1(player.pos.z),
+      a:r2(player.yaw),h:Math.round(player.hp)}];
+    for(const p of st.peers.values())
+      pl.push({i:p.id,n:p.name,x:p.x,z:p.z,a:p.a,h:p.h});
+    const mo=monsters.map(m=>[m.kind,r1(m.pos.x),r1(m.pos.z),m.dead?1:0]);
+    const it=items.map(x=>x.id);
+    st.pub=(st.pub||0)+1;
+    send(topic('state'),{t:'s',q:++st.seq,lv:level,pl,mo,it,ex:exitPowered?1:0});
+  }
+  const r1=v=>Math.round(v*10)/10, r2=v=>Math.round(v*100)/100;
+
+  /* ---------- client ---------- */
+  function onMap(m){
+    if(st.role!=='client'||!m.maze)return;
+    if(st.mapKey===m.k&&st.started)return;
+    st.mapKey=m.k;st.level=m.lv|0;
+    loadLevel(st.level,{netMap:m.maze});
+    // the host owns the monsters; a client keeps none of its own
+    for(const g of monsters)scene.remove(g.mesh);
+    monsters.length=0;
+    nextHunt=1e9;hunterActive=true;
+    if(!st.started){st.started=true;startGame();}
+  }
+  function onState(m){
+    if(st.role!=='host'&&m.pl){
+      for(const p of m.pl){
+        if(p.i===st.id)continue;
+        st.peers.set(p.i,{id:p.i,name:p.n||'PLAYER',x:p.x,z:p.z,a:p.a,h:p.h,ts:Date.now()});
+      }
+    }
+    if(st.role!=='client')return;
+    if(m.pl)for(const p of m.pl){
+      if(p.i===st.id)continue;
+      st.peers.set(p.i,{id:p.i,name:p.n||'PLAYER',x:p.x,z:p.z,a:p.a,h:p.h,ts:Date.now()});
+    }
+    if(m.mo)syncGhosts(m.mo);
+    if(m.it){
+      const keep=new Set(m.it);
+      for(let i=items.length-1;i>=0;i--){
+        if(!keep.has(items[i].id)){
+          scene.remove(items[i].mesh);
+          items.splice(i,1);
+        }
+      }
+    }
+    if(m.ex&&!exitPowered)powerExit(true);
+  }
+  function onIn(m){
+    if(st.role!=='host')return;
+    if(m.t==='hello'){
+      st.hlo=(st.hlo||0)+1;
+      st.peers.set(m.i,{id:m.i,name:m.n||'PLAYER',x:player.pos.x,z:player.pos.z,a:0,h:100,ts:Date.now()});
+      publishMap();publishBeat();
+    }else if(m.t==='p'){
+      st.pp=(st.pp||0)+1;
+      const p=st.peers.get(m.i)||{id:m.i,name:m.n||'PLAYER'};
+      p.x=m.x;p.z=m.z;p.a=m.a;p.h=m.h;p.ts=Date.now();
+      st.peers.set(m.i,p);
+    }else if(m.t==='ev'){
+      if(m.e==='take'){
+        const i=items.findIndex(x=>x.id===m.id);
+        if(i>=0){scene.remove(items[i].mesh);items.splice(i,1);}
+      }else if(m.e==='hit'){
+        const mon=monsters[m.m];
+        if(mon&&!mon.dead){
+          mon.hp-=m.d||0;
+          if(mon.hp<=0){mon.dead=true;mon.deadT=0;player.kills++;}
+        }
+      }
+    }else if(m.t==='bye'){
+      st.peers.delete(m.i);dropAvatar(m.i);
+    }
+  }
+
+  /* ---------- public ---------- */
+  const api={
+    get status(){return st.status;},
+    get role(){return st.role;},
+    get code(){return st.code;},
+    get peerCount(){return st.peers.size;},
+    active(){return !!st.role;},
+    get dbg(){return{hlo:st.hlo||0,pp:st.pp||0,ids:[...st.peers.keys()],seq:st.seq||0,pub:st.pub||0,
+      subs:[...st.subs],rx:st.rx||0,rxIn:st.rxIn||0,rxState:st.rxState||0,
+      rxOther:st.rxOther||0,code:st.code,role:st.role,peers:st.peers.size,
+      live:liveClients().length,connected:anyLive(),
+      started:!!st.started,tx:st.tx||0,rooms:[...st.rooms.keys()]};},
+    isHost(){return st.role==='host';},
+    isClient(){return st.role==='client';},
+    setName(v){
+      st.name=(v||'').trim().slice(0,12);
+      store.set('brk_name',st.name);
+    },
+
+    async open(){
+      st.name=st.name||(store.get('brk_name','')||'');
+      setState('lobby');
+      const nm=$('#netname');if(nm)nm.value=st.name;
+      const ok=await ensureClient();
+      if(ok)pruneRooms();
+      renderRooms();
+    },
+
+    async host(lv){
+      if(!await ensureClient())return false;
+      st.role='host';st.code=rid(4);st.level=lv|0;st.peers.clear();
+      st.started=true;st.mapKey=null;st.seen.clear();
+      sub(topic('in'));
+      st.recover=()=>{if(st.role==='host'){publishMap();publishBeat();}};
+      opsLevel=st.level;
+      loadLevel(st.level,null);
+      startGame();
+      publishMap();publishBeat();
+      startBeat();st.sendT=0;
+      toast(`ROOM ${st.code} — SHARE THE CODE`,4000);
+      updateNetBar();
+      return true;
+    },
+
+    async join(code){
+      code=(code||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,4);
+      if(code.length<4){toast('A CODE IS FOUR CHARACTERS',2500);return false;}
+      if(!await ensureClient())return false;
+      st.role='client';st.code=code;st.started=false;st.mapKey=null;
+      st.peers.clear();clearGhosts();st.seen.clear();
+      sub(topic('state'));sub(topic('map'));
+      const hello=()=>send(topic('in'),{t:'hello',i:st.id,n:st.name});
+      st.recover=()=>{if(st.role==='client'&&!st.started)hello();};
+      hello();
+      // a public broker can be slow to route the first packet; keep asking
+      let tries=0;
+      const retry=setInterval(()=>{
+        if(st.role!=='client'||st.started||++tries>7){clearInterval(retry);return;}
+        hello();
+      },1800);
+      toast(`JOINING ${code}…`,3000);
+      updateNetBar();
+      // only give up when we are actually connected to something
+      setTimeout(()=>{
+        clearInterval(retry);
+        if(st.role==='client'&&!st.started){
+          toast(anyLive()?'NO ROOM ANSWERS TO THAT CODE':'CANNOT REACH THE NETWORK',3500);
+          api.leave();
+          setState('lobby');
+        }
+      },16000);
+      return true;
+    },
+
+    leave(){
+      if(st.code){
+        if(st.role==='host'){
+          for(const c of liveClients()){
+            try{c.publish(P+'rooms/'+st.code,'',{qos:0,retain:true});}catch(e){}
+          }
+        }else{
+          send(topic('in'),{t:'bye',i:st.id});
+        }
+        if(st.code)for(const t of[...st.subs])if(t!==P+'rooms/+')unsub(t);
+      }
+      st.recover=null;
+      if(st.beatIv){clearInterval(st.beatIv);st.beatIv=0;}
+      for(const id of[...st.avatars.keys()])dropAvatar(id);
+      clearGhosts();
+      st.peers.clear();st.seen.clear();
+      st.role=null;st.code=null;st.started=false;st.mapKey=null;
+      updateNetBar();
+    },
+
+    /* called by updateItems just before an item is consumed */
+    itemTaken(it){
+      if(st.role==='client'&&it&&it.id)send(topic('in'),{t:'ev',e:'take',id:it.id});
+    },
+    /* called when the local player damages a ghost */
+    ghostHit(idx,dmg){
+      if(st.role==='client')send(topic('in'),{t:'ev',e:'hit',m:idx,d:dmg});
+    },
+
+    tick(dt){
+      /* the lobby has to expire dead rooms even when we are in none */
+      st.lobbyT=(st.lobbyT||0)-dt;
+      if(st.lobbyT<=0){st.lobbyT=.5;pruneRooms();}
+      if(!st.role)return;
+      // a throttled tab can lose its sockets; get them back on our own
+      st.revT=(st.revT||0)-dt;
+      if(st.revT<=0){
+        st.revT=4;
+        if(!anyLive()){ensureClient();st.sendT=0;}
+      }
+      // ---- network cadence ----
+      st.sendT-=dt*1000;
+      if(st.sendT<=0){
+        st.sendT=TICK_MS;
+        if(st.role==='host')publishState();
+        else if(anyLive())
+          send(topic('in'),{t:'p',i:st.id,n:st.name,
+            x:r1(player.pos.x),z:r1(player.pos.z),a:r2(player.yaw),h:Math.round(player.hp)});
+      }
+      // ---- remote bodies ----
+      const now=Date.now(),online=anyLive();
+      for(const[id,p]of[...st.peers]){
+        // while our own socket is down we cannot judge anyone's silence
+        if(online&&now-p.ts>10000){st.peers.delete(id);dropAvatar(id);continue;}
+        const a=st.avatars.get(id);
+        if(!a)syncAvatar(p);
+        else{
+          a.position.x+=(p.x-a.position.x)*Math.min(1,dt*9);
+          a.position.z+=(p.z-a.position.z)*Math.min(1,dt*9);
+          a.rotation.y=p.a;
+        }
+      }
+      // ---- ghosts ----
+      for(const g of monsters){
+        if(!g.ghost||g.tx===undefined)continue;
+        g.pos.x+=(g.tx-g.pos.x)*Math.min(1,dt*7);
+        g.pos.z+=(g.tz-g.pos.z)*Math.min(1,dt*7);
+        g.mesh.position.set(g.pos.x,0,g.pos.z);
+        g.mesh.visible=!g.remoteDead;
+      }
+      // a client still has to fear them, even though the host runs them
+      if(st.role==='client'&&state==='playing'&&!player.dead){
+        st.hurtT-=dt;
+        if(st.hurtT<=0){
+          for(const g of monsters){
+            if(!g.ghost||g.remoteDead)continue;
+            const d=Math.hypot(g.pos.x-player.pos.x,g.pos.z-player.pos.z);
+            if(d<1.5&&player.y<.55){st.hurtT=1.1;damagePlayer(g.dmg*.8,null);break;}
+          }
+        }
+      }
+      st.netBarT-=dt;
+      if(st.netBarT<=0){st.netBarT=.5;updateNetBar();}
+    }
+  };
+
+  function updateNetBar(){
+    const el=$('#netbar');if(!el)return;
+    if(!st.role){el.classList.remove('on');return;}
+    el.classList.add('on');
+    el.classList.toggle('bad',st.status!=='online');
+    el.innerHTML=st.role==='host'
+      ? `HOSTING <b>${st.code}</b><br>${1+st.peers.size} IN THE ROOM`
+      : `ROOM <b>${st.code}</b><br>${1+st.peers.size} IN THE ROOM`;
+  }
+
+  // per tab, not per browser: two tabs are two players
+  st.id=rid(8);
+
+  return api;
+})();
+
+/* ══════════════════════════════════════════════════════════════
    BOOT
    ══════════════════════════════════════════════════════════════ */
 function runSeconds(){
@@ -5563,8 +6637,9 @@ function runSeconds(){
 }
 
 function placePlayer(){
-  const{dist}=bfs(1,1);
-  let bestCell=[1,1],bd=-1;
+  const s=citySeed();
+  const{dist}=bfs(s[0],s[1]);
+  let bestCell=s,bd=-1;
   for(let i=0;i<GX;i++)for(let j=0;j<GZ;j++){
     const d=dist[i+j*GX];
     if(d>0&&d<7&&Math.random()<.5&&d>bd){bd=d;bestCell=[i,j];}
@@ -5621,16 +6696,19 @@ function loadLevel(lv,sv){
   exitPowered=false;                 // a freshly built floor always starts unpowered
   level=clamp(lv,0,LAST_LEVEL);
   applyTheme(level);
-  buildLevel(level,sv&&sv.maze?sv.maze:null);
-  if(sv){
+  const netMap=sv&&sv.netMap?sv.netMap:null;
+  buildLevel(level,netMap||(sv&&sv.maze?sv.maze:null));
+  if(sv&&!netMap){
     applySave(sv);
     spawnProps(level);
   }else{
     placePlayer();
     spawnProps(level);              // before populate, so loot avoids the furniture
-    populate();
-    spawnMonsters();
-    playT=0;hunterActive=false;nextHunt=22;lastTickW=performance.now();
+    populate();                     // the same seed-free items, pruned by the host later
+    /* a client of a hosted room never runs its own monsters — the host
+       sends theirs and they arrive as ghosts */
+    if(!netMap)spawnMonsters();
+    playT=0;hunterActive=false;nextHunt=netMap?1e9:22;lastTickW=performance.now();
   }
   updateLevelHUD();
 }
@@ -5750,6 +6828,12 @@ window.__BR={player,get monsters(){return monsters;},get state(){return state;},
   get propCells(){return [...propCells];},
   spawnProps,
   get monCap(){return LV().monCap;},
+  get kinds(){return cellKind?Array.from(cellKind):null;},
+  get tops(){return cellTop?Array.from(cellTop):null;},
+  get rooms(){return rooms.map(r=>({i:r.i,j:r.j,dirs:r.dirs,x:r.x,z:r.z}));},
+  get winCols(){return winCols;},
+  get fixtures(){return fixtures;},
+  cellKind:(i,j)=>ck(i,j),
   get aliveMonsters(){return monsters.filter(m=>!m.dead).length;},
   updateLevelHUD,
   get noteOpen(){return noteOpen;},showNote,closeNote,LORE,
@@ -5757,9 +6841,11 @@ window.__BR={player,get monsters(){return monsters;},get state(){return state;},
   get settings(){return SET;},applySettings,openSettings,closeSettings,
   get achs(){return [...achUnlocked];},unlockAch,
   get tutorial(){return{mode:tutMode,active:tutActive,
-    step:tutIdx>=0?TUT_STEPS[tutIdx].id:null,done:[...tutDone],steps:TUT_STEPS.length};},
+    step:tutIdx>=0?TUT_STEPS[tutIdx].id:null,done:[...tutDone],steps:TUT_STEPS.length,
+    base:tutBase?{...tutBase}:null,chests:player.chests,fuses:player.fuses};},
   resetTutorial(){tutMode='on';tutDone.clear();saveTut();if(state==='playing')tutStart();},
-  openChest,spawnItem,nearestMonster,
+  openChest,spawnItem,nearestMonster,updateItems,
+  get torchOn(){return torchOn;},get torchFlips(){return tutTorchFlips;},
   get chests(){return chests;},
   get decals(){return decals;},addBlood,
   get diff(){return diff;},setDiff(i){diff=clamp(i,0,DIFFS.length-1);updateDiffButtons();},
@@ -5780,6 +6866,7 @@ window.__BR={player,get monsters(){return monsters;},get state(){return state;},
   },
   get info(){return{calls:renderer.info.render.calls,tris:renderer.info.render.triangles,geo:renderer.info.memory.geometries,tex:renderer.info.memory.textures};}};
 window.BR=window.__BR;
+window.NET=NET;
 </script>
 </body>
 </html>
