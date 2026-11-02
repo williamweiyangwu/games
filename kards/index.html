@@ -250,32 +250,19 @@
   .dbtns .btn { padding: 6px 14px; font-size: 11px; }
   .dbtns .btn.active { background: rgba(201,180,88,.35); color: #fff; border-color: #ffd95e; }
   .fpgroup { font-size: 12px; letter-spacing: 2px; color: #c9b458; text-align: center; margin: 12px 0 8px; }
-  #achieve, #stats { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75); align-items: center; justify-content: center; z-index: 60; }
-  #achieve.show, #stats.show { display: flex; }
+  #stats { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75); align-items: center; justify-content: center; z-index: 60; }
+  #stats.show { display: flex; }
   .abox {
     position: relative; width: 500px; max-width: 92vw; max-height: 84vh; overflow: auto;
     background: linear-gradient(160deg, #33371f, #1c2012);
     border: 3px solid #c9b458; border-radius: 12px; padding: 20px 22px;
   }
   .abox h2 { font-size: 15px; letter-spacing: 3px; color: #c9b458; text-align: center; margin-bottom: 6px; }
-  .ainfo { font-size: 11px; color: #8a917c; text-align: center; margin-bottom: 12px; }
-  .arow { display: flex; gap: 10px; align-items: center; padding: 7px 2px; border-bottom: 1px solid #2c3322; font-size: 12px; color: #e6e9d5; }
-  .arow.locked { opacity: .42; }
-  .arow .aico { font-size: 18px; width: 24px; text-align: center; color: #7fb069; }
-  .arow.locked .aico { color: #5a5f4a; }
-  .arow .aname { font-weight: bold; color: #ffd95e; }
-  .arow .adesc { font-size: 11px; color: #8a917c; }
   .dstat { font-size: 11px; color: #c9b458; width: 66px; text-align: right; letter-spacing: 1px; }
   .srow { display: flex; justify-content: space-between; padding: 7px 2px; border-bottom: 1px solid #2c3322; font-size: 13px; color: #e6e9d5; }
   .srow .sl { color: #8a917c; }
   .srow .sv { color: #ffd95e; font-weight: bold; }
   .shead { font-size: 12px; letter-spacing: 2px; color: #c9b458; margin: 12px 0 6px; }
-  #toast {
-    position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 100;
-    background: #2a2f18; border: 2px solid #c9b458; color: #ffd95e; padding: 10px 18px;
-    border-radius: 8px; font-size: 13px; letter-spacing: 1px; opacity: 0; pointer-events: none; transition: opacity .3s;
-  }
-  #toast.show { opacity: 1; }
 
   /* effects */
   #fit.shake { animation: k6shake .25s; }
@@ -296,7 +283,7 @@
   <div id="fit">
     <div id="stage">
       <header>
-        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v21</span></h1>
+        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v22</span></h1>
         <div id="turnbar">Player 1's Turn</div>
       </header>
 
@@ -312,7 +299,6 @@
         <div class="mgroup">
           <button class="btn mmode" onclick="openFactionPick()">NATION</button>
           <button class="btn mmode" onclick="openDeckEdit()">DECK</button>
-          <button class="btn mmode" onclick="openAchievements()">ACHIEVEMENTS</button>
           <button class="btn mmode" onclick="openStats()">STATS</button>
         </div>
         <div id="onlinePanel">
@@ -406,16 +392,6 @@
     </div>
   </div>
 
-  <div id="achieve">
-    <div class="abox">
-      <div class="tclose" onclick="closeAchievements()">✕</div>
-      <h2>ACHIEVEMENTS</h2>
-      <div class="ainfo" id="achInfo"></div>
-      <div id="achRows"></div>
-      <div class="dbtns"><button class="btn" onclick="closeAchievements()">CLOSE</button></div>
-    </div>
-  </div>
-
   <div id="stats">
     <div class="abox">
       <div class="tclose" onclick="closeStats()">✕</div>
@@ -424,8 +400,6 @@
       <div class="dbtns"><button class="btn" onclick="closeStats()">CLOSE</button></div>
     </div>
   </div>
-
-  <div id="toast"></div>
 
   <div id="flash"></div>
 
@@ -544,7 +518,6 @@ function defaultProfile() {
     fact1: "usa", fact2: "germany",
     decks: {},
     stats: { games: 0, wins: 0, losses: 0, aiWins: 0, localWins: 0, onlineWins: 0, byFaction: {}, flawlessWins: 0, blitzWins: 0, closeWins: 0, heals: 0, fullBoards: 0, bigUnits: 0, decksSaved: 0, tutDone: 0 },
-    ach: {},
     sfx: true, tut: false, aiLevel: "normal"
   };
 }
@@ -575,7 +548,6 @@ function loadProfile() {
   p.decks = p.decks || {};
   p.stats = p.stats || {};
   p.stats.byFaction = p.stats.byFaction || {};
-  p.ach = p.ach || {};
   if (typeof p.sfx !== "boolean") p.sfx = true;
   if (typeof p.tut !== "boolean") p.tut = false;
   if (["easy", "normal", "hard"].indexOf(p.aiLevel) === -1) p.aiLevel = "normal";
@@ -1963,7 +1935,7 @@ var TUT_STEPS = [
   { t: "5. ATTACKING", h: "<ul><li>Click your unit, then click an enemy unit or the enemy HQ.</li><li>Each unit attacks <b>once per turn</b>. When two units fight, <b>both</b> deal their attack to each other.</li><li><b>Guard</b> units must be fought first \u2014 they shield the enemy HQ.</li><li><b>Air</b> units ignore Guard and can always hit the HQ.</li><li>A unit normally can't attack the turn it's played \u2014 unless it has <b>Haste</b>.</li></ul>" },
   { t: "6. ORDERS", h: "<p>Orders are one-shot cards \u2014 they resolve, then vanish. Each nation has its own orders. The shared effects are:</p><ul><li><b>Damage a unit</b> \u2014 click the order, then pick an enemy unit.</li><li><b>Damage the enemy HQ</b> \u2014 a direct strike.</li><li><b>Damage all enemy units</b> \u2014 a sweeping barrage (hits the HQ if their board is empty).</li><li><b>Heal your HQ</b> \u2014 recover hit points.</li><li><b>Draw cards</b> \u2014 refill your hand.</li><li><b>Gain resource</b> \u2014 bank energy for bigger plays.</li><li><b>Rally</b> \u2014 all your units can attack again.</li></ul>" },
   { t: "7. DECK BUILDER", h: "<ul><li>Open <b>DECK</b> to customize your cards with the <b>+</b> and <b>-</b> buttons \u2014 each row shows a card's <b>cost</b> (and <b>attack/HP</b> for units).</li><li>Each nation keeps its <b>own saved deck</b>. In LOCAL, use the <b>PLAYER 1 / PLAYER 2</b> toggle to build a deck for either player.</li><li>A deck must have <b>exactly 40 cards</b>, with at most <b>3 copies</b> of any card.</li><li><b>USE DEFAULT</b> restores the standard 40-card deck, <b>SAVE</b> keeps your changes, <b>CLOSE</b> cancels.</li></ul>" },
-  { t: "8. PLAY & MENU", h: "<ul><li><b>LOCAL</b> \u2014 two players share one screen (hot-seat); choose <b>both</b> players' nations.</li><li><b>VS AI</b> \u2014 battle the computer; use <b>AI: EASY/NORMAL/HARD</b> to set its skill.</li><li><b>ONLINE</b> \u2014 HOST gives you a room code to share, or press <b>ROOMS</b> to join a waiting game.</li><li><b>NATION</b> \u2014 choose your nation. <b>DECK</b> \u2014 build your deck.</li><li><b>ACHIEVEMENTS</b> and <b>STATS</b> \u2014 track your unlocks, wins and records.</li><li><b>TUTORIAL</b> reopens this guide, <b>SOUND</b> toggles audio.</li></ul><p>Good luck, Commander!</p>" }
+  { t: "8. PLAY & MENU", h: "<ul><li><b>LOCAL</b> \u2014 two players share one screen (hot-seat); choose <b>both</b> players' nations.</li><li><b>VS AI</b> \u2014 battle the computer; use <b>AI: EASY/NORMAL/HARD</b> to set its skill.</li><li><b>ONLINE</b> \u2014 HOST gives you a room code to share, or press <b>ROOMS</b> to join a waiting game.</li><li><b>NATION</b> \u2014 choose your nation. <b>DECK</b> \u2014 build your deck.</li><li><b>STATS</b> \u2014 track wins, losses and records.</li><li><b>TUTORIAL</b> reopens this guide, <b>SOUND</b> toggles audio.</li></ul><p>Good luck, Commander!</p>" }
 ];
 var TUT_PAGE = 0;
 
@@ -2108,72 +2080,16 @@ function renderDeckRows() {
   document.getElementById("deckInfo").textContent = "TOTAL: " + t + " / " + DECK_SIZE + " cards" + (t === DECK_SIZE ? "  \u2713" : "  (need exactly " + DECK_SIZE + ")");
 }
 
-// ---------------- Achievements ----------------
+// ---------------- Helpers ----------------
 function isHuman(p) {
   if (MODE === "online") return NET ? (p === NET.id) : true;
   if (MODE === "ai") return p === 0;
   return true;
 }
 
-var ACHIEVEMENTS = [
-  { id: "first_win", name: "First Victory", desc: "Win your first game." },
-  { id: "win_10", name: "Warmonger", desc: "Win 10 games." },
-  { id: "win_50", name: "Living Legend", desc: "Win 50 games." },
-  { id: "win_ai", name: "Terminator", desc: "Defeat the AI." },
-  { id: "win_local", name: "Couch Commander", desc: "Win a local (hot-seat) game." },
-  { id: "win_online", name: "Field Marshal", desc: "Win an online game." },
-  { id: "flawless", name: "Flawless", desc: "Win without losing any HQ HP." },
-  { id: "blitz", name: "Blitzkrieg", desc: "Win before turn 6." },
-  { id: "survivor", name: "Survivor", desc: "Win with 5 or fewer HQ HP left." },
-  { id: "healer", name: "Field Medic", desc: "Heal your HQ." },
-  { id: "fullboard", name: "Full Roster", desc: "Control 4 units at once." },
-  { id: "bigunit", name: "Heavy Hitter", desc: "Have a unit with 6 or more attack." },
-  { id: "deckbuilder", name: "Architect", desc: "Save a custom deck." },
-  { id: "student", name: "Graduate", desc: "Complete the tutorial." }
-];
-FACTION_KEYS.forEach(function (k) {
-  ACHIEVEMENTS.push({ id: "win_" + k, name: "Victory as " + FACTIONS[k].name, desc: "Win a game with the " + FACTIONS[k].name + " nation." });
-});
-
-function achCheck(st, id) {
-  switch (id) {
-    case "first_win": return st.wins >= 1;
-    case "win_10": return st.wins >= 10;
-    case "win_50": return st.wins >= 50;
-    case "win_ai": return st.aiWins >= 1;
-    case "win_local": return st.localWins >= 1;
-    case "win_online": return st.onlineWins >= 1;
-    case "flawless": return st.flawlessWins >= 1;
-    case "blitz": return st.blitzWins >= 1;
-    case "survivor": return st.closeWins >= 1;
-    case "healer": return st.heals >= 1;
-    case "fullboard": return st.fullBoards >= 1;
-    case "bigunit": return st.bigUnits >= 1;
-    case "deckbuilder": return st.decksSaved >= 1;
-    case "student": return st.tutDone >= 1;
-    default:
-      if (id.indexOf("win_") === 0) { var f = id.slice(4); return (st.byFaction[f] || 0) >= 1; }
-      return false;
-  }
-}
-
-function checkAchievements() {
-  var newly = [];
-  for (var i = 0; i < ACHIEVEMENTS.length; i++) {
-    var a = ACHIEVEMENTS[i];
-    if (PROFILE.ach[a.id]) continue;
-    try { if (achCheck(PROFILE.stats, a.id)) { PROFILE.ach[a.id] = true; newly.push(a); } } catch (e) {}
-  }
-  if (newly.length) {
-    saveProfile();
-    for (var j = 0; j < newly.length; j++) { showToast("Achievement unlocked: " + newly[j].name); sfx("ach"); }
-  }
-}
-
 function track(statKey) {
   PROFILE.stats[statKey] = (PROFILE.stats[statKey] || 0) + 1;
   saveProfile();
-  checkAchievements();
 }
 
 function awardVictory(winner) {
@@ -2199,38 +2115,6 @@ function awardVictory(winner) {
     st.losses = (st.losses || 0) + 1;
   }
   saveProfile();
-  checkAchievements();
-}
-
-function openAchievements() {
-  renderAchievements();
-  document.getElementById("achieve").classList.add("show");
-}
-
-function closeAchievements() { document.getElementById("achieve").classList.remove("show"); }
-
-function renderAchievements() {
-  var unlocked = 0;
-  for (var i = 0; i < ACHIEVEMENTS.length; i++) if (PROFILE.ach[ACHIEVEMENTS[i].id]) unlocked++;
-  document.getElementById("achInfo").textContent = unlocked + " / " + ACHIEVEMENTS.length + " unlocked";
-  var html = "";
-  ACHIEVEMENTS.forEach(function (a) {
-    var got = !!PROFILE.ach[a.id];
-    html += '<div class="arow' + (got ? "" : " locked") + '">' +
-      '<span class="aico">' + (got ? "\u2713" : "\u25cb") + '</span>' +
-      '<div><div class="aname">' + a.name + '</div><div class="adesc">' + a.desc + '</div></div>' +
-      '</div>';
-  });
-  document.getElementById("achRows").innerHTML = html;
-}
-
-function showToast(msg) {
-  var t = document.getElementById("toast");
-  if (!t) return;
-  t.textContent = msg;
-  t.classList.add("show");
-  clearTimeout(showToast._t);
-  showToast._t = setTimeout(function () { t.classList.remove("show"); }, 2600);
 }
 
 // ---------------- AI difficulty ----------------
