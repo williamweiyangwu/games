@@ -5378,6 +5378,14 @@ function updateShipPhysics(dt) {
 // lens inside a house.
 const camRig = { x: 0, y: 0, z: 0, ready: false };
 
+// The ship boom, in metres at scale 1. Her mainmast stands 16 m over the water,
+// so the lens has to stand right back or the canvas runs off the top of the
+// frame — and then you cannot see the water you are steering into.
+const SHIP_CAM = {
+  helm: { back: 22, side: 7.5, lift: 11.5, aimAhead: 2.5, aimY: 4.6 },
+  deck: { back: 9.0, side: 6.0, lift: 6.0, aimAhead: 0.0, aimY: 1.2 },
+};
+
 function boomClearance(fromX, fromY, fromZ, dirX, dirY, dirZ, len, minLen) {
   const STEPS = 10, floor = minLen === undefined ? 1.0 : minLen;
   for (let i = 1; i <= STEPS; i++) {
@@ -5409,13 +5417,12 @@ function updateCameraRig(dt) {
     const sc = SHIP_CLASSES[Game.ship.cls].scale;
     const helm = Player.mode === 'helm';
     const h = Ship.heading + Player.lookYaw;
-    // she is 13 m long and her mainmast stands 16 m over the water, so from
-    // astern the lens has to stand well off to get her in the frame at all.
-    // Walking her deck is different: there the boom drops to shoulder height
-    // and the canvas goes see-through, or the sails hide the man entirely.
-    const back = (helm ? 18 : 12) * sc;              // the stern is at local z = -4.4
-    const side = (helm ? 6.0 : 8.0) * sc;
-    const lift = (helm ? 8.0 : 6.5) * sc;
+    // Walking her deck is different from steering: there the lens drops to just
+    // over the rail and stays close, or the man on the planks is a speck.
+    const bc = helm ? SHIP_CAM.helm : SHIP_CAM.deck;
+    const back = bc.back * sc;                       // the stern is at local z = -4.4
+    const side = bc.side * sc;
+    const lift = bc.lift * sc;
     yaw = h + Math.PI;
     pitch = Player.lookPitch;
     const ax = -Math.sin(h), az = -Math.cos(h);      // astern
@@ -5432,9 +5439,9 @@ function updateCameraRig(dt) {
     pz = oz + (dz / bl) * clear;
     // aim at the foredeck when steering, at your own back when walking her
     aim = helm
-      ? { x: ox + Math.sin(h) * 3.0 * sc, y: playerShip.position.y + 3.4 * sc,
-          z: oz + Math.cos(h) * 3.0 * sc }
-      : { x: Player.x, y: Player.y - 0.5, z: Player.z };
+      ? { x: ox + Math.sin(h) * bc.aimAhead * sc, y: playerShip.position.y + bc.aimY * sc,
+          z: oz + Math.cos(h) * bc.aimAhead * sc }
+      : { x: Player.x, y: Player.y - 1.7 + bc.aimY, z: Player.z };
   } else {
     // ---- on foot: over the shoulder
     yaw = Player.lookYaw;
@@ -6207,6 +6214,7 @@ window.__voyage = {
   get dlgTalkLeft() { return dlgTalkLeft; },
   get dlgIdle() { return dlgIdle; },
   cargoUnits, cargoCapacity, cargoRoom, drawMinimap, updateDayNight, updateCameraRig,
+  SHIP_CAM,
   updateAvatar, boomClearance, camRig, get avatar() { return avatar; },
   updateHUD, updateCargoBox, applyEffect, cargoValue, fmtClock, stepPhysics,
   get ship() { return playerShip; }
