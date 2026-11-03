@@ -481,6 +481,8 @@ body.touch #cross{opacity:.35}
 .netbar.on{opacity:1}
 .netbar b{color:#d8e8c4;letter-spacing:4px}
 .netbar.bad{color:#e08a6a}
+.netbar i{display:block;font-style:normal;opacity:.62;letter-spacing:1.6px;
+  max-width:190px;margin-left:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -6111,12 +6113,16 @@ const NET=(()=>{
   const BROKERS=['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt'];
   const ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';   // no I/O/0/1
   const TICK_MS=120, BEAT_MS=3000, ROOM_TTL=30000;
+  /* a client gives the host this long to say something before it declares
+     the room dead — comfortably longer than a throttled background tab */
+  const STALL_MS=12000;
 
   const st={
     clis:[],status:'off',role:null,code:null,id:'',name:'',
     rooms:new Map(),peers:new Map(),ghosts:[],avatars:new Map(),
     subs:new Set(),seen:new Set(),uid:0,recover:null,
-    beatIv:0,sendT:0,seq:0,level:0,mapKey:null,started:false,
+    beatIv:0,stateIv:0,sendT:0,seq:0,level:0,mapKey:null,started:false,
+    lastStateAt:0,ended:false,spawnClear:false,
     hurtT:0,netBarT:0
   };
 
@@ -6364,15 +6370,29 @@ const NET=(()=>{
     st.mapKey='k'+Date.now();
     send(topic('map'),{t:'map',k:st.mapKey,lv:level,maze},true);
   }
-  /* wall clock, not frame time: a heartbeat that slows down with the frame
-     rate makes a live room look dead to everyone else */
-  function startBeat(){
-    clearInterval(st.beatIv);
-    publishBeat();
-    st.beatIv=setInterval(()=>{
-      if(st.role==='host'&&st.code)publishBeat();
-      else{clearInterval(st.beatIv);st.beatIv=0;}
-    },BEAT_MS);
+  /* Everything on the wire runs on wall clock, not frame time. A hidden tab
+     stops requestAnimationFrame entirely, so a host that published from the
+     render loop went silent the moment it lost focus — and looked dead to
+     the room. The heartbeat and the state stream both live on timers. */
+  function stopNetLoop(){
+    if(st.beatIv){clearInterval(st.beatIv);st.beatIv=0;}
+    if(st.stateIv){clearInterval(st.stateIv);st.stateIv=0;}
+  }
+  function startNetLoop(){
+    stopNetLoop();
+    if(st.role==='host'){
+      publishBeat();
+      st.beatIv=setInterval(()=>{
+        if(st.role!=='host'||!st.code){stopNetLoop();return;}
+        publishBeat();
+      },BEAT_MS);
+    }
+    st.stateIv=setInterval(()=>{
+      if(st.role==='host')publishState();
+      else if(st.role==='client'&&anyLive())
+        send(topic('in'),{t:'p',i:st.id,n:st.name,
+          x:r1(player.pos.x),z:r1(player.pos.z),a:r2(player.yaw),h:Math.round(player.hp)});
+    },TICK_MS);
   }
   function publishBeat(){
     send(P+'rooms/'+st.code,{t:'r',n:st.name,lv:st.level,p:1+st.peers.size,ts:Date.now()},true);
@@ -6401,8 +6421,18 @@ const NET=(()=>{
     monsters.length=0;
     nextHunt=1e9;hunterActive=true;
     if(!st.started){st.started=true;startGame();}
+    /* the map can land after the first state packet, and building it puts
+       the player down again — so step clear here, once the dust settles */
+    st.spawnClear=false;
+    if(st.peers.size){st.spawnClear=true;nudgeOffPeers();}
   }
   function onState(m){
+    // the host telling us the room is over, while it can still be heard
+    if(m.t==='end'){
+      endSession(m.why==='host'?'THE HOST CLOSED THE ROOM':'THE ROOM ENDED');
+      return;
+    }
+    st.lastStateAt=Date.now();
     if(st.role!=='host'&&m.pl){
       for(const p of m.pl){
         if(p.i===st.id)continue;
@@ -6414,6 +6444,7 @@ const NET=(()=>{
       if(p.i===st.id)continue;
       st.peers.set(p.i,{id:p.i,name:p.n||'PLAYER',x:p.x,z:p.z,a:p.a,h:p.h,ts:Date.now()});
     }
+    if(!st.spawnClear&&st.peers.size){st.spawnClear=true;nudgeOffPeers();}
     if(m.mo)syncGhosts(m.mo);
     if(m.it){
       const keep=new Set(m.it);
@@ -6453,6 +6484,38 @@ const NET=(()=>{
     }
   }
 
+  /* Both sides spawn near the same seed cell, so a joining player can land
+     inside the host's model and open the game looking at the inside of a
+     capsule. Step clear the first time we learn where everyone is. */
+  function nudgeOffPeers(){
+    let close=false;
+    for(const p of st.peers.values())
+      if(Math.hypot(p.x-player.pos.x,p.z-player.pos.z)<2.2){close=true;break;}
+    if(!close)return;
+    for(let r=2.6;r<=7;r+=1.4){
+      for(let k=0;k<16;k++){
+        const a=k/16*TAU;
+        const x=player.pos.x+Math.cos(a)*r, z=player.pos.z+Math.sin(a)*r;
+        if(!solidAt(x,z)){
+          player.pos.x=x;player.pos.z=z;
+          camera.position.set(x,1.62,z);
+          return;
+        }
+      }
+    }
+  }
+
+  /* The room is over for us. Say why, then put the player back in the lobby
+     rather than leaving them in a world whose monsters have quietly stopped
+     moving — the ghosts keep rendering, so a dead session looks alive. */
+  function endSession(reason){
+    if(!st.role||st.ended)return;
+    st.ended=true;
+    toast(reason,4500);
+    api.leave();
+    setState('lobby');
+  }
+
   /* ---------- public ---------- */
   const api={
     get status(){return st.status;},
@@ -6464,7 +6527,9 @@ const NET=(()=>{
       subs:[...st.subs],rx:st.rx||0,rxIn:st.rxIn||0,rxState:st.rxState||0,
       rxOther:st.rxOther||0,code:st.code,role:st.role,peers:st.peers.size,
       live:liveClients().length,connected:anyLive(),
-      started:!!st.started,tx:st.tx||0,rooms:[...st.rooms.keys()]};},
+      started:!!st.started,tx:st.tx||0,rooms:[...st.rooms.keys()],
+      ended:!!st.ended,lastStateAgo:st.lastStateAt?Date.now()-st.lastStateAt:-1,
+      netbar:(($('#netbar')||{}).textContent||'').trim()};},
     isHost(){return st.role==='host';},
     isClient(){return st.role==='client';},
     setName(v){
@@ -6485,13 +6550,14 @@ const NET=(()=>{
       if(!await ensureClient())return false;
       st.role='host';st.code=rid(4);st.level=lv|0;st.peers.clear();
       st.started=true;st.mapKey=null;st.seen.clear();
+      st.ended=false;st.lastStateAt=0;
       sub(topic('in'));
       st.recover=()=>{if(st.role==='host'){publishMap();publishBeat();}};
       opsLevel=st.level;
       loadLevel(st.level,null);
       startGame();
-      publishMap();publishBeat();
-      startBeat();st.sendT=0;
+      publishMap();
+      startNetLoop();
       toast(`ROOM ${st.code} — SHARE THE CODE`,4000);
       updateNetBar();
       return true;
@@ -6503,7 +6569,9 @@ const NET=(()=>{
       if(!await ensureClient())return false;
       st.role='client';st.code=code;st.started=false;st.mapKey=null;
       st.peers.clear();clearGhosts();st.seen.clear();
+      st.ended=false;st.lastStateAt=Date.now();st.spawnClear=false;
       sub(topic('state'));sub(topic('map'));
+      startNetLoop();
       const hello=()=>send(topic('in'),{t:'hello',i:st.id,n:st.name});
       st.recover=()=>{if(st.role==='client'&&!st.started)hello();};
       hello();
@@ -6530,6 +6598,8 @@ const NET=(()=>{
     leave(){
       if(st.code){
         if(st.role==='host'){
+          // tell the room first, while the topic is still subscribed
+          send(topic('state'),{t:'end',why:'host'});
           for(const c of liveClients()){
             try{c.publish(P+'rooms/'+st.code,'',{qos:0,retain:true});}catch(e){}
           }
@@ -6539,11 +6609,12 @@ const NET=(()=>{
         if(st.code)for(const t of[...st.subs])if(t!==P+'rooms/+')unsub(t);
       }
       st.recover=null;
-      if(st.beatIv){clearInterval(st.beatIv);st.beatIv=0;}
+      stopNetLoop();
       for(const id of[...st.avatars.keys()])dropAvatar(id);
       clearGhosts();
       st.peers.clear();st.seen.clear();
       st.role=null;st.code=null;st.started=false;st.mapKey=null;
+      st.ended=false;st.lastStateAt=0;
       updateNetBar();
     },
 
@@ -6565,19 +6636,18 @@ const NET=(()=>{
       st.revT=(st.revT||0)-dt;
       if(st.revT<=0){
         st.revT=4;
-        if(!anyLive()){ensureClient();st.sendT=0;}
+        if(!anyLive())ensureClient();
       }
-      // ---- network cadence ----
-      st.sendT-=dt*1000;
-      if(st.sendT<=0){
-        st.sendT=TICK_MS;
-        if(st.role==='host')publishState();
-        else if(anyLive())
-          send(topic('in'),{t:'p',i:st.id,n:st.name,
-            x:r1(player.pos.x),z:r1(player.pos.z),a:r2(player.yaw),h:Math.round(player.hp)});
-      }
+      // ---- network cadence: on a timer, see startNetLoop ----
       // ---- remote bodies ----
       const now=Date.now(),online=anyLive();
+      /* A quiet host and a vanished host look identical from here, so give
+         the room a deadline. Only judge it while our own sockets are up —
+         otherwise the silence is ours, not theirs. */
+      if(st.role==='client'&&st.started&&online&&now-st.lastStateAt>STALL_MS){
+        endSession('LOST CONTACT WITH THE HOST');
+        return;
+      }
       for(const[id,p]of[...st.peers]){
         // while our own socket is down we cannot judge anyone's silence
         if(online&&now-p.ts>10000){st.peers.delete(id);dropAvatar(id);continue;}
@@ -6615,12 +6685,17 @@ const NET=(()=>{
 
   function updateNetBar(){
     const el=$('#netbar');if(!el)return;
-    if(!st.role){el.classList.remove('on');return;}
+    /* the bar belongs to the HUD: while the lobby is up the room is already
+       listed there, and painting both reads as a glitch */
+    if(!st.role||state!=='playing'){el.classList.remove('on');return;}
     el.classList.add('on');
-    el.classList.toggle('bad',st.status!=='online');
-    el.innerHTML=st.role==='host'
-      ? `HOSTING <b>${st.code}</b><br>${1+st.peers.size} IN THE ROOM`
-      : `ROOM <b>${st.code}</b><br>${1+st.peers.size} IN THE ROOM`;
+    el.classList.toggle('bad',!anyLive());
+    // who is actually here — a count alone never told you if your friend made it
+    const names=[(st.name||'YOU').toUpperCase().slice(0,9)];
+    for(const p of st.peers.values())names.push((p.name||'PLAYER').toUpperCase().slice(0,9));
+    const shown=names.slice(0,3).join(' · ')+(names.length>3?` +${names.length-3}`:'');
+    const head=st.role==='host'?`HOSTING <b>${st.code}</b>`:`ROOM <b>${st.code}</b>`;
+    el.innerHTML=`${head}<br>${1+st.peers.size} IN THE ROOM<br><i>${shown}</i>`;
   }
 
   // per tab, not per browser: two tabs are two players
