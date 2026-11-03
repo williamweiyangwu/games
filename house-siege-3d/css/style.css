@@ -617,16 +617,14 @@ b{font-weight:700}
    ============================================================ */
 .map-name{font-size:8px;letter-spacing:.26em;color:#5c6779;margin-top:2px}
 
-#hillBar{position:fixed;left:50%;top:74px;transform:translateX(-50%);
+#hillBar{position:fixed;left:50%;top:120px;transform:translateX(-50%);
   width:260px;display:none;flex-direction:column;gap:4px;z-index:22;pointer-events:none}
 #hillBar.show{display:flex}
 .hb-head{display:flex;justify-content:space-between;align-items:center;
   font:700 8px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.2em;color:#8b97ab}
 .hb-head .hb-tag{color:#5d6879}
 .hb-track{height:5px;background:rgba(8,11,17,.62);border:1px solid rgba(255,255,255,.12);border-radius:1px;overflow:hidden}
-.hb-track.foe{height:3px;opacity:.72}
 .hb-fill{height:100%;width:0%;background:#7fe08a;transition:width .12s linear}
-.hb-track.foe .hb-fill{background:#ff7a7a}
 
 /* ============================================================
    VOTE
