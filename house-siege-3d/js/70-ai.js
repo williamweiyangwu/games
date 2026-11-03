@@ -67,8 +67,8 @@ function botThink(b) {
       goal = HILL.pos; kind = 'hill';
     } else {
       if (b.hillAng === undefined) b.hillAng = Math.random() * Math.PI * 2;
-      goal = new V3(HILL.pos.x + Math.cos(b.hillAng) * (HILL.r + 2.4), 0,
-        HILL.pos.z + Math.sin(b.hillAng) * (HILL.r + 2.4));
+      goal = new V3(HILL.pos.x + Math.cos(b.hillAng) * (HILL.r + 1.6), HILL.pos.y,
+        HILL.pos.z + Math.sin(b.hillAng) * (HILL.r + 1.6));
       kind = 'hillring';
     }
   } else if (G.mode === 'flag') {
