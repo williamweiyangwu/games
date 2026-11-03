@@ -17,7 +17,6 @@ function startGame(mode, mapId) {
   G.timeLeft = def.clock;
   G.golden = false;
   G.score.red = 0; G.score.blue = 0;
-  G.round = { n: 1, hold: 0, winner: '' };
   $('clock').classList.remove('gold');
   G.tutorial.active = false;
   $('tutTasks').classList.remove('show');
@@ -88,47 +87,20 @@ function startGame(mode, mapId) {
 }
 
 /* ------------------------------------------------------------
-   LAST STAND ROUNDS
+   LAST STAND
    ------------------------------------------------------------
-   No respawns inside a round: the first team to lose everybody drops the
-   round, then everybody comes back for the next one. First to the mode's
-   limit takes the match. */
-function updateRounds(dt) {
+   One round, one life each. No round counter, no intermission, no revive:
+   the first team to lose everybody loses the match. If the clock runs out
+   with both teams still standing, the normal golden point takes over. */
+function updateSurvival() {
   if (G.mode !== 'survival' || G.state !== 'playing') return;
-  const r = G.round || (G.round = { n: 1, hold: 0, winner: '' });
-
-  if (r.hold > 0) {
-    r.hold -= dt;
-    if (r.hold <= 0) startSurvivalRound();
-    return;
-  }
-
   let red = 0, blue = 0;
   for (const a of allActors()) if (a.alive) { if (a.team === 'red') red++; else blue++; }
   if (red > 0 && blue > 0) return;          // still a live round
   if (red === 0 && blue === 0) return;      // mutual wipe: nobody scores
-
   const winner = red > 0 ? 'red' : 'blue';
-  G.score[winner]++;
-  r.winner = winner;
-  r.hold = 4.5;
-  const mine = G.player ? G.player.team : 'red';
-  banner(teamLabel(winner) + ' TEAM TAKES <span class="hl">ROUND ' + r.n + '</span>', 3.2);
-  Snd.tone(winner === mine ? 520 : 300, winner === mine ? 900 : 220, 0.4, 0.22, 'triangle');
-  checkRoundEnd();
-}
-
-function startSurvivalRound() {
-  if (G.state !== 'playing' || G.mode !== 'survival') return;
-  G.round.n++;
-  for (const a of allActors()) {
-    if (!a.alive) respawnActor(a);
-    else { a.hp = a.maxHp; a.carrying = null; a.capT = 0; }
-    a.hitFlash = 0;
-  }
-  $('respawn').classList.remove('show');
-  if (G.player) $('rsSub').innerHTML = 'Respawning in <span id="rsNum">3</span>';
-  banner('<span class="hl">ROUND ' + G.round.n + '</span> — NO RESPAWNS', 2.4);
+  G.score[winner] = 1;
+  endMatch();
 }
 
 function spawnTutorialDummies() {  const h = G.hq[G.team], cs = MAP.cs;
@@ -267,7 +239,7 @@ function update(dt) {
   updateChests(dt);
   updateFlags(dt);
   updateHill(dt);
-  updateRounds(dt);
+  updateSurvival();
   updateEffects(dt);
   if (G.netMode) netTick(dt);
   updateHUD(dt);
