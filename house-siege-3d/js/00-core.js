@@ -112,21 +112,21 @@ const MODES = {
   },
   koth: {
     id: 'koth', name: 'KING OF THE HILL', title: 'King of the Hill', short: 'THE HILL',
-    tag: 'HOLD THE ZONE', tagClass: 'gold', time: '5:00',
-    blurb: 'Stand in the marked zone to bank it. The zone jumps to a new point every time it is taken. First to 5 hills.',
-    clock: 300, scoreLabel: 'HILLS', limit: 5, respawn: true,
-    kicker: 'HILL SERIES COMPLETE',
-    objective: 'HOLD THE <span class="hl">MARKED ZONE</span> — THE ZONE MOVES WHEN TAKEN',
-    golden: 'THE NEXT HILL WINS'
+    tag: 'HOLD THE CIRCLE', tagClass: 'gold', time: '5:00',
+    blurb: 'One circle in the middle of the map. Hold it with no enemy inside and your score climbs one point a second. First to 90.',
+    clock: 300, scoreLabel: 'HELD', limit: 90, respawn: true,
+    kicker: 'HILL HELD',
+    objective: 'HOLD THE <span class="hl">CIRCLE</span> — IT SCORES WHILE YOU STAND IN IT',
+    golden: 'THE NEXT SECOND WINS'
   },
   survival: {
     id: 'survival', name: 'LAST STAND', title: 'Last Stand', short: 'LAST STAND',
-    tag: 'ONE LIFE', tagClass: 'blue', time: '3 ROUNDS',
-    blurb: 'No respawns. Wipe the enemy team to take the round; the dead stay down until it is over. First to 3 rounds.',
-    clock: 900, scoreLabel: 'ROUNDS', limit: 3, respawn: false,
-    kicker: 'LAST STAND COMPLETE',
-    objective: 'NO RESPAWNS — <span class="hl">WIPE THE ENEMY TEAM</span> TO TAKE THE ROUND',
-    golden: 'THE NEXT ROUND DECIDES IT'
+    tag: 'ONE LIFE', tagClass: 'blue', time: 'ONE ROUND',
+    blurb: 'One round, one life each, no respawns. Wipe the enemy team. If the clock runs out, the next kill decides it.',
+    clock: 300, scoreLabel: 'ROUNDS', limit: 1, respawn: false,
+    kicker: 'LAST TEAM STANDING',
+    objective: 'ONE LIFE — <span class="hl">WIPE THE ENEMY TEAM</span>',
+    golden: 'THE NEXT KILL WINS'
   },
   /* Not a competitive mode and deliberately absent from MODE_ORDER, but it has
      to live here all the same: startGame() resolves every mode through this
@@ -158,25 +158,35 @@ const MAPS = {
     id: 'white', name: 'WHITE MAZE', tag: 'THE ORIGINAL', time: '13 × 13',
     blurb: 'The original: a 13 × 13 maze under a catwalk ring. Long sightlines from the deck, knife corners underneath.',
     seed: 20261018, N: 13, wallH: 3.0, platY: 4.2, catwalk: true,
-    loops: 0.20, plinth: false, fog: 0xc6d6e4, fogNear: 90, fogFar: 235, light: 0xfff0d8
+    loops: 0.20, plinth: false, fog: 0xc6d6e4, fogNear: 90, fogFar: 235, light: 0xfff0d8,
+    pal: { wall: '#e7e4dc', wall2: '#c6c1b5', floor: '#e6e4dd', floor2: '#c3c0b6',
+           trim: 0x6e7278, accent: 0xffd76a, ground: 'grass' }
   },
   ash: {
     id: 'ash', name: 'ASH GARDEN', tag: 'OPEN', time: '15 × 15',
-    blurb: 'Wider cells and lower walls with far more loops through them. Fights break up fast and the catwalk sits higher.',
+    blurb: 'Warm sandstone, wider cells and low walls with far more loops through them. Fights break up fast and the catwalk sits higher.',
     seed: 771103, N: 15, wallH: 2.35, platY: 5.1, catwalk: true,
-    loops: 0.36, plinth: false, fog: 0xd6c9b6, fogNear: 70, fogFar: 210, light: 0xffe6c0
+    loops: 0.36, plinth: false, fog: 0xd9c6a8, fogNear: 70, fogFar: 210, light: 0xffe0b0,
+    pal: { wall: '#dccbb0', wall2: '#b39a78', floor: '#a68f6f', floor2: '#87714f',
+           trim: 0x5b4a36, accent: 0xffb066, ground: 'grass' }
   },
   vault: {
     id: 'vault', name: 'THE VAULT', tag: 'CLOSE QUARTERS', time: '11 × 11',
     blurb: 'Few cells, tall walls, no catwalk. Everything happens at arm’s length — bring a shotgun or the knife.',
-    seed: 441122, N: 11, wallH: 4.0, platY: 0, catwalk: false,
-    loops: 0.12, plinth: true, fog: 0xb9c3cf, fogNear: 45, fogFar: 130, light: 0xdfe8ff
+    seed: 441122, N: 11, wallH: 3.8, platY: 0, catwalk: false,
+    loops: 0.12, plinth: true, fog: 0x9aa4b2, fogNear: 45, fogFar: 130, light: 0xdfe8ff,
+    pal: { wall: '#b6bec9', wall2: '#8a94a2', floor: '#5c6470', floor2: '#464d57',
+           trim: 0x2c323a, accent: 0x6fe3ff, ground: 'stone', ground2: '#5b636c',
+           wallMetal: 0.18, floorMetal: 0.3, floorRough: 0.52 }
   },
   sectors: {
     id: 'sectors', name: 'DEEP SECTORS', tag: 'LABYRINTH', time: '17 × 17',
     blurb: 'A dense 17 × 17 lattice around a raised central platform. The longest routes, the most places to be ambushed.',
     seed: 9091337, N: 17, wallH: 2.6, platY: 0, catwalk: false,
-    loops: 0.42, plinth: true, fog: 0xbfc9c0, fogNear: 55, fogFar: 165, light: 0xe8ffe8
+    loops: 0.42, plinth: true, fog: 0xa9b3a3, fogNear: 55, fogFar: 165, light: 0xe8ffe8,
+    pal: { wall: '#b9c1ae', wall2: '#8d9680', floor: '#6d7567', floor2: '#555c50',
+           trim: 0x373e2e, accent: 0xffc04d, ground: 'stone', ground2: '#525a4a',
+           wallMetal: 0.1, floorMetal: 0.12, floorRough: 0.72 }
   }
 };
 const MAP_ORDER = ['white', 'ash', 'vault', 'sectors'];
