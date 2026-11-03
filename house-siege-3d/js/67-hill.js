@@ -1,31 +1,29 @@
 /* ============================================================
    67-hill.js
-   King of the Hill: the capture zone, its anchors and its scoring
+   King of the Hill: one zone, one rule
    ============================================================ */
 'use strict';
 
 /* ------------------------------------------------------------
    THE HILL
    ------------------------------------------------------------
-   One zone, one holder. Stand in it, uncontested, and it banks to your team
-   after HILL.need seconds; then it jumps to the next anchor so the match keeps
-   moving instead of becoming a five-minute siege of one doorway.
+   One circle in the middle of the map. Stand in it with no enemy in it and
+   your team's score goes up one point per second. Nothing else: no capture
+   timer, no zone that jumps around, no hidden progress bars. Whoever holds
+   the circle for 90 seconds first wins.
 
-   Scoring is deliberately not "1 point per second in the zone": with a 5v5 and
-   respawns, a team that gets there first would run the clock out. Taking the
-   hill and losing it is what should cost you. */
+   It sits on top of the plinth when the map has one, which makes the middle
+   of the map the high ground and the fight for it obvious. */
 const HILL = {
   active: false,
-  idx: 0,
   r: 4.6,
-  need: 4.0,
   pos: new THREE.Vector3(),
-  anchors: [],
   holder: '',            // '' none, 'red', 'blue', or 'contested'
-  prog: { red: 0, blue: 0 },
+  acc: { red: 0, blue: 0 },
   group: null,
   ring: null,
   beam: null,
+  disc: null,
   capT: 0
 };
 
@@ -36,37 +34,25 @@ const HILL_COL = {
   contested: 0xffc44d
 };
 
-function hillAnchors() {
-  const MH = MAP.mazeHalf;
-  const raw = [
-    { x: 0, z: 0 },
-    { x: 0, z: -MH * 0.58 },
-    { x: MH * 0.58, z: 0 },
-    { x: 0, z: MH * 0.58 },
-    { x: -MH * 0.58, z: 0 }
-  ];
-  const out = [];
-  for (const p of raw) {
-    /* snap to a real navigation node so the zone is never inside a wall */
-    const n = nearestNode(p.x, p.z, 0);
-    if (!n) continue;
-    if (out.some(q => Math.hypot(q.x - n.x, q.z - n.z) < 6)) continue;
-    out.push({ x: n.x, z: n.z, y: n.y || 0 });
-  }
-  if (!out.length) out.push({ x: 0, z: 0, y: 0 });
-  return out;
-}
-
 function createHill() {
   if (HILL.group) { disposeTree(HILL.group); HILL.group = null; }
   HILL.active = (G.mode === 'koth');
-  HILL.idx = 0;
   HILL.holder = '';
-  HILL.prog.red = 0; HILL.prog.blue = 0;
+  HILL.acc.red = 0; HILL.acc.blue = 0;
   HILL.capT = 0;
-  HILL.anchors = hillAnchors();
-  const a = HILL.anchors[0];
-  HILL.pos.set(a.x, a.y, a.z);
+
+  if (G.plinth) {
+    HILL.pos.set(0, G.plinth.y, 0);
+    HILL.r = Math.min(4.6, G.plinth.r * 0.86);
+  } else {
+    /* no plinth: snap to the walkable node nearest the middle, so the circle
+       is never half inside a wall. It is kept inside one cell — at 4.6 m it
+       swallowed the walls around it and you could hold the hill from the far
+       side of a wall. */
+    const n = nearestNode(0, 0, 0);
+    HILL.pos.set(n ? n.x : 0, n ? (n.y || 0) : 0, n ? n.z : 0);
+    HILL.r = 3.2;
+  }
 
   const g = new THREE.Group();
   g.userData.dyn = true;
@@ -114,16 +100,6 @@ function createHill() {
   HILL.disc = disc;
 }
 
-function hillMoveTo(idx) {
-  if (!HILL.anchors.length) return;
-  HILL.idx = ((idx % HILL.anchors.length) + HILL.anchors.length) % HILL.anchors.length;
-  const a = HILL.anchors[HILL.idx];
-  HILL.pos.set(a.x, a.y, a.z);
-  if (HILL.group) HILL.group.position.copy(HILL.pos);
-  HILL.prog.red = 0; HILL.prog.blue = 0;
-  HILL.capT = 0;
-}
-
 function hillTint(col) {
   if (!HILL.group) return;
   HILL.ring.material.color.setHex(col);
@@ -148,44 +124,35 @@ function updateHill(dt) {
   const occ = hillOccupancy();
   const solo = occ.red > 0 && occ.blue === 0 ? 'red'
     : occ.blue > 0 && occ.red === 0 ? 'blue' : '';
+  const was = HILL.holder;
+  HILL.holder = solo || (occ.red > 0 && occ.blue > 0 ? 'contested' : '');
 
   if (solo) {
-    HILL.holder = solo;
-    HILL.prog[solo] += dt;
-    /* holding against a live enemy is worth more than standing in an empty
-       zone, but not so much that a single lucky push ends the match */
-    if (HILL.prog[solo] >= HILL.need) {
-      HILL.prog[solo] = 0;
-      G.score[solo]++;
-      hillTint(HILL_COL[solo]);
-      if (solo === G.player.team) {
-        Snd.flag();
-        banner('<span class="hl">HILL TAKEN</span> — ' + G.score[solo] + ' / ' + modeDef('koth').limit, 2.2);
-      } else {
-        Snd.tone(240, 160, 0.3, 0.18, 'sawtooth');
-        banner(teamLabel(solo) + ' TEAM TOOK THE HILL', 2.2);
-      }
-      checkRoundEnd();
-      if (G.state === 'playing') hillMoveTo(HILL.idx + 1);
+    HILL.acc[solo] += dt;
+    /* the score strip is the feedback, so it just counts up */
+    G.score.red = Math.floor(HILL.acc.red);
+    G.score.blue = Math.floor(HILL.acc.blue);
+    if (HILL.holder !== was && G.player && solo === G.player.team) {
+      Snd.tone(560, 760, 0.16, 0.12, 'triangle');
+      banner('<span class="hl">YOU HOLD THE HILL</span> — KEEP THEM OFF IT', 2.0);
     }
-  } else {
-    /* contested or empty: neither side makes progress, and the leader bleeds a
-       little so a stalemate does not freeze the zone forever */
-    if (occ.red > 0 && occ.blue > 0) HILL.holder = 'contested';
-    else HILL.holder = '';
-    HILL.prog.red = Math.max(0, HILL.prog.red - dt * 0.35);
-    HILL.prog.blue = Math.max(0, HILL.prog.blue - dt * 0.35);
+    checkRoundEnd();
+    if (G.state !== 'playing') return;
   }
 
   HILL.capT += dt;
   const col = HILL.holder ? HILL_COL[HILL.holder] : HILL_COL[''];
   hillTint(col);
-  /* pulse the ring faster the closer it is to being taken */
-  const lead = Math.max(HILL.prog.red, HILL.prog.blue) / HILL.need;
-  if (HILL.ring) HILL.ring.material.opacity = 0.55 + 0.3 * Math.abs(Math.sin(HILL.capT * (2 + lead * 6)));
-  if (HILL.beam) HILL.beam.material.opacity = 0.07 + 0.10 * lead;
+  if (HILL.ring) HILL.ring.material.opacity = 0.55 + 0.3 * Math.abs(Math.sin(HILL.capT * 2.4));
+  /* The beam exists so you can find the hill from across the map. Standing in
+     it, all it does is wash the screen yellow and show its own open top as a
+     bright diamond against the sky, so it fades out when you are inside. */
+  if (HILL.beam) {
+    const p = G.player;
+    const inside = p && Math.hypot(p.pos.x - HILL.pos.x, p.pos.z - HILL.pos.z) < HILL.r + 1;
+    HILL.beam.material.opacity = inside ? 0.012 : (HILL.holder ? 0.16 : 0.09);
+  }
 
-  /* the HUD strip shows the hold progress of whoever is on it */
   hillHud(occ);
 }
 
@@ -194,22 +161,26 @@ function hillHud(occ) {
   if (!el) return;
   if (G.mode !== 'koth') { el.classList.remove('show'); return; }
   el.classList.add('show');
+
+  const limit = modeDef('koth').limit;
   const mine = G.player ? G.player.team : 'red';
-  const mineProg = HILL.prog[mine] / HILL.need;
-  const theirs = HILL.prog[otherTeam(mine)] / HILL.need;
+  const holder = HILL.holder;
+  const lead = (holder === 'red' || holder === 'blue')
+    ? HILL.acc[holder] : Math.max(HILL.acc.red, HILL.acc.blue);
+
   const fill = $('hillFill');
   if (fill) {
-    fill.style.width = Math.max(0, Math.min(100, mineProg * 100)) + '%';
-    fill.style.background = HILL.holder === 'contested' ? '#ffc44d'
-      : HILL.holder === mine ? '#7fe08a' : '#ff7a7a';
+    fill.style.width = Math.max(0, Math.min(100, lead / limit * 100)) + '%';
+    fill.style.background = holder === 'contested' ? '#ffc44d'
+      : holder === mine ? '#7fe08a' : holder ? '#ff7a7a' : '#9fb0c4';
   }
   const txt = $('hillState');
   if (txt) {
-    txt.textContent = HILL.holder === 'contested' ? 'CONTESTED'
-      : HILL.holder === mine ? 'HOLDING'
-        : HILL.holder ? 'ENEMY HOLDING'
+    txt.textContent = holder === 'contested' ? 'CONTESTED'
+      : holder === mine ? 'YOU HOLD'
+        : holder ? teamLabel(holder) + ' HOLDS'
           : 'ZONE EMPTY';
   }
-  const foeBar = $('hillFoe');
-  if (foeBar) foeBar.style.width = Math.max(0, Math.min(100, theirs * 100)) + '%';
+  const sc = $('hillScore');
+  if (sc) sc.textContent = Math.floor(HILL.acc.red) + ' — ' + Math.floor(HILL.acc.blue);
 }
