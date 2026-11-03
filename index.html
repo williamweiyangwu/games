@@ -133,6 +133,7 @@
     border-radius:10px;padding:0 16px;font-weight:700;cursor:pointer;font-size:14px;
   }
   #aiChat .ai-input button:disabled{opacity:.5;cursor:default}
+  #aiChat .ai-note{display:block;margin-top:6px;font-size:11px;line-height:1.35;color:var(--dim)}
 </style>
 </head>
 <body>
@@ -154,8 +155,8 @@
       <div class="thumb c7"><span class="glyph">&#9647;</span></div>
       <span class="tag">HORROR</span>
       <h2>THE BACKROOMS</h2>
-      <p>3D first-person survival horror across three drowned city blocks. Vault through broken windows for what is inside, work the action on your magazines, fight or outrun what lives in there — alone, or in a room you host and invite a friend into.</p>
-      <div class="meta">Three blocks · solo or co-op <span class="arrow">&#8594;</span></div>
+      <p>3D first-person survival horror across three floors. Pry open supply lockers for weapons and food, work the action on your magazines, fight or outrun what lives in there — and find the gate.</p>
+      <div class="meta">Three floors · survival horror <span class="arrow">&#8594;</span></div>
     </a>
 
     <a class="card" href="house-siege-3d/">
@@ -236,12 +237,47 @@
 
 <script>
 (function () {
-  // PASTE YOUR GEMINI API KEY HERE (get one at https://aistudio.google.com/apikey)
-  var API_KEY = "YOUR_GEMINI_API_KEY";
-  var MODEL = "gemini-2.0-flash";
-  var SYSTEM = "You are a friendly, concise AI assistant embedded on the Arcade hub of William's games website. You can answer questions about the games (Age of Discovery, The Backrooms, House Siege 3D, KARDS, Map Game, Blockcraft, Tank War, Apex Racing, WWII Europe) or anything else.";
+  /* -----------------------------------------------------------------
+     AI assistant — NO API KEY REQUIRED, no sign-in.
+
+     Engine: Pollinations (free public endpoint, CORS enabled).
+     Free tier = 1 answer every ~45 s per visitor, so this widget:
+       - answers game questions instantly from a built-in knowledge base
+       - queues anything else and auto-retries after the cooldown
+     Optional: put a Google Gemini key in GEMINI_KEY for instant answers.
+     ----------------------------------------------------------------- */
+  var GEMINI_KEY = "";                     // optional, leave empty for free mode
+  var GEMINI_MODEL = "gemini-2.0-flash";
+  var POLL_URL = "https://text.pollinations.ai/openai";
+  var COOLDOWN_HINT = "Free AI allows 1 answer every 45 s";
+
+  var SYSTEM = "You are a friendly, concise assistant embedded on the Arcade page of William's games website. " +
+    "The site hosts nine free browser games: Age of Discovery (3D sailing and exploration), The Backrooms " +
+    "(first-person survival horror), House Siege 3D (5v5 FPS), KARDS (WWII card battles), Map Game (grand-strategy " +
+    "conquest), Blockcraft (voxel sandbox), Tank War (multiplayer tank arena), Apex Racing (3D racing) and WWII " +
+    "Europe (interactive WWII timeline and map). You may answer questions about the games or anything else. " +
+    "Always reply in plain text: no markdown, no tables, no bold or bullet symbols. Keep it to at most three " +
+    "short sentences unless the user explicitly asks for more detail.";
+
+  var KB = [
+    { keys: ["tank war"], answer: "Tank War is a multiplayer 3D tank arena. Open it from the hub card, then drive with WASD, aim with the mouse and fire with the left button. You can host or join a room to play with a friend." },
+    { keys: ["apex racing", "race-car", "racing", "race car"], answer: "Apex Racing is a 3D racing game. Use the arrow keys or WASD to drive, and open it straight from the hub card. You can race against a friend in the same room." },
+    { keys: ["backrooms"], answer: "The Backrooms is a first-person survival horror walk through endless yellow corridors. Move with WASD and look with the mouse; your goal is to find the way out." },
+    { keys: ["kards", "card game", "deck"], answer: "KARDS is a WWII-themed card battle game. Build a deck for a nation, spend Kredits to play units and orders, and destroy the enemy headquarters." },
+    { keys: ["map game", "strategy", "conquest"], answer: "Map Game is a grand-strategy conquest game: pick a nation, manage your army and economy, then expand across the map." },
+    { keys: ["blockcraft", "minecraft", "voxel", "sandbox"], answer: "Blockcraft is a voxel sandbox: break and place blocks to build whatever you like. Move with WASD, jump with Space, and click to mine or place." },
+    { keys: ["wwii", "ww2", "world war", "hitler", "stalingrad"], answer: "WWII Europe is an interactive history page: a timeline, a map of territorial control that changes over time, key figures and statistics. Open its card on the hub to explore it." },
+    { keys: ["age of discovery", "sailing", "sail", "exploration"], answer: "Age of Discovery is a 3D sailing and exploration game: captain a ship, discover new lands and trade along the way." },
+    { keys: ["house siege", "white maze", "5v5", "shooter", "fps"], answer: "House Siege 3D is a fast 5v5 first-person shooter. Move with WASD, aim with the mouse, fire with the left button and use the keyboard to switch or reload weapons." },
+    { keys: ["how many games", "list of games", "which games", "all games"], answer: "There are nine games: Age of Discovery, The Backrooms, House Siege 3D, KARDS, Map Game, Blockcraft, Tank War, Apex Racing and WWII Europe. Each card on this page opens one." },
+    { keys: ["who made", "who built", "creator", "william"], answer: "This arcade is William's collection of browser games — all free, all playable in the browser with no install." }
+  ];
 
   var history = [];
+  var cache = {};
+  var queued = [];
+  var busy = false;
+  var nextFreeAt = 0;
   var fab = document.getElementById("aiFAB");
   var chat = document.getElementById("aiChat");
   var msgs = document.getElementById("aiMsgs");
@@ -258,51 +294,229 @@
     return d;
   }
 
-  function setTyping(on) {
+  function setTyping(text) {
     var t = document.getElementById("aiTyping");
-    if (on) {
-      if (!t) { t = document.createElement("div"); t.id = "aiTyping"; t.className = "msg bot"; t.textContent = "…"; msgs.appendChild(t); }
-      msgs.scrollTop = msgs.scrollHeight;
-    } else if (t) { t.remove(); }
+    if (text === null || text === undefined) { if (t) t.remove(); return; }
+    if (!t) {
+      t = document.createElement("div");
+      t.id = "aiTyping";
+      t.className = "msg bot";
+      msgs.appendChild(t);
+    }
+    t.textContent = text;
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function attempt(url, options, ms) {
+    var ctrl = window.AbortController ? new AbortController() : null;
+    if (ctrl) options.signal = ctrl.signal;
+    var timer = null;
+    var req = fetch(url, options);
+    return new Promise(function (resolve, reject) {
+      timer = setTimeout(function () {
+        if (ctrl) { try { ctrl.abort(); } catch (e) {} }
+        reject(new Error("timeout"));
+      }, ms);
+      req.then(function (v) { clearTimeout(timer); resolve(v); },
+               function (e) { clearTimeout(timer); reject(e); });
+    });
+  }
+
+  function limitError(text) {
+    var wait = 45;
+    try {
+      var j = JSON.parse(text);
+      var msg = (j.error && j.error.message) || j.message || "";
+      var m = /(\d+)\s*s(ec|econds)?/i.exec(msg) || /wait\s+(\d+)/i.exec(msg);
+      if (j.error && j.error.retryAfter) wait = +j.error.retryAfter;
+      else if (m) wait = +m[1];
+    } catch (e) {
+      var m2 = /wait\s+(\d+)/i.exec(text) || /(\d+)\s*seconds/i.exec(text);
+      if (m2) wait = +m2[1];
+    }
+    var err = new Error("free-limit");
+    err.code = "FREE_LIMIT";
+    err.retryAfter = Math.max(2, Math.min(90, wait));
+    return err;
+  }
+
+  // ---- engine 1: Pollinations (free, no key) ----
+  function askPollinations(messages) {
+    return attempt(POLL_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "openai",
+        messages: messages,
+        referrer: location.hostname || "local"
+      })
+    }, 70000)
+    .then(function (res) {
+      return res.text().then(function (txt) {
+        if (!res.ok) {
+          if (res.status === 402 || res.status === 429) throw limitError(txt);
+          var e = new Error("http " + res.status);
+          e.status = res.status;
+          throw e;
+        }
+        var data = null;
+        try { data = JSON.parse(txt); } catch (e2) {}
+        if (!data) return String(txt || "").trim();
+        var m = data.choices && data.choices[0] && data.choices[0].message;
+        return String((m && m.content) || "").trim();
+      });
+    });
+  }
+
+  // ---- engine 2: Gemini (only if a key is pasted above) ----
+  function askGemini(messages) {
+    var sys = messages[0].content;
+    var contents = messages.slice(1).map(function (m) {
+      return { role: m.role === "user" ? "user" : "model", parts: [{ text: m.content }] };
+    });
+    return attempt("https://generativelanguage.googleapis.com/v1beta/models/" + GEMINI_MODEL +
+      ":generateContent?key=" + encodeURIComponent(GEMINI_KEY), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: contents, systemInstruction: { parts: [{ text: sys }] } })
+      }, 60000)
+      .then(function (res) { return res.json().then(function (d) { return { ok: res.ok, d: d }; }); })
+      .then(function (r) {
+        if (!r.ok) throw new Error((r.d.error && r.d.error.message) || "Gemini error");
+        var parts = (r.d.candidates && r.d.candidates[0] && r.d.candidates[0].content &&
+                     r.d.candidates[0].content.parts) || [];
+        return parts.map(function (p) { return p.text; }).join("").trim();
+      });
+  }
+
+  function clean(text) {
+    var t = String(text || "");
+    t = t.replace(/\r/g, "");
+    // drop markdown table separator rows like |---|---|
+    t = t.split("\n").filter(function (line) { return !/^\s*\|?[\s:|-]{4,}\|?\s*$/.test(line); }).join("\n");
+    // turn table rows into plain lines
+    t = t.split("\n").map(function (line) {
+      if (line.indexOf("|") === -1) return line;
+      var cells = line.replace(/^\s*\|/, "").replace(/\|\s*$/, "").split("|");
+      return cells.map(function (c) { return c.trim(); }).filter(Boolean).join(" — ");
+    }).join("\n");
+    t = t.replace(/\*\*([^*]+)\*\*/g, "$1")
+         .replace(/__([^_]+)__/g, "$1")
+         .replace(/`([^`]+)`/g, "$1")
+         .replace(/^#{1,6}\s+/gm, "")
+         .replace(/^\s*[-*]\s+/gm, "- ");
+    return t.replace(/\n{3,}/g, "\n\n").trim();
+  }
+
+  function knowledge(q) {
+    var s = " " + q.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ") + " ";
+    for (var i = 0; i < KB.length; i++) {
+      for (var j = 0; j < KB[i].keys.length; j++) {
+        if (s.indexOf(" " + KB[i].keys[j] + " ") !== -1) return KB[i].answer;
+      }
+    }
+    return null;
+  }
+
+  function say(text, note) {
+    var d = addMsg("bot", text);
+    if (note) {
+      var s = document.createElement("div");
+      s.className = "ai-note";
+      s.textContent = note;
+      d.appendChild(s);
+    }
+  }
+
+  function finish() {
+    busy = false;
+    setTyping(null);
+    if (queued.length) { var nxt = queued.shift(); run(nxt.q, nxt.ctx, 0); return; }
+    if (!chat.classList.contains("hidden")) input.focus();
+  }
+
+  function waitThenRetry(seconds, retry) {
+    var left = Math.max(1, Math.round(seconds));
+    var tick = function () {
+      setTyping(COOLDOWN_HINT + " — asking again in " + left + "s…");
+      if (left <= 0) { setTyping("Thinking…"); retry(); return; }
+      left--;
+      setTimeout(tick, 1000);
+    };
+    tick();
+  }
+
+  function run(q, ctx, attemptNo) {
+    busy = true;
+    setTyping("Thinking…");
+
+    var payload = [{ role: "system", content: SYSTEM }]
+      .concat((ctx || []).map(function (h) {
+        return { role: h.role === "user" ? "user" : "assistant", content: h.text };
+      }))
+      .concat([{ role: "user", content: q }]);
+
+    var engine = GEMINI_KEY ? askGemini(payload) : askPollinations(payload);
+
+    engine.then(function (reply) {
+      reply = clean(reply);
+      if (!reply) throw new Error("empty");
+      history.push({ role: "model", text: reply });
+      cache[q.toLowerCase()] = reply;
+      setTyping(null);
+      addMsg("bot", reply);
+      finish();
+    }).catch(function (e) {
+      if (e && e.code === "FREE_LIMIT") {
+        nextFreeAt = Date.now() + e.retryAfter * 1000;
+        var quick = knowledge(q);
+        if (quick) {
+          setTyping(null);
+          say(quick, "Answered instantly from the built-in guide — the free AI allows one answer per 45 s.");
+          finish();
+          return;
+        }
+        if (!attemptNo) {
+          waitThenRetry(e.retryAfter, function () { run(q, ctx, 1); });
+          return;
+        }
+        setTyping(null);
+        say("The free AI service is busy right now. Give it a minute and ask again — or click one of the game cards above.");
+        finish();
+        return;
+      }
+      var quick2 = knowledge(q);
+      setTyping(null);
+      if (quick2) {
+        say(quick2, "Answered offline from the built-in guide — the AI service could not be reached from this network.");
+      } else {
+        say("I could not reach the AI service from this network. Ask me about any of the nine games and I can still answer offline, or try again in a moment.");
+      }
+      finish();
+    });
   }
 
   function ask() {
     var q = input.value.trim();
-    if (!q || send.disabled) return;
-    if (API_KEY === "YOUR_GEMINI_API_KEY") {
-      addMsg("bot", "The assistant needs a Gemini API key. Open index.html and replace YOUR_GEMINI_API_KEY with your key from https://aistudio.google.com/apikey");
-      return;
-    }
+    if (!q) return;
     input.value = "";
     addMsg("user", q);
     history.push({ role: "user", text: q });
-    setTyping(true);
-    send.disabled = true;
 
-    var contents = history.map(function (h) {
-      return { role: h.role === "user" ? "user" : "model", parts: [{ text: h.text }] };
-    });
+    var cached = cache[q.toLowerCase()];
+    if (cached) { addMsg("bot", cached); return; }
 
-    fetch("https://generativelanguage.googleapis.com/v1beta/models/" + MODEL + ":generateContent?key=" + encodeURIComponent(API_KEY), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: contents, systemInstruction: { parts: [{ text: SYSTEM }] } })
-    })
-    .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
-    .then(function (r) {
-      if (!r.ok) { throw new Error(r.data && r.data.error && r.data.error.message ? r.data.error.message : "Gemini error " + r.data); }
-      var reply = (r.data.candidates && r.data.candidates[0] && r.data.candidates[0].content && r.data.candidates[0].content.parts || []).map(function (p) { return p.text; }).join("") || "(no reply)";
-      history.push({ role: "model", text: reply });
-      addMsg("bot", reply);
-    })
-    .catch(function (e) {
-      addMsg("bot", "Sorry, something went wrong: " + e.message);
-    })
-    .then(function () {
-      setTyping(false);
-      send.disabled = false;
-      input.focus();
-    });
+    // while the free tier is cooling down, game questions are answered instantly
+    if (Date.now() < nextFreeAt) {
+      var quick = knowledge(q);
+      if (quick) {
+        say(quick, "Answered instantly from the built-in guide — the free AI allows one answer per 45 s.");
+        return;
+      }
+    }
+
+    if (busy) { queued.push({ q: q, ctx: history.slice(0, -1) }); return; }
+    run(q, history.slice(0, -1), 0);
   }
 
   fab.addEventListener("click", function () {
@@ -313,7 +527,8 @@
   send.addEventListener("click", ask);
   input.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); ask(); } });
 
-  addMsg("bot", "Hi! I can answer questions about the games here or anything else. What would you like to know?");
+  addMsg("bot", "Hi! I'm a free AI assistant — no key, no sign-in. Ask about any of the nine games, or anything else. " +
+                "Game questions are answered instantly; the free AI allows one general answer per 45 seconds, and I'll wait automatically.");
 })();
 </script>
 </body>
