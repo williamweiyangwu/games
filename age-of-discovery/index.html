@@ -4720,18 +4720,26 @@ function currentTarget() {
   }
 
   if (Player.mode === 'deck') {
-    const wheel = deckLocalToWorld(0, -1.6);
-    if (Math.hypot(wheel.x - Player.x, wheel.z - Player.z) < 2.4) {
+    // The deck is split at the mainmast: aft of it is the wheel, forward of it
+    // is the gangway and the rail. A 2.4 m radius around the wheel was a trap —
+    // you board amidships, walk aft, overshoot the wheel (nothing stops you),
+    // and end up pinned against the taffrail 2.7 m from it with only "Fish from
+    // the rail" on offer. So the whole aft half takes the helm.
+    const h = Ship.heading;
+    const dx = Player.x - playerShip.position.x, dz = Player.z - playerShip.position.z;
+    const lz = dx * Math.sin(h) + dz * Math.cos(h);   // ship-local, +z forward
+    if (lz <= 0.9) {
       return { label: 'Take the helm', use: () => {
         Player.mode = 'helm';
         Player.lookYaw = 0; Player.lookPitch = 0;
         showToast('At the helm — W hoists sail, A/D steers');
       } };
     }
-    if (dockedAt && Math.hypot(playerShip.position.x - Player.x, playerShip.position.z - Player.z) < 8) {
+    // forward deck: step off onto the quay if she lies alongside, else a line
+    // over the rail. Keeping dockedAt while aboard is what makes this reachable.
+    if (dockedAt && Math.abs(Ship.speed) < 1.2) {
       return { label: `Go ashore at ${dockedAt.def.name}`, use: () => goAshore(dockedAt) };
     }
-    // a line over the rail, when she is barely moving
     if (playerShip && Math.abs(Ship.speed) < 3) {
       return { label: 'Fish from the rail', use: () => openDialog('fish_sea') };
     }
@@ -4915,9 +4923,13 @@ function goAshore(port) {
 function boardShip() {
   Player.mode = 'deck';
   Player.island = null;
-  dockedAt = null;
+  // dockedAt is deliberately KEPT: "Go ashore" on deck is gated on it, and
+  // clearing it here left the quay reachable only by taking the helm first.
+  // updateShipPhysics drops it once she is maxR + 70 from the port.
   Player.vx = Player.vy = Player.vz = 0;
-  const p = deckLocalToWorld(0, 2.2);
+  // just abaft the mast: the aft half offers the wheel, so boarding hands you
+  // the ship's controls first. One step forward and the gangway prompt appears.
+  const p = deckLocalToWorld(0, 0.6);
   Player.x = p.x;
   Player.z = p.z;
   Player.y = deckEyeHeight();
@@ -4927,7 +4939,7 @@ function boardShip() {
   Player.lookYaw = 0;
   Player.lookPitch = 0;
   Ship.anchored = false;
-  showToast('Aboard your ship — find the wheel');
+  showToast('Aboard — E takes the wheel; step forward for the gangway');
   updateHUD();
 }
 
