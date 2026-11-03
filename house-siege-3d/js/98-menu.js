@@ -112,25 +112,23 @@ const HT_PAGES = [
       <li>The team with the most captures when the clock hits 0:00 wins.</li>
       <li>Respawn after <b>3 seconds</b>. Carriers are marked on the HUD.</li>
     </ul>
-    <h3><span class="g">KING OF THE HILL</span> — first to 5 hills</h3>
+    <h3><span class="g">KING OF THE HILL</span> — first to 90</h3>
     <ul>
-      <li>One <b>marked zone</b> is live at a time — a lit column you can see over the maze walls.</li>
-      <li>Stand in it with <b>no enemy inside</b> for <b>4 seconds</b> and the hill is yours: your team scores 1.</li>
-      <li>The zone then <b>jumps to a new point</b>, so the match keeps moving instead of becoming a siege of one doorway.</li>
-      <li>Both teams inside = <span class="accent">contested</span>. Nobody scores and the hold bar drains.</li>
-      <li>The bar above your crosshair shows your hold and the enemy's. First team to <b>5</b> wins; most hills at 0:00 otherwise.</li>
+      <li>One <b>circle in the middle of the map</b> — a lit column you can see over the walls. On a map with a platform, it is on top of it.</li>
+      <li>Stand in it with <b>no enemy inside</b> and your score climbs <b>1 point per second</b>.</li>
+      <li>Both teams inside = <span class="accent">contested</span>: nobody scores until one side is cleared out.</li>
+      <li>First team to <b>90</b> wins; most time held at 0:00 otherwise.</li>
     </ul>
-    <h3><span class="b">LAST STAND</span> — first to 3 rounds</h3>
+    <h3><span class="b">LAST STAND</span> — one round</h3>
     <ul>
-      <li><b>No respawns inside a round.</b> Die and you stay down, watching, until the round is decided.</li>
-      <li>Wipe the enemy team to take the round. First team to <b>3 rounds</b> wins the match.</li>
-      <li>When a round ends everyone comes back for the next one, weapons and health reset.</li>
-      <li>There is no clock pressure per round — but the match clock still runs, and golden point applies at 0:00.</li>
+      <li><b>One life each, no respawns.</b> Die and you stay down, watching, until the match is decided.</li>
+      <li>Wipe the enemy team and the match is yours.</li>
+      <li>If the clock runs out with both teams alive, the next kill wins it.</li>
     </ul>
     <h4>GOLDEN POINT</h4>
     <p>If the clock runs out with the scores <b>level</b>, the match does not end in a draw — it goes to
     <span class="accent">golden point</span>. The next score wins it outright: the next kill in Team Deathmatch,
-    the next capture in Flag Raid, the next hill in King of the Hill. A suicide leaves both scores untouched,
+    the next capture in Flag Raid, the next second held in King of the Hill. A suicide leaves both scores untouched,
     so the round simply plays on.</p>
     <h4>AFTER THE MATCH — THE VOTE</h4>
     <p>Every match ends on a <b>vote</b>, not a menu. Everyone in the room gets a say — you by clicking a mode
@@ -141,7 +139,7 @@ const HT_PAGES = [
     <p>The camera stays in the arena: first over your own body, then it swings onto
     <span class="accent">whoever killed you</span> and follows them until you respawn —
     so you always learn who got you, and from where. In Last Stand there is no respawn to wait for, so the
-    camera stays with the killer until the round resolves.</p>`
+    camera stays with the killer until the match resolves.</p>`
   },
   {
     t: 'THE MAPS',
@@ -158,9 +156,14 @@ const HT_PAGES = [
     </table>
     <h4>CATWALK OR PLINTH</h4>
     <p>White Maze and Ash Garden have a <b>catwalk ring</b> over the maze, reached by four stair ramps in the
-    middle of each side. The Vault and Deep Sectors have no deck — instead a stepped <b>plinth</b> stands in the
-    centre of the map, three tiers of 0.45 m that you walk up rather than jump. Either way there is high ground,
-    and either way standing on it makes you the easiest target on the map.</p>
+    middle of each side. The Vault and Deep Sectors have no deck — instead a stepped <b>plinth</b> stands in an
+    open plaza in the middle of the map, five tiers of 0.45 m that you walk up rather than jump. Either way there
+    is high ground, and either way standing on it makes you the easiest target on the map.</p>
+    <h4>THE ARENA WALL</h4>
+    <p>Every map is sealed. The catwalk maps are enclosed by the parapet the deck sits on; the flat maps have a
+    full-height <b>arena wall</b> with a dark cap and a band on the floor at its foot, so there is no walking off
+    the edge and no guessing where the level ends. Each arena also has its own stone: white plaster, warm
+    sandstone, cool steel and olive concrete.</p>
     <h4>WHAT CARRIES OVER</h4>
     <p>Your team, difficulty and loadout rules are the same on every map. Crates are placed on junctions and
     plazas, never in dead ends, so a crate is always reachable without turning your back on a corridor.</p>`
@@ -244,18 +247,25 @@ function showTeamDesc() {
 function initMenu() {
   renderModeCards();
   renderMapCards();
-  document.querySelectorAll('.mode-card').forEach(el => {
-    el.addEventListener('click', () => {
-      if (el.dataset.mode === 'tutorial') startGame('tutorial');
-      else startGame(el.dataset.mode, G.mapId);
-    });
+  /* Delegation, not per-button listeners: both rows are re-rendered whenever a
+     selection changes, which replaces the buttons and takes their listeners
+     with them. Binding once on the container survives every re-render — this
+     is what made the map picker work exactly one time. */
+  const modeRow = $('modeGrid');
+  if (modeRow) modeRow.addEventListener('click', e => {
+    const el = e.target.closest('.mode-card');
+    if (!el) return;
+    if (el.dataset.mode === 'tutorial') startGame('tutorial');
+    else startGame(el.dataset.mode, G.mapId);
   });
-  document.querySelectorAll('.map-card').forEach(el => {
-    el.addEventListener('click', () => {
-      G.mapId = el.dataset.map;
-      renderMapCards();
-      Snd.tone(520, 640, 0.04, 0.08, 'square');
-    });
+  const mapRow = $('mapRow');
+  if (mapRow) mapRow.addEventListener('click', e => {
+    const el = e.target.closest('.map-card');
+    if (!el) return;
+    if (G.mapId === el.dataset.map) return;
+    G.mapId = el.dataset.map;
+    renderMapCards();
+    Snd.tone(520, 640, 0.04, 0.08, 'square');
   });
   document.querySelectorAll('#diffRow button').forEach(btn => {
     btn.addEventListener('click', () => {
