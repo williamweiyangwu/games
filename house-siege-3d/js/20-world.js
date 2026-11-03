@@ -112,6 +112,42 @@ function applyMapPreset(id) {
 }
 applyMapPreset('white');
 
+/* ------------------------------------------------------------
+   MAP MATERIALS
+   ------------------------------------------------------------
+   Every map owns a palette. Sharing one white plaster set was the reason the
+   new arenas read as the same map with different wall heights: pale walls on a
+   pale floor have almost no contrast, so from above (and from across the
+   arena) the maze dissolved into a sheet of paper. Floors are now distinctly
+   darker than walls, which is what makes the layout legible at a glance.
+
+   Built once per map and kept: disposeWorld() only frees geometry, and these
+   materials are shared by every mesh the builder merges. */
+const MAP_MATS = {};
+function mapMats(id) {
+  if (MAP_MATS[id]) return MAP_MATS[id];
+  const p = mapDef(id).pal;
+  const set = {
+    wall: new THREE.MeshStandardMaterial({
+      map: texPlaster(p.wall, p.wall2), roughness: 0.94,
+      metalness: p.wallMetal || 0.02
+    }),
+    floor: new THREE.MeshStandardMaterial({
+      map: texTiles(p.floor, p.floor2, 6),
+      roughness: p.floorRough === undefined ? 0.68 : p.floorRough,
+      metalness: p.floorMetal || 0.05
+    }),
+    trim: new THREE.MeshStandardMaterial({ color: p.trim, roughness: 0.4, metalness: 0.55 }),
+    ground: p.ground === 'grass' ? MAT.ground
+      : new THREE.MeshStandardMaterial({
+        map: texPlaster(p.ground, p.ground2), roughness: 0.99, metalness: 0
+      }),
+    accent: p.accent
+  };
+  MAP_MATS[id] = set;
+  return set;
+}
+
 function mulberry32(a) {
   return function () {
     a |= 0; a = a + 0x6D2B79F5 | 0;
@@ -165,6 +201,7 @@ function buildWorld() {
   const deckC = (MH + outer) / 2;           // catwalk centreline
   const deckW = outer - MH;                 // catwalk width
   const preset = mapDef(MAP.id);
+  const W = mapMats(MAP.id);
 
   /* a fresh group per build; disposeWorld() removed the previous one */
   WORLD = new THREE.Group();
@@ -186,14 +223,14 @@ function buildWorld() {
   if (G.sun) G.sun.color.setHex(preset.light);
 
   /* --- ground --- */
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(420, 420), MAT.ground);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(420, 420), W.ground);
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.06;          // sit under the maze slab, no z-fighting
   ground.receiveShadow = true;
   addWorld(ground);
 
   /* --- maze floor --- */
-  addBox(0, -0.08, 0, MH * 2 + 0.5, 0.16, MH * 2 + 0.5, MAT.mazeFloor, { name: 'mazefloor' });
+  addBox(0, -0.08, 0, MH * 2 + 0.5, 0.16, MH * 2 + 0.5, W.floor, { name: 'mazefloor' });
 
   /* --- maze layout --- */
   const cells = genMaze(N, mulberry32(MAP.seed), MAP.loops);
@@ -236,10 +273,14 @@ function buildWorld() {
      openCell down in the plinth block would only edit the cell data — the wall
      meshes are already standing by then, and you get a 4 m slab of maze wall
      erupting out of the top tier. Half width has to be the same number the
-     plinth block uses, so it is computed once here and reused there. */
-  const plinthBase = MAP.plinth ? Math.min(Math.max(cs * 2.3, 7.4), 10.2) : 0;
+     plinth block uses, so it is computed once here and reused there.
+
+     The clearing is deliberately wider than the platform: at the old size the
+     ziggurat filled its own hole and you had to squeeze around it in a 0.6 m
+     gap between the bottom tier and the nearest maze wall. */
+  const plinthBase = MAP.plinth ? Math.min(Math.max(cs * 1.35, 5.0), 6.6) : 0;
   if (MAP.plinth) {
-    const pb = plinthBase + cs * 0.5;
+    const pb = plinthBase + cs * 0.9;
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
       const c = cellCenter(i, j);
       if (Math.abs(c.x) < pb && Math.abs(c.z) < pb) openCell(i, j);
@@ -300,15 +341,22 @@ function buildWorld() {
     }
   }
 
-  /* --- maze walls: collinear runs merged so the collider list stays small --- */
+  /* --- maze walls: collinear runs merged so the collider list stays small.
+     Each run gets a dark cap strip: it draws the layout from across the arena,
+     gives every map a signature colour, and stops the pale walls dissolving
+     into a pale floor when you look down a long corridor. --- */
+  const capH = 0.09;
   for (let i = 1; i < N; i++) {
     let run = -1;
     for (let j = 0; j <= N; j++) {
       const has = j < N && cells[j][i].W;
       if (has && run < 0) run = j;
       if (!has && run >= 0) {
+        const len = (j - run) * cs + MAP.wallT;
         addBox(g0 + i * cs, MAP.wallH / 2, g0 + (run + j) / 2 * cs,
-          MAP.wallT, MAP.wallH, (j - run) * cs + MAP.wallT, MAT.mazeWall, { name: 'maze' });
+          MAP.wallT, MAP.wallH, len, W.wall, { name: 'maze' });
+        addBox(g0 + i * cs, MAP.wallH + capH / 2, g0 + (run + j) / 2 * cs,
+          MAP.wallT + 0.05, capH, len, W.trim, { collide: false, shadow: false });
         run = -1;
       }
     }
@@ -319,23 +367,54 @@ function buildWorld() {
       const has = i < N && cells[j][i].N;
       if (has && run < 0) run = i;
       if (!has && run >= 0) {
+        const len = (i - run) * cs + MAP.wallT;
         addBox(g0 + (run + i) / 2 * cs, MAP.wallH / 2, g0 + j * cs,
-          (i - run) * cs + MAP.wallT, MAP.wallH, MAP.wallT, MAT.mazeWall, { name: 'maze' });
+          len, MAP.wallH, MAP.wallT, W.wall, { name: 'maze' });
+        addBox(g0 + (run + i) / 2 * cs, MAP.wallH + capH / 2, g0 + j * cs,
+          len, capH, MAP.wallT + 0.05, W.trim, { collide: false, shadow: false });
         run = -1;
       }
     }
   }
 
+  /* --- perimeter: the catwalk maps are enclosed by their own parapet, but a
+     flat map used to end at a bare slab edge — you could walk straight off the
+     arena and onto the grass, and from above the level looked like a sheet of
+     paper lying on a lawn. Every flat map now gets a real wall with a base
+     skirt, a capped top and a floor band, so the arena reads as a room. --- */
+  if (!MAP.catwalk) {
+    const PH = MAP.wallH + 2.6, PT = 0.85;
+    /* the wall wraps the arena exactly — spanning it to the old catwalk radius
+       left four shelves sticking out past the corners, which read as a picture
+       frame with the map lying inside it */
+    const E = MH + PT / 2;
+    wallX(MH, -E, E, 0, PH, [], PT, W.wall);
+    wallX(-MH, -E, E, 0, PH, [], PT, W.wall);
+    wallZ(MH, -MH, MH, 0, PH, [], PT, W.wall);
+    wallZ(-MH, -MH, MH, 0, PH, [], PT, W.wall);
+
+    const capY = PH - 0.16, skirtY = 0.26;
+    for (const s of [-1, 1]) {
+      addBox(0, capY, s * MH, E * 2, 0.32, PT + 0.08, W.trim, { collide: false, shadow: false });
+      addBox(s * MH, capY, 0, PT + 0.08, 0.32, MH * 2, W.trim, { collide: false, shadow: false });
+      addBox(0, skirtY, s * MH, E * 2, 0.52, PT + 0.08, W.trim, { collide: false, shadow: false });
+      addBox(s * MH, skirtY, 0, PT + 0.08, 0.52, MH * 2, W.trim, { collide: false, shadow: false });
+      /* a band on the floor just inside the wall, so the edge is drawn */
+      addBox(0, 0.02, s * (MH - 0.75), MH * 2 - 1.5, 0.04, 1.1, W.trim, { collide: false, shadow: false });
+      addBox(s * (MH - 0.75), 0.02, 0, 1.1, 0.04, MH * 2 - 1.5, W.trim, { collide: false, shadow: false });
+    }
+  }
+
   /* --- catwalk: solid parapet block all round, deck on top --- */
   if (MAP.catwalk) {
-  addBox(0, PY / 2, deckC, outer * 2, PY, deckW, MAT.mazeWall, { name: 'deckS' });
-  addBox(0, PY / 2, -deckC, outer * 2, PY, deckW, MAT.mazeWall, { name: 'deckN' });
-  addBox(deckC, PY / 2, 0, deckW, PY, MH * 2, MAT.mazeWall, { name: 'deckE' });
-  addBox(-deckC, PY / 2, 0, deckW, PY, MH * 2, MAT.mazeWall, { name: 'deckW' });
+  addBox(0, PY / 2, deckC, outer * 2, PY, deckW, W.wall, { name: 'deckS' });
+  addBox(0, PY / 2, -deckC, outer * 2, PY, deckW, W.wall, { name: 'deckN' });
+  addBox(deckC, PY / 2, 0, deckW, PY, MH * 2, W.wall, { name: 'deckE' });
+  addBox(-deckC, PY / 2, 0, deckW, PY, MH * 2, W.wall, { name: 'deckW' });
 
   /* dark trim along the inner lip so the two levels read apart */
   const trim = (x, z, w, d) => {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.07, d), MAT.deckEdge);
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.07, d), W.trim);
     m.position.set(x, PY + 0.035, z); m.receiveShadow = true; addWorld(m);
   };
   trim(0, MH - 0.09, MH * 2, 0.18);
@@ -357,10 +436,10 @@ function buildWorld() {
      runs corner to corner, not just across the maze, or you can walk
      straight off the deck corners onto the grass */
   const wallTop = 11.0;
-  wallX(B, -outer, outer, PY, wallTop, [], OT, MAT.mazeWall);
-  wallX(-B, -outer, outer, PY, wallTop, [], OT, MAT.mazeWall);
-  wallZ(B, -outer, outer, PY, wallTop, [], OT, MAT.mazeWall);
-  wallZ(-B, -outer, outer, PY, wallTop, [], OT, MAT.mazeWall);
+  wallX(B, -outer, outer, PY, wallTop, [], OT, W.wall);
+  wallX(-B, -outer, outer, PY, wallTop, [], OT, W.wall);
+  wallZ(B, -outer, outer, PY, wallTop, [], OT, W.wall);
+  wallZ(-B, -outer, outer, PY, wallTop, [], OT, W.wall);
 
   /* --- railings on the inner edge, open only where each stair arrives ---
      the gap is the ramp width plus a hair: any wider and you can stroll
@@ -393,11 +472,11 @@ function buildWorld() {
       if (r.axis === 'x') {
         const h = r.yAtMinX + (r.yAtMaxX - r.yAtMinX) * t;
         addBox(r.minX + (r.maxX - r.minX) * t, h / 2, 0, run + 0.02, Math.max(0.12, h), RW * 2,
-          MAT.mazeWall, { noBase: true, name: 'step' });
+          W.wall, { noBase: true, name: 'step' });
       } else {
         const h = r.yAtMinZ + (r.yAtMaxZ - r.yAtMinZ) * t;
         addBox(0, h / 2, r.minZ + (r.maxZ - r.minZ) * t, RW * 2, Math.max(0.12, h), run + 0.02,
-          MAT.mazeWall, { noBase: true, name: 'step' });
+          W.wall, { noBase: true, name: 'step' });
       }
     }
   }
@@ -407,33 +486,40 @@ function buildWorld() {
      corridor duel at the same height. A stepped platform in the middle of the
      map, built as a ziggurat of shallow tiers: each rise is 0.45 m, which is
      under the 0.5 m step-up the collision code allows, so it is walked rather
-     than jumped. --- */
+     than jumped.
+
+     Dark stone body, pale lips: in one stone the six tiers read as a flat ramp
+     from any distance, and from above the whole thing looked like a printed
+     bullseye. The contrast is what makes it a structure. --- */
   if (MAP.plinth) {
     const base = plinthBase;                   // half width of the bottom tier
-    const RISE = 0.45, TIERS = 6;
+    const RISE = 0.45, TIERS = 5;
     let topHalf = base;
     for (let k = 0; k < TIERS; k++) {
       const h = RISE * (k + 1);
-      topHalf = base * (1 - k * 0.13);
+      topHalf = base * (1 - k * 0.07);
       addBox(0, h / 2, 0, topHalf * 2, h, topHalf * 2,
-        MAT.mazeWall, { noBase: true, name: 'plinth' });
-      /* a dark lip along the top edge of every tier — without it six 0.45 m
-         steps in the same stone read as one flat ramp from any distance, and
-         you cannot tell how high you are or where the next step starts */
-      const t = 0.16, y = h - 0.03;
+        W.trim, { noBase: true, name: 'plinth' });
+      /* a pale lip along the top edge of every tier, so the steps read as
+         steps and you can tell where the next one starts */
+      const t = 0.18, y = h - 0.035;
       for (const s of [-1, 1]) {
-        addBox(0, y, s * (topHalf - t / 2), topHalf * 2, 0.1, t, MAT.deckEdge, { collide: false, shadow: false });
-        addBox(s * (topHalf - t / 2), y, 0, t, 0.1, topHalf * 2, MAT.deckEdge, { collide: false, shadow: false });
+        addBox(0, y, s * (topHalf - t / 2), topHalf * 2, 0.11, t, W.wall, { collide: false, shadow: false });
+        addBox(s * (topHalf - t / 2), y, 0, t, 0.11, topHalf * 2, W.wall, { collide: false, shadow: false });
       }
     }
+    const topY = RISE * TIERS;
+    /* a pale deck on the summit, so it reads as a place to stand */
+    addBox(0, topY + 0.03, 0, topHalf * 2 - 0.3, 0.06, topHalf * 2 - 0.3, W.floor,
+      { collide: false, shadow: false });
     /* the ground under it was already cleared up with the plazas — see the
        plinthBase block before the wall runs */
-    const cap = new THREE.Mesh(new THREE.RingGeometry(topHalf * 0.72, topHalf * 0.9, 40),
-      new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.45, side: THREE.DoubleSide }));
+    const cap = new THREE.Mesh(new THREE.RingGeometry(topHalf * 0.74, topHalf * 0.9, 40),
+      new THREE.MeshBasicMaterial({ color: W.accent, transparent: true, opacity: 0.5, side: THREE.DoubleSide }));
     cap.rotation.x = -Math.PI / 2;
-    cap.position.y = RISE * TIERS + 0.03;
+    cap.position.y = topY + 0.08;
     addWorld(cap);
-    G.plinth = { r: topHalf, y: RISE * TIERS };
+    G.plinth = { r: topHalf, y: topY, base: base };
   } else {
     G.plinth = null;
   }
@@ -519,7 +605,18 @@ function buildWorld() {
       if (spots.indexOf(j) < 0) spots.push(j);
     }
   }
-  G.chestSpots = spots.map(s => [s.x, s.y || 0, s.z]);
+  /* Keep the middle of the map clear: that is where the hill sits in King of
+     the Hill, and a crate's beam and diamond marker under the hill's beam is
+     unreadable. Backfill from the junctions so the count stays the same. */
+  const clearOfCentre = s => Math.hypot(s.x, s.z) > 6.5;
+  const kept = spots.filter(clearOfCentre);
+  for (const j of junctions) {
+    if (kept.length >= 8) break;
+    if (!clearOfCentre(j)) continue;
+    if (kept.some(k => Math.hypot(k.x - j.x, k.z - j.z) < 1)) continue;
+    kept.push(j);
+  }
+  G.chestSpots = kept.map(s => [s.x, s.y || 0, s.z]);
 
   mergeStaticWorld();
   buildWaypoints();
