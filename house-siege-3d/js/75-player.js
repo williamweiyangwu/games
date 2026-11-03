@@ -22,10 +22,10 @@ function updatePlayer(dt) {
   const p = G.player;
   if (!p.alive) {
     hideAimLine();
-    /* LAST STAND has no respawns: stay on the death cam until the round
+    /* LAST STAND has no respawns: stay on the death cam until the match
        resolves, so the overlay must not promise a countdown that never comes */
     if (G.mode === 'survival') {
-      $('rsSub').innerHTML = 'NO RESPAWN — WAITING FOR THE ROUND';
+      $('rsSub').innerHTML = 'NO RESPAWN — WAITING FOR THE MATCH TO END';
       SPEC.t += dt;
       updateSpectator(dt);
       return;
