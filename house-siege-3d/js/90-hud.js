@@ -27,7 +27,9 @@ function startGoldenPoint() {
   Snd.tone(560, 900, 0.28, 0.22, 'triangle');
   setTimeout(() => Snd.tone(900, 1200, 0.3, 0.18, 'triangle'), 160);
   banner('<span class="hl">GOLDEN POINT</span> — ' +
-    (G.mode === 'flag' ? 'THE NEXT CAPTURE WINS' : 'THE NEXT KILL WINS'), 5);
+    (G.mode === 'flag' ? 'THE NEXT CAPTURE WINS'
+      : G.mode === 'koth' ? 'THE NEXT SECOND ON THE HILL WINS'
+        : 'THE NEXT KILL WINS'), 5);
   $('clock').classList.add('gold');
 }
 
