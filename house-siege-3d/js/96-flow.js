@@ -94,8 +94,22 @@ function startGame(mode, mapId) {
    with both teams still standing, the normal golden point takes over. */
 function updateSurvival() {
   if (G.mode !== 'survival' || G.state !== 'playing') return;
-  let red = 0, blue = 0;
-  for (const a of allActors()) if (a.alive) { if (a.team === 'red') red++; else blue++; }
+  /* Online the host calls the round: it is the only machine that can see every
+     human. A guest waits for the score it is sent and ends there. */
+  if (G.netMode && !NET.isHost) return;
+  const aliveOn = (team, list) => {
+    let n = 0;
+    for (const a of list) if (a.alive && a.team === team) n++;
+    return n;
+  };
+  let red = aliveOn('red', objActors()), blue = aliveOn('blue', objActors());
+  /* A side with nobody human in the room would otherwise lose before the first
+     shot — two friends who both left the team picker alone would end the round
+     on deploy. That side's AI squad stands in for it instead. */
+  if (G.netMode) {
+    if (red === 0) red = aliveOn('red', allActors());
+    if (blue === 0) blue = aliveOn('blue', allActors());
+  }
   if (red > 0 && blue > 0) return;          // still a live round
   if (red === 0 && blue === 0) return;      // mutual wipe: nobody scores
   const winner = red > 0 ? 'red' : 'blue';
