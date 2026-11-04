@@ -38,6 +38,9 @@ function flagBasePos(team) {
 }
 
 function dropFlag(team, pos) {
+  /* online the host owns the flags; a guest's local drop would fight the
+     state it is being sent */
+  if (G.netMode && !NET.isHost) return;
   const fs = G.flagState[team];
   /* Read the player's carry state BEFORE the sweep below clears it — testing it
      afterwards was always false, so the "you have the flag" strip could be left
@@ -52,14 +55,39 @@ function dropFlag(team, pos) {
 }
 
 function returnFlag(team) {
+  if (G.netMode && !NET.isHost) return;
   const fs = G.flagState[team];
   fs.at = 'base'; fs.carrier = null; fs.dropT = 0;
   fs.pos.copy(flagBasePos(team));
   for (const a of allActors()) if (a.carrying === team) a.carrying = null;
 }
 
+/* Guest view of the host's flags: the meshes follow the broadcast state, and
+   a carried flag follows the live interpolated body so it does not stutter at
+   the publish rate. */
+function flagDraw() {
+  if (!G.flags) return;
+  for (const team of ['red', 'blue']) {
+    const fs = G.flagState[team], fl = G.flags[team];
+    if (!fs || !fl) continue;
+    const c = fs.carrier;
+    if (fs.at === 'carried' && c) {
+      fl.group.position.set(c.pos.x, c.pos.y + 0.35, c.pos.z);
+      fl.group.rotation.y += 0.03;
+    } else {
+      fl.group.position.copy(fs.pos);
+      fl.group.rotation.y = 0;
+    }
+    fl.group.visible = true;
+  }
+}
+
 function updateFlags(dt) {
   if (G.mode !== 'flag') return;
+  /* Online the host judges the objective and every guest draws the result.
+     A guest that simulated its own pickups would be playing a second, private
+     match: its flags would move for reasons nobody else could see. */
+  if (G.netMode && !NET.isHost) { flagDraw(); return; }
   for (const team of ['red', 'blue']) {
     const fs = G.flagState[team];
     const fl = G.flags[team];
@@ -82,7 +110,7 @@ function updateFlags(dt) {
   }
 
   // pickups / captures / returns
-  for (const a of allActors()) {
+  for (const a of objActors()) {
     if (!a.alive) continue;
     for (const team of ['red', 'blue']) {
       if (a.team === team) continue;
@@ -118,6 +146,9 @@ function updateFlags(dt) {
             banner('<span class="hl">FLAG CAPTURED!</span>', 2.2);
             $('carryBanner').classList.remove('show');
           } else banner(a.team.toUpperCase() + ' TEAM SCORED', 2);
+          /* the flag is already back on its stand, so this publishes the
+             settled state along with the credit */
+          if (G.netMode) netObjCapture(a);
           checkRoundEnd();
         }
       } else {
