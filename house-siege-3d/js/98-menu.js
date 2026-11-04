@@ -196,14 +196,22 @@ const HT_PAGES = [
     <p><b>PLAY ONLINE</b> on the main menu opens the room browser. Rooms are relayed through a public MQTT
     broker over WebSockets — there is no game server, and nothing to sign up for.</p>
     <ul>
-      <li><b>Hosting</b> — pick a visibility, a mode, whether AI squads join, and how hard they are. You get a
+      <li><b>Hosting</b> — pick a mode, a map, a visibility, whether AI squads join, and how hard they are. You get a
       four-character <b>invite code</b> the moment the room opens.</li>
+      <li><b>Every mode is playable online</b> — deathmatch, flag raid, king of the hill and last stand. The mode and
+      map are chosen when the room is hosted; after that the end-of-match vote decides.</li>
       <li><b>Public</b> rooms appear in the room list for everyone connected, and can also be joined by code.</li>
       <li><b>Private</b> rooms never appear in the list. The invite code is the only way in.</li>
       <li><b>AI squads</b> — with AI on, your machine also simulates a bot squad that fights you and the other
       bots. With AI off the match is humans only. The host decides, and the setting reaches everyone in the room.</li>
       <li>Leaving, or the host closing the room, returns everyone to the menu.</li>
     </ul>
+    <h4>Who judges the objective</h4>
+    <p>Bots are simulated separately on every machine, so two computers can never agree about where a bot is
+    standing. Objectives are therefore judged by the <b>host</b>, from the human players in the room, and broadcast:
+    a flag is carried, dropped and captured on the host, the hill counts the seconds the host sees you standing in
+    it, and a last-stand round ends when the host sees a team's humans go down. Every other machine draws that
+    state. Bots still shoot at you — they just never score, which is how a kill already worked online.</p>
     <h4>What to expect from the netcode</h4>
     <p>Each player owns their own body: your position and health are yours, and a hit you land is sent to the
     person you hit. The host owns the scoreboard and the clock, so two machines can never disagree about the
