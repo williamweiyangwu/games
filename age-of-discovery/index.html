@@ -2342,6 +2342,11 @@ function findFlat(island, angle, tMin, tMax, steps = 14) {
   return { x: Math.cos(angle) * R * t, z: Math.sin(angle) * R * t, y: island.heightAt(Math.cos(angle) * R * t, Math.sin(angle) * R * t) };
 }
 let lisbonDock = { x: 0, z: 44 };
+// Where the boat actually puts you when you step ashore at home. The quay
+// spawn (lisbonDock, z = OZ+30) is 29 m from the berth -- beyond the 15 m
+// boarding reach -- so landing there left a silent stretch with no [E] prompt
+// and no hint that you had to walk back down the pier to your own ship.
+let lisbonGangway = null;
 
 function buildLisbon(group, island, pointAt) {
   const OX = group.position.x, OZ = group.position.z;
@@ -2438,6 +2443,9 @@ function buildLisbon(group, island, pointAt) {
   lisbonSlip = { x: OX, z: OZ + LIS_CITY.berthZ, angle: LISBON_PIER_ANGLE };
   lisbonSpawn = { x: OX, z: OZ + 12 };
   lisbonDock = { x: OX, z: OZ + 30 };
+  // 11 m from the berth: inside boarding reach, but 4 m short of the fishing
+  // basket so the gangway is what [E] offers when you step off.
+  lisbonGangway = { x: OX, z: OZ + 48 };
 
   // ---------------------------------------------------------
   //  PAVING
@@ -4706,6 +4714,12 @@ function deckLocalToWorld(lx, lz) {
   };
 }
 
+function takeHelm() {
+  Player.mode = 'helm';
+  Player.lookYaw = 0; Player.lookPitch = 0;
+  showToast('At the helm — W hoists sail, A/D steers');
+}
+
 function currentTarget() {
   if (Player.mode === 'helm') {
     const near = nearestIslandWithin(70);
@@ -4729,11 +4743,7 @@ function currentTarget() {
     const dx = Player.x - playerShip.position.x, dz = Player.z - playerShip.position.z;
     const lz = dx * Math.sin(h) + dz * Math.cos(h);   // ship-local, +z forward
     if (lz <= 0.9) {
-      return { label: 'Take the helm', use: () => {
-        Player.mode = 'helm';
-        Player.lookYaw = 0; Player.lookPitch = 0;
-        showToast('At the helm — W hoists sail, A/D steers');
-      } };
+      return { label: 'Take the helm', use: takeHelm };
     }
     // forward deck: step off onto the quay if she lies alongside, else a line
     // over the rail. Keeping dockedAt while aboard is what makes this reachable.
@@ -4743,20 +4753,17 @@ function currentTarget() {
     if (playerShip && Math.abs(Ship.speed) < 3) {
       return { label: 'Fish from the rail', use: () => openDialog('fish_sea') };
     }
-    return null;
-  }
-
-  // On foot: boarding your ship. Fifteen metres, not nine. She lies moored a
-  // few paces off the sand now, but on a gently shelving shore the water only
-  // reaches her draft ten or eleven metres out, and measuring from where you
-  // actually stand that left a wade and a swim between you and your own deck.
-  if (Game.ship && dockedAt) {
-    const d = Math.hypot(playerShip.position.x - Player.x, playerShip.position.z - Player.z);
-    if (d < 15) return { label: 'Board your ship', use: boardShip };
+    // Making way: no gangway and no line over the rail. E used to return
+    // nothing at all here, which reads as a broken game rather than a busy
+    // ship. Hand the player the wheel instead of leaving a silent state.
+    return { label: 'Take the helm (under way)', use: takeHelm };
   }
 
   // On foot: the nearest interactable — or a citizen of Lisbon within
   // arm's reach. Every citizen is an opponent you can talk to.
+  // These come BEFORE boarding: the fishing basket sits 7 m from the Lisbon
+  // berth, so checking boarding first silently swallowed it for the rest of
+  // the game the moment you owned a ship.
   let best = null, bestD = 1e9;
   for (const it of interactables) {
     const d = Math.hypot(it.x - Player.x, it.z - Player.z);
@@ -4772,6 +4779,15 @@ function currentTarget() {
     }
   }
   if (best) return { label: best.label, use: best.onUse };
+
+  // Boarding her. Fifteen metres, not nine. She lies moored a few paces off
+  // the sand now, but on a gently shelving shore the water only reaches her
+  // draft ten or eleven metres out, and measuring from where you actually
+  // stand that left a wade and a swim between you and your own deck.
+  if (Game.ship && dockedAt && playerShip) {
+    const d = Math.hypot(playerShip.position.x - Player.x, playerShip.position.z - Player.z);
+    if (d < 15) return { label: 'Board your ship', use: boardShip };
+  }
   return null;
 }
 
@@ -4796,9 +4812,10 @@ function goAshore(port) {
   Player.mode = 'foot';
   if (port.def.type !== 'home') Game.stats.voyages++;   // a landfall abroad
   if (port.def.type === 'home') {
-    // step off onto the pier
-    Player.x = lisbonDock.x;
-    Player.z = lisbonDock.z;
+    // step off at the pier head, within reach of the hull
+    const gangway = lisbonGangway || lisbonDock;
+    Player.x = gangway.x;
+    Player.z = gangway.z;
     Player.lookYaw = 0;
     // She comes alongside the pier she sailed from. Without this the ship is
     // left out in the river while you stand on the quay, and the "Board your
@@ -4911,12 +4928,16 @@ function goAshore(port) {
 
   if (!port.discovered) discoverIsland(port);
   addLog(`You put in to shore at ${port.def.name}.`);
-  showToast(`Ashore at ${port.def.name}`);
 
   if (port.def.type === 'home') {
     deliverReadyCommissions();
-    autosave();
+    autosave();                    // raises its own "Progress auto-saved" toast
   }
+  // Show this LAST: autosave and discovery both raise toasts of their own, and
+  // the one line that tells a stranded player how to get out must survive.
+  showToast(port.def.type === 'home'
+    ? 'Ashore at Lisbon — E boards your ship; walk inland for the town'
+    : `Ashore at ${port.def.name} — E boards your ship; the trading post is inland`, 4200);
   updateHUD();
 }
 
@@ -5745,7 +5766,7 @@ function endStats() {
     row('Gold earned', Math.floor(s.earned || 0) + 'g') +
     row('Gold spent', Math.floor(s.spent || 0) + 'g') +
     row('Reputation', Math.floor(Game.rep)) +
-    row('Islands discovered', (Game.discovered.size - 1) + ' of 8') +
+    row('Islands discovered', (Game.discovered.size - 1) + ' of ' + (PORTS.length - 1)) +
     row('Charts reported to the Crown', reported) +
     row('Leagues sailed', Math.floor(s.distance || 0)) +
     row('Landfalls abroad', s.voyages || 0) +
@@ -5887,6 +5908,9 @@ function loadGame(slot) {
   }
   Player.onGround = true;
   Player.inWater = false; Player.wetT = 0;
+  // a loaded life is a cut, not a camera swoop from wherever the last life's
+  // lens happened to be sitting
+  camRig.ready = false;
   SHIP_PHYS.vf = 0; SHIP_PHYS.vl = 0; SHIP_PHYS.yawRate = 0;
   SHIP_PHYS.pitch = 0; SHIP_PHYS.roll = 0;
   Ship.speed = 0;
@@ -5978,6 +6002,7 @@ function resetLife() {
   removePlayerShip();
   PORTS.forEach(p => { p.discovered = !!p.def.discovered; });
   dockedAt = null;
+  camRig.ready = false;
 
   const p0 = PORTS[0];
   Player.island = p0;
@@ -6214,6 +6239,7 @@ window.__voyage = {
   COLLIDERS, PLATFORMS, LIS_CITY, walkers, SHIP_PHYS, updateFoot, updateShipPhysics,
   updateDeckWalk, resolveXZ, supportY, groundY, SHIP_CLASSES, openDialog, chooseOption,
   spawnPlayerShip, spawnShipInLisbon, goAshore, boardShip, lisbonBerth, lisbonDock,
+  get lisbonGangway() { return lisbonGangway; }, takeHelm,
   currentTarget, tryInteract, showEndScreen,
   saveGame, loadGame, autosave, resetLife, openMenu, closeMenu,
   triggerSeaEvent, triggerStreetEvent, goAshore, die,
