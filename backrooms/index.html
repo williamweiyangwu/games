@@ -94,6 +94,111 @@ body.playing{cursor:none}
   border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:11px solid #e8562f;
   filter:drop-shadow(0 0 7px rgba(232,86,47,.9))}
 
+/* ---------- first-person use animation ---------- */
+/* The supply you just used is held up in front of the camera. Three separate
+   rigs (bottle / tin / cell) animate from their own keyframes; JS only drives
+   the progress bar, the phase captions and the sound cues. */
+#useanim{position:fixed;inset:0;z-index:48;pointer-events:none;opacity:0;
+  transition:opacity .16s;overflow:hidden}
+#useanim.on{opacity:1}
+#useanim .ua-vig{position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 62%,transparent 26%,rgba(0,0,0,.68) 100%)}
+#useanim .ua-flash{position:absolute;inset:0;opacity:0;mix-blend-mode:screen}
+#useanim[data-kind="water"].on .ua-flash{background:radial-gradient(ellipse at 50% 70%,rgba(120,190,225,.18),transparent 70%)}
+#useanim[data-kind="food"].on .ua-flash{background:radial-gradient(ellipse at 50% 70%,rgba(225,175,105,.14),transparent 70%)}
+#useanim[data-kind="battery"].on .ua-flash{background:radial-gradient(ellipse at 50% 60%,rgba(210,235,255,.6),transparent 62%);
+  animation:ua-beam 1.55s linear both}
+@keyframes ua-beam{0%,54%{opacity:0}62%{opacity:.95}70%{opacity:.35}80%,100%{opacity:0}}
+
+.ua-stage{position:absolute;left:50%;bottom:0;width:min(460px,86vw);height:min(72vh,560px);
+  transform:translateX(-50%)}
+.ua-prop{position:absolute;left:50%;bottom:7%;width:210px;height:300px;
+  margin-left:-105px;transform-origin:50% 88%;opacity:0}
+.ua-prop svg{width:100%;height:100%;overflow:visible;
+  filter:drop-shadow(0 18px 26px rgba(0,0,0,.78))}
+.ua-liquid,.ua-fill{transform-box:fill-box;transform-origin:50% 100%}
+.ua-lid,.ua-spoon,.ua-cell,.ua-spark,.ua-led,.ua-bub,.ua-gulp{transform-box:fill-box;transform-origin:50% 50%}
+.ua-hands{position:absolute;inset:0;opacity:0}
+.ua-hands:before,.ua-hands:after{content:'';position:absolute;bottom:-44px;width:190px;height:155px;
+  border-radius:46% 46% 0 0;background:linear-gradient(180deg,#3a3226,#18140d);
+  box-shadow:inset 0 8px 22px rgba(0,0,0,.65)}
+.ua-hands:before{left:-46px;transform:rotate(22deg)}
+.ua-hands:after{right:-46px;transform:rotate(-22deg)}
+#useanim.on .ua-hands{animation:ua-hands 1.7s ease-in-out both}
+@keyframes ua-hands{0%,100%{opacity:0;transform:translateY(50px)}18%,84%{opacity:.92;transform:translateY(0)}}
+
+/* WATER — lift, tip toward the camera, drain in three gulps, lower away */
+#useanim[data-kind="water"].on .ua-prop{animation:ua-water 1.65s cubic-bezier(.4,0,.3,1) both}
+@keyframes ua-water{
+  0%{opacity:0;transform:translateY(150px) rotate(10deg) scale(.88)}
+  14%{opacity:1;transform:translateY(16px) rotate(-4deg) scale(1)}
+  34%{transform:translateY(-14px) rotate(-38deg) scale(1.03)}
+  38%{transform:translateY(-8px) rotate(-62deg) scale(1.04)}
+  52%{transform:translateY(-10px) rotate(-66deg) scale(1.04)}
+  55%{transform:translateY(-5px) rotate(-62deg) scale(1.04)}
+  74%{transform:translateY(-16px) rotate(-68deg) scale(1.03)}
+  88%{transform:translateY(12px) rotate(-16deg) scale(1)}
+  100%{opacity:0;transform:translateY(150px) rotate(10deg) scale(.88)}}
+#useanim[data-kind="water"].on .ua-liquid{animation:ua-drain 1.65s linear both}
+@keyframes ua-drain{0%,28%{transform:scaleY(1)}40%{transform:scaleY(.84)}56%{transform:scaleY(.5)}72%{transform:scaleY(.17)}86%,100%{transform:scaleY(.05)}}
+#useanim[data-kind="water"].on .ua-bub{animation:ua-bub 1.65s linear both}
+@keyframes ua-bub{0%,30%{opacity:0;transform:translateY(0)}38%{opacity:.85}55%{opacity:.6;transform:translateY(-34px)}70%,100%{opacity:0;transform:translateY(-70px)}}
+#useanim[data-kind="water"].on .ua-gulp{animation:ua-gulp 1.65s linear both}
+@keyframes ua-gulp{0%,30%{transform:translateY(0)}38%,52%{transform:translateY(7px)}60%,72%{transform:translateY(2px)}80%,100%{transform:translateY(0)}}
+
+/* FOOD — can comes up, lid peels back, spoon scoops three times */
+#useanim[data-kind="food"].on .ua-prop{animation:ua-food 1.75s cubic-bezier(.4,0,.3,1) both}
+@keyframes ua-food{
+  0%{opacity:0;transform:translateY(160px) rotate(9deg) scale(.9)}
+  14%{opacity:1;transform:translateY(10px) rotate(-3deg) scale(1)}
+  30%,76%{transform:translateY(0) rotate(-6deg) scale(1)}
+  88%{transform:translateY(16px) rotate(-2deg) scale(1)}
+  100%{opacity:0;transform:translateY(160px) rotate(9deg) scale(.9)}}
+#useanim[data-kind="food"].on .ua-lid{animation:ua-lid 1.75s ease-out both}
+@keyframes ua-lid{0%,16%{transform:translateY(0) rotate(0) scaleY(1)}30%,100%{transform:translate(-34px,-30px) rotate(-58deg) scaleY(.5)}}
+#useanim[data-kind="food"].on .ua-spoon{animation:ua-spoon 1.75s ease-in-out both}
+@keyframes ua-spoon{
+  0%,28%{transform:translate(120px,-110px) rotate(-30deg);opacity:0}
+  34%{opacity:1;transform:translate(20px,-30px) rotate(-14deg)}
+  44%{transform:translate(-4px,10px) rotate(4deg)}
+  54%{transform:translate(-70px,-88px) rotate(-24deg)}
+  62%{transform:translate(20px,-30px) rotate(-14deg)}
+  70%{transform:translate(-4px,10px) rotate(4deg)}
+  78%{transform:translate(-70px,-88px) rotate(-24deg)}
+  86%,100%{opacity:0;transform:translate(120px,-110px) rotate(-30deg)}}
+#useanim[data-kind="food"].on .ua-fill{animation:ua-fill 1.75s linear both}
+@keyframes ua-fill{0%,34%{transform:scaleY(1)}56%{transform:scaleY(.55)}82%,100%{transform:scaleY(.12)}}
+
+/* BATTERY — cell slides into the torch, contacts spark, the beam flares */
+#useanim[data-kind="battery"].on .ua-prop{animation:ua-bat 1.55s cubic-bezier(.4,0,.3,1) both}
+@keyframes ua-bat{
+  0%{opacity:0;transform:translateY(140px) rotate(12deg) scale(.9)}
+  16%{opacity:1;transform:translateY(14px) rotate(-4deg) scale(1)}
+  56%{transform:translateY(0) rotate(-8deg) scale(1.02)}
+  88%{transform:translateY(12px) rotate(-2deg) scale(1)}
+  100%{opacity:0;transform:translateY(140px) rotate(12deg) scale(.9)}}
+#useanim[data-kind="battery"].on .ua-cell{animation:ua-cell 1.55s ease-in-out both}
+@keyframes ua-cell{0%,20%{transform:translateX(96px)}52%,88%{transform:translateX(0)}100%{transform:translateX(96px)}}
+#useanim[data-kind="battery"].on .ua-spark{animation:ua-spark 1.55s linear both}
+@keyframes ua-spark{0%,48%{opacity:0}52%{opacity:1}56%{opacity:.1}60%{opacity:1}64%{opacity:.15}68%{opacity:.85}74%,100%{opacity:0}}
+#useanim[data-kind="battery"].on .ua-led{animation:ua-led 1.55s linear both}
+@keyframes ua-led{0%,54%{opacity:.12}62%,100%{opacity:1}}
+
+.ua-hud{position:absolute;left:50%;bottom:7%;transform:translateX(-50%);width:min(420px,86vw);text-align:center}
+.ua-title{font-size:13px;letter-spacing:6px;color:#f0e2b0;text-shadow:0 0 22px rgba(216,194,124,.65)}
+.ua-bar{margin:12px auto 0;width:100%;height:3px;background:rgba(216,194,124,.16);overflow:hidden}
+.ua-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#8a6a30,#e8c47f);
+  box-shadow:0 0 14px rgba(232,196,127,.8)}
+.ua-sub{margin-top:10px;font-size:10px;letter-spacing:3px;color:#a89b70}
+.ua-gain{position:absolute;left:50%;top:36%;transform:translateX(-50%);font-size:22px;
+  letter-spacing:4px;color:#e8c47f;text-shadow:0 0 26px rgba(232,196,127,.9);opacity:0}
+#useanim.on .ua-gain{animation:ua-gain 1.7s ease-out both}
+@keyframes ua-gain{
+  0%,38%{opacity:0;transform:translate(-50%,18px) scale(.8)}
+  50%{opacity:1;transform:translate(-50%,-6px) scale(1.08)}
+  76%{opacity:1;transform:translate(-50%,-24px) scale(1)}
+  100%{opacity:0;transform:translate(-50%,-58px) scale(1)}}
+
 /* ---------- screens ---------- */
 .screen{position:fixed;inset:0;z-index:40;display:flex;flex-direction:column;
   align-items:center;justify-content:center;text-align:center;padding:32px;
@@ -512,7 +617,7 @@ body.touch #cross{opacity:.35}
   <div id="danger"></div>
   <div class="netbar" id="netbar"></div>
   <div id="objective">
-    <div id="objlevel">LEVEL 0 · THE LOBBY</div>
+    <div id="objlevel">LEVEL 1 · THE LOBBY</div>
     <span id="objtext">SEARCH THE LOCKERS &nbsp;·&nbsp; FIND <b>3 FUSES</b> &nbsp;·&nbsp; POWER THE DESCENT</span>
     <div id="fuses"><div class="fuse"></div><div class="fuse"></div><div class="fuse"></div></div>
   </div>
@@ -559,6 +664,21 @@ body.touch #cross{opacity:.35}
   </div>
 </div>
 
+<div id="useanim" aria-hidden="true">
+  <div class="ua-vig"></div>
+  <div class="ua-flash"></div>
+  <div class="ua-stage">
+    <div class="ua-hands"></div>
+    <div class="ua-prop" id="ua-prop"></div>
+  </div>
+  <div class="ua-hud">
+    <div class="ua-title" id="ua-title">USING</div>
+    <div class="ua-bar"><i id="ua-bar"></i></div>
+    <div class="ua-sub" id="ua-sub"></div>
+  </div>
+  <div class="ua-gain" id="ua-gain"></div>
+</div>
+
 <div id="pwbox">
   <div class="pwcard" id="pwcard">
     <div class="pwhead">RESTRICTED — OPERATOR ACCESS</div>
@@ -589,9 +709,9 @@ body.touch #cross{opacity:.35}
     <div class="opsbody">
       <div class="opsmap">
         <div class="opstabs">
-          <div class="opstab on" data-lv="0">LEVEL 0 · THE LOBBY</div>
-          <div class="opstab" data-lv="1">LEVEL 1 · WAREHOUSE</div>
-          <div class="opstab" data-lv="2">LEVEL 2 · PIPE DREAMS</div>
+          <div class="opstab on" data-lv="0">LEVEL 1 · THE LOBBY</div>
+          <div class="opstab" data-lv="1">LEVEL 2 · THE BLOCK</div>
+          <div class="opstab" data-lv="2">LEVEL 3 · THE WORKS</div>
         </div>
         <canvas id="opscanvas"></canvas>
       </div>
@@ -605,19 +725,19 @@ body.touch #cross{opacity:.35}
     <div class="oselhead">SELECT SURVEILLANCE MAP<span class="x" id="opselclose">CANCEL</span></div>
     <div class="oselgrid">
       <div class="oselcard" data-lv="0">
-        <div class="oselname">LEVEL 0</div>
+        <div class="oselname">LEVEL 1</div>
         <div class="oselsub">THE LOBBY</div>
-        <div class="oselmeta">ENDLESS YELLOW HALLS<br>LIVE FEED AVAILABLE</div>
+        <div class="oselmeta">ENDLESS YELLOW HALLS<br>CLASSIC MAZE · LIVE FEED</div>
       </div>
       <div class="oselcard" data-lv="1">
-        <div class="oselname">LEVEL 1</div>
-        <div class="oselsub">WAREHOUSE</div>
-        <div class="oselmeta">CONCRETE &amp; DAMP CRATES<br>ARCHIVE RELAY ONLY</div>
+        <div class="oselname">LEVEL 2</div>
+        <div class="oselsub">THE BLOCK</div>
+        <div class="oselmeta">HOSPITAL · PRECINCT · SHOPS<br>WALK-IN DOORS · ARCHIVE RELAY</div>
       </div>
       <div class="oselcard" data-lv="2">
-        <div class="oselname">LEVEL 2</div>
-        <div class="oselsub">PIPE DREAMS</div>
-        <div class="oselmeta">STEAM &amp; NARROW SERVICE<br>ARCHIVE RELAY ONLY</div>
+        <div class="oselname">LEVEL 3</div>
+        <div class="oselsub">THE WORKS</div>
+        <div class="oselmeta">TWO STOREYS · CATWALKS<br>SHIFT LOGS · ARCHIVE RELAY</div>
       </div>
     </div>
     <div class="oselnote">PICK A MAP TO SURVEY — THEN <b>DEPLOY</b> FROM THE CONSOLE TO PLAY IT<br>OPERATOR ACCESS IS LOGGED · THE EXIT DOES NOT OPEN WITHOUT 3 FUSES</div>
@@ -683,13 +803,15 @@ body.touch #cross{opacity:.35}
 </div>
 
 <div class="screen" id="title">
-  <div class="ghost" style="top:26px;left:28px">LEVEL 0</div>
+  <div class="ghost" style="top:26px;left:28px">LEVEL 1</div>
   <div class="ghost" style="bottom:26px;right:28px">NO CLIPPING OUT</div>
   <h1>THE BACKROOMS</h1>
   <div class="sub">YOU NO-CLIPPED OUT OF REALITY</div>
   <div class="rule"></div>
   <p class="desc">Three floors down. Three gates, three fuses each.<br>
-  Wet asphalt. Broken windows. A sky that never quite dawns.<br>
+  Yellow halls, then a downtown that never got a morning —<br>
+  the hospital still has its lights on, and the doors open.<br>
+  Below it, two storeys of machinery that nobody signed off.<br>
   You are not alone in here.</p>
   <div class="diffs" id="diffs">
     <button class="diff" data-d="0">CALM<small>FEWER OF THEM</small></button>
@@ -733,9 +855,9 @@ body.touch #cross{opacity:.35}
       <input class="netin" id="netname" maxlength="12" placeholder="WANDERER" autocomplete="off">
       <div class="lh">HOST A ROOM</div>
       <div class="diffrow" id="netlv">
-        <button class="diff on" data-lv="0">BLOCK</button>
-        <button class="diff" data-lv="1">YARD</button>
-        <button class="diff" data-lv="2">UNDERPASS</button>
+        <button class="diff on" data-lv="0">LOBBY</button>
+        <button class="diff" data-lv="1">BLOCK</button>
+        <button class="diff" data-lv="2">WORKS</button>
       </div>
       <button class="btn sm" id="hostbtn" style="width:100%">HOST</button>
       <div class="lh">JOIN WITH A CODE</div>
@@ -844,46 +966,85 @@ function reportStoreState(){
 /* ══════════════════════════════════════════════════════════════
    LEVELS — three floors, each with its own palette, roster and bed
    ══════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   LEVELS — three floors, three completely different kinds of space.
+   Floor 1 is the old maze, floor 2 is a downtown you can walk into,
+   floor 3 is a two-storey factory. `mode` picks the generator, the
+   collision rule and the renderer each floor uses.
+   ══════════════════════════════════════════════════════════════ */
 const LEVELS=[
-  {n:0,name:'THE BLOCK',short:'THE BLOCK',style:'paper',
+  {n:1,name:'THE LOBBY',short:'LOBBY',style:'paper',mode:'maze',
    wall:'#a4924c',grime:'58,44,18',floor:'#6d6039',ceil:'#a9a48d',ceilTint:0x8d897a,
    fog:0x080704,fogD:.050,amb:0x5a5038,ambI:.20,fix:.62,fixOn:.88,exposure:.92,
    step:'carpet',monCount:3,monCap:3,
-   city:{block:3,street:2,shave:.10,alleys:6,roomChance:.40,
+   weights:[['smiler',30],['hound',25],['clump',15],['wretch',20],['moth',10]],
+   desc:'Saturated yellow rooms. Damp carpet. The hum never stops.'},
+
+  {n:2,name:'THE BLOCK',short:'THE BLOCK',style:'paper',mode:'city',
+   wall:'#a4924c',grime:'58,44,18',floor:'#6d6039',ceil:'#a9a48d',ceilTint:0x8d897a,
+   fog:0x080704,fogD:.050,amb:0x5a5038,ambI:.20,fix:.62,fixOn:.88,exposure:.92,
+   step:'carpet',monCount:3,monCap:3,
+   city:{block:3,street:2,shave:.10,alleys:6,roomChance:.62,
      hMin:14,hMax:26,lampGap:2,lampY:5.4,lit:.42,deck:0,fogD:.0135,
      fogCol:0x1b2233,amb:0x46506e,ambI:.95,exposure:1.18,
      ground:'#33373e',facade:'#4b463a',skyTop:'#0e1730',skyMid:'#3d4a72',skyLow:'#96704e',
      skyline:0x0c1018},
    weights:[['smiler',30],['hound',25],['clump',15],['wretch',20],['moth',10]],
-   desc:'A downtown that never got a morning. Broken shopfronts. Lamps that hum.'},
+   desc:'A downtown that never got a morning. A hospital with its lights still on, a precinct with nobody in it, and doors that open.'},
 
-  {n:1,name:'THE YARD',short:'THE YARD',style:'concrete',
-   wall:'#5d6660',grime:'26,34,30',floor:'#3f4441',ceil:'#5f6864',ceilTint:0x7b847f,
-   fog:0x050706,fogD:.052,amb:0x3a4a44,ambI:.18,fix:.50,fixOn:.85,exposure:.88,
-   step:'concrete',monCount:4,monCap:4,
-   city:{block:4,street:2,shave:.15,alleys:5,roomChance:.42,
-     hMin:17,hMax:34,lampGap:3,lampY:6.4,lit:.26,deck:0,fogD:.019,
-     fogCol:0x111a20,amb:0x394a50,ambI:.80,exposure:1.08,
-     ground:'#2a2e2d',facade:'#3c4240',skyTop:'#080d16',skyMid:'#1d2a32',skyLow:'#4e5a4c',
-     skyline:0x080b0c},
-   weights:[['hound',34],['clump',24],['wretch',26],['smiler',10],['moth',6]],
-   desc:'Loading bays and container stacks. Wide streets, long sightlines.'},
-
-  {n:2,name:'THE UNDERPASS',short:'UNDERPASS',style:'metal',
+  {n:3,name:'THE WORKS',short:'THE WORKS',style:'metal',mode:'factory',
    wall:'#4a5563',grime:'20,28,40',floor:'#2e343d',ceil:'#454d59',ceilTint:0x6a7484,
    fog:0x04060a,fogD:.055,amb:0x33405a,ambI:.17,fix:.44,fixOn:.74,exposure:.84,
    step:'metal',monCount:4,monCap:4,
-   city:{block:2,street:3,shave:.05,alleys:4,roomChance:.25,
-     hMin:8.6,hMax:9.2,lampGap:3,lampY:4.6,lit:.12,deck:8.2,fogD:.030,
-     fogCol:0x0d131c,amb:0x36465e,ambI:.55,exposure:1.00,
-     ground:'#262b32',facade:'#3a4048',skyTop:'#060a12',skyMid:'#111a26',skyLow:'#202a36',
-     skyline:0x05080c},
+   city:{block:2,street:4,shave:.04,alleys:3,roomChance:.30,
+     hMin:6,hMax:9,lampGap:3,lampY:6.6,lit:.22,deck:0,fogD:.024,
+     fogCol:0x10171a,amb:0x46545a,ambI:.82,exposure:1.02,
+     ground:'#2b3031',facade:'#424a49',skyTop:'#070b0d',skyMid:'#182226',skyLow:'#303a36',
+     skyline:0x090c0d},
    weights:[['moth',26],['wretch',30],['hound',22],['clump',12],['smiler',10]],
-   desc:'Concrete pillars under a road that never ends. Sodium light and drip.'}
+   desc:'Two storeys of stopped machinery. Catwalks over the line, pressure valves in the dark, and a shift log nobody signed off.'}
 ];
 const LAST_LEVEL=LEVELS.length-1;
 let level=0;
 const LV=()=>LEVELS[level]||LEVELS[0];
+const levelMode=lv=>(LEVELS[lv]||LEVELS[0]).mode;
+/* the generator, BFS and collision all read this — it describes whichever
+   layout is currently loaded, not merely which level number we are on */
+let navMode='maze';
+const DECK_H=4.2;
+let deckY=null;
+/* a tiny integer hash: furniture, signs and loot must be identical on the
+   host and on every client without shipping a seed over the wire */
+function hash01(a,b,c){
+  let h=(Math.imul(a+101,374761393)+Math.imul(b+313,668265263)+Math.imul(c+17,2246822519))|0;
+  h=Math.imul(h^(h>>>13),1274126177);
+  return ((h^(h>>>16))>>>0)/4294967296;
+}
+const CITY_THEMES=[
+  {id:'hospital', name:'MERCY GENERAL',   tag:'EMERGENCY', col:0x8fd8c0, loot:'water',   set:['bed','cab','chair','trolley']},
+  {id:'police',   name:'PRECINCT 14',     tag:'POLICE',    col:0x6aa8e8, loot:'ammo',    set:['desk','cab','chair','bars']},
+  {id:'diner',    name:'NIGHT OWL DINER', tag:'OPEN 24H',  col:0xe8925a, loot:'food',    set:['counter','stool','table','chair']},
+  {id:'grocery',  name:'CORNER MARKET',   tag:'GROCERY',   col:0x9ac45a, loot:'food',    set:['shelf','crate','counter','boxes']},
+  {id:'pharmacy', name:'VALE PHARMACY',   tag:'RX',        col:0x7fe0a0, loot:'water',   set:['shelf','cab','counter','boxes']},
+  {id:'office',   name:'CITY RECORDS',    tag:'OFFICE',    col:0xc4b27c, loot:'battery', set:['desk','cab','chair','boxes']},
+  {id:'bank',     name:'FIRST & LAST BANK',tag:'BANK',     col:0xd8b45c, loot:'note',    set:['counter','cab','desk','chair']},
+  {id:'flats',    name:'THE RITZ FLATS',  tag:'LOBBY',     col:0xb08c9c, loot:'note',    set:['bed','chair','table','cab']}
+];
+const themeById=id=>id==='control'?CONTROL_THEME:(CITY_THEMES.find(t=>t.id===id)||CITY_THEMES[0]);
+const CONTROL_THEME={id:'control',name:'LINE 2 CONTROL',tag:'AUTHORISED ONLY',
+  col:0xe0a040,loot:'battery',set:['console','cab','boxes','pipes2']};
+function roomTheme(bi,bj,lv){
+  if(levelMode(lv)==='factory')return 'control';
+  /* A cycle over the block grid rather than a hash. The old hash clustered
+     on two or three values for small integer coordinates, so whole building
+     types (the precinct especially) could be absent from an entire city.
+     With >=8 blocks every theme appears, and the first two are always the
+     hospital and the precinct. Pure function of (bi,bj,lv), so host and
+     late-joining clients agree without shipping any seed. */
+  const C=LEVELS[lv].city, cols=Math.ceil(GX/(C.block+C.street));
+  const idx=((bi+bj*cols)%CITY_THEMES.length+CITY_THEMES.length)%CITY_THEMES.length;
+  return CITY_THEMES[idx].id;
+}
 
 /* ══════════════════════════════════════════════════════════════
    AUDIO — fully procedural (no assets)
@@ -1105,6 +1266,64 @@ const AU={
     o.frequency.setValueAtTime(760,t);o.frequency.exponentialRampToValueAtTime(1450,t+.1);
     const g=c.createGain();this.env(g,t,.005,.14,.13);
     o.connect(g);g.connect(this.master);o.start(t);o.stop(t+.2);
+  },
+  /* ---- consumables: one small procedural cue per animation beat ---- */
+  cap(){
+    if(!this.ready)return;const c=this.ctx,t=c.currentTime;
+    const o=c.createOscillator();o.type='triangle';
+    o.frequency.setValueAtTime(420,t);o.frequency.exponentialRampToValueAtTime(190,t+.09);
+    const g=c.createGain();this.env(g,t,.002,.1,.16);
+    o.connect(g);g.connect(this.master);o.start(t);o.stop(t+.14);
+  },
+  gulp(){
+    if(!this.ready)return;const c=this.ctx,t=c.currentTime;
+    const s=this.noiseSrc();
+    const f=c.createBiquadFilter();f.type='lowpass';f.frequency.value=680;
+    const g=c.createGain();this.env(g,t,.02,.16,.19);
+    s.connect(f);f.connect(g);g.connect(this.master);s.start(t);s.stop(t+.22);
+    const o=c.createOscillator();o.type='sine';
+    o.frequency.setValueAtTime(260,t);o.frequency.exponentialRampToValueAtTime(120,t+.18);
+    const og=c.createGain();this.env(og,t,.01,.18,.10);
+    o.connect(og);og.connect(this.master);o.start(t);o.stop(t+.24);
+  },
+  canOpen(){
+    if(!this.ready)return;const c=this.ctx,t=c.currentTime;
+    const s=this.noiseSrc();
+    const f=c.createBiquadFilter();f.type='bandpass';
+    f.frequency.setValueAtTime(1800,t);f.frequency.exponentialRampToValueAtTime(3400,t+.28);f.Q.value=4;
+    const g=c.createGain();this.env(g,t,.01,.32,.14);
+    s.connect(f);f.connect(g);g.connect(this.master);s.start(t);s.stop(t+.4);
+  },
+  chew(){
+    if(!this.ready)return;const c=this.ctx,t=c.currentTime;
+    const s=this.noiseSrc();
+    const f=c.createBiquadFilter();f.type='bandpass';f.frequency.value=1050;f.Q.value=2.2;
+    const g=c.createGain();this.env(g,t,.015,.13,.15);
+    s.connect(f);f.connect(g);g.connect(this.master);s.start(t);s.stop(t+.2);
+    const o=c.createOscillator();o.type='triangle';o.frequency.setValueAtTime(150,t);
+    o.frequency.exponentialRampToValueAtTime(85,t+.12);
+    const og=c.createGain();this.env(og,t,.005,.12,.08);
+    o.connect(og);og.connect(this.master);o.start(t);o.stop(t+.18);
+  },
+  latch(){
+    if(!this.ready)return;const c=this.ctx,t=c.currentTime;
+    const o=c.createOscillator();o.type='square';o.frequency.value=1100;
+    const g=c.createGain();this.env(g,t,.001,.05,.09);
+    o.connect(g);g.connect(this.master);o.start(t);o.stop(t+.07);
+  },
+  cellSpark(){
+    if(!this.ready)return;const c=this.ctx,t=c.currentTime;
+    const s=this.noiseSrc();
+    const f=c.createBiquadFilter();f.type='highpass';f.frequency.value=3200;
+    const g=c.createGain();this.env(g,t,.001,.14,.13);
+    s.connect(f);f.connect(g);g.connect(this.master);s.start(t);s.stop(t+.2);
+  },
+  torchUp(){
+    if(!this.ready)return;const c=this.ctx,t=c.currentTime;
+    const o=c.createOscillator();o.type='sine';
+    o.frequency.setValueAtTime(180,t);o.frequency.exponentialRampToValueAtTime(720,t+.3);
+    const g=c.createGain();this.env(g,t,.02,.34,.13);
+    o.connect(g);g.connect(this.master);o.start(t);o.stop(t+.4);
   },
   chest(){
     if(!this.ready)return;const c=this.ctx,t=c.currentTime;
@@ -1543,6 +1762,8 @@ const ck=(i,j)=>inCity(i,j)?cellKind[i+j*GX]:CT_BLOCK;
 function generateCity(lv){
   const th=LEVELS[lv]||LEVELS[0];
   const C=th.city;
+  navMode=levelMode(lv)==='factory'?'factory':'city';
+  deckY=null;
   cellKind=new Int8Array(GX*GZ);
   cellTop=new Float32Array(GX*GZ);
   rooms=[];winCols=[];
@@ -1595,7 +1816,24 @@ function generateCity(lv){
     if(!dirs.length)continue;                       // sealed cells stay solid
     cellKind[i+j*GX]=CT_ROOM;
     cellTop[i+j*GX]=heights.get(Math.floor(i/P)+','+Math.floor(j/P))||rand(C.hMin,C.hMax);
-    rooms.push({i,j,x:cx(i),z:cz(j),dirs,walls});
+    /* one street-facing side is a walk-in door; the rest stay broken
+       windows you have to vault. A few one-sided cells keep no door at
+       all (-1), so the window-vault is still part of the district. */
+    let door=0;
+    if(dirs.length===1)door=hash01(i,j,7)<.32?-1:0;
+    else door=Math.min(dirs.length-1,Math.floor(hash01(i,j,7)*dirs.length));
+    const theme=roomTheme(Math.floor(i/P),Math.floor(j/P),lv);
+    rooms.push({i,j,x:cx(i),z:cz(j),dirs,walls,door,theme});
+  }
+
+  /* Safety net: the random room draw can wipe out a whole block. Stamp the
+     two landmark buildings onto existing rooms if they did not survive, so
+     a district always has somewhere to find water and somewhere to find ammo. */
+  const CIVIC=['hospital','police'];
+  for(const id of CIVIC){
+    if(navMode==='factory'||rooms.some(r=>r.theme===id))continue;
+    const r=rooms.find((q,k)=>k%3===0&&!CIVIC.includes(q.theme));
+    if(r)r.theme=id;
   }
 
   // ---- collision for the windows ----
@@ -1606,9 +1844,88 @@ function generateCity(lv){
   hWall=Array.from({length:GX},()=>new Array(GZ+1).fill(0));
 }
 
+/* ---------- floor 1: the original yellow-wall maze ---------- */
+function generateMazeClassic(){
+  navMode='maze';deckY=null;
+  vWall=Array.from({length:GX+1},()=>new Array(GZ).fill(1));
+  hWall=Array.from({length:GX},()=>new Array(GZ+1).fill(1));
+  const vis=Array.from({length:GX},()=>new Array(GZ).fill(false));
+  const stack=[[randInt(0,GX-1),randInt(0,GZ-1)]];
+  vis[stack[0][0]][stack[0][1]]=true;
+  while(stack.length){
+    const[i,j]=stack[stack.length-1];
+    const nb=[];
+    if(i>0&&!vis[i-1][j])nb.push([i-1,j,'L']);
+    if(i<GX-1&&!vis[i+1][j])nb.push([i+1,j,'R']);
+    if(j>0&&!vis[i][j-1])nb.push([i,j-1,'U']);
+    if(j<GZ-1&&!vis[i][j+1])nb.push([i,j+1,'D']);
+    if(!nb.length){stack.pop();continue;}
+    const[ni,nj,dir]=pick(nb);
+    if(dir==='L')vWall[i][j]=0;
+    if(dir==='R')vWall[i+1][j]=0;
+    if(dir==='U')hWall[i][j]=0;
+    if(dir==='D')hWall[i][j+1]=0;
+    vis[ni][nj]=true;stack.push([ni,nj]);
+  }
+  for(let i=1;i<GX;i++)for(let j=0;j<GZ;j++)if(Math.random()<.15)vWall[i][j]=0;
+  for(let i=0;i<GX;i++)for(let j=1;j<GZ;j++)if(Math.random()<.15)hWall[i][j]=0;
+  for(let k=0;k<6;k++){
+    const i=randInt(1,GX-4),j=randInt(1,GZ-4);
+    const w=randInt(2,3),h=2;
+    for(let a=i;a<i+w;a++)for(let b=j;b<j+h;b++){
+      if(a>i)vWall[a][b]=0;
+      if(b>j)hWall[a][b]=0;
+    }
+  }
+  // the city arrays stay inert: all street means ck() never blocks a wall
+  cellKind=new Int8Array(GX*GZ);
+  cellTop=new Float32Array(GX*GZ);
+  rooms=[];winCols=[];
+}
+
+/* ---------- floor 3: the factory's second storey ---------- */
+function generateFactory(lv){
+  generateCity(lv);
+  navMode='factory';
+  buildFactoryDecks(null);
+}
+/* The upper floor is a fixed H of catwalks with two stepped ramps. It is
+   derived purely from grid coordinates, so a late joiner rebuilds exactly
+   the same decks from the map without any extra bytes on the wire. */
+function buildFactoryDecks(saved){
+  deckY=new Float32Array(GX*GZ);
+  if(saved&&saved.length===GX*GZ){deckY=Float32Array.from(saved);return;}
+  const set=(i,j,h)=>{if(inCity(i,j))deckY[i+j*GX]=h;};
+  for(let i=2;i<=18;i++)for(const j of[4,5,15,16])set(i,j,DECK_H);
+  for(let j=5;j<=15;j++)for(const i of[10,11])set(i,j,DECK_H);
+  // ramp A climbs from the middle of the hall up to the north catwalk
+  for(let k=1;k<=4;k++)set(3,5+k,DECK_H*(1-k/5));
+  // ramp B climbs from the middle of the hall up to the south catwalk
+  for(let k=1;k<=4;k++)set(17,15-k,DECK_H*(1-k/5));
+}
+/* The surface under the player's feet. A catwalk cell has both a deck
+   above and a floor below; whichever is closer to the current height
+   wins, so you can walk underneath a catwalk and still climb onto it. */
+function groundHeightAt(x,z,curY){
+  if(navMode!=='factory'||!deckY)return 0;
+  const ci=Math.floor((x+HALF_W)/CELL),cj=Math.floor((z+HALF_D)/CELL);
+  if(ci<0||cj<0||ci>=GX||cj>=GZ)return 0;
+  const h=deckY[ci+cj*GX];
+  if(h<=0)return 0;
+  if(h<DECK_H-.01)return h;                    // a stair tread is solid below
+  return curY>DECK_H*.45?DECK_H:0;
+}
+
 function neighbors(i,j){
   const out=[];
-  const ok=(a,b)=>{const k=ck(a,b);return k===CT_STREET;};   // rooms are window-only
+  if(navMode==='maze'){
+    if(i>0&&!vWall[i][j])out.push([i-1,j]);
+    if(i<GX-1&&!vWall[i+1][j])out.push([i+1,j]);
+    if(j>0&&!hWall[i][j])out.push([i,j-1]);
+    if(j<GZ-1&&!hWall[i][j+1])out.push([i,j+1]);
+    return out;
+  }
+  const ok=(a,b)=>{const k=ck(a,b);return k===CT_STREET;};   // rooms are window/door-only
   if(i>0&&ok(i-1,j))out.push([i-1,j]);
   if(i<GX-1&&ok(i+1,j))out.push([i+1,j]);
   if(j>0&&ok(i,j-1))out.push([i,j-1]);
@@ -1644,11 +1961,14 @@ let exitCell=null;
 function buildWinCols(){
   winCols=[];
   for(const r of rooms){
-    for(const d of r.dirs){
+    for(let di=0;di<r.dirs.length;di++){
+      const d=r.dirs[di],isDoor=(r.door===di);
       const ex=r.x+d.nx*CELL/2, ez=r.z+d.nz*CELL/2;
       const ax=d.nx!==0?'x':'z';                   // which way the facade faces
       const pier=(CELL-WIN_OPEN)/2;
-      winCols.push({x:ex,z:ez,
+      // a door has no sill: you walk straight in. A broken window keeps
+      // its low sill, so it still takes a jump to get through.
+      if(!isDoor)winCols.push({x:ex,z:ez,
         hx:ax==='x'?WIN_T/2:WIN_OPEN/2, hz:ax==='x'?WIN_OPEN/2:WIN_T/2, low:true});
       for(const s of[-1,1]){
         winCols.push({x:ex+(ax==='x'?0:s*(CELL/2-pier/2)),
@@ -1666,13 +1986,26 @@ function buildWinCols(){
 }
 
 function restoreMaze(mz){
+  if(!mz||!mz.v||!mz.h)return false;
   vWall=mz.v.map(r=>typeof r==='string'?r.split('').map(Number):r.slice());
   hWall=mz.h.map(r=>typeof r==='string'?r.split('').map(Number):r.slice());
-  if(!mz.kinds)return false;                 // an older save: regenerate instead
+  // old saves carry no mode: city-era ones have `kinds`, maze-era ones do not
+  const mode=mz.mode||((mz.kinds&&mz.kinds.length)?'city':'maze');
+  navMode=mode;
+  if(mode==='maze'){
+    cellKind=new Int8Array(GX*GZ);
+    cellTop=new Float32Array(GX*GZ);
+    rooms=[];winCols=[];deckY=null;
+    return true;
+  }
+  if(!mz.kinds||mz.kinds.length!==GX*GZ)return false;
   cellKind=Int8Array.from(mz.kinds);
   cellTop=Float32Array.from(mz.tops||new Array(GX*GZ).fill(20));
-  rooms=(mz.rooms||[]).map(r=>({i:r.i,j:r.j,x:cx(r.i),z:cz(r.j),dirs:r.dirs,walls:r.walls||[]}));
+  rooms=(mz.rooms||[]).map(r=>({i:r.i,j:r.j,x:cx(r.i),z:cz(r.j),
+    dirs:r.dirs,walls:r.walls||[],door:r.door==null?-1:r.door,theme:r.theme||null}));
   buildWinCols();
+  if(mode==='factory')buildFactoryDecks(mz.deck||null);
+  else deckY=null;
   return true;
 }
 // saved mazes come back as strings; live ones as number arrays
@@ -1685,13 +2018,16 @@ function normalizeMaze(M){
     cell:M.cell||M.exitCell||null,
     kinds:M.kinds||null,
     tops:M.tops||null,
-    rooms:M.rooms||null
+    rooms:M.rooms||null,
+    deck:M.deck||null,
+    mode:M.mode||((M.kinds&&M.kinds.length)?'city':'maze')
   };
 }
 
 /* the old code seeds BFS from (1,1); in a city that cell may be solid,
    so every seed goes through here instead */
 function citySeed(){
+  if(navMode==='maze')return[1,1];
   for(let r=0;r<8;r++){
     for(let i=1-r;i<=1+r;i++)for(let j=1-r;j<=1+r;j++){
       if(inCity(i,j)&&ck(i,j)===CT_STREET)return[i,j];
@@ -1721,13 +2057,20 @@ function computeExit(){
 }
 
 function makeMaze(lv){
-  generateCity(lv===undefined?0:lv);
+  const mode=levelMode(lv===undefined?0:lv);
+  if(mode==='maze')generateMazeClassic();
+  else if(mode==='factory')generateFactory(lv===undefined?0:lv);
+  else generateCity(lv===undefined?0:lv);
   const e=computeExit();
   return{
+    mode,
     v:vWall.map(r=>r.slice()),h:hWall.map(r=>r.slice()),
     seg:e.seg,cell:[e.ei,e.ej],
-    kinds:Array.from(cellKind),tops:Array.from(cellTop),
-    rooms:rooms.map(r=>({i:r.i,j:r.j,dirs:r.dirs,walls:r.walls}))
+    kinds:mode==='maze'?null:Array.from(cellKind),
+    tops:mode==='maze'?null:Array.from(cellTop),
+    rooms:mode==='maze'?null:rooms.map(r=>({i:r.i,j:r.j,dirs:r.dirs,
+      walls:r.walls,door:r.door,theme:r.theme})),
+    deck:mode==='factory'&&deckY?Array.from(deckY):null
   };
 }
 function ensureMaze(lv){
@@ -1813,7 +2156,406 @@ function texSky(th){
    Everything solid — mass, facades, sills, decks — goes into one
    instanced box, so a whole district is a handful of draw calls.
    ══════════════════════════════════════════════════════════════ */
-function buildCity(lv,th){
+/* ══════════════════════════════════════════════════════════════
+   FLOOR 1 — the classic maze renderer (yellow paper, damp carpet,
+   ceiling tiles and buzzing fluorescent fittings)
+   ══════════════════════════════════════════════════════════════ */
+function buildMaze(lv,th){
+  const wallMat=new THREE.MeshStandardMaterial({map:texWall(th),roughness:.88,metalness:.03,color:0xffffff});
+  wallSegs=[];
+  for(let i=0;i<=GX;i++)for(let j=0;j<GZ;j++)
+    if(vWall[i][j])wallSegs.push({x:-HALF_W+i*CELL,z:cz(j),axis:'z'});
+  for(let i=0;i<GX;i++)for(let j=0;j<=GZ;j++)
+    if(hWall[i][j])wallSegs.push({x:cx(i),z:-HALF_D+j*CELL,axis:'x'});
+  const geo=new THREE.BoxGeometry(CELL,WALL_H,WALL_T);
+  wallMesh=new THREE.InstancedMesh(geo,wallMat,wallSegs.length);
+  const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),
+        sc=new THREE.Vector3(1,1,1),up=new THREE.Vector3(0,1,0);
+  wallSegs.forEach((sg,i)=>{
+    q.setFromAxisAngle(up,sg.axis==='z'?Math.PI/2:0);
+    m4.compose(new THREE.Vector3(sg.x,WALL_H/2,sg.z),q,sc);
+    wallMesh.setMatrixAt(i,m4);
+  });
+  wallMesh.instanceMatrix.needsUpdate=true;
+  scene.add(wallMesh);levelObjs.push(wallMesh);
+
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(GX*CELL,GZ*CELL),
+    new THREE.MeshStandardMaterial({map:texCarpet(th),roughness:.97,metalness:0}));
+  floor.rotation.x=-Math.PI/2;scene.add(floor);levelObjs.push(floor);
+  const ceil=new THREE.Mesh(new THREE.PlaneGeometry(GX*CELL,GZ*CELL),
+    new THREE.MeshStandardMaterial({map:texCeiling(th),roughness:.95,metalness:0,color:th.ceilTint}));
+  ceil.rotation.x=Math.PI/2;ceil.position.y=WALL_H;scene.add(ceil);levelObjs.push(ceil);
+
+  const baseMat=new THREE.MeshStandardMaterial({color:0x2a2416,roughness:.9});
+  const bgeo=new THREE.BoxGeometry(CELL,.14,.05);
+  const binst=new THREE.InstancedMesh(bgeo,baseMat,wallSegs.length*2);
+  let bi=0;
+  wallSegs.forEach(sg=>{
+    const off=WALL_T/2+.03;
+    for(const sign of[1,-1]){
+      const px=sg.axis==='z'?sg.x+sign*off:sg.x;
+      const pz=sg.axis==='z'?sg.z:sg.z+sign*off;
+      q.setFromAxisAngle(up,sg.axis==='z'?Math.PI/2:0);
+      m4.compose(new THREE.Vector3(px,.07,pz),q,sc);
+      binst.setMatrixAt(bi++,m4);
+    }
+  });
+  binst.count=bi;binst.instanceMatrix.needsUpdate=true;
+  scene.add(binst);levelObjs.push(binst);
+
+  fixtures=[];
+  for(let i=0;i<GX;i++)for(let j=0;j<GZ;j++)if(Math.random()<th.fix)
+    fixtures.push({x:cx(i),z:cz(j),y:WALL_H-.06,on:Math.random()<th.fixOn,
+      bright:rand(.75,1.05),flick:0,flickT:rand(4,40),base:1});
+  const fgeo=new THREE.BoxGeometry(1.25,.06,.3);
+  const fmat=new THREE.MeshBasicMaterial({color:0xffffff});
+  fixtureInst=new THREE.InstancedMesh(fgeo,fmat,fixtures.length);
+  fixtures.forEach((f,i)=>{
+    m4.compose(new THREE.Vector3(f.x,f.y,f.z),new THREE.Quaternion(),sc);
+    fixtureInst.setMatrixAt(i,m4);
+    fixtureInst.setColorAt(i,new THREE.Color(1,.96,.8).multiplyScalar(f.on?f.bright*.9:.05));
+  });
+  fixtureInst.instanceMatrix.needsUpdate=true;
+  if(fixtureInst.instanceColor)fixtureInst.instanceColor.needsUpdate=true;
+  scene.add(fixtureInst);levelObjs.push(fixtureInst);
+
+  for(let k=0;k<8;k++){
+    const l=new THREE.PointLight(0xffe7b4,0,17,1.9);
+    scene.add(l);lightPool.push({light:l,fix:null});
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   INTERIORS — every hollow room belongs to a named building and is
+   dressed with its own furniture. Everything is placed from a hash of
+   the cell coordinates, so host and guests build identical rooms.
+   ══════════════════════════════════════════════════════════════ */
+let factoryAnim=[];
+const signTexCache={};
+function signTex(thm){
+  if(signTexCache[thm.id])return signTexCache[thm.id];
+  const[c,g]=cnv(512,96);
+  const col='#'+new THREE.Color(thm.col).getHexString();
+  g.fillStyle='#0b0d10';g.fillRect(0,0,512,96);
+  g.fillStyle=col;g.fillRect(0,0,512,5);g.fillRect(0,91,512,5);
+  g.strokeStyle=col;g.globalAlpha=.55;g.lineWidth=2;g.strokeRect(6,10,500,76);
+  g.globalAlpha=1;g.textBaseline='middle';
+  g.fillStyle='#f2ead2';g.font='bold 38px monospace';g.fillText(thm.name,18,50);
+  g.fillStyle=col;g.font='16px monospace';g.textAlign='right';g.fillText(thm.tag,494,50);
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
+  signTexCache[thm.id]=t;return t;
+}
+
+function furnishRooms(lv,th){
+  if(navMode==='maze'||!rooms.length)return;
+  const boxes=[],cyls=[];
+  const addBox=(x,y,z,w,h,d,col,ry)=>boxes.push({x,y,z,w,h,d,col,ry:ry||0});
+  const addCyl=(x,y,z,r,h,col)=>cyls.push({x,y,z,r,h,col});
+  const steel=0x6d7478,dark=0x23282a,wood=0x6a4a2c,paper=0xd8d2bc;
+
+  const piece=(kind,px,pz,rot,acc)=>{
+    const T=(lx,lz)=>rot===1?[-lz,lx]:rot===2?[-lx,-lz]:rot===3?[lz,-lx]:[lx,lz];
+    const swap=(rot&1)===1;
+    const B=(lx,ly,lz,w,h,d,col)=>{
+      const[a,b]=T(lx,lz);
+      addBox(px+a,ly,pz+b,swap?d:w,h,swap?w:d,col,rot*Math.PI/2);
+    };
+    const C=(lx,ly,lz,r,h,col)=>{
+      const[a,b]=T(lx,lz);addCyl(px+a,ly,pz+b,r,h,col);
+    };
+    switch(kind){
+      case 'bed':
+        B(0,.46,0,1.7,.16,.78,steel);B(0,.56,0,1.6,.10,.70,0xbfd8cc);
+        B(-.6,.63,0,.34,.08,.52,paper);
+        for(const sx of[-1,1])for(const sz of[-1,1])B(sx*.75,.22,sz*.30,.06,.44,.06,steel);
+        break;
+      case 'cab':
+        B(0,.72,0,.62,1.44,.5,0x8e938d);
+        for(let k=0;k<3;k++)B(0,.32+k*.42,.26,.5,.02,.02,dark);
+        break;
+      case 'chair':
+        B(0,.46,0,.44,.07,.44,wood);B(0,.72,-.20,.44,.48,.06,wood);
+        for(const sx of[-1,1])for(const sz of[-1,1])B(sx*.18,.22,sz*.18,.05,.44,.05,dark);
+        break;
+      case 'desk':
+        B(0,.76,0,1.5,.09,.72,wood);
+        for(const sx of[-1,1])for(const sz of[-1,1])B(sx*.66,.38,sz*.30,.06,.76,.06,dark);
+        B(0,1.04,-.16,.46,.32,.05,dark);B(0,1.04,-.13,.40,.26,.01,0x35505a);
+        break;
+      case 'counter':
+        B(0,.52,0,2.1,1.04,.62,wood);B(0,1.07,0,2.2,.07,.74,acc);
+        B(.6,1.25,0,.34,.3,.28,dark);
+        break;
+      case 'stool':
+        C(0,.58,0,.21,.09,acc);C(0,.30,0,.045,.55,steel);C(0,.04,0,.20,.05,dark);
+        break;
+      case 'table':
+        B(0,.72,0,1.15,.08,1.15,wood);
+        for(const sx of[-1,1])for(const sz of[-1,1])B(sx*.5,.36,sz*.5,.06,.72,.06,dark);
+        C(0,.79,0,.16,.02,paper);
+        break;
+      case 'shelf':
+        B(0,1.0,-.16,1.5,2.0,.08,steel);
+        for(let k=0;k<4;k++)B(0,.25+k*.5,0,1.5,.05,.42,0x8d9188);
+        for(let k=0;k<5;k++)B(-.55+(k%3)*.45,.55+Math.floor(k/3)*.5,0,.22,.28,.24,acc);
+        break;
+      case 'crate':
+        B(0,.30,0,.62,.60,.62,0x9a7b4e);B(0,.76,0,.50,.34,.50,0x8a6c44);
+        break;
+      case 'boxes':
+        for(let k=0;k<3;k++)B((k-1)*.34,.16+(k===1?.32:0),(k%2)*.22,.30,.32,.30,paper);
+        break;
+      case 'trolley':
+        B(0,.48,0,.8,.09,.5,0xd8ded6);
+        for(const sx of[-1,1])for(const sz of[-1,1])C(sx*.34,.12,sz*.20,.07,.05,dark);
+        C(-.3,1.10,0,.025,1.4,steel);B(-.3,1.76,0,.15,.28,.09,0x9fd8e8);
+        break;
+      case 'bars':
+        B(0,2.15,0,2.0,.08,.08,steel);B(0,.10,0,2.0,.08,.08,steel);
+        for(let k=0;k<6;k++)C(-.85+k*.34,1.12,0,.035,2.05,steel);
+        break;
+      case 'console':
+        B(0,.75,0,1.8,.1,.7,steel);B(0,.95,-.22,1.7,.5,.12,dark);
+        for(let k=0;k<4;k++)B(-.6+k*.4,.96,-.15,.28,.28,.02,k%2?0xe0a040:0x4ad0a0);
+        for(let k=0;k<3;k++)C(-.5+k*.5,.86,.22,.035,.16,acc);
+        break;
+      case 'pipes2':
+        B(0,2.35,0,1.8,.12,.12,steel);
+        for(let k=0;k<3;k++)C(-.5+k*.5,1.6,0,.07,1.5,steel);
+        break;
+    }
+  };
+
+  for(const r of rooms){
+    const thm=themeById(r.theme),acc=thm.col;
+    const door=r.door>=0?r.dirs[r.door]:null;
+    const slots=[[0,-1.55,0],[1.55,0,1],[-1.55,0,3],[0,1.55,2],
+                 [1.15,1.15,0],[-1.15,-1.15,2]];
+    for(let k=0;k<slots.length;k++){
+      const[sx,sz,rot]=slots[k];
+      if(door&&sx*door.nx+sz*door.nz>.9)continue;   // never block the way in
+      if(hash01(r.i,r.j,90+k)<.18)continue;          // some rooms were stripped
+      const kind=thm.set[(k+Math.floor(hash01(r.i,r.j,41)*thm.set.length))%thm.set.length];
+      const jx=(hash01(r.i,r.j,100+k)-.5)*.22,jz=(hash01(r.i,r.j,110+k)-.5)*.22;
+      /* the spawn is already known — keep a clear ring around it */
+      if(Math.hypot(r.x+sx+jx-player.pos.x,r.z+sz+jz-player.pos.z)<5.6)continue;
+      piece(kind,r.x+sx+jx,r.z+sz+jz,rot,acc);
+      const small=(kind==='chair'||kind==='stool'||kind==='boxes'||kind==='crate');
+      collidersExtra.push({x:r.x+sx+jx,z:r.z+sz+jz,hx:.42,hz:.42,
+        low:small,prop:'furniture'});
+    }
+    if(r.door>=0){
+      const d=r.dirs[r.door],off=CELL/2+WIN_T/2+.06;
+      const ex=r.x+d.nx*off,ez=r.z+d.nz*off;
+      const ry=d.nx?(d.nx>0?Math.PI/2:-Math.PI/2):(d.nz>0?0:Math.PI);
+      const smat=new THREE.MeshBasicMaterial({map:signTex(thm),transparent:true,
+        side:THREE.DoubleSide,depthWrite:false});
+      const sign=new THREE.Mesh(new THREE.PlaneGeometry(3.05,.58),smat);
+      sign.position.set(ex,2.80,ez);sign.rotation.y=ry;
+      scene.add(sign);levelObjs.push(sign);
+      const aw=new THREE.Mesh(new THREE.BoxGeometry(3.3,.11,.16),
+        new THREE.MeshStandardMaterial({color:thm.col,roughness:.8}));
+      aw.position.set(ex,2.42,ez);aw.rotation.y=ry;
+      scene.add(aw);levelObjs.push(aw);
+      // a warm bulb just inside the doorway, so the interior reads at all
+      fixtures.push({x:r.x-d.nx*.7,z:r.z-d.nz*.7,y:2.6,on:true,
+        bright:rand(.55,.8),flick:0,flickT:rand(8,30),base:.65,room:true});
+    }
+  }
+
+  const unit=new THREE.BoxGeometry(1,1,1);
+  const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),
+        pv=new THREE.Vector3(),sv=new THREE.Vector3(),up=new THREE.Vector3(0,1,0);
+  if(boxes.length){
+    const mi=new THREE.InstancedMesh(unit,
+      new THREE.MeshStandardMaterial({color:0xffffff,roughness:.82,metalness:.12}),boxes.length);
+    boxes.forEach((b,i)=>{
+      q.setFromAxisAngle(up,b.ry);
+      m4.compose(pv.set(b.x,b.y,b.z),q,sv.set(b.w,b.h,b.d));
+      mi.setMatrixAt(i,m4);mi.setColorAt(i,new THREE.Color(b.col));
+    });
+    mi.instanceMatrix.needsUpdate=true;
+    if(mi.instanceColor)mi.instanceColor.needsUpdate=true;
+    scene.add(mi);levelObjs.push(mi);
+  }
+  if(cyls.length){
+    const ci=new THREE.InstancedMesh(new THREE.CylinderGeometry(1,1,1,8),
+      new THREE.MeshStandardMaterial({color:0xffffff,roughness:.7,metalness:.25}),cyls.length);
+    q.identity();
+    cyls.forEach((b,i)=>{
+      m4.compose(pv.set(b.x,b.y,b.z),q,sv.set(b.r,b.h,b.r));
+      ci.setMatrixAt(i,m4);ci.setColorAt(i,new THREE.Color(b.col));
+    });
+    ci.instanceMatrix.needsUpdate=true;
+    if(ci.instanceColor)ci.instanceColor.needsUpdate=true;
+    scene.add(ci);levelObjs.push(ci);
+  }
+}
+
+/* a little reward for getting through the door: one supply in some rooms */
+function roomLoot(){
+  if(navMode==='maze'||!rooms.length)return;
+  for(const r of rooms){
+    if(hash01(r.i,r.j,53)>.62)continue;
+    let type=themeById(r.theme).loot;
+    if(type==='note')type=hash01(r.i,r.j,71)<.5?'battery':'food';
+    const ox=r.x+(hash01(r.i,r.j,59)-.5)*1.1;
+    const oz=r.z+(hash01(r.i,r.j,61)-.5)*1.1;
+    spawnItem(type,ox,oz);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   FLOOR 3 — roof, catwalks, stair ramps and moving machinery
+   ══════════════════════════════════════════════════════════════ */
+function texFactoryRoof(){
+  const S=256,[c,g]=cnv(S,S);
+  g.fillStyle='#20262a';g.fillRect(0,0,S,S);
+  g.strokeStyle='#3b4549';g.lineWidth=8;
+  for(let k=0;k<=S;k+=64){
+    g.beginPath();g.moveTo(k,0);g.lineTo(k,S);g.stroke();
+    g.beginPath();g.moveTo(0,k);g.lineTo(S,k);g.stroke();
+  }
+  for(let k=0;k<420;k++){
+    g.fillStyle=`rgba(140,78,34,${rand(.02,.12)})`;
+    g.fillRect(rand(0,S),rand(0,S),rand(2,9),1);
+  }
+  const t=new THREE.CanvasTexture(c);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(18,18);
+  t.colorSpace=THREE.SRGBColorSpace;return t;
+}
+function instBoxes(list,sceneAdd){
+  if(!list.length)return;
+  const mi=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),
+    new THREE.MeshStandardMaterial({color:0xffffff,roughness:.78,metalness:.28}),list.length);
+  const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),
+        pv=new THREE.Vector3(),sv=new THREE.Vector3();
+  list.forEach((b,i)=>{
+    q.identity();m4.compose(pv.set(b.x,b.y,b.z),q,sv.set(b.w,b.h,b.d));
+    mi.setMatrixAt(i,m4);mi.setColorAt(i,new THREE.Color(b.col));
+  });
+  mi.instanceMatrix.needsUpdate=true;
+  if(mi.instanceColor)mi.instanceColor.needsUpdate=true;
+  scene.add(mi);levelObjs.push(mi);
+}
+function buildFactoryExtras(th){
+  const roof=new THREE.Mesh(
+    new THREE.PlaneGeometry(GX*CELL+60,GZ*CELL+60),
+    new THREE.MeshStandardMaterial({map:texFactoryRoof(),side:THREE.DoubleSide,
+      roughness:.95,color:0x8c9490}));
+  roof.rotation.x=Math.PI/2;roof.position.y=9.6;
+  scene.add(roof);levelObjs.push(roof);
+
+  const strip=new THREE.MeshBasicMaterial({color:0x9fc2c0});
+  for(let j=3;j<GZ;j+=5){
+    const st=new THREE.Mesh(new THREE.BoxGeometry(GX*CELL,.08,.28),strip);
+    st.position.set(0,9.15,cz(j));scene.add(st);levelObjs.push(st);
+  }
+  for(let k=0;k<4;k++){
+    const l=new THREE.PointLight(0x9fc4c8,6,36,1.5);
+    l.position.set(cx(3+k*5),8.4,cz(3+k*4));scene.add(l);levelObjs.push(l);
+  }
+
+  // ---- catwalk decks, stair treads, legs and yellow railings ----
+  const parts=[];
+  const B=(x,y,z,w,h,d,col)=>parts.push({x,y,z,w,h,d,col});
+  for(let i=0;i<GX;i++)for(let j=0;j<GZ;j++){
+    const h=deckY[i+j*GX];if(h<=0)continue;
+    const x=cx(i),z=cz(j);
+    if(h>=DECK_H-.01){
+      B(x,DECK_H-.11,z,CELL,.22,CELL,0x51595a);
+      B(x,DECK_H+.01,z,CELL,.03,CELL,0x6b6a44);      // grated tread
+      for(const sx of[-1,1])for(const sz of[-1,1])
+        B(x+sx*1.72,DECK_H/2,z+sz*1.72,.15,DECK_H,.15,0x343a3b);
+      for(const d of[[1,0],[-1,0],[0,1],[0,-1]]){
+        const nb=inCity(i+d[0],j+d[1])?deckY[(i+d[0])+(j+d[1])*GX]:0;
+        if(nb>2.0)continue;                            // a stair joins here
+        B(x+d[0]*1.92,DECK_H+.58,z+d[1]*1.92,
+          d[0]?.08:CELL,1.1,d[0]?CELL:.08,0xc9a23c);
+      }
+    }else{
+      B(x,h/2,z,CELL,h,CELL,0x464d4d);
+      B(x,h+.02,z,CELL,.04,CELL,0x8a7a3a);           // safety stripe
+    }
+  }
+  instBoxes(parts);
+
+  buildFactoryMachines(th);
+}
+
+function buildFactoryMachines(th){
+  const boxes=[],cyls=[];
+  const B=(x,y,z,w,h,d,col)=>boxes.push({x,y,z,w,h,d,col});
+  const C=(x,y,z,r,h,col)=>cyls.push({x,y,z,r,h,col});
+  // overhead pipe runs — high enough to walk and jump under
+  for(let j=2;j<GZ;j+=6){
+    B(0,6.6,cz(j),GX*CELL,.22,.22,0x59615f);
+    B(0,6.2,cz(j)+.9,GX*CELL,.14,.14,0x6a5038);
+    for(let i=2;i<GX;i+=4)B(cx(i),5.4,cz(j),.16,2.4,.16,0x59615f);
+  }
+  for(let i=1;i<GX-1;i++)for(let j=1;j<GZ-1;j++){
+    if(ck(i,j)!==CT_STREET)continue;
+    const dh=deckY[i+j*GX];
+    if(dh>0&&dh<DECK_H)continue;                     // keep the ramps clear
+    if(hash01(i,j,211)<.87)continue;
+    const x=cx(i),z=cz(j);
+    if(Math.hypot(x-player.pos.x,z-player.pos.z)<8)continue;
+    if(exitCell&&Math.hypot(x-cx(exitCell[0]),z-cz(exitCell[1]))<6)continue;
+    const kind=Math.floor(hash01(i,j,223)*4);
+    if(kind===0){                                     // conveyor line
+      B(x,.88,z,3.3,.16,.95,0x3b4245);
+      B(x,.98,z,3.1,.05,.82,0x20262a);
+      for(const sx of[-1,1])B(x+sx*1.5,.45,z,.12,.9,.95,0x555c5c);
+      for(let k=-2;k<=2;k++)B(x+k*.6,1.02,z,.12,.05,.85,0x8a8f88);
+      B(x,1.25,z+.3,.5,.35,.2,0x8a7a3a);
+    }else if(kind===1){                               // pressure tank
+      C(x,1.45,z,.78,2.9,0x59615e);
+      C(x,2.95,z,.8,.12,0x8a9088);
+      B(x,.25,z,1.9,.5,1.9,0x303638);
+      B(x,2.1,z+.7,.5,.45,.1,0xc9a23c);
+    }else if(kind===2){                               // hydraulic press + ram
+      B(x,.4,z,1.6,.8,1.4,0x4a5052);
+      B(x,2.3,z,1.8,.3,1.5,0x5c6365);
+      for(const sx of[-1,1])B(x+sx*.72,1.4,z,.12,2.0,.12,0x6a7273);
+      const ram=new THREE.Mesh(new THREE.BoxGeometry(.9,.6,.9),
+        new THREE.MeshStandardMaterial({color:0xb08038,roughness:.5,metalness:.7}));
+      ram.position.set(x,1.55,z);scene.add(ram);levelObjs.push(ram);
+      factoryAnim.push({t:'ram',mesh:ram,base:1.55,phase:hash01(i,j,233)*TAU});
+    }else{                                            // control cabinet + beacon
+      B(x,.8,z,.8,1.6,.5,0x3a4a48);
+      B(x,1.15,z+.27,.6,.4,.03,0x1a2a2c);
+      const bc=new THREE.Mesh(new THREE.SphereGeometry(.13,10,8),
+        new THREE.MeshBasicMaterial({color:0xff5a2a}));
+      bc.position.set(x,1.76,z);scene.add(bc);levelObjs.push(bc);
+      factoryAnim.push({t:'beacon',mesh:bc,phase:hash01(i,j,239)*TAU});
+    }
+    collidersExtra.push({x,z,hx:.8,hz:.8,prop:'machine'});
+  }
+  instBoxes(boxes);
+  if(cyls.length){
+    const ci=new THREE.InstancedMesh(new THREE.CylinderGeometry(1,1,1,10),
+      new THREE.MeshStandardMaterial({color:0xffffff,roughness:.6,metalness:.4}),cyls.length);
+    const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),
+          pv=new THREE.Vector3(),sv=new THREE.Vector3();
+    cyls.forEach((b,i)=>{
+      m4.compose(pv.set(b.x,b.y,b.z),q,sv.set(b.r,b.h,b.r));
+      ci.setMatrixAt(i,m4);ci.setColorAt(i,new THREE.Color(b.col));
+    });
+    ci.instanceMatrix.needsUpdate=true;
+    if(ci.instanceColor)ci.instanceColor.needsUpdate=true;
+    scene.add(ci);levelObjs.push(ci);
+  }
+}
+function updateFactory(dt){
+  if(navMode!=='factory'||!factoryAnim.length)return;
+  for(const a of factoryAnim){
+    if(a.t==='ram')a.mesh.position.y=a.base-Math.max(0,Math.sin(elapsed*1.1+a.phase))*.6;
+    else if(a.t==='beacon')a.mesh.scale.setScalar(.75+.5*Math.max(0,Math.sin(elapsed*2.6+a.phase)));
+    else if(a.t==='fan')a.mesh.rotation.y=elapsed*2.4+a.phase;
+  }
+}
+
+function buildCity(lv,th,isFactory){
   const C=th.city;
   const m4=new THREE.Matrix4(),q=new THREE.Quaternion();
   const v3=new THREE.Vector3(),sc=new THREE.Vector3();
@@ -1843,12 +2585,13 @@ function buildCity(lv,th){
     // a room: mass sits on top of the ceiling, facades close the open sides
     addBox(x,(top+ROOM_H)/2,z,CELL,Math.max(.4,top-ROOM_H),CELL);
     const R=rooms.find(r=>r.i===i&&r.j===j);
-    for(const d of R.dirs){
+    for(let di=0;di<R.dirs.length;di++){
+      const d=R.dirs[di],isDoor=(R.door===di);
       const ex=x+d.nx*CELL/2, ez=z+d.nz*CELL/2;
       const ax=d.nx!==0?'x':'z';
       const fw=ax==='x'?WIN_T:CELL, fd=ax==='x'?CELL:WIN_T;
-      // sill, head, and the two piers beside the opening
-      addBox(ex,SILL_H/2,ez,fw,SILL_H,fd);
+      // a door has no sill — walk straight in. A broken window keeps one.
+      if(!isDoor)addBox(ex,SILL_H/2,ez,fw,SILL_H,fd);
       addBox(ex,(HEAD_H+ROOM_H)/2,ez,fw,ROOM_H-HEAD_H,fd);
       const pier=(CELL-WIN_OPEN)/2;
       for(const s of[-1,1]){
@@ -1927,6 +2670,7 @@ function buildCity(lv,th){
   }
 
   // ---------- sky + the city beyond the map ----------
+  if(!isFactory){
   const sky=new THREE.Mesh(
     new THREE.SphereGeometry(470,24,16),
     new THREE.MeshBasicMaterial({map:texSky(th),side:THREE.BackSide,fog:false,depthWrite:false})
@@ -1949,6 +2693,7 @@ function buildCity(lv,th){
   skyInst.instanceMatrix.needsUpdate=true;
   scene.add(skyInst);levelObjs.push(skyInst);
 
+  }
   // ---------- street lamps ----------
   fixtures=[];
   for(let i=1;i<GX-1;i+=C.lampGap)for(let j=1;j<GZ-1;j+=C.lampGap){
@@ -2020,23 +2765,36 @@ function buildCity(lv,th){
     const l=new THREE.PointLight(0xffe7b4,0,17,1.9);
     scene.add(l);lightPool.push({light:l,fix:null});
   }
+  if(isFactory)buildFactoryExtras(th);
 }
 
 function buildLevel(lv,mz){
   const th=LEVELS[lv]||LEVELS[0];
   const M=mz?normalizeMaze(mz):ensureMaze(lv);
-  if(!restoreMaze(M)){
-    // an older save has no city layout in it — build a fresh district
-    const e=computeExit();
-    exitSeg=e.seg;exitCell=[e.ei,e.ej];
-    LEVEL_MAZES[lv]=makeMaze(lv);
+  let mode=M?M.mode:levelMode(lv);
+  let restored=restoreMaze(M);
+  if(!restored){
+    const fresh=makeMaze(lv);
+    restoreMaze(fresh);
+    LEVEL_MAZES[lv]=fresh;
+    mode=fresh.mode;
+    exitSeg=fresh.seg;exitCell=fresh.cell;
   }else{
     exitSeg=M.seg||null;
     exitCell=M.cell||null;
   }
   wallSegs=[];wallMesh=null;
 
-  buildCity(lv,th);
+  /* Room furniture and factory machines are built with the geometry below and
+     they carry real colliders. Decide where the player lands FIRST, so those
+     pieces can leave a clear ring around the spawn instead of standing on it.
+     (Previously this ran after buildLevel(), when player.pos still belonged
+     to the floor we just left.) */
+  placePlayer();
+
+  if(mode==='maze')buildMaze(lv,th);
+  else buildCity(lv,th,mode==='factory');
+  furnishRooms(lv,th);
 
   // ---- exit / descent door ----
   if(exitSeg){
@@ -2080,6 +2838,8 @@ function clearLevel(){
      disposed them — drop the references or the next floor paints with dead
      textures */
   for(const k in propTexCache){propTexCache[k].dispose();delete propTexCache[k];}
+  for(const k in signTexCache){signTexCache[k].dispose();delete signTexCache[k];}
+  factoryAnim=[];
   fixtures=[];wallSegs=[];
   exitInfo=null;wallMesh=null;fixtureInst=null;
   scene.fog.density=fogDensity();
@@ -2152,24 +2912,41 @@ function buildExit(x,z,axis,ei,ej,label='EXIT'){
 function cellOf(x,z){
   return[Math.floor((x+HALF_W)/CELL),Math.floor((z+HALF_D)/CELL)];
 }
-function wallsNear(x,z){
+function wallsNear(x,z,py=0){
   const out=[];
+  /* standing on the factory catwalk: downstairs furniture, machines, window
+     piers and low pipes are all below your feet. Only the building masses
+     (which rise past the deck) still stop you. */
+  const high=navMode==='factory'&&py>DECK_H*.5;
   const ci=Math.floor((x+HALF_W)/CELL),cj=Math.floor((z+HALF_D)/CELL);
+  if(navMode==='maze'){
+    for(let i=ci-1;i<=ci+2;i++)for(let j=cj-1;j<=cj+2;j++){
+      if(i>=0&&i<=GX&&j>=0&&j<GZ&&vWall[i]&&vWall[i][j])
+        out.push({x:-HALF_W+i*CELL,z:cz(j),hx:WALL_T/2,hz:CELL/2});
+      if(i>=0&&i<GX&&j>=0&&j<=GZ&&hWall[i]&&hWall[i][j])
+        out.push({x:cx(i),z:-HALF_D+j*CELL,hx:CELL/2,hz:WALL_T/2});
+    }
+    for(const c of collidersExtra)out.push(c);
+    return out;
+  }
   // a building is a solid cell; a room is hollow, and its walls are the
   // facade pieces registered in winCols
   for(let i=ci-1;i<=ci+2;i++)for(let j=cj-1;j<=cj+2;j++){
     if(ck(i,j)===CT_BLOCK)out.push({x:cx(i),z:cz(j),hx:CELL/2,hz:CELL/2});
   }
-  for(const c of winCols){
+  if(!high)for(const c of winCols){
     if(Math.abs(c.x-x)<CELL*1.6&&Math.abs(c.z-z)<CELL*1.6)out.push(c);
   }
-  for(const c of collidersExtra)out.push(c);
+  for(const c of collidersExtra){
+    if(high&&c.upper!==true)continue;
+    out.push(c);
+  }
   return out;
 }
-function resolveCollision(p,r,passLow){
+function resolveCollision(p,r,passLow,py){
   for(let it=0;it<3;it++){
     let hit=false;
-    for(const w of wallsNear(p.x,p.z)){
+    for(const w of wallsNear(p.x,p.z,py||0)){
       if(passLow&&w.low)continue;      // airborne players clear knee-high pipes
       const px=clamp(p.x,w.x-w.hx,w.x+w.hx);
       const pz=clamp(p.z,w.z-w.hz,w.z+w.hz);
@@ -2194,6 +2971,17 @@ function resolveCollision(p,r,passLow){
 function solidAt(x,z){
   const ci=Math.floor((x+HALF_W)/CELL),cj=Math.floor((z+HALF_D)/CELL);
   if(ci<0||cj<0||ci>=GX||cj>=GZ)return true;
+  if(navMode==='maze'){
+    for(const c of collidersExtra){
+      if(Math.abs(x-c.x)<c.hx+.02&&Math.abs(z-c.z)<c.hz+.02)return true;
+    }
+    const lx=x-(-HALF_W+ci*CELL),lz=z-(-HALF_D+cj*CELL);
+    if(vWall[ci][cj]&&lx<WALL_T/2)return true;
+    if(vWall[ci+1][cj]&&lx>CELL-WALL_T/2)return true;
+    if(hWall[ci][cj]&&lz<WALL_T/2)return true;
+    if(hWall[ci][cj+1]&&lz>CELL-WALL_T/2)return true;
+    return false;
+  }
   if(ck(ci,cj)===CT_BLOCK)return true;
   for(const c of collidersExtra){
     if(Math.abs(x-c.x)<c.hx+.02&&Math.abs(z-c.z)<c.hz+.02)return true;
@@ -2874,7 +3662,7 @@ class Monster{
     }
 
     // attack
-    if(distP<1.55&&this.attackCd<=0&&this.seenT>.2){
+    if(distP<1.55&&this.attackCd<=0&&this.seenT>.2&&player.y<2.2){
       this.attackCd=1.2;
       damagePlayer(this.dmg,this);
     }
@@ -3001,6 +3789,7 @@ const ITEM_DEFS={
    LORE — documents left behind on each floor
    ══════════════════════════════════════════════════════════════ */
 const LORE=[
+  /* ---- LEVEL 1: the yellow halls ---- */
   {id:'l0a',lv:0,kind:'FRONT DESK MEMO',title:'RE: EAST STAIRWELL',
    body:`Effective immediately the east stairwell is closed.\n\nThe damp has come back through the ceiling tiles and the\nlanding light will not hold a bulb for more than a day.\n\nDo not send anyone down to look. It is not worth the\npaperwork, and Dale has not come back up.`},
   {id:'l0b',lv:0,kind:'STAFF ROTA — WEEK 14',title:'NIGHT SHIFT',
@@ -3008,25 +3797,35 @@ const LORE=[
   {id:'l0c',lv:0,kind:'GUEST COMPLAINT CARD',title:'ROOM 114 — NOISE',
    body:`"There is breathing in the wall behind the headboard.\nI put my ear to it. It stopped. When I sat up it started\nagain, and it was faster."\n\nResolved: no. Guest relocated: no. Guest found: no.`},
   {id:'l0d',lv:0,kind:'PAGE TORN FROM A NOTEBOOK',title:'IF YOU ARE READING THIS',
-   body:`I am going down. The fuses are the only thing that\nopens the gate and there are three of them on every\nfloor, which means whoever built this wanted people\nto keep going down.\n\nIf I do not come back, do not follow me.`},
+   body:`I am going down. The fuses are the only thing that\nopens the gate and there are three of them on every\nfloor, which means whoever built this wanted people\nto keep going down.\n\nThe street outside is not a street. The doors open.\nIf I do not come back, do not follow me.`},
 
-  {id:'l1a',lv:1,kind:'FORKLIFT LOG — BAY 3',title:'MOVEMENT WITHOUT A DRIVER',
-   body:`06:10  unit 3 returned to charge\n06:12  unit 3 logged out at bay 3\n06:40  unit 3 logged out at bay 3\n07:15  unit 3 logged out at bay 3\n\nNo driver signed for any of these.`},
-  {id:'l1b',lv:1,kind:'INVENTORY DISCREPANCY',title:'PALLET 44',
-   body:`Manifest says 240 crates.\nCount says 241.\n\nRecount says 238.\n\nI have stopped counting.`},
-  {id:'l1c',lv:1,kind:'SAFETY NOTICE',title:'AUTHORISED PERSONNEL ONLY',
-   body:`Beyond this point the concrete sweats. It is not\ncondensation. It is warm and it smells like a mouth.\n\nMasks are mandatory. Masks are not sufficient.`},
-  {id:'l1d',lv:1,kind:'SCRAWLED ON A PALLET',title:'IT COUNTS',
-   body:`It knows how many of us came down.\nIt gets angry when the number changes.\n\nStay still when you hear it stop walking.`},
+  /* ---- LEVEL 2: the block that never got a morning ---- */
+  {id:'l1a',lv:1,kind:'MERCY GENERAL — TRIAGE SHEET',title:'NO ADMISSIONS',
+   body:`02:14  AMBULANCE 6 ARRIVES — NO PATIENT\n02:31  AMBULANCE 6 ARRIVES — NO PATIENT\n03:02  AMBULANCE 6 ARRIVES — NO PATIENT\n\nThe drivers all give the same name. We have no bed\nfor it. We have stopped writing the time down.`},
+  {id:'l1b',lv:1,kind:'PRECINCT 14 — DESK LOG',title:'SHIFT 3, NO CALLS',
+   body:`Every unit is signed out. Every unit is in the bay.\nThe board says both things and nobody will change it.\n\nAt 04:00 the front door opened by itself. We logged it\nas a call. There was nobody on the other end and the\nline is still open.`},
+  {id:'l1c',lv:1,kind:'NIGHT OWL DINER — RECEIPT',title:'TABLE 6',
+   body:`1 COFFEE      0.75\n1 COFFEE      0.75\n1 COFFEE      0.75\n1 COFFEE      0.75\n\nServed to the same seat, four times, by four different\nwaiters. Nobody remembers pouring the first one.\n\nWritten on the back: IT KEEPS COMING IN FOR THE LIGHT.`},
+  {id:'l1d',lv:1,kind:'CITY RECORDS — INTERNAL MEMO',title:'RE: THE DOORS',
+   body:`Residents have reported that shopfronts which were\nboarded last week now stand open. We have no record\nof a works order.\n\nDoors that open onto the street are to be left open.\nWindows stay broken — that was deliberate. Someone\nwanted two different ways in, and only one of them\nto feel like a choice.`},
+  {id:'l1e',lv:1,kind:'VALE PHARMACY — PRESCRIPTION',title:'REFILL 7',
+   body:`PATIENT: SAME AS LAST TIME\nCOLLECTED: EVERY NIGHT AT 03:10\n\nThe signature changes hand each visit but the pressure\nof the pen never does.\n\nPharmacist's note: I have been filling this for longer\nthan the shop has been here.`},
 
-  {id:'l2a',lv:2,kind:'PRESSURE LOG — PLANT ROOM',title:'LINE 2 HOLDS',
-   body:`Line 2 will not hold pressure above 4 bar.\nTwo valves, both stiff. Turn them together or the\ngate will not cycle.\n\nWhoever reads this: the gate needs the pressure.\nThe pressure needs you to stand still in the dark\nfor four seconds at each wheel.`},
+  /* ---- LEVEL 3: the works, both floors of it ---- */
+  {id:'l2a',lv:2,kind:'SHIFT LOG — LINE 2',title:'SECOND STOREY',
+   body:`GROUND  conveyors stopped, presses at rest\nUPPER   catwalk lit, control room occupied\nUPPER   catwalk lit, control room occupied\nUPPER   catwalk lit, control room occupied\n\nWe only have one person rostered up there and he\nclocked out in 1987. The upper log keeps filling in.`},
   {id:'l2b',lv:2,kind:'MAINTENANCE ORDER 77-B',title:'DO NOT REPAIR THE HUM',
-   body:`The hum is not a fault. It is the plant running.\n\nWhen the hum stops, leave. Do not look for the\nsource of the silence.`},
-  {id:'l2c',lv:2,kind:'FINAL SHIFT — HANDOVER',title:'I AM NOT COMING UP',
-   body:`Pressure is good. Gate is powered. I have the card\nand I have the fuses and I am standing at the door\nand I cannot make myself open it.\n\nIf you are the next one down: take the card. Do not\nstop to read this.`},
-  {id:'l2d',lv:2,kind:'THE LAST PAGE',title:'THE WAY OUT IS A DOOR',
-   body:`Every floor has a door. Every door wants three fuses.\nSomeone built this so that leaving costs more the\ndeeper you go.\n\nI think they wanted to see how far down a person\nwould walk before they stopped believing in the exit.`}
+   body:`The hum is not a fault. It is the plant running.\n\nWhen the hum stops, leave. Do not look for the\nsource of the silence. Do not go up to the catwalk\nto look for it either.`},
+  {id:'l2c',lv:2,kind:'CATWALK INSPECTION — FORM 12',title:'THE UPPER DECK',
+   body:`Ramp A: 4 treads, handrail sound.\nRamp B: 4 treads, handrail sound.\nSpan over the line: 15 m, no gaps.\n\nEverything checks out. That is the problem. Nothing\nup here has been used and none of it is dusty. The\nrail is warm where a hand should not have been.`},
+  {id:'l2d',lv:2,kind:'FOREMAN’S NOTE — UNFILED',title:'WHO SIGNED OFF',
+   body:`They want me to sign the handover for the second\nstorey. I built the stairs. I know how many steps\nI put in.\n\nLast night I counted them going up and got one more\nthan I counted coming down. I am not signing anything\nwith a number on it.`},
+  {id:'l2e',lv:2,kind:'INCIDENT REPORT 12',title:'THE PRESS',
+   body:`Hydraulic press 3 cycled at 03:10 with the isolation\ntag still on it. No load on the bed. No operator at\nthe panel.\n\nThe ram came down on a folded sheet of paper. When\nwe lifted it, the sheet was a copy of this report,\nfilled in, with my signature at the bottom.`},
+  {id:'l2f',lv:2,kind:'FINAL SHIFT — HANDOVER',title:'I AM NOT COMING UP',
+   body:`Pressure is good. Gate is powered. I have the card\nand I have the fuses and I am standing at the door\nand I cannot make myself open it.\n\nFrom the catwalk you can see the whole floor at once.\nThat is the only place it looks empty. Do not trust\nthat view.\n\nIf you are the next one down: take the card.`},
+  {id:'l2g',lv:2,kind:'THE LAST PAGE',title:'THE WAY OUT IS A DOOR',
+   body:`Every floor has a door. Every door wants three fuses.\nSomeone built this so that leaving costs more the\ndeeper you go.\n\nLobby, block, works. Three floors, and the last one\nhas a second storey so you can stand above the line\nand still not be above anything.\n\nI think they wanted to see how far down a person\nwould walk before they stopped believing in the exit.`}
 ];
 let noteOpen=false;
 /* A tap that opens an overlay also fires a compatibility `click` several
@@ -3302,8 +4101,15 @@ function spawnChest(x,z,loot){
    ══════════════════════════════════════════════════════════════ */
 function spawnLowPipe(c){
   const ci=c.i,cj=c.j;
-  const openX=!vWall[ci][cj]&&!vWall[ci+1][cj];   // corridor runs along X
-  const openZ=!hWall[ci][cj]&&!hWall[ci][cj+1];   // corridor runs along Z
+  let openX,openZ;
+  if(navMode==='maze'){
+    openX=!vWall[ci][cj]&&!vWall[ci+1][cj];     // corridor runs along X
+    openZ=!hWall[ci][cj]&&!hWall[ci][cj+1];     // corridor runs along Z
+  }else{
+    openX=ck(ci-1,cj)===CT_STREET&&ck(ci+1,cj)===CT_STREET;
+    openZ=ck(ci,cj-1)===CT_STREET&&ck(ci,cj+1)===CT_STREET;
+    if(openX&&openZ){openX=hash01(ci,cj,17)<.5;openZ=!openX;}
+  }
   if(openX===openZ)return false;                  // junction or ambiguous — skip
   const hx=openX?.36:CELL/2-.12;
   const hz=openX?CELL/2-.12:.36;
@@ -3681,8 +4487,34 @@ const PROP_BAG={
      'stain','stain','stain','chain','chain','bulb','bulb']
 };
 
+/* Room furniture and factory machines are already standing when the loose
+   crates, fuses and lockers are placed. Their footprints must count as taken
+   space too, or a locker ends up buried inside a hydraulic press. */
+/* A walk-in door is only walkable while the pavement outside it is empty.
+   Crates, lockers and low pipes all share the same cell grid, so reserve the
+   street cell in front of every door once and let all three passes read it. */
+function doorFrontCells(){
+  const out=new Set();
+  if(navMode==='maze')return out;
+  for(const r of rooms){
+    if(r.door<0)continue;
+    const d=r.dirs[r.door];
+    if(d)out.add((r.i+d.nx)+','+(r.j+d.nz));
+  }
+  return out;
+}
+
+function builtPropNear(x,z,r){
+  for(const c of collidersExtra){
+    if(c.prop!=='furniture'&&c.prop!=='machine')continue;
+    if(Math.abs(c.x-x)<c.hx+r&&Math.abs(c.z-z)<c.hz+r)return true;
+  }
+  return false;
+}
+
 function spawnProps(lv){
   propCells=new Set();
+  const doorFront=doorFrontCells();
   const th=LEVELS[lv]||LEVELS[0];
   const bag=PROP_BAG[lv]||PROP_BAG[0];
   const s=citySeed();
@@ -3693,6 +4525,8 @@ function spawnProps(lv){
     const x=cx(i),z=cz(j);
     if(Math.hypot(x-player.pos.x,z-player.pos.z)<7)continue;       // never box the player in
     if(exitCell&&Math.hypot(x-cx(exitCell[0]),z-cz(exitCell[1]))<6)continue;
+    if(builtPropNear(x,z,1.1))continue;                 // never stack a crate on a machine
+    if(doorFront.has(i+','+j))continue;                  // never seal a walk-in door
     /* furniture goes down before loot, so these two only matter on the
        reload path — populate() is what actually keeps a locker out of a
        crate, by treating propCells as taken */
@@ -3793,27 +4627,35 @@ function populate(){
   }
   far.sort((a,b)=>b.d-a.d);
 
+  // cells already occupied by the room furniture / machinery built above
+  const built=new Set();
+  for(let i=0;i<GX;i++)for(let j=0;j<GZ;j++)
+    if(builtPropNear(cx(i),cz(j),1.25))built.add(i+','+j);
+
   // fuses: far, spread, and never inside a piece of furniture — props are
   // already standing by the time we get here
   const chosen=[];
   for(const c of far){
     if(chosen.length>=3)break;
-    if(propCells.has(c.i+','+c.j))continue;
+    if(propCells.has(c.i+','+c.j)||built.has(c.i+','+c.j))continue;
     if(chosen.every(o=>Math.hypot(o.i-c.i,o.j-c.j)>6))chosen.push(c);
   }
   for(let tries=0;chosen.length<3&&tries<40;tries++){          // fall back on density
     const c=pick(far.slice(0,Math.min(30,far.length)));
-    if(propCells.has(c.i+','+c.j))continue;
+    if(propCells.has(c.i+','+c.j)||built.has(c.i+','+c.j))continue;
     chosen.push(c);
   }
   for(let k=0;chosen.length<3&&k<far.length;k++){              // a floor always gets three
+    if(built.has(far[k].i+','+far[k].j))continue;
     if(!chosen.includes(far[k]))chosen.push(far[k]);
   }
   chosen.forEach(c=>spawnItem('fuse',c.x,c.z));
 
   // ---- weapons & supplies: locked in chests spread through the maze ----
   const taken=new Set(chosen.map(c=>c.i+','+c.j));
+  for(const k of doorFrontCells())taken.add(k); // a locker outside a door seals it shut
   for(const k of propCells)taken.add(k);        // a locker inside a cabinet is a bug
+  for(const k of built)taken.add(k);            // ... or inside a press / hospital bed
   if(exitInfo)taken.add(exitInfo.cell[0]+','+exitInfo.cell[1]);
   const spots=[];
   const pool=far.filter(c=>!taken.has(c.i+','+c.j)&&c.d>2);
@@ -3845,6 +4687,7 @@ function populate(){
   }
   for(let k=0;k<Math.min(4,order.length);k++)loot[order[k]]='note';
   spots.forEach((c,i)=>spawnChest(c.x,c.z,loot[i]));
+  roomLoot();
 
   // ---- level 2: two pressure valves and some low pipes ----
   if(level===2){
@@ -3976,6 +4819,13 @@ function updateHUD(){
    ══════════════════════════════════════════════════════════════ */
 let invOpen=false;
 let invOpenStamp=-1;
+/* a first-person supply animation runs in real time and holds the world
+   still while it plays; declared up here so closeInv() can consult it */
+let useAnim=null;
+/* The render loop can be starved (a hidden tab, a slow software rasteriser,
+   a pointer-lock transition). The supply animation must still play at real
+   speed, so it owns a small wall-clock timer of its own. */
+let useAnimTimer=0;
 /* A tap fires pointerdown at once but its compatibility click can arrive
    several hundred ms later, by which time the panel has appeared under the
    finger. Chromium stamps that click with the original touch time, so a
@@ -3991,11 +4841,13 @@ function openInv(stamp){
   el.inv.classList.add('on');
   document.exitPointerLock&&document.exitPointerLock();
 }
-function closeInv(){
+function closeInv(hold){
   if(!invOpen)return;
   invOpen=false;
   el.inv.classList.remove('on');
-  if(state==='playing'&&!touchMode)requestLock();
+  /* `hold` is set by the supply animation: it owns the screen for the next
+     couple of seconds and will restore pointer lock itself when it ends. */
+  if(hold!==true&&state==='playing'&&!touchMode&&!useAnim)requestLock();
 }
 function renderInv(){
   let h='';
@@ -4036,7 +4888,7 @@ function renderInv(){
      `<span class="n"><span class="dot"></span>DOCUMENTS</span>`+
      `<span class="v"><b>${player.noteIds.length}</b> / ${LORE.length}</span></div>`;
   h+=`<div class="invrow have"><span class="n"><span class="dot"></span>DEPTH</span>`+
-     `<span class="v"><b>LEVEL ${level}</b> / ${LAST_LEVEL} · ${LV().name}</span></div>`;
+     `<span class="v"><b>LEVEL ${LV().n}</b> / ${LEVELS.length} · ${LV().name}</span></div>`;
   el.invbody.innerHTML=h;
 }
 let invBodyArmed=false;
@@ -4064,6 +4916,136 @@ for(const b of document.querySelectorAll('.invclose')){
 el.inv.addEventListener('pointerdown',e=>{
   if(e.target===el.inv){e.preventDefault();closeInv();}
 });
+/* ══════════════════════════════════════════════════════════════
+   CONSUME ANIMATIONS — a first-person prop, a progress bar and a stat pop.
+   The world is held still for ~1.7s so the player can actually watch it:
+   previously useItem() only changed numbers behind the inventory panel.
+   ══════════════════════════════════════════════════════════════ */
+const USE_DUR={water:1650,food:1750,battery:1550};
+const USE_META={
+  water:{title:'DRINKING',sub:'WATER · STAMINA RESTORED',gain:'STAMINA FULL',col:'#8fd8e8'},
+  food:{title:'EATING',sub:'CANNED FOOD · +30 HP',gain:'+30 HP',col:'#e8c47f'},
+  battery:{title:'REPLACING CELL',sub:'BATTERY · TORCH +45%',gain:'+45% TORCH',col:'#b9e8a0'}
+};
+const USE_PHASE={
+  water:[[0,'UNSCREWING THE CAP'],[.34,'DRINKING'],[.84,'LOWERING THE BOTTLE']],
+  food:[[0,'PEELING THE LID'],[.32,'EATING'],[.84,'PUTTING THE TIN AWAY']],
+  battery:[[0,'OPENING THE TORCH'],[.28,'SLIDING THE CELL IN'],[.62,'CHARGING'],[.86,'SEALED']]
+};
+const USE_PROP={
+  water:`<svg viewBox="0 0 210 300" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <linearGradient id="uaGlass" x1="0" x2="1"><stop offset="0" stop-color="#cfe9ef" stop-opacity=".55"/><stop offset=".45" stop-color="#7fb6c9" stop-opacity=".22"/><stop offset="1" stop-color="#dff3f7" stop-opacity=".62"/></linearGradient>
+      <linearGradient id="uaWat" x1="0" x2="1"><stop offset="0" stop-color="#3f9ec4"/><stop offset="1" stop-color="#8fe0ea"/></linearGradient>
+      <clipPath id="uaBottleClip"><rect x="62" y="76" width="86" height="196" rx="24"/></clipPath>
+    </defs>
+    <rect x="86" y="30" width="38" height="26" rx="5" fill="#2f6f86"/>
+    <rect x="90" y="52" width="30" height="16" fill="#b9dbe2"/>
+    <rect x="62" y="68" width="86" height="208" rx="26" fill="url(#uaGlass)" stroke="#dff3f7" stroke-opacity=".8" stroke-width="3"/>
+    <g clip-path="url(#uaBottleClip)">
+      <rect class="ua-liquid" x="64" y="112" width="82" height="162" fill="url(#uaWat)" opacity=".88"/>
+      <g class="ua-bub" fill="#ffffff" opacity=".75">
+        <circle cx="88" cy="150" r="4"/><circle cx="118" cy="176" r="3"/><circle cx="100" cy="200" r="5"/>
+      </g>
+    </g>
+    <rect x="62" y="166" width="86" height="46" fill="#e9e3c6" opacity=".92"/>
+    <text x="105" y="187" text-anchor="middle" font-size="13" letter-spacing="2" fill="#28515c" font-family="monospace">WATER</text>
+    <text x="105" y="202" text-anchor="middle" font-size="8" letter-spacing="1" fill="#5c7b83" font-family="monospace">500 ML</text>
+    <g class="ua-gulp"><path d="M76 96 Q105 88 134 96" stroke="#fff" stroke-opacity=".7" stroke-width="3" fill="none"/></g>
+  </svg>`,
+  food:`<svg viewBox="0 0 210 300" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs><linearGradient id="uaTin" x1="0" x2="1"><stop offset="0" stop-color="#6e7378"/><stop offset=".5" stop-color="#c3c7c6"/><stop offset="1" stop-color="#5d6266"/></linearGradient></defs>
+    <ellipse cx="105" cy="248" rx="52" ry="14" fill="#45494c"/>
+    <rect x="53" y="104" width="104" height="144" fill="url(#uaTin)"/>
+    <rect class="ua-fill" x="57" y="112" width="96" height="132" fill="#6a3b22" opacity=".55"/>
+    <rect x="53" y="146" width="104" height="62" fill="#e1c48a"/>
+    <rect x="53" y="146" width="104" height="9" fill="#9c3524"/>
+    <text x="105" y="180" text-anchor="middle" font-size="15" letter-spacing="3" fill="#40291a" font-family="monospace">RATION</text>
+    <text x="105" y="196" text-anchor="middle" font-size="9" letter-spacing="1" fill="#6b4a2c" font-family="monospace">NET 400 G</text>
+    <ellipse class="ua-lid" cx="105" cy="104" rx="52" ry="14" fill="#b9bec0" stroke="#e4e8e8" stroke-width="2"/>
+    <g class="ua-spoon">
+      <rect x="96" y="10" width="7" height="92" rx="3" fill="#cfd4d5" transform="rotate(24 99 56)"/>
+      <ellipse cx="76" cy="102" rx="14" ry="19" fill="#dfe4e5" transform="rotate(24 76 102)"/>
+    </g>
+  </svg>`,
+  battery:`<svg viewBox="0 0 210 300" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs><linearGradient id="uaTorch" x1="0" x2="1"><stop offset="0" stop-color="#33383a"/><stop offset=".6" stop-color="#70787a"/><stop offset="1" stop-color="#2a2e30"/></linearGradient></defs>
+    <path d="M28 138 L4 92 L4 208 L28 162 Z" fill="#cfe8ff" opacity=".18"/>
+    <path d="M28 128 L52 116 L52 184 L28 172 Z" fill="#9aa4a6"/>
+    <rect x="52" y="132" width="104" height="56" rx="8" fill="url(#uaTorch)" stroke="#a8b0b1" stroke-width="2"/>
+    <rect x="60" y="140" width="34" height="40" rx="3" fill="#181c1d"/>
+    <circle class="ua-led" cx="77" cy="160" r="9" fill="#d8ffcf"/>
+    <g class="ua-cell">
+      <rect x="112" y="138" width="76" height="48" rx="6" fill="#c8942f" stroke="#f0cf7a" stroke-width="2"/>
+      <rect x="112" y="138" width="18" height="48" rx="5" fill="#2b2d2e"/>
+      <rect x="184" y="150" width="8" height="24" rx="2" fill="#e8e2c8"/>
+      <text x="152" y="168" text-anchor="middle" font-size="11" letter-spacing="1" fill="#2b2210" font-family="monospace">CELL 45</text>
+    </g>
+    <g class="ua-spark" stroke="#fff5c0" stroke-width="3" stroke-linecap="round" fill="none">
+      <path d="M110 142 l-10 -12 M110 160 l-14 2 M110 178 l-10 12 M104 150 l-12 -3 M104 172 l-12 4"/>
+    </g>
+    <rect x="70" y="188" width="26" height="34" rx="8" fill="#4b5052"/>
+  </svg>`
+};
+const usePropSVG=kind=>USE_PROP[kind]||'';
+
+function beginUseAnim(kind){
+  const m=USE_META[kind];if(!m)return;
+  const root=$('#useanim');if(!root)return;
+  if(useAnim)endUseAnim(true);
+  // the inventory would sit on top of the prop — get it out of the way
+  if(invOpen)closeInv(true);
+  root.dataset.kind=kind;
+  $('#ua-prop').innerHTML=usePropSVG(kind);
+  $('#ua-title').textContent=m.title;
+  $('#ua-sub').textContent=USE_PHASE[kind][0][1];
+  $('#ua-gain').textContent=m.gain;
+  $('#ua-gain').style.color=m.col;
+  $('#ua-bar').style.width='0%';
+  // force a reflow so back-to-back uses restart every CSS keyframe
+  root.classList.remove('on');void root.offsetWidth;root.classList.add('on');
+  useAnim={kind,t0:performance.now(),dur:USE_DUR[kind],p:0,cues:{},phase:''};
+  clearInterval(useAnimTimer);
+  useAnimTimer=setInterval(()=>updateUseAnim(performance.now()),40);
+}
+function cueUse(name,at,fn){
+  if(!useAnim||useAnim.p<at||useAnim.cues[name])return;
+  useAnim.cues[name]=true;fn();
+}
+function updateUseAnim(nowW){
+  if(!useAnim)return;
+  const p=clamp((nowW-useAnim.t0)/useAnim.dur,0,1);
+  useAnim.p=p;
+  const bar=$('#ua-bar');if(bar)bar.style.width=(p*100).toFixed(1)+'%';
+  let phase=USE_PHASE[useAnim.kind][0][1];
+  for(const[at,label]of USE_PHASE[useAnim.kind])if(p>=at)phase=label;
+  if(phase!==useAnim.phase){useAnim.phase=phase;const sub=$('#ua-sub');if(sub)sub.textContent=phase;}
+  const k=useAnim.kind;
+  if(k==='water'){
+    cueUse('cap',.10,()=>AU.cap());
+    cueUse('gulp1',.38,()=>AU.gulp());
+    cueUse('gulp2',.55,()=>AU.gulp());
+    cueUse('gulp3',.72,()=>AU.gulp());
+  }else if(k==='food'){
+    cueUse('lid',.17,()=>AU.canOpen());
+    cueUse('chew1',.43,()=>AU.chew());
+    cueUse('chew2',.61,()=>AU.chew());
+    cueUse('chew3',.78,()=>AU.chew());
+  }else{
+    cueUse('latch',.20,()=>AU.latch());
+    cueUse('spark',.51,()=>AU.cellSpark());
+    cueUse('hum',.64,()=>AU.torchUp());
+  }
+  if(p>=1)endUseAnim();
+}
+function endUseAnim(silent){
+  clearInterval(useAnimTimer);useAnimTimer=0;
+  const root=$('#useanim');
+  if(root)root.classList.remove('on');
+  useAnim=null;
+  if(!silent&&state==='playing'&&!invOpen&&!opsOpen&&!pwOpen&&!noteOpen&&!touchMode)requestLock();
+}
+
 function useItem(kind){
   let ok=false;
   if(kind==='food'&&player.inv.food>0){
@@ -4076,21 +5058,21 @@ function useItem(kind){
     player.inv.battery--;player.battery=Math.min(100,player.battery+45);ok=true;
     toast('BATTERY — TORCH +45%');
   }
-  if(ok){AU.pickup();renderInv();updateHUD();}
+  if(ok){beginUseAnim(kind);renderInv();updateHUD();}
 }
 
 /* ══════════════════════════════════════════════════════════════
    OPERATOR MODE — password-gated surveillance map of the whole
-   maze, with the exits of Level 0, 1 and 2 marked.
+   complex, with the exits of Level 1, 2 and 3 marked.
    ══════════════════════════════════════════════════════════════ */
 const OPS_PW='bayern muss gewinnen';
 const OPS_LEVELS=[
-  {name:'LEVEL 0',sub:'THE LOBBY',cls:'SURVIVAL DIFFICULTY: CLASS 1',
+  {name:'LEVEL 1',sub:'THE LOBBY',cls:'SURVIVAL DIFFICULTY: CLASS 1',
    bg:'#140f06',wall:'#c8a94e',dim:'#5a4a20',accent:'#e8c47f'},
-  {name:'LEVEL 1',sub:'WAREHOUSE COMPLEX',cls:'SURVIVAL DIFFICULTY: CLASS 2',
-   bg:'#08110d',wall:'#5f9f7f',dim:'#28493c',accent:'#7fe8c0'},
-  {name:'LEVEL 2',sub:'PIPE DREAMS',cls:'SURVIVAL DIFFICULTY: CLASS 3',
-   bg:'#080d14',wall:'#6f8fbf',dim:'#2c3c55',accent:'#9fc0f0'}
+  {name:'LEVEL 2',sub:'THE BLOCK',cls:'SURVIVAL DIFFICULTY: CLASS 2',
+   bg:'#0d100c',wall:'#8fa88c',dim:'#36443a',accent:'#a8d8b0'},
+  {name:'LEVEL 3',sub:'THE WORKS',cls:'SURVIVAL DIFFICULTY: CLASS 3',
+   bg:'#0a0c0d',wall:'#8f9a9c',dim:'#333a3c',accent:'#d0a45c'}
 ];
 let opUnlocked=false,opsOpen=false,pwOpen=false,opsLevel=0,opsFrom='menu';
 const opsLive=()=>opsLevel===level;          // live feed only for the floor you're on
@@ -4234,7 +5216,17 @@ function drawOpsMap(){
   const kinds=opsLevel===level
     ?cellKind
     :(LEVEL_MAZES[opsLevel]&&LEVEL_MAZES[opsLevel].kinds);
-  if(kinds){
+  if(levelMode(opsLevel)==='maze'){
+    // floor 1 is a wall maze, not a district: draw its actual corridors
+    c.strokeStyle=L.wall;c.lineWidth=1.6;c.globalAlpha=.8;
+    for(let i=0;i<=GX;i++)for(let j=0;j<GZ;j++)if(MZ.v[i]&&MZ.v[i][j]){
+      c.beginPath();c.moveTo(ox+i*cell,oy+j*cell);c.lineTo(ox+i*cell,oy+(j+1)*cell);c.stroke();
+    }
+    for(let i=0;i<GX;i++)for(let j=0;j<=GZ;j++)if(MZ.h[i]&&MZ.h[i][j]){
+      c.beginPath();c.moveTo(ox+i*cell,oy+j*cell);c.lineTo(ox+(i+1)*cell,oy+j*cell);c.stroke();
+    }
+    c.globalAlpha=1;
+  }else if(kinds){
     c.fillStyle=L.wall;
     for(let i=0;i<GX;i++)for(let j=0;j<GZ;j++){
       const k=kinds[i+j*GX];
@@ -4350,7 +5342,7 @@ function renderOpsSide(){
     const total=Object.values(alive).reduce((a,b)=>a+b,0);
     h+=`<div class="opscard"><h3>SURVEILLANCE<small>LIVE</small></h3>`+
        `<div class="row"><span>OPERATOR</span><b>SECTOR ${sectorOf(pcell[0],pcell[1])}</b></div>`+
-       `<div class="row"><span>DEPTH</span><b>LEVEL ${level} / ${LAST_LEVEL}</b></div>`+
+       `<div class="row"><span>DEPTH</span><b>LEVEL ${LV().n} / ${LEVELS.length}</b></div>`+
        `<div class="row"><span>ENTITIES TRACKED</span><b>${total}</b></div>`+
        Object.entries(MON_DEFS).map(([k,d])=>
          `<div class="row"><span>${d.label}</span><b>${alive[k]||0}</b></div>`).join('')+
@@ -4359,7 +5351,7 @@ function renderOpsSide(){
     h+=`<div class="opscard"><h3>ARCHIVE<small>NO LIVE FEED</small></h3>`+
        `<div class="row"><span>LINK</span><b>CAMERA RELAY OFFLINE</b></div>`+
        `<div class="row"><span>FLOOR</span><b>${opsLevel<level?'CLEARED':'NOT YET ENTERED'}</b></div>`+
-       `<div class="row"><span>DEPTH</span><b>LEVEL ${level} / ${LAST_LEVEL}</b></div></div>`;
+       `<div class="row"><span>DEPTH</span><b>LEVEL ${LV().n} / ${LEVELS.length}</b></div></div>`;
   }
   h+=`<div class="opscard"><h3>LEGEND<small>MAP KEY</small></h3>`+
      `<div class="row"><span>■ EXIT</span><b>${opsLevel<LAST_LEVEL?'DESCENT GATE':'WAY OUT'}</b></div>`+
@@ -4370,8 +5362,8 @@ function renderOpsSide(){
   const here=midRun&&opsLevel===level;
   h+=`<div class="opsdeploy"><button id="opsdeploy"${here?' disabled':''}>`+
      (here?'YOU ARE ON THIS FLOOR'
-          :midRun?`TELEPORT TO LEVEL ${opsLevel}`
-                 :`DEPLOY · PLAY LEVEL ${opsLevel}`)+
+          :midRun?`TELEPORT TO LEVEL ${LEVELS[opsLevel].n}`
+                 :`DEPLOY · PLAY LEVEL ${LEVELS[opsLevel].n}`)+
      `</button></div>`;
   h+=`<div class="opsnote">`+
      (state==='playing'
@@ -4399,7 +5391,7 @@ function deployToLevel(lv){
     player.depth=Math.max(player.depth,target);
     updateLevelHUD();
     showLevelCard();
-    toast(`OPERATOR RELOCATION — LEVEL ${target} · ${LV().name}`,2600);
+    toast(`OPERATOR RELOCATION — LEVEL ${LEVELS[target].n} · ${LV().name}`,2600);
     if(!touchMode)requestLock();
   }else{
     level=target;
@@ -4425,8 +5417,8 @@ const ACH_DEFS=[
   {id:'loaded',name:'FULLY LOADED',desc:'FIND THE SAWN-OFF'},
   {id:'powered',name:'POWER UP',desc:'RECOVER ALL 3 FUSES'},
   {id:'survivor',name:'SURVIVOR',desc:'SURVIVE 5 MINUTES IN ONE RUN'},
-  {id:'descent',name:'GOING DOWN',desc:'DESCEND TO LEVEL 1'},
-  {id:'deep',name:'THE UNDERPASS',desc:'REACH LEVEL 2'},
+  {id:'descent',name:'GOING DOWN',desc:'DESCEND TO LEVEL 2'},
+  {id:'deep',name:'THE WORKS',desc:'REACH LEVEL 3'},
   {id:'untouchable',name:'UNTOUCHABLE',desc:'ESCAPE WITHOUT A SCRATCH'},
   {id:'escape',name:'NO-CLIP OUT',desc:'ESCAPE ALL THREE FLOORS'}
 ];
@@ -4514,18 +5506,25 @@ function saveGame(manual){
   try{
     // keep the stored copy of this floor in sync with what is on screen
     LEVEL_MAZES[level]={v:vWall.map(r=>r.slice()),h:hWall.map(r=>r.slice()),seg:exitSeg,cell:exitCell,
-      kinds:Array.from(cellKind),tops:Array.from(cellTop),
-      rooms:rooms.map(r=>({i:r.i,j:r.j,dirs:r.dirs,walls:r.walls}))};
+      mode:navMode,
+      kinds:cellKind?Array.from(cellKind):null,tops:cellTop?Array.from(cellTop):null,
+      deck:deckY?Array.from(deckY):null,
+      rooms:rooms.map(r=>({i:r.i,j:r.j,dirs:r.dirs,walls:r.walls,door:r.door,theme:r.theme}))};
     const data={
       v:2,level,diff,
       mazes:LEVEL_MAZES.map(m=>m?{v:m.v.map(c=>c.join('')),h:m.h.map(c=>c.join('')),
-            seg:m.seg,cell:m.cell,kinds:Array.from(m.kinds||[]),tops:Array.from(m.tops||[]),
+            seg:m.seg,cell:m.cell,mode:m.mode||'city',
+            kinds:m.kinds?Array.from(m.kinds):null,
+            tops:m.tops?Array.from(m.tops):null,
+            deck:m.deck?Array.from(m.deck):null,
             rooms:m.rooms||[]}:null),
       maze:{v:vWall.map(c=>c.join('')),h:hWall.map(c=>c.join('')),
             exitSeg:exitSeg?{i:exitSeg.i,j:exitSeg.j,t:exitSeg.t}:null,
             exitCell:exitInfo?exitInfo.cell:null,spawnCell,
-            kinds:Array.from(cellKind),tops:Array.from(cellTop),
-            rooms:rooms.map(r=>({i:r.i,j:r.j,dirs:r.dirs,walls:r.walls}))},
+            mode:navMode,
+            kinds:cellKind?Array.from(cellKind):null,tops:cellTop?Array.from(cellTop):null,
+            deck:deckY?Array.from(deckY):null,
+            rooms:rooms.map(r=>({i:r.i,j:r.j,dirs:r.dirs,walls:r.walls,door:r.door,theme:r.theme}))},
       player:{pos:[player.pos.x,player.pos.z],yaw:player.yaw,pitch:player.pitch,
         hp:player.hp,stamina:player.stamina,battery:player.battery,
         weapon:player.weapon,owned:player.owned,ammo:player.ammo,inv:player.inv,
@@ -5395,7 +6394,7 @@ function startGame(){
   player.depth=level;
   AU.setTheme(level);
   if(restoredRun){restoredRun=false;toast('RUN RESTORED — WELCOME BACK',3000);}
-  else toast(`LEVEL ${level} · ${LV().name} — YOU NO-CLIPPED OUT OF REALITY`,3600);
+  else toast(`LEVEL ${LV().n} · ${LV().name} — YOU NO-CLIPPED OUT OF REALITY`,3600);
   if(tutMode==='on')tutStart();
 }
 
@@ -5421,7 +6420,7 @@ function summaryHTML(won){
     .join(' · ');
   const rows=[
     ['TIME IN THE HALLS',fmt(t),true],
-    ['DEEPEST FLOOR',`LEVEL ${level} · ${LV().name}`,false],
+    ['DEEPEST FLOOR',`LEVEL ${LV().n} · ${LV().name}`,false],
     ['GATES PASSED',`${level} / ${LAST_LEVEL}`,false],
     ['MONSTERS KILLED',String(player.kills),false],
     ['LOCKERS OPENED',String(player.chests),false],
@@ -5439,7 +6438,7 @@ function renderTitleRec(){
   const r=loadRec(),el=$('#titleRec');
   if(!el)return;
   if(!r.runs){el.innerHTML='NO RUNS LOGGED YET';return;}
-  el.innerHTML=`RECORD · DEEPEST <b>LEVEL ${r.deepest||0}</b>`+
+  el.innerHTML=`RECORD · DEEPEST <b>LEVEL ${(r.deepest||0)+1}</b>`+
     (r.bestTime?` · FASTEST ESCAPE <b>${fmt(r.bestTime)}</b>`:'')+
     ` · RUNS <b>${r.runs}</b>`;
 }
@@ -5529,10 +6528,11 @@ function tryDash(){
 const GRAVITY=19.5, JUMP_V=5.1, JUMP_CEIL=1.55;  // ~0.67m apex
 function tryJump(){
   if(state!=='playing'||player.dead)return false;
-  if(player.y>0.02||player.vy!==0)return false;   // no double jump
+  const g=groundHeightAt(player.pos.x,player.pos.z,player.y);
+  if(player.y>g+0.02||player.vy!==0)return false;   // no double jump
   if(player.crouch)return false;
   player.vy=JUMP_V;
-  player.y=0.001;
+  player.y=g+0.001;
   AU.step(.07,1.28);
   return true;
 }
@@ -5575,15 +6575,18 @@ function updatePlayer(dt){
   if(dashT>0)dashT-=dt;
   if(keys.KeyQ)tryDash();
 
-  // ---- jump (SPACE): vertical only, resolved before the eye height ----
+  // ---- jump / gravity. `gy` is the surface under our feet: 0 on ordinary
+  // floors, a stair tread or the upper catwalk in the factory. ----
+  const gy=groundHeightAt(player.pos.x,player.pos.z,player.y);
   if(keys.Space)tryJump();
-  if(player.y>0||player.vy!==0){
-    const wasAir=player.y>0.12;
+  const airborne=player.y>gy+.02||player.vy>0.01;
+  if(airborne||player.vy<0){
+    const wasAir=player.y>gy+.12;
     player.vy-=GRAVITY*dt;
     player.y+=player.vy*dt;
-    if(player.y>=JUMP_CEIL){player.y=JUMP_CEIL;player.vy=Math.min(0,player.vy);}
-    if(player.y<=0){
-      player.y=0;player.vy=0;
+    if(player.y>=gy+JUMP_CEIL){player.y=gy+JUMP_CEIL;player.vy=Math.min(0,player.vy);}
+    if(player.y<=gy){
+      player.y=gy;player.vy=0;
       if(wasAir){
         // landing is loud — whatever is nearby comes to look
         AU.stepAt(player.pos.x,player.pos.z,.5,.78);
@@ -5591,7 +6594,11 @@ function updatePlayer(dt){
         player.shake=Math.max(player.shake,.09);
       }
     }
-  }
+  }else if(player.y<gy-.02){
+    player.y=Math.min(gy,player.y+dt*7);          // walk up a stair tread
+  }else if(player.y>gy+.02){
+    player.y=gy+.02;player.vy=-.05;               // step off a catwalk
+  }else{player.y=gy;player.vy=0;}
 
   if(sprinting){
     tutSprintT+=dt;
@@ -5614,7 +6621,7 @@ function updatePlayer(dt){
 
   player.pos.x+=player.velX*dt;
   player.pos.z+=player.velZ*dt;
-  resolveCollision(player.pos,.34,player.y>0.5);
+  resolveCollision(player.pos,.34,player.y>gy+0.5,player.y);
 
   // eye height
   const targetEye=player.crouch?1.02:1.62;
@@ -5720,7 +6727,7 @@ function updateExit(dt){
     exitInfo.signMat.opacity=.18+exitInfo.t*.82;
     exitInfo.light.intensity=exitInfo.t*(9+Math.sin(elapsed*2.2)*3);
     const d=Math.hypot(exitInfo.x-player.pos.x,exitInfo.z-player.pos.z);
-    if(d<1.9&&exitInfo.t>.55){
+    if(d<1.9&&exitInfo.t>.55&&player.y<2.0){
       if(level<LAST_LEVEL)descend();
       else win();
     }
@@ -5979,16 +6986,20 @@ function tick(){
   // the network runs even while the world is frozen, so a paused host keeps
   // answering the room instead of going silent
   NET.tick(dt);
+  // the supply animation is wall-clock driven: it plays at the same speed on
+  // a 144Hz monitor and under SwiftShader, where game dt is clamped to .08
+  updateUseAnim(performance.now());
 
   if(state==='playing'){
     const nowW=performance.now();
-    // the inventory, the operator console and a recovered document all freeze
-    // time: the world renders, nothing simulates
-    if(!invOpen&&!opsOpen&&!pwOpen&&!noteOpen){
+    // the inventory, the operator console, a recovered document and a supply
+    // animation all freeze time: the world renders, nothing simulates
+    if(!invOpen&&!opsOpen&&!pwOpen&&!noteOpen&&!useAnim){
       playT+=Math.min(2,(nowW-lastTickW)/1000);
       updatePlayer(dt);
       for(const m of monsters)if(!m.ghost)m.update(dt);
       updateItems(dt);
+      updateFactory(dt);
       updateChests(dt);
       updateValves(dt);
       updateEscape(dt);
@@ -6248,41 +7259,45 @@ const NET=(()=>{
     if(el)el.textContent=note||s.toUpperCase();
   }
   async function ensureClient(){
-    if(anyLive())return true;
+    /* The socket state belongs to mqtt.js — it reconnects on its own every
+       2.5s. Rebuilding both clients whenever one socket blipped used to tear
+       down the healthy broker too, drop the room subscriptions in the middle
+       of a join, and re-deliver every retained room beat on each reconnect.
+       Create the pair once and let wire()'s connect handler recover. */
+    if(st.clis.length)return true;
     if(st.conn)return st.conn;
     st.conn=connect().finally(()=>{st.conn=null;});
     return st.conn;
   }
+  function resub(){
+    if(!st.code)return;
+    for(const c of liveClients())for(const t of st.subs){try{c.subscribe(t);}catch(e){}}
+  }
   async function connect(){
     if(typeof mqtt==='undefined'){setStatus('error','MQTT LIBRARY DID NOT LOAD');return false;}
     setStatus('connecting','CONNECTING…');
-    for(const c of st.clis){try{c.end(true);}catch(e){}}
-    st.clis=[];
-
-    // race every broker at once and keep whichever ones answer
-    const tries=BROKERS.map((url,ix)=>new Promise((res)=>{
-      let done=false,cli=null;
-      const fin=(v)=>{
-        if(done)return;done=true;clearTimeout(to);
-        if(!v&&cli){try{cli.end(true);}catch(e){}}
-        res(v?cli:null);
-      };
-      const to=setTimeout(()=>fin(false),10000);
+    // one client per broker, created once; a slow broker is kept, not thrown away
+    st.clis=BROKERS.map((url,ix)=>{
+      let cli;
       try{
         cli=mqtt.connect(url,{
           clientId:'brk_'+st.id+'_'+ix,clean:true,connectTimeout:9000,
           reconnectPeriod:2500,keepalive:25
         });
-      }catch(e){fin(false);return;}
-      cli.on('connect',()=>fin(true));
-      cli.on('error',()=>fin(false));
+      }catch(e){return null;}
       wire(cli);
-    }));
-
-    st.clis=(await Promise.all(tries)).filter(Boolean);
+      return cli;
+    }).filter(Boolean);
     if(!st.clis.length){setStatus('error','NO BROKER REACHABLE');return false;}
-    setStatus('online','CONNECTED');
     for(const c of st.clis)for(const t of st.subs){try{c.subscribe(t);}catch(e){}}
+    // give the first socket a moment before callers decide the net is down;
+    // a broker that answers later simply joins the pair in the background
+    const until=Date.now()+10000;
+    while(Date.now()<until){
+      if(anyLive()){setStatus('online','CONNECTED');return true;}
+      await new Promise(r=>setTimeout(r,150));
+    }
+    setStatus('off','RECONNECTING…');
     return true;
   }
 
@@ -6307,11 +7322,15 @@ const NET=(()=>{
         st.seen.add(k);
         if(st.seen.size>800)st.seen=new Set([...st.seen].slice(-400));
       }
-      if(t.startsWith(P+'rooms/'))onRoom(t,m);
-      else if(st.code&&t===topic('map'))onMap(m);
-      else if(st.code&&t===topic('state')){st.rxState=(st.rxState||0)+1;onState(m);}
-      else if(st.code&&t===topic('in')){st.rxIn=(st.rxIn||0)+1;onIn(m);}
-      else st.rxOther=(st.rxOther||0)+1;
+      /* one malformed or mistimed packet must not kill the whole handler;
+         mqtt.js swallows listener throws, so record them for the tests */
+      try{
+        if(t.startsWith(P+'rooms/'))onRoom(t,m);
+        else if(st.code&&t===topic('map'))onMap(m);
+        else if(st.code&&t===topic('state')){st.rxState=(st.rxState||0)+1;onState(m);}
+        else if(st.code&&t===topic('in')){st.rxIn=(st.rxIn||0)+1;onIn(m);}
+        else st.rxOther=(st.rxOther||0)+1;
+      }catch(e){(window.__netErrs=window.__netErrs||[]).push(String(e&&e.stack||e));}
     });
     st.subs.add(P+'rooms/+');
     try{cli.subscribe(P+'rooms/+');}catch(e){}
@@ -6363,12 +7382,19 @@ const NET=(()=>{
     const maze={
       v:vWall.map(r=>r.join('')),h:hWall.map(r=>r.join('')),
       seg:exitSeg,cell:exitCell,
-      kinds:Array.from(cellKind),
-      tops:Array.from(cellTop).map(v=>Math.round(v*10)/10),
-      rooms:rooms.map(r=>({i:r.i,j:r.j,dirs:r.dirs,walls:r.walls}))
+      mode:navMode,
+      kinds:cellKind?Array.from(cellKind):null,
+      tops:cellTop?Array.from(cellTop).map(v=>Math.round(v*10)/10):null,
+      deck:deckY?Array.from(deckY).map(v=>Math.round(v*100)/100):null,
+      rooms:rooms.map(r=>({i:r.i,j:r.j,dirs:r.dirs,walls:r.walls,door:r.door,theme:r.theme}))
     };
     st.mapKey='k'+Date.now();
-    send(topic('map'),{t:'map',k:st.mapKey,lv:level,maze},true);
+    st.mapMsg={t:'map',k:st.mapKey,lv:level,maze};
+    send(topic('map'),st.mapMsg,true);
+  }
+  function republishMap(){
+    if(st.mapMsg)send(topic('map'),st.mapMsg,true);
+    else publishMap();
   }
   /* Everything on the wire runs on wall clock, not frame time. A hidden tab
      stops requestAnimationFrame entirely, so a host that published from the
@@ -6377,6 +7403,7 @@ const NET=(()=>{
   function stopNetLoop(){
     if(st.beatIv){clearInterval(st.beatIv);st.beatIv=0;}
     if(st.stateIv){clearInterval(st.stateIv);st.stateIv=0;}
+    if(st.mapIv){clearInterval(st.mapIv);st.mapIv=0;}
   }
   function startNetLoop(){
     stopNetLoop();
@@ -6386,6 +7413,14 @@ const NET=(()=>{
         if(st.role!=='host'||!st.code){stopNetLoop();return;}
         publishBeat();
       },BEAT_MS);
+      /* A broker that was still connecting when the room opened never saw the
+         retained layout. Re-announce the SAME map (same key) on wall clock so
+         a guest subscribing on that broker still builds the host's world;
+         clients that already started simply ignore the duplicate. */
+      st.mapIv=setInterval(()=>{
+        if(st.role!=='host'||!st.code){stopNetLoop();return;}
+        republishMap();
+      },3500);
     }
     st.stateIv=setInterval(()=>{
       if(st.role==='host')publishState();
@@ -6412,6 +7447,7 @@ const NET=(()=>{
 
   /* ---------- client ---------- */
   function onMap(m){
+    st.mapRx=(st.mapRx||0)+1;
     if(st.role!=='client'||!m.maze)return;
     if(st.mapKey===m.k&&st.started)return;
     st.mapKey=m.k;st.level=m.lv|0;
@@ -6433,6 +7469,12 @@ const NET=(()=>{
       return;
     }
     st.lastStateAt=Date.now();
+    /* state can beat the retained map through. Keep asking for the layout
+       instead of sitting in the lobby forever with a world we never built. */
+    if(st.role==='client'&&!st.started&&Date.now()-(st.lastMapReq||0)>1800){
+      st.lastMapReq=Date.now();
+      send(topic('in'),{t:'hello',i:st.id,n:st.name});
+    }
     if(st.role!=='host'&&m.pl){
       for(const p of m.pl){
         if(p.i===st.id)continue;
@@ -6462,7 +7504,7 @@ const NET=(()=>{
     if(m.t==='hello'){
       st.hlo=(st.hlo||0)+1;
       st.peers.set(m.i,{id:m.i,name:m.n||'PLAYER',x:player.pos.x,z:player.pos.z,a:0,h:100,ts:Date.now()});
-      publishMap();publishBeat();
+      republishMap();publishBeat();
     }else if(m.t==='p'){
       st.pp=(st.pp||0)+1;
       const p=st.peers.get(m.i)||{id:m.i,name:m.n||'PLAYER'};
@@ -6528,6 +7570,7 @@ const NET=(()=>{
       rxOther:st.rxOther||0,code:st.code,role:st.role,peers:st.peers.size,
       live:liveClients().length,connected:anyLive(),
       started:!!st.started,tx:st.tx||0,rooms:[...st.rooms.keys()],
+      seen:st.seen.size,mapKey:st.mapKey,mapRx:st.mapRx||0,
       ended:!!st.ended,lastStateAgo:st.lastStateAt?Date.now()-st.lastStateAt:-1,
       netbar:(($('#netbar')||{}).textContent||'').trim()};},
     isHost(){return st.role==='host';},
@@ -6578,7 +7621,7 @@ const NET=(()=>{
       // a public broker can be slow to route the first packet; keep asking
       let tries=0;
       const retry=setInterval(()=>{
-        if(st.role!=='client'||st.started||++tries>7){clearInterval(retry);return;}
+        if(st.role!=='client'||st.started||++tries>16){clearInterval(retry);return;}
         hello();
       },1800);
       toast(`JOINING ${code}…`,3000);
@@ -6591,7 +7634,7 @@ const NET=(()=>{
           api.leave();
           setState('lobby');
         }
-      },16000);
+      },30000);
       return true;
     },
 
@@ -6632,11 +7675,12 @@ const NET=(()=>{
       st.lobbyT=(st.lobbyT||0)-dt;
       if(st.lobbyT<=0){st.lobbyT=.5;pruneRooms();}
       if(!st.role)return;
-      // a throttled tab can lose its sockets; get them back on our own
-      st.revT=(st.revT||0)-dt;
-      if(st.revT<=0){
-        st.revT=4;
-        if(!anyLive())ensureClient();
+      /* mqtt.js reconnects by itself. What it cannot repair is a SUBSCRIBE
+         that was written to a socket already closing — so quietly re-send the
+         room topics on wall clock, without rebuilding the connections. */
+      if(Date.now()-(st.resubAt||0)>4000){
+        st.resubAt=Date.now();
+        if(!st.clis.length)ensureClient();else resub();
       }
       // ---- network cadence: on a timer, see startNetLoop ----
       // ---- remote bodies ----
@@ -6717,6 +7761,7 @@ function placePlayer(){
   let bestCell=s,bd=-1;
   for(let i=0;i<GX;i++)for(let j=0;j<GZ;j++){
     const d=dist[i+j*GX];
+    if(navMode==='factory'&&deckY&&deckY[i+j*GX]>0)continue;  // start downstairs
     if(d>0&&d<7&&Math.random()<.5&&d>bd){bd=d;bestCell=[i,j];}
   }
   spawnCell=bestCell;
@@ -6777,7 +7822,6 @@ function loadLevel(lv,sv){
     applySave(sv);
     spawnProps(level);
   }else{
-    placePlayer();
     spawnProps(level);              // before populate, so loot avoids the furniture
     populate();                     // the same seed-free items, pruned by the host later
     /* a client of a hosted room never runs its own monsters — the host
@@ -6885,6 +7929,17 @@ boot();
 window.__BR={player,get monsters(){return monsters;},get state(){return state;},startGame,
   get items(){return items;},get chests(){return chests;},get exit(){return exitInfo;},spawnHallu,openChest,get playT(){return playT;},get hunter(){return hunterActive;},los,solidAt,camera,scene,
   get chestTarget(){return chestTarget;},get invOpen(){return invOpen;},useItem,
+  openInv,closeInv,
+  get useAnim(){return useAnim;},beginUseAnim,endUseAnim,updateUseAnim,usePropSVG,
+  USE_DUR,USE_META,USE_PHASE,USE_PROP,
+  get navMode(){return navMode;},get deckY(){return deckY?Array.from(deckY):null;},
+  get themes(){return CITY_THEMES.map(t=>({id:t.id,name:t.name,loot:t.loot,set:[...t.set]}));},
+  get factoryAnim(){return factoryAnim.length;},groundHeightAt,
+  get signCache(){return Object.keys(signTexCache);},
+  get mazeWalls(){return vWall.reduce((a,r)=>a+r.filter(Boolean).length,0)
+                        +hWall.reduce((a,r)=>a+r.filter(Boolean).length,0);},
+  get deckHeight(){return DECK_H;},
+  get levelInfo(){return LEVELS.map(l=>({n:l.n,name:l.name,mode:l.mode,short:l.short}));},
   get opsOpen(){return opsOpen;},get pwOpen(){return pwOpen;},
   get level(){return level;},get mazes(){return LEVEL_MAZES;},levelExitCell,
   get opsLevel(){return opsLevel;},
@@ -6905,7 +7960,7 @@ window.__BR={player,get monsters(){return monsters;},get state(){return state;},
   get monCap(){return LV().monCap;},
   get kinds(){return cellKind?Array.from(cellKind):null;},
   get tops(){return cellTop?Array.from(cellTop):null;},
-  get rooms(){return rooms.map(r=>({i:r.i,j:r.j,dirs:r.dirs,x:r.x,z:r.z}));},
+  get rooms(){return rooms.map(r=>({i:r.i,j:r.j,dirs:r.dirs,x:r.x,z:r.z,door:r.door,theme:r.theme}));},
   get winCols(){return winCols;},
   get fixtures(){return fixtures;},
   cellKind:(i,j)=>ck(i,j),
