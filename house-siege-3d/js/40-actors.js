@@ -22,6 +22,19 @@ function dirFromAngles(yaw, pitch, out) {
 }
 function allActors() { return G.bots.concat(G.player ? [G.player] : []); }
 
+/* Who counts for an OBJECTIVE — a flag pickup, the hill, an elimination.
+   Offline that is everybody. Online it is the humans only: the bots are
+   simulated separately on each machine and drift apart within seconds, so
+   letting them hold a flag or win a round would put the two scoreboards in
+   disagreement. The host judges the objective from this list and broadcasts
+   the result (see netPublishObj). */
+function objActors() {
+  if (!G.netMode) return allActors();
+  const list = G.player ? [G.player] : [];
+  for (const a of NET.remoteList) if (a.alive) list.push(a);
+  return list;
+}
+
 function buildBotMesh(team) {
   const g = new THREE.Group();
   const col = team === 'red' ? 0xa32b2b : 0x2a4a9e;
