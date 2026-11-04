@@ -71,7 +71,7 @@ function botThink(b) {
         HILL.pos.z + Math.sin(b.hillAng) * (HILL.r + 1.6));
       kind = 'hillring';
     }
-  } else if (G.mode === 'flag') {
+  } else if (G.mode === 'flag' && !G.netMode) {
     const enemyFlagTeam = b.team === 'red' ? 'blue' : 'red';
     const ef = G.flagState[enemyFlagTeam];
     const mf = G.flagState[b.team];
