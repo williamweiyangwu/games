@@ -110,7 +110,7 @@ function hillTint(col) {
 /* who is standing in it right now */
 function hillOccupancy() {
   let red = 0, blue = 0;
-  for (const a of allActors()) {
+  for (const a of objActors()) {
     if (!a.alive) continue;
     if (Math.abs(a.pos.y - HILL.pos.y) > 3.2) continue;
     if (Math.hypot(a.pos.x - HILL.pos.x, a.pos.z - HILL.pos.z) > HILL.r) continue;
@@ -119,8 +119,30 @@ function hillOccupancy() {
   return { red, blue };
 }
 
+/* the ring, the beam and the pulse — pure presentation, so a guest can run it
+   against the host's holder without touching the score */
+function hillPaint(dt) {
+  HILL.capT += dt;
+  const col = HILL.holder ? HILL_COL[HILL.holder] : HILL_COL[''];
+  hillTint(col);
+  if (HILL.ring) HILL.ring.material.opacity = 0.55 + 0.3 * Math.abs(Math.sin(HILL.capT * 2.4));
+  /* The beam exists so you can find the hill from across the map. Standing in
+     it, all it does is wash the screen yellow and show its own open top as a
+     bright diamond against the sky, so it fades out when you are inside. */
+  if (HILL.beam) {
+    const p = G.player;
+    const inside = p && Math.hypot(p.pos.x - HILL.pos.x, p.pos.z - HILL.pos.z) < HILL.r + 1;
+    HILL.beam.material.opacity = inside ? 0.012 : (HILL.holder ? 0.16 : 0.09);
+  }
+}
+
 function updateHill(dt) {
   if (G.mode !== 'koth' || !HILL.active || G.state !== 'playing') return;
+
+  /* Online the host holds the circle and the score; a guest draws the state it
+     is sent (netApplyObj) and must not count its own seconds. */
+  if (G.netMode && !NET.isHost) { hillPaint(dt); hillHud(); return; }
+
   const occ = hillOccupancy();
   const solo = occ.red > 0 && occ.blue === 0 ? 'red'
     : occ.blue > 0 && occ.red === 0 ? 'blue' : '';
@@ -140,19 +162,7 @@ function updateHill(dt) {
     if (G.state !== 'playing') return;
   }
 
-  HILL.capT += dt;
-  const col = HILL.holder ? HILL_COL[HILL.holder] : HILL_COL[''];
-  hillTint(col);
-  if (HILL.ring) HILL.ring.material.opacity = 0.55 + 0.3 * Math.abs(Math.sin(HILL.capT * 2.4));
-  /* The beam exists so you can find the hill from across the map. Standing in
-     it, all it does is wash the screen yellow and show its own open top as a
-     bright diamond against the sky, so it fades out when you are inside. */
-  if (HILL.beam) {
-    const p = G.player;
-    const inside = p && Math.hypot(p.pos.x - HILL.pos.x, p.pos.z - HILL.pos.z) < HILL.r + 1;
-    HILL.beam.material.opacity = inside ? 0.012 : (HILL.holder ? 0.16 : 0.09);
-  }
-
+  hillPaint(dt);
   hillHud(occ);
 }
 
