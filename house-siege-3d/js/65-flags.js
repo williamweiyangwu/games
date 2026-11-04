@@ -52,6 +52,7 @@ function dropFlag(team, pos) {
   fs.pos.set(pos.x, groundAt(pos.x, pos.z, pos.y + 0.5), pos.z);
   for (const a of allActors()) if (a.carrying === team) a.carrying = null;
   if (playerHadIt) $('carryBanner').classList.remove('show');
+  if (G.netMode) netPublishObj();
 }
 
 function returnFlag(team) {
@@ -60,6 +61,7 @@ function returnFlag(team) {
   fs.at = 'base'; fs.carrier = null; fs.dropT = 0;
   fs.pos.copy(flagBasePos(team));
   for (const a of allActors()) if (a.carrying === team) a.carrying = null;
+  if (G.netMode) netPublishObj();
 }
 
 /* Guest view of the host's flags: the meshes follow the broadcast state, and
@@ -93,7 +95,10 @@ function updateFlags(dt) {
     const fl = G.flags[team];
     if (fs.at === 'carried') {
       const c = fs.carrier;
-      if (!c || !c.alive) { dropFlag(team, c ? c.pos : fs.pos); continue; }
+      /* a carrier who left the room leaves a stale body behind: the flag would
+         follow a ghost for the rest of the match */
+      const gone = c && c.isRemote && G.netMode && !NET.remotes.has(c.cid);
+      if (!c || !c.alive || gone) { dropFlag(team, c ? c.pos : fs.pos); continue; }
       fs.pos.set(c.pos.x, c.pos.y, c.pos.z);
       fl.group.position.set(c.pos.x, c.pos.y + 0.35, c.pos.z);
       fl.group.rotation.y += dt * 2;
@@ -119,6 +124,9 @@ function updateFlags(dt) {
         if (dist2(a.pos, fs.pos) < 1.9 && Math.abs(a.pos.y - fs.pos.y) < 2) {
           fs.at = 'carried'; fs.carrier = a; fs.dropT = 0;
           a.carrying = team;
+          /* push it now: at four publishes a second a pickup could otherwise
+             wait a quarter of a second to reach the player who made it */
+          if (G.netMode) netPublishObj();
           if (a.isPlayer) { Snd.flag(); banner('YOU HAVE THE <span class="hl">' + team.toUpperCase() + ' FLAG</span> — RUN HOME', 3); $('carryBanner').classList.add('show'); }
           else if (a.team === G.player.team) banner('<span class="hl">' + a.name + '</span> grabbed the enemy flag', 1.8);
           else banner('THE ENEMY HAS YOUR FLAG', 2.2);
