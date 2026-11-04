@@ -524,6 +524,11 @@ b{font-weight:700}
   padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.07)}
 .net-row{display:flex;align-items:center;gap:10px;min-height:28px}
 .net-row>label{font-size:9px;letter-spacing:.2em;color:#6d7889;width:84px;flex:0 0 auto}
+/* the mode and map rows carry four buttons each: stacked, they get the whole
+   column instead of wrapping into a ragged second line */
+.net-row.stack{flex-direction:column;align-items:stretch;gap:5px}
+.net-row.stack>label{width:auto;text-align:left}
+.net-row.stack .seg button{flex:0 1 auto;white-space:nowrap;padding:6px 8px}
 .net-row>input,.net-join input{flex:1;min-width:0;background:rgba(255,255,255,.05);
   border:1px solid rgba(255,255,255,.12);border-radius:2px;color:#e8ecf3;
   font:600 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.1em;
