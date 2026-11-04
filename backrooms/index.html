@@ -84,6 +84,9 @@ body.playing{cursor:none}
   opacity:0;transform:translateY(6px);transition:opacity .35s,transform .35s;
   background:rgba(0,0,0,.42);padding:5px 13px;border-left:1px solid rgba(232,86,47,.5)}
 .toast.on{opacity:1;transform:translateY(0)}
+/* a supply animation owns the whole screen for a moment — no overlapping
+   level banner or pickup toast while the prop is in the player's hands */
+body.ua-active #toasts{opacity:0;transition:opacity .15s}
 
 #danger{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .35s;
   box-shadow:inset 0 0 130px 10px rgba(140,10,10,.55)}
@@ -645,7 +648,7 @@ body.touch #cross{opacity:.35}
     <div class="slot" data-slot="3">3</div>
   </div>
   <div id="invhint"><b>E</b>INVENTORY</div>
-  <div id="dashhint">SPACE · DODGE READY</div>
+  <div id="dashhint">Q · DODGE READY</div>
   <div id="saveind">PROGRESS SAVED</div>
   <div id="weapon">
     <div id="wname">RUSTED PIPE</div>
@@ -5004,6 +5007,7 @@ function beginUseAnim(kind){
   $('#ua-bar').style.width='0%';
   // force a reflow so back-to-back uses restart every CSS keyframe
   root.classList.remove('on');void root.offsetWidth;root.classList.add('on');
+  document.body.classList.add('ua-active');
   useAnim={kind,t0:performance.now(),dur:USE_DUR[kind],p:0,cues:{},phase:''};
   clearInterval(useAnimTimer);
   useAnimTimer=setInterval(()=>updateUseAnim(performance.now()),40);
@@ -5040,6 +5044,7 @@ function updateUseAnim(nowW){
 }
 function endUseAnim(silent){
   clearInterval(useAnimTimer);useAnimTimer=0;
+  document.body.classList.remove('ua-active');
   const root=$('#useanim');
   if(root)root.classList.remove('on');
   useAnim=null;
