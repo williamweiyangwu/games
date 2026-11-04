@@ -246,7 +246,8 @@ function netRenderLobby() {
     return '<div class="net-room" data-code="' + escHtml(r.code) + '">' +
       '<div class="nr-code">' + escHtml(r.code) + '</div>' +
       '<div class="nr-main"><div class="nr-host">' + escHtml(r.hostName || 'HOST') + '</div>' +
-      '<div class="nr-meta">' + (r.mode === 'flag' ? 'FLAG RAID' : 'DEATHMATCH') + ' · ' + ai + '</div></div>' +
+      '<div class="nr-meta">' + escHtml(modeDef(r.mode).name) + ' · ' +
+        escHtml(mapDef(r.map).name) + ' · ' + ai + '</div></div>' +
       '<div class="nr-players" title="operators in this room">' + (r.n || 1) + ' IN</div>' +
       '<div class="nr-go">JOIN →</div>' +
       '</div>';
@@ -370,7 +371,9 @@ function netStartMatch(cfg) {
   startGame(cfg.mode || 'tdm', cfg.map || 'white');
   netShowChip(true);
   netUpdateChip();
-  netToast('Joined room ' + cfg.code + (cfg.ai ? ' · AI ' + (DIFF[cfg.diff] ? DIFF[cfg.diff].label : cfg.diff) : ' · no AI'));
+  netToast('Joined room ' + cfg.code + ' · ' + modeDef(cfg.mode).name +
+    ' on ' + mapDef(cfg.map).name +
+    (cfg.ai ? ' · AI ' + (DIFF[cfg.diff] ? DIFF[cfg.diff].label : cfg.diff) : ' · no AI'));
   /* announce ourselves so the others can spawn a body for us */
   netPub(netTopic('room/' + cfg.code + '/ev'), {
     k: 'join', cid: NET.cid, name: NET.name, team: G.team
@@ -461,6 +464,7 @@ function netOnMessage(topic, payload) {
     if (NET._pendingJoin === m.code) { netAdoptRoom(m); return; }
     /* the host changed a setting mid-match */
     if (m.host !== NET.cid) {
+      if (NET.room) { NET.room.mode = m.mode; NET.room.map = m.map; }
       if (G.netAi !== !!m.ai || G.diff !== m.diff) {
         G.netAi = !!m.ai;
         G.diff = m.diff;
@@ -479,6 +483,17 @@ function netOnMessage(topic, payload) {
     }
     /* follow the host's clock so nobody ends the match early */
     if (typeof m.t === 'number' && Math.abs(G.timeLeft - m.t) > 1.5) G.timeLeft = m.t;
+    /* The host decides when a match is over, and its verdict only reaches us
+       as a score. Without this check a guest kept playing a round the host had
+       already finished — which is every mode whose limit is small: a flag
+       capture in golden point, the 90th second on the hill, the last stand. */
+    checkRoundEnd();
+    return;
+  }
+
+  if (rest === 'obj') {
+    if (NET.isHost) return;                       // we wrote it
+    netApplyObj(m);
     return;
   }
 
@@ -566,7 +581,21 @@ function netEvent(ev) {
     if (NET.isHost && NET.room && NET.room.code === ev.code) {
       netPub(netTopic('room/' + NET.room.code + '/cfg'), NET.room, { retain: true });
       netPublishScore(true);
+      netPublishObj();
       netSendState(true);
+    }
+    return;
+  }
+
+  if (ev.k === 'cap') {
+    if (ev.by === NET.cid) {
+      Snd.flag();
+      banner('<span class="hl">FLAG CAPTURED!</span>', 2.2);
+      Ach.bump('captures');
+    } else if (G.player && ev.team === G.player.team) {
+      banner('YOUR TEAM SCORED', 2);
+    } else {
+      banner(teamLabel(ev.team) + ' TEAM SCORED', 2);
     }
     return;
   }
@@ -587,7 +616,7 @@ function netEvent(ev) {
     netToast(ev.name + ' joined');
     /* the joiner needs our state right away rather than at the next tick */
     netSendState(true);
-    if (NET.isHost) netPublishScore(true);
+    if (NET.isHost) { netPublishScore(true); netPublishObj(); }
     return;
   }
 
@@ -795,6 +824,101 @@ function netSendState(force) {
   }, { retain: true });
 }
 
+/* ------------------------------------------------------------
+   OBJECTIVE SYNC
+   ------------------------------------------------------------
+   Bots are simulated separately on every machine, so two clients can never
+   agree about where a flag is lying or who is standing on the hill. The
+   objective is therefore judged by the host alone, from the humans in the
+   room, and broadcast: the host's world is the only one that counts and every
+   guest draws it. Bots still fight — they just never score, which is exactly
+   how a kill already works online. */
+
+function netCidOf(a) {
+  if (!a) return '';
+  return a.isPlayer ? NET.cid : (a.cid || '');
+}
+
+function netCarrierActor(cid) {
+  if (!cid) return null;
+  if (cid === NET.cid) return G.player || null;
+  return NET.remotes.get(cid) || null;
+}
+
+function netPublishObj() {
+  if (!NET.isHost || !NET.room || !NET.connected) return;
+  if (G.mode !== 'flag' && G.mode !== 'koth') return;
+  const m = { m: G.mode, ts: Date.now() };
+  if (G.mode === 'flag') {
+    if (!G.flagState) return;
+    m.f = {};
+    for (const team of ['red', 'blue']) {
+      const fs = G.flagState[team];
+      m.f[team] = {
+        at: fs.at,
+        c: netCidOf(fs.carrier),
+        x: Math.round(fs.pos.x * 100) / 100,
+        y: Math.round(fs.pos.y * 100) / 100,
+        z: Math.round(fs.pos.z * 100) / 100,
+        d: Math.round((fs.dropT || 0) * 10) / 10
+      };
+    }
+  } else {
+    m.hr = Math.round(HILL.acc.red * 10) / 10;
+    m.hb = Math.round(HILL.acc.blue * 10) / 10;
+    m.h = HILL.holder || '';
+  }
+  netPub(netTopic('room/' + NET.room.code + '/obj'), m, { retain: true });
+}
+
+/* a human on the host captured: credit the machine that did it */
+function netObjCapture(a) {
+  if (!NET.isHost || !NET.room || !NET.connected) return;
+  const cid = a && !a.isPlayer ? netCidOf(a) : '';
+  if (cid) netPub(netTopic('room/' + NET.room.code + '/ev'), { k: 'cap', by: cid, team: a.team });
+  netPublishObj();
+}
+
+function netApplyObj(m) {
+  if (!m || m.m !== G.mode || !G.player) return;
+
+  if (G.mode === 'flag') {
+    if (!m.f || !G.flagState) return;
+    const before = G.player.carrying;
+    for (const team of ['red', 'blue']) {
+      const s = m.f[team];
+      if (!s) continue;
+      const fs = G.flagState[team];
+      fs.at = s.at;
+      fs.dropT = s.d || 0;
+      fs.pos.set(s.x, s.y, s.z);
+      fs.carrier = s.at === 'carried' ? netCarrierActor(s.c) : null;
+    }
+    /* mirror the carriers onto the bodies we can see */
+    G.player.carrying = null;
+    for (const a of NET.remoteList) a.carrying = null;
+    for (const team of ['red', 'blue']) {
+      const c = G.flagState[team].carrier;
+      if (c) c.carrying = team;
+    }
+    const now = G.player.carrying;
+    if (now && !before) {
+      Snd.flag();
+      banner('YOU HAVE THE <span class="hl">' + now.toUpperCase() + ' FLAG</span> — RUN HOME', 3);
+      $('carryBanner').classList.add('show');
+    } else if (!now && before) {
+      $('carryBanner').classList.remove('show');
+    }
+    return;
+  }
+
+  if (G.mode === 'koth') {
+    if (typeof m.hr === 'number') HILL.acc.red = m.hr;
+    if (typeof m.hb === 'number') HILL.acc.blue = m.hb;
+    HILL.holder = m.h || '';
+  }
+}
+
 function netPublishScore(force) {
   if (!NET.isHost || !NET.room || !NET.connected) return;
   netPub(netTopic('room/' + NET.room.code + '/score'), {
@@ -829,7 +953,13 @@ function netTick(dt) {
 
   if (NET.isHost) {
     NET.scoreT += dt;
-    if (NET.scoreT >= 0.25) { NET.scoreT = 0; netPublishScore(); }
+    if (NET.scoreT >= 0.25) {
+      NET.scoreT = 0;
+      netPublishScore();
+      /* flag and hill state ride along: small, retained, and the only way a
+         guest can know what the objective is doing on the host's machine */
+      netPublishObj();
+    }
   }
 
   netUpdateRemotes(dt);
@@ -875,8 +1005,24 @@ function initNet() {
   netLoadPrefs();
   netSetStatus('offline');
 
+  /* The mode and map rows are generated from the same registries the menu and
+     the vote screen use, so a new mode or map shows up here for free. The mode
+     row used to be a single hard-coded DEATHMATCH button, which is why online
+     play looked like it only had one mode. */
+  const buildSeg = (id, ids, label, attr, sel) => {
+    const row = $(id);
+    if (!row) return;
+    const pick = ids.indexOf(sel) >= 0 ? sel : ids[0];
+    row.innerHTML = ids.map(k =>
+      '<button data-' + attr + '="' + k + '"' + (k === pick ? ' class="on"' : '') + '>' +
+      label(k) + '</button>').join('');
+  };
+  buildSeg('netMode', MODE_ORDER, id => modeDef(id).short, 'mode', 'tdm');
+  buildSeg('netMap', MAP_ORDER, id => mapDef(id).name.replace(/^THE /, ''), 'map', G.mapId);
+
   const hostOpts = () => ({
-    mode: 'tdm',
+    mode: (document.querySelector('#netMode button.on') || {}).dataset?.mode || 'tdm',
+    map: (document.querySelector('#netMap button.on') || {}).dataset?.map || G.mapId || 'white',
     diff: (document.querySelector('#netDiff button.on') || {}).dataset?.diff || 'normal',
     ai: (document.querySelector('#netAi button.on') || {}).dataset?.ai !== 'off',
     pub: (document.querySelector('#netVis button.on') || {}).dataset?.vis !== 'private'
@@ -896,6 +1042,7 @@ function initNet() {
   };
   seg('netVis');
   seg('netMode');
+  seg('netMap');
   seg('netAi', b => {
     const off = b.dataset.ai === 'off';
     const r = $('netDiffRow');
