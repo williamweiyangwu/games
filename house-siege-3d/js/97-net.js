@@ -671,6 +671,9 @@ function netSpawnRemote(cid, st) {
 function netDropRemote(cid) {
   const a = NET.remotes.get(cid);
   if (!a) return;
+  /* somebody who leaves mid-run drops what they were carrying, otherwise the
+     flag stays glued to a body that no longer exists */
+  if (a.carrying && NET.isHost && G.flagState) dropFlag(a.carrying, a.pos);
   if (a.np && a.np.parentNode) a.np.parentNode.removeChild(a.np);
   if (a.mesh) disposeTree(a.mesh);
   NET.remotes.delete(cid);
