@@ -17,8 +17,6 @@ const G = {
   player: null, tracers: [], particles: [], projectiles: [], blasts: [],
   shake: 0, aimLine: null, aimPts: null,
   timeLeft: CFG.matchTime, score: { red: 0, blue: 0 },
-  /* LAST STAND round counter; ignored by every other mode */
-  round: { n: 1, hold: 0, winner: '' },
   /* sudden death after a level full-time score: the next kill (TDM) or the
      next capture (flag) decides the match */
   golden: false,
