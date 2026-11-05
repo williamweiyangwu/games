@@ -238,7 +238,9 @@ function showScoreboard(on) {
     const all = G.bots.concat(remoteActors(), [G.player]);
     const red = all.filter(a => a.team === 'red');
     const blue = all.filter(a => a.team === 'blue');
-    $('scoreboard').innerHTML = '<div class="sb-title">' + (G.mode === 'flag' ? 'FLAG RAID' : 'TEAM DEATHMATCH') + ' · ' + DIFF[G.diff].label + '</div>' +
+    const md = modeDef(G.mode);
+    const diff = DIFF[G.diff] || DIFF.normal;
+    $('scoreboard').innerHTML = '<div class="sb-title">' + md.name + ' · ' + diff.label + '</div>' +
       '<div class="sb-team"><div class="sb-tname red">RED</div>' + head + red.map(rows).join('') + '</div>' +
       '<div class="sb-team"><div class="sb-tname blue">BLUE</div>' + head + blue.map(rows).join('') + '</div>';
     $('scoreboard').classList.add('show');
