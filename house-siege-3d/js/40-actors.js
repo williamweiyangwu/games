@@ -152,6 +152,10 @@ function spawnPoint(team, i) {
 }
 
 function ensureBotGroup() {
+  /* Remote bodies are parented to this group. Take them out before it is
+     disposed, or a new match tears the other humans' meshes off the scene and
+     they stay invisible for the rest of the session (startGame re-homes them). */
+  if (typeof netDetachRemotes === 'function') netDetachRemotes();
   G.bots.length = 0;
   disposeTree(G._botGroup);          // also frees the bodies left in the old group
   G._botGroup = new THREE.Group();
