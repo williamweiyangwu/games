@@ -366,7 +366,9 @@ function netAdoptRoom(cfg) {
 function netStartMatch(cfg) {
   G.netMode = true;
   G.netAi = !!cfg.ai;
-  G.diff = cfg.diff || 'normal';
+  /* a room config is somebody else's JSON: an unknown difficulty would leave
+     DIFF[G.diff] undefined and crash the first spawn, so resolve it here */
+  G.diff = DIFF[cfg.diff] ? cfg.diff : 'normal';
   Ach.bump('onlineMatches');
   startGame(cfg.mode || 'tdm', cfg.map || 'white');
   netShowChip(true);
@@ -423,6 +425,33 @@ function netClearRemotes() {
 }
 
 /* ------------------------------------------------------------
+   SURVIVING A MATCH RESTART
+   ------------------------------------------------------------
+   startGame() builds a fresh bot group and clears #nameplates, which is right
+   for the bots (they are rebuilt from scratch) but wrong for the humans on the
+   wire: their bodies live in the same group and their plates in the same
+   container. Without this, the first end-of-match vote made every other player
+   invisible for the rest of the session — you could still be shot by them,
+   because hit detection reads their position, not their mesh.
+
+   Detach before the group is disposed so the geometry and materials are not
+   freed underneath a body that is still in use, then re-home afterwards. */
+function netDetachRemotes() {
+  for (const a of NET.remoteList) {
+    if (a.mesh && a.mesh.parent) a.mesh.parent.remove(a.mesh);
+  }
+}
+
+function netRehomeRemotes() {
+  if (!G.netMode || !NET.remoteList.length) return;
+  const plates = $('nameplates');
+  for (const a of NET.remoteList) {
+    if (a.mesh && G._botGroup && a.mesh.parent !== G._botGroup) G._botGroup.add(a.mesh);
+    if (a.np && plates && a.np.parentNode !== plates) plates.appendChild(a.np);
+  }
+}
+
+/* ------------------------------------------------------------
    INBOUND
    ------------------------------------------------------------ */
 function netOnMessage(topic, payload) {
@@ -467,8 +496,8 @@ function netOnMessage(topic, payload) {
       if (NET.room) { NET.room.mode = m.mode; NET.room.map = m.map; }
       if (G.netAi !== !!m.ai || G.diff !== m.diff) {
         G.netAi = !!m.ai;
-        G.diff = m.diff;
-        netToast('Host set AI ' + (m.ai ? 'ON · ' + (DIFF[m.diff] ? DIFF[m.diff].label : m.diff) : 'OFF'));
+        G.diff = DIFF[m.diff] ? m.diff : 'normal';
+        netToast('Host set AI ' + (m.ai ? 'ON · ' + (DIFF[G.diff] ? DIFF[G.diff].label : G.diff) : 'OFF'));
       }
     }
     return;
@@ -542,11 +571,21 @@ function netPeerState(cid, st) {
   peer.team = st.team || peer.team;
   peer.hp = st.hp;
   peer.alive = st.alive;
+  /* the scoreboard is the one place a player's own record is read by everyone
+     else, so it has to travel with the body — it used to show 0/0 for every
+     other human in the room */
+  if (typeof st.k === 'number') peer.kills = st.k;
+  if (typeof st.d === 'number') peer.deaths = st.d;
   peer.lastSeen = netNow();
 
   if (!st.alive) {
     const a = NET.remotes.get(cid);
-    if (a) { a.alive = false; if (a.mesh) a.mesh.visible = false; }
+    if (a) {
+      a.alive = false;
+      if (a.mesh) a.mesh.visible = false;
+      if (typeof st.k === 'number') a.kills = st.k;
+      if (typeof st.d === 'number') a.deaths = st.d;
+    }
     return;
   }
   if (!NET.remotes.has(cid)) netSpawnRemote(cid, st);
@@ -554,6 +593,8 @@ function netPeerState(cid, st) {
   a.tx = st.x; a.ty = st.y; a.tz = st.z;
   a.tyaw = st.yaw; a.tPitch = st.pitch || 0;
   a.hp = st.hp; a.alive = true;
+  if (typeof st.k === 'number') a.kills = st.k;
+  if (typeof st.d === 'number') a.deaths = st.d;
   a.wid = st.w;
   if (!a.mesh.visible) a.mesh.visible = true;
 }
@@ -822,6 +863,7 @@ function netSendState(force) {
     pitch: Math.round(p.pitch * 1000) / 1000,
     hp: Math.max(0, Math.round(p.hp)),
     alive: p.alive ? 1 : 0,
+    k: p.kills, d: p.deaths,
     w: held ? held.id : '',
     zoom: currentZoom()
   }, { retain: true });
