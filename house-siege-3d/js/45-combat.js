@@ -161,8 +161,16 @@ function addFeed(a, b, w, head, mine) {
 }
 function teamOf(name) {
   if (name === 'YOU') return G.team;
+  /* online the feed carries callsigns, not 'YOU' — and a human team-mate is not
+     in G.bots, so every name used to fall through to the enemy colour */
+  if (typeof NET !== 'undefined' && NET.name && name === NET.name) return G.team;
   const b = G.bots.find(x => x.name === name);
-  return b ? b.team : otherTeam(G.team);
+  if (b) return b.team;
+  if (typeof NET !== 'undefined' && NET.remoteList) {
+    const r = NET.remoteList.find(x => x.name === name);
+    if (r) return r.team;
+  }
+  return otherTeam(G.team);
 }
 function otherTeam(t) { return t === 'red' ? 'blue' : 'red'; }
 function teamLabel(t) { return t === 'red' ? 'RED' : 'BLUE'; }
