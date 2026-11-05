@@ -266,7 +266,10 @@ function updateHUD(dt) {
   $('clock').classList.toggle('low', !G.golden && t < 30 && G.mode !== 'tutorial');
   $('scoreRed').textContent = G.score.red;
   $('scoreBlue').textContent = G.score.blue;
-  const capLabel = G.mode === 'flag' ? 'CAPTURES' : 'KILLS';
+  /* the caption is part of the mode definition, not a flag/TDM special case:
+     the hill scores seconds held and last stand scores a round, so hard-coding
+     "KILLS" left both of them mislabelled for the whole match */
+  const capLabel = modeDef(G.mode).scoreLabel;
   $('capRed').textContent = capLabel;
   $('capBlue').textContent = capLabel;
 
