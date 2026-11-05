@@ -321,7 +321,16 @@ function initMenu() {
     else $('howto').classList.remove('show');
   });
   $('btnResume').addEventListener('click', resumeGame);
-  $('btnRestart').addEventListener('click', () => startGame(G.mode, G.mapId));
+  $('btnRestart').addEventListener('click', () => {
+    /* A restart only exists on one machine. In a room it would reset your world
+       while everybody else kept playing the old match — and the host's score
+       and objective would then overwrite yours on the next tick. */
+    if (G.netMode && NET.room) {
+      netToast('The room decides the next match — leave it to play alone');
+      return;
+    }
+    startGame(G.mode, G.mapId);
+  });
   $('btnQuit').addEventListener('click', quitToMenu);
   /* the end screen now leads with a vote, so "play again" means "deploy the
      result now" rather than silently skipping the vote */
