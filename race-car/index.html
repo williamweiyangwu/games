@@ -918,6 +918,72 @@
       });
     })();
 
+    // ---- pit lane (physical geometry near start/finish) ----
+    (function buildPitLane() {
+      var pitMat = new THREE.MeshLambertMaterial({ color: 0x2a2f36 });
+      var pitLine = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      var pitBox = new THREE.MeshLambertMaterial({ color: 0x1e2430 });
+      var pitLat = -(HALF_W + 2.6);
+      var pitW = 3.2;
+      var s0 = wrapS(LEN - 85);
+      var s1 = wrapS(LEN - 10);
+      // build in segments, handling wrap
+      var segs = 60;
+      var total = 75;
+      for (var i = 0; i < segs; i++) {
+        var sa = wrapS(LEN - 85 + (i/segs)*total);
+        var sb = wrapS(LEN - 85 + ((i+1)/segs)*total);
+        var a1 = offsetPos(sa, pitLat - pitW/2), a2 = offsetPos(sa, pitLat + pitW/2);
+        var b1 = offsetPos(sb, pitLat - pitW/2), b2 = offsetPos(sb, pitLat + pitW/2);
+        // simple quad as two triangles via BufferGeometry
+        var g = new THREE.BufferGeometry();
+        var verts = new Float32Array([
+          a1.x,0.022,a1.z, a2.x,0.022,a2.z, b2.x,0.022,b2.z,
+          a1.x,0.022,a1.z, b2.x,0.022,b2.z, b1.x,0.022,b1.z
+        ]);
+        g.setAttribute('position', new THREE.BufferAttribute(verts,3));
+        g.computeVertexNormals();
+        world.add(new THREE.Mesh(g, pitMat));
+      }
+      // pit entry/exit markings (tapers toward track)
+      [LEN-85, LEN-10].forEach(function(ss, idx){
+        var s = wrapS(ss);
+        var y = yawAt(s);
+        var m = offsetPos(s, pitLat + pitW/2 + 0.8);
+        var mark = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.03, 3.5), pitLine);
+        mark.position.set(m.x, 0.03, m.z);
+        mark.rotation.y = y;
+        world.add(mark);
+      });
+      // pit boxes
+      for (var b = 0; b < 6; b++) {
+        var sbx = wrapS(LEN - 75 + b*10);
+        var pb = offsetPos(sbx, pitLat - pitW/2 - 1.0);
+        var box = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.04, 6.5), pitBox);
+        box.position.set(pb.x, 0.025, pb.z);
+        box.rotation.y = yawAt(sbx);
+        world.add(box);
+      }
+      // pit wall
+      for (var w = 0; w < 30; w++) {
+        var sw = wrapS(LEN - 82 + (w/29)*68);
+        var pw = offsetPos(sw, pitLat - pitW/2 - 2.2);
+        var wall = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.1, 2.6), new THREE.MeshLambertMaterial({color:0x888d95}));
+        wall.position.set(pw.x, 0.55, pw.z);
+        wall.rotation.y = yawAt(sw);
+        world.add(wall);
+      }
+      // "PIT" label
+      try {
+        var lpos = offsetPos(wrapS(LEN - 45), pitLat);
+        var lbl = new THREE.Mesh(new THREE.PlaneGeometry(6,1.4), new THREE.MeshBasicMaterial({map: signTexture('PIT LANE','#1a2233','#ffffff'), side:THREE.DoubleSide}));
+        lbl.position.set(lpos.x, 0.04, lpos.z);
+        lbl.rotation.x = -Math.PI/2;
+        lbl.rotation.z = yawAt(wrapS(LEN - 45));
+        world.add(lbl);
+      } catch(e){}
+    })();
+
     // scenery: trees and grandstands outside the railings
     var trunkMat = new THREE.MeshLambertMaterial({ color: 0x6b4a2a });
     var leafMats = P.tree.map(function (c) { return new THREE.MeshLambertMaterial({ color: c }); });
@@ -3218,33 +3284,38 @@ var pr = projectTrack(c.x, c.z, c.i);
   loadAch(); renderAch();
 
   // ---- Pit stop logic ----
-  var PIT_S = wrapS(LEN - 20);
-  var PIT_RANGE = 18;
-  var PIT_LAT_MIN = -HALF_W - 4.5;
-  var PIT_LAT_MAX = -HALF_W - 0.8;
+  var PIT_S = wrapS(LEN - 45);
+  var PIT_RANGE = 38;
+  var PIT_LAT_MIN = -HALF_W - 4.8;
+  var PIT_LAT_MAX = -HALF_W - 1.2;
   var pitServiceTime = 0;
   function inPitArea(c) {
-    var ds = Math.abs(wrapS(c.s) - PIT_S);
-    ds = Math.min(ds, LEN - ds);
-    return ds < PIT_RANGE && c.lat < PIT_LAT_MIN + 3 && c.lat > PIT_LAT_MIN - 2;
+    var s = wrapS(c.s);
+    var inS = (s > wrapS(LEN - 80) || s < wrapS(5)); // pit lane region near start/finish
+    return inS && c.lat < PIT_LAT_MAX && c.lat > PIT_LAT_MIN;
   }
   function updatePit(dt) {
     var msg = document.getElementById('pitMsg');
-    if (!player || !started || raceOver) { if(msg) msg.style.display='none'; return; }
-    var nearPit = Math.abs(wrapS(player.s)-PIT_S) < PIT_RANGE + 10 || Math.abs(wrapS(player.s)-PIT_S) > LEN - (PIT_RANGE+10);
+    if (!player || !started || !lightsOut || raceOver) { if(msg) msg.style.display='none'; return; }
+    var s = wrapS(player.s);
+    var nearPit = (s > wrapS(LEN - 95) || s < wrapS(12));
+    var inZone = inPitArea(player);
     if (player.inPits) {
       pitServiceTime += dt;
-      if (msg) { msg.style.display='block'; msg.textContent = 'PIT STOP: ' + Math.ceil(Math.max(0, 2.5 - pitServiceTime)) + 's'; }
-      if (pitServiceTime >= 2.5) {
-        player.damage = 0; player.fuel = 1.0; player.tyreWear = 0; player.inPits = false; player.pitCount++;
+      player.speed *= 0.85; player.vx *= 0.85; player.vz *= 0.85;
+      if (msg) { msg.style.display='block'; msg.textContent = 'PIT SERVICE: ' + Math.ceil(Math.max(0, 2.2 - pitServiceTime)) + 's'; }
+      if (pitServiceTime >= 2.2) {
+        player.damage = 0; player.fuel = 1.0; player.tyreWear = 0; player.inPits = false; player.pitCount = (player.pitCount||0)+1;
         if (msg) msg.style.display='none';
-        flash('PIT SERVICE COMPLETE');
+        flash('PIT COMPLETE');
       }
-    } else if (nearPit && player.lat < -HALF_W - 1.5 && Math.abs(player.speed) < 8) {
+    } else if (inZone && Math.abs(player.speed) < 10) {
       player.inPits = true; pitServiceTime = 0;
-      if (msg) { msg.style.display='block'; msg.textContent = 'PIT STOP...'; }
-    } else if (nearPit && player.lat < -HALF_W - 1.0) {
-      if (msg) { msg.style.display='block'; msg.textContent = 'SLOW DOWN FOR PIT'; }
+      if (msg) { msg.style.display='block'; msg.textContent = 'PIT SERVICE...'; }
+    } else if (nearPit && player.lat < -HALF_W - 0.8) {
+      if (msg) { msg.style.display='block'; msg.textContent = 'PIT LANE — slow down to service'; }
+    } else if (nearPit) {
+      if (msg) { msg.style.display='block'; msg.textContent = 'PIT ENTRY AHEAD (inside edge)'; setTimeout(function(){ if(msg && !inPitArea(player)) msg.style.display='none'; }, 1200); }
     } else {
       if (msg) msg.style.display='none';
     }
@@ -3313,30 +3384,47 @@ var pr = projectTrack(c.x, c.z, c.i);
   updateMenuText();
   placeOnGrid();
   wireTouch();
+  var _trlBtn = document.getElementById('toggleRaceLineBtn');
+  if (_trlBtn) _trlBtn.addEventListener('click', function(){ raceLineOn = !raceLineOn; buildRaceLine(); });
 
   requestAnimationFrame(frame);
 })();
 </script>
 <div id="tutorial" class="overlay hidden" style="z-index:100">
-  <div style="background:#0e1526;padding:30px;border-radius:16px;max-width:600px;text-align:left">
+  <div style="background:#0e1526;padding:30px;border-radius:16px;max-width:640px;text-align:left;max-height:80vh;overflow:auto">
     <h1 style="font-size:28px;margin-bottom:10px">RACING TUTORIAL</h1>
     <p style="line-height:1.6;opacity:0.9">
       <b>CONTROLS:</b><br>
-      W/↑ - Throttle<br>
-      S/↓ - Brake/Reverse<br>
-      A/D/←/→ - Steering<br>
-      SHIFT - Handbrake (Drift)<br>
-      SPACE - Nitro Boost<br>
-      C - Camera Toggle<br>
-      R - Restart<br>
-      M - Mute/Unmute<br>
-      ESC - Pause
+      W / ↑ — Throttle &nbsp;|&nbsp; S / ↓ — Brake/Reverse<br>
+      A/D / ←/→ — Steering &nbsp;|&nbsp; SHIFT — Handbrake (Drift)<br>
+      SPACE — Nitro Boost &nbsp;|&nbsp; C — Camera &nbsp;|&nbsp; R — Restart<br>
+      M — Mute &nbsp;|&nbsp; ESC — Pause &nbsp;|&nbsp; Touch buttons on mobile
     </p>
-    <p style="line-height:1.6;opacity:0.9;margin-top:10px">
-      <b>RACING LINE:</b> Follow the apex of corners for best speed. Use braking before turns.<br>
-      <b>TIMING:</b> Accelerate out of corners, brake before them. Watch your speed in tight sections.
+    <p style="line-height:1.7;opacity:0.9;margin-top:10px">
+      <b>RACING LINE (green line):</b> Shows the ideal path. Enter wide, hit the <b>apex</b> (inside of the turn), exit wide for maximum speed.
     </p>
-    <button id="closeTutorial">CLOSE</button>
+    <p style="line-height:1.7;opacity:0.9;margin-top:8px">
+      <b>WHEN TO DO WHAT:</b><br>
+      • <b>Straights:</b> Full throttle. Use Nitro (SPACE) when clear ahead.<br>
+      • <b>Before corners:</b> Brake early (S/↓), down to a controllable speed.<br>
+      • <b>Turn-in:</b> Ease off brake, steer smoothly toward the apex.<br>
+      • <b>Mid-corner:</b> Maintain steady throttle/steering; avoid sudden inputs.<br>
+      • <b>Corner exit:</b> Unwind steering and accelerate progressively.<br>
+      • <b>Tight hairpins:</b> Brake harder, consider a small drift with SHIFT for rotation, then power out.
+    </p>
+    <p style="line-height:1.7;opacity:0.9;margin-top:8px">
+      <b>RACE START:</b> 5 red lights illuminate, then all go out — accelerate on lights out. Accelerating early = jump start (+10s penalty).
+    </p>
+    <p style="line-height:1.7;opacity:0.9;margin-top:8px">
+      <b>PIT STOPS:</b> Near the start/finish straight, move to the inside edge and slow down to trigger service (repairs damage, refuels, fresh tyres).
+    </p>
+    <p style="line-height:1.7;opacity:0.9;margin-top:8px">
+      <b>TRACK NUMBER (1-150):</b> In the menu, enter any track number from 1–150 and click LOAD to race that track (tracks beyond the presets are procedurally generated).
+    </p>
+    <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+      <button id="closeTutorial">CLOSE</button>
+      <button id="toggleRaceLineBtn" class="ghost">TOGGLE RACING LINE</button>
+    </div>
   </div>
 </div>
 <button id="openTutorial" style="position:fixed;bottom:10px;left:10px;z-index:30;padding:8px 16px;font-size:12px;background:#243b63;color:#e6efff">TUTORIAL</button>
