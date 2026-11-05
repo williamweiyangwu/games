@@ -85,6 +85,8 @@
   #lifeTimer.low { color: #ff5a4a; animation: pulse 1s infinite; }
   @keyframes pulse { 50% { opacity: 0.55; } }
   #gameClock { font-size: 12px; color: #a9c0d0; margin-top: 1px; }
+  #contractLine { font-size: 11px; color: #c9b071; margin-top: 3px; letter-spacing: 0.4px; }
+  #contractLine.low { color: #ff8a6a; }
 
   #minimapWrap { position: absolute; right: 14px; top: 14px; padding: 8px; }
   #minimapCanvas { display: block; border-radius: 50%; }
@@ -135,7 +137,10 @@
   #dlgName { font-size: 18px; color: #ffd700; letter-spacing: 1px; }
   #dlgRole { font-size: 12px; color: #8fa4b5; font-style: italic; margin-top: 1px; }
   #dlgText { font-size: 15px; line-height: 1.65; color: #e0d4b4; margin-bottom: 14px; min-height: 24px; }
-  #dlgOptions { display: flex; flex-direction: column; gap: 7px; }
+  #dlgOptions { display: flex; flex-direction: column; gap: 7px; max-height: 46vh; overflow-y: auto; padding-right: 4px; }
+  #dlgOptions::-webkit-scrollbar { width: 8px; }
+  #dlgOptions::-webkit-scrollbar-track { background: rgba(0,0,0,0.25); border-radius: 4px; }
+  #dlgOptions::-webkit-scrollbar-thumb { background: rgba(200,170,80,0.45); border-radius: 4px; }
   .dlg-opt {
     pointer-events: auto; cursor: pointer; text-align: left;
     padding: 10px 14px; font-family: Georgia, serif; font-size: 14.5px;
@@ -282,6 +287,7 @@
   <div id="timerWrap" class="panel">
     <div id="lifeTimer">60:00</div>
     <div id="gameClock">Day 1 &middot; 06:00</div>
+    <div id="contractLine" class="hidden"></div>
   </div>
 
   <div id="minimapWrap" class="panel">
@@ -1911,6 +1917,244 @@ function repTitle(rep) {
 }
 
 // ============================================================
+//  THE MARKET - a living economy
+// ============================================================
+// Prices used to be carved in stone: spice cost 9 at any island and always
+// fetched 35 at home, so the best voyage in the game was also the first one
+// you found, and you could sail it until the hour ran out. Now every port
+// makes one good, wants two others, and its prices drift with the season and
+// with your own trading. Buy a port out and it charges more; flood a market
+// and it pays less. Lisbon's appetite changes every six hours.
+
+const GOODS = ['spice', 'silk', 'ivory', 'gold_ore', 'gems'];
+
+// What each port is hungry for. Deliberately never its own product: nobody
+// pays a premium for the thing growing outside their own door.
+const PORT_WANTS = {
+  'Lisbon':         null,                     // rotates; see lisbonWants()
+  'Canary Islands': ['ivory', 'gems'],
+  'Cape Verde':     ['spice', 'silk'],
+  'Gold Coast':     ['silk', 'ivory'],
+  'Cape of Storms': ['gold_ore', 'spice'],
+  'Madagascar':     ['silk', 'gems'],
+  'Zanzibar':       ['spice', 'gold_ore'],
+  'Calicut':        ['ivory', 'gold_ore'],
+  'Malacca':        ['spice', 'ivory'],
+  'Goa':            ['gems', 'spice'],
+  'Hormuz':         ['silk', 'ivory'],
+  'Elmina':         ['silk', 'spice'],
+  'Timor':          ['gold_ore', 'silk'],
+  'St. Helena':     ['spice', 'gems'],
+};
+
+// Lisbon's two appetites for the current six-hour window. This is the heart of
+// the home market: the run that made you rich this morning may be ordinary by
+// evening, so you look at the board before you load the hold.
+function lisbonWants() {
+  const i = Math.floor(Game.gameMinutes / 360) % GOODS.length;
+  return [GOODS[i], GOODS[(i + 2) % GOODS.length]];
+}
+
+function marketWants(port) {
+  if (!port || !port.def) return [];
+  if (port.def.type === 'home') return lisbonWants();
+  return PORT_WANTS[port.def.name] || [];
+}
+
+function newMarketState(port) {
+  const st = { mood: {}, stock: {} };
+  for (const g of GOODS) st.mood[g] = 0.94 + Math.random() * 0.12;
+  if (port.def.type !== 'home') st.stock[port.def.type] = 14 + Math.floor(Math.random() * 12);
+  return st;
+}
+
+function initMarket() {
+  const m = {};
+  for (const p of PORTS) m[p.def.name] = newMarketState(p);
+  Game.market = m;
+  Game.marketAt = Game.gameMinutes;
+}
+
+function marketOf(port) {
+  if (!Game.market) initMarket();
+  const key = port.def.name;
+  if (!Game.market[key]) Game.market[key] = newMarketState(port);
+  return Game.market[key];
+}
+
+// What the port charges YOU. Only its own product is for sale, so a port can
+// never be bought out of the thing it is desperate for.
+function marketBuyPrice(port, good) {
+  const st = marketOf(port);
+  const base = TRADE_GOODS[good].buyPrice;
+  const makes = port.def.type === good;
+  const mood = st.mood[good] || 1;
+  if (!makes) return Math.max(1, Math.round(base * mood * 1.06));
+  const stock = st.stock[good] || 0;
+  const scarce = stock <= 4 ? 1.18 : 1;       // the last bales cost dear
+  return Math.max(1, Math.round(base * 0.78 * mood * scarce));
+}
+
+// What the port pays YOU.
+function marketSellPrice(port, good) {
+  const st = marketOf(port);
+  const base = TRADE_GOODS[good].sellPrice;
+  const makes = port.def.type === good;
+  const wants = marketWants(port).includes(good);
+  const mood = st.mood[good] || 1;
+  let p = base * (makes ? 0.42 : wants ? 1.22 : 0.84) * mood;
+  // A port that makes a thing will take it off your hands, but at a poor price
+  // and never near what it charges: buying a bale and selling it straight back
+  // must always cost you money. The cap is pinned to the good's BASE cost, not
+  // to the live price, because your own buying is what moved the live price --
+  // capping against that let a full hold round-trip for free.
+  if (makes) p = Math.min(p, TRADE_GOODS[good].buyPrice * 0.60);
+  return Math.max(1, Math.round(p));
+}
+
+function marketTrend(port, good) {
+  const mood = marketOf(port).mood[good] || 1;
+  if (mood > 1.06) return '▲';
+  if (mood < 0.96) return '▼';
+  return '·';
+}
+
+// Buying raises the price against you and empties the shelf; selling depresses
+// it. The swing is proportional to how much of the shelf you took: five bales
+// out of fourteen is a visible shortage, one bale is not.
+function marketBought(port, good, n) {
+  const st = marketOf(port);
+  const shelf = Math.max(8, st.stock[good] || 8);
+  st.stock[good] = Math.max(0, (st.stock[good] || 0) - n);
+  st.mood[good] = Math.min(1.35, (st.mood[good] || 1) + 0.5 * n / shelf);
+}
+function marketSold(port, good, n) {
+  const st = marketOf(port);
+  st.mood[good] = Math.max(0.8, (st.mood[good] || 1) - 0.25 * n / 10);
+}
+
+// The slow tide: prices pull back toward normal and wander a little, and the
+// islands restock what they make.
+function driftMarket() {
+  if (!Game.market) return;
+  for (const name in Game.market) {
+    const st = Game.market[name];
+    for (const g of GOODS) {
+      let m = st.mood[g] || 1;
+      m += (1 - m) * 0.10 + (Math.random() - 0.5) * 0.03;
+      st.mood[g] = Math.max(0.86, Math.min(1.18, m));
+    }
+    const port = PORTS.find(p => p.def.name === name);
+    if (port && port.def.type !== 'home') {
+      const g = port.def.type;
+      st.stock[g] = Math.min(30, (st.stock[g] || 0) + 1);
+    }
+  }
+}
+
+function cargoValueAt(port) {
+  let v = 0;
+  for (const k in Game.inventory) v += Game.inventory[k] * marketSellPrice(port, k);
+  return v;
+}
+
+// ============================================================
+//  CONTRACTS - somebody else's cargo, somebody else's clock
+// ============================================================
+// The market rewards patience and a good nose. A contract rewards neither: it
+// names a cargo, a port and an hour, and pays for the risk of the deadline.
+// Tomé's slate holds two offers at a time; take up to three, deliver by going
+// ashore at the named port, and lose reputation if the hour passes.
+
+let contractSeq = 0;
+
+function makeContractOffer() {
+  const dests = PORTS.filter(p => p.def.type !== 'home');
+  // carrying gems to the place that mines gems is nobody's idea of a delivery
+  let to = dests[Math.floor(Math.random() * dests.length)];
+  let good = GOODS[Math.floor(Math.random() * GOODS.length)];
+  for (let i = 0; i < 8 && to.def.type === good; i++) {
+    to = dests[Math.floor(Math.random() * dests.length)];
+    good = GOODS[Math.floor(Math.random() * GOODS.length)];
+  }
+  if (to.def.type === good) good = GOODS.find(g => g !== to.def.type);
+  const qty = 3 + Math.floor(Math.random() * 5);           // 3..7 bales
+  const base = TRADE_GOODS[good].sellPrice;
+  // One game minute is one real second and a good hull makes ~11 m/s, so the
+  // crossing itself is the deadline. Give half again as much as the straight
+  // run, plus a little for the loading and the arguing.
+  const d = Math.hypot(to.position.x - PORTS[0].position.x, to.position.z - PORTS[0].position.z);
+  const travel = d / 11;
+  const dueAt = Game.gameMinutes + Math.round(travel * 1.55 + 25);
+  const reward = Math.round(qty * base * 0.9 + 30 + d / 8 + Game.rep * 2);
+  return { id: 'c' + (++contractSeq), good, qty, to: to.def.name,
+           reward, rep: 2 + Math.floor(qty / 3), dueAt };
+}
+
+function boardOffers() {
+  if (!Game.board || Game.gameMinutes - Game.board.at > 90) {
+    Game.board = { at: Game.gameMinutes, offers: [makeContractOffer(), makeContractOffer()] };
+  }
+  return Game.board.offers;
+}
+
+function contractMinutesLeft(c) {
+  return Math.max(0, Math.round(c.dueAt - Game.gameMinutes));
+}
+
+function acceptContract(offer) {
+  if (Game.contracts.length >= 3) {
+    showToast('Three contracts is as many as you can answer for');
+    return false;
+  }
+  Game.contracts.push({ ...offer });
+  if (Game.board) Game.board.offers = Game.board.offers.filter(o => o.id !== offer.id);
+  addLog(`Contract taken: ${offer.qty} ${TRADE_GOODS[offer.good].name.toLowerCase()} to ${offer.to}, due in ${contractMinutesLeft(offer)} minutes.`, 'good');
+  showToast(`Contract: ${offer.qty} ${TRADE_GOODS[offer.good].name} → ${offer.to}`, 4200);
+  updateHUD();
+  return true;
+}
+
+// Called when you come ashore: if the cargo is aboard and the port matches,
+// the deal is settled on the spot.
+function deliverContracts(port) {
+  if (!port || !Game.contracts.length) return 0;
+  const here = port.def.name;
+  let paid = 0;
+  for (const c of [...Game.contracts]) {
+    if (c.to !== here) continue;
+    const have = Game.inventory[c.good] || 0;
+    if (have < c.qty) {
+      showToast(`You owe ${c.qty} ${TRADE_GOODS[c.good].name} here — you have ${have}`, 4200);
+      continue;
+    }
+    Game.inventory[c.good] -= c.qty;
+    if (!Game.inventory[c.good]) delete Game.inventory[c.good];
+    Game.gold += c.reward;
+    Game.rep += c.rep;
+    Game.contracts = Game.contracts.filter(x => x !== c);
+    Game.stats.contracts = (Game.stats.contracts || 0) + 1;
+    paid += c.reward;
+    addLog(`Contract honoured at ${here}: ${c.qty} ${TRADE_GOODS[c.good].name.toLowerCase()} delivered for ${c.reward}g, +${c.rep} reputation.`, 'good');
+    showToast(`Contract honoured — ${c.reward}g, +${c.rep} reputation`, 4600);
+  }
+  if (paid) { updateHUD(); updateCargoBox(); checkQuests(); }
+  return paid;
+}
+
+function tickContracts() {
+  if (!Game.contracts || !Game.contracts.length) return;
+  for (const c of [...Game.contracts]) {
+    if (Game.gameMinutes <= c.dueAt) continue;
+    Game.contracts = Game.contracts.filter(x => x !== c);
+    Game.rep = Math.max(0, Game.rep - 3);
+    addLog(`The ${c.to} contract lapsed. Tomé will remember it. -3 reputation.`, 'bad');
+    showToast(`Contract to ${c.to} has lapsed — -3 reputation`, 4200);
+    updateHUD();
+  }
+}
+
+// ============================================================
 //  BUILDING / PERSON HELPERS
 // ============================================================
 // A Lisbon townhouse. The Baixa blocks are TERRACES of narrow houses that share
@@ -3323,9 +3567,16 @@ const Game = {
   gameMinutes: 6 * 60,          // day 1, 06:00
   lifeLeft: LIFE_SECONDS,
   quests: {},                   // id -> 'active' | 'done'
+  hull: 100,                    // 0..100: storms and sand take planks out of her
+  upgrades: { hold: 0, sheathing: 0, oak: 0 },
+  contracts: [],                // delivery contracts accepted
+  board: null,                  // Tomé's current offers, refreshed over time
+  market: null,                 // per-port prices and stock, built on first use
+  marketAt: 0,
   // the ledger of a life: everything the end-of-hour screen reads aloud
   stats: { jobs: 0, voyages: 0, earned: 0, spent: 0, distance: 0,
-           fish: 0, talked: 0, duels: 0, duelsWon: 0, duelsLost: 0, prayers: 0 },
+           fish: 0, talked: 0, duels: 0, duelsWon: 0, duelsLost: 0, prayers: 0,
+           contracts: 0 },
   cause: '',
 };
 
@@ -3452,6 +3703,7 @@ function spawnPlayerShip(cls, x, z, heading) {
   Ship.heading = heading;
   Ship.speed = 0;
   Ship.pitch = 0; Ship.roll = 0;
+  Game.hull = 100;                     // a new hull is a sound hull
   SHIP_PHYS.vf = 0; SHIP_PHYS.vl = 0; SHIP_PHYS.yawRate = 0;
   SHIP_PHYS.pitch = 0; SHIP_PHYS.roll = 0;
   Ship.anchored = false;
@@ -3698,6 +3950,7 @@ function applyEffect(e) {
   if (e.food) Game.food = Math.max(0, Math.min(200, Game.food + e.food));
   if (e.crew) Game.crew = Math.max(0, Game.crew + e.crew);
   if (e.morale) Game.morale = Math.max(0, Math.min(100, Game.morale + e.morale));
+  if (e.hull) damageHull(-e.hull);      // effects carry the LOSS as a negative
   // a contest against a citizen: dice or riddles, silver on the table
   if (e.duel === 'win') { Game.stats.duels++; Game.stats.duelsWon++; }
   if (e.duel === 'loss') { Game.stats.duels++; Game.stats.duelsLost++; }
@@ -3858,24 +4111,68 @@ function closeDialog() {
 function spendMinutes(min) { Game.gameMinutes += min; }
 
 function cargoValue() {
-  let v = 0;
-  for (const k in Game.inventory) v += Game.inventory[k] * TRADE_GOODS[k].sellPrice;
-  return v;
+  return cargoValueAt(PORTS[0]);        // Lisbon's board, live
 }
 
 // The hold is only as big as the ship that carries it. A skiff swallows 10
 // bales, a caravel 25, a nau 50 - without this the cargo cap in SHIP_CLASSES
-// was decorative and you could buy a skiff full of gems and then some.
+// was decorative and you could buy a skiff full of gems and then some. A
+// reinforced hold adds eight bales apiece.
 function cargoUnits() {
   let n = 0;
   for (const k in Game.inventory) n += (Game.inventory[k] || 0);
   return n;
 }
 function cargoCapacity() {
-  return Game.ship ? SHIP_CLASSES[Game.ship.cls].cargo : Infinity;
+  if (!Game.ship) return Infinity;
+  return SHIP_CLASSES[Game.ship.cls].cargo + 8 * (Game.upgrades.hold || 0);
 }
 function cargoRoom() {
   return Math.max(0, cargoCapacity() - cargoUnits());
+}
+
+// ---------- the ship's condition ----------
+// A hull is not a number on a menu: storms, grounding and boarding parties take
+// planks out of her, a damaged hull is slower, and Mestre Nuno charges by the
+// inch of damage to set it right.
+const UPGRADES = {
+  hold:      { name: 'Reinforced hold',  max: 2, cost: 420,
+               desc: 'Eight more bales in the hold' },
+  sheathing: { name: 'Copper sheathing', max: 1, cost: 520,
+               desc: 'A knot and a half more, and a cleaner wake' },
+  oak:       { name: 'Oak-framed hull',  max: 1, cost: 380,
+               desc: 'Takes 40% less damage from storm and sand' },
+};
+
+function hullPenalty() {
+  // a holed ship still sails; she just sails like a barge
+  return 0.62 + 0.38 * Math.max(0, Math.min(100, Game.hull)) / 100;
+}
+
+function shipMaxSpeed() {
+  if (!Game.ship) return 12;
+  const base = SHIP_CLASSES[Game.ship.cls].maxSpeed + 1.5 * (Game.upgrades.sheathing || 0);
+  return base * hullPenalty();
+}
+
+function damageHull(n) {
+  if (!Game.ship || n <= 0) return 0;
+  const before = Game.hull;
+  const mul = Game.upgrades.oak ? 0.6 : 1;
+  Game.hull = Math.max(0, Game.hull - n * mul);
+  const lost = before - Game.hull;
+  if (lost >= 1) {
+    updateHUD();
+    if (Game.hull <= 25 && before > 25) {
+      addLog('The pumps are losing. She is barely holding together — put in to Lisbon and careen her.', 'bad');
+      showToast('Hull critical — she needs careening', 4200);
+    }
+  }
+  return lost;
+}
+
+function repairCost() {
+  return Math.max(10, Math.ceil((100 - Game.hull) * 2.2));
 }
 
 function discoverIsland(port) {
@@ -4006,6 +4303,46 @@ const DLG = {
         stay: true,
       });
     }
+    // ---- her condition: storms, sand and boarding parties take planks out ----
+    if (Game.ship && Game.hull < 99.5) {
+      const cost = repairCost();
+      // a holed ship is the first thing a shipwright should mention, not the
+      // eleventh line of a list you have to scroll
+      opts.unshift({
+        label: `Careen her and set new planking — ${cost}g (hull ${Math.round(Game.hull)}% → 100%)`,
+        hint: Game.hull < 40 ? 'She is taking water faster than the pumps can clear it' : 'Weed, worm and split strakes',
+        req: { gold: cost },
+        action: () => {
+          Game.gold -= cost;
+          Game.hull = 100;
+          addLog('Mestre Nuno careens her, scrapes the weed off and sets new planking. She sits higher already.', 'good');
+          showToast('Hull repaired to 100%');
+          updateHUD();
+        },
+        stay: true,
+      });
+    }
+    // ---- fittings: bought once, they stay with you across hulls ----
+    for (const key of Object.keys(UPGRADES)) {
+      const u = UPGRADES[key];
+      const have = Game.upgrades[key] || 0;
+      if (have >= u.max) continue;
+      opts.push({
+        label: `Fit the ${u.name.toLowerCase()} — ${u.cost}g (${have}/${u.max})`,
+        hint: u.desc,
+        req: { gold: u.cost, ship: true },
+        action: () => {
+          Game.gold -= u.cost;
+          Game.upgrades[key] = have + 1;
+          if (key === 'hold') showToast(`Reinforced hold — ${cargoCapacity()} bales`);
+          else if (key === 'sheathing') showToast('Copper sheathing — she will fly');
+          else showToast('Oak-framed hull — she will take a knock');
+          addLog(`Mestre Nuno fits a ${u.name.toLowerCase()}. ${u.desc}.`, 'good');
+          updateHUD();
+        },
+        stay: true,
+      });
+    }
     opts.push({
       label: "How does your trade work?",
       next: 'shipwright_lore',
@@ -4014,8 +4351,10 @@ const DLG = {
     return {
       who: "Mestre Nuno", role: "Master Shipwright", portrait: "\u{1F528}",
       text: Game.ship
-        ? `The estaleiro smells of tar and fresh-cut oak. "Back again? Your ${SHIP_CLASSES[Game.ship.cls].name} still floats, I hope. Bigger hull, bigger cargo — that's the whole of commerce."`
+        ? `The estaleiro smells of tar and fresh-cut oak. "Back again? Your ${SHIP_CLASSES[Game.ship.cls].name} still floats, I hope — at ${Math.round(Game.hull)}% of a hull she's ${Game.hull > 85 ? 'sound enough' : Game.hull > 50 ? 'weeping at the seams' : 'a sieve with ambitions'}. Bigger hull, bigger cargo — that's the whole of commerce. And a sound one gets you home."`
         : "The estaleiro smells of tar and fresh-cut oak. Mestre Nuno wipes his hands on his apron. \"So — you want a ship, camarada? Everything here is built by hand. Commission one and I'll launch her when she's ready... or pay the premium and sail today.\"",
+      // fittings change what is on offer, so the slate must be re-chalked
+      rebuild: () => DLG.shipwright(),
       options: opts,
     };
   },
@@ -4046,46 +4385,105 @@ const DLG = {
     ],
   }),
 
-  tavern_rumor: () => ({
-    who: "Dona Beatriz", role: "Tavern Keeper", portrait: "\u{1F37A}",
-    text: `She leans on the bar and lowers her voice. "${RUMORS[Math.floor(Math.random() * RUMORS.length)]}"`,
-    options: [{ label: "Useful to know.", next: 'tavern' }],
-  }),
+  tavern_rumor: () => {
+    // A rumour is only worth hearing if it is true: this quotes the live board
+    // rather than a line of flavour text. Some nights she gossips, some nights
+    // she gives you a price that will actually pay.
+    const g = GOODS[Math.floor(Math.random() * GOODS.length)];
+    let best = null;
+    for (const p of PORTS) {
+      const v = marketSellPrice(p, g);
+      if (!best || v > best.v) best = { p, v };
+    }
+    const line = Math.random() < 0.35
+      ? RUMORS[Math.floor(Math.random() * RUMORS.length)]
+      : `${TRADE_GOODS[g].name} is fetching ${best.v}g in ${best.p.def.name} this week. A hold of it would buy you a winter.`;
+    return {
+      who: "Dona Beatriz", role: "Tavern Keeper", portrait: "\u{1F37A}",
+      text: `She leans on the bar and lowers her voice. "${line}"`,
+      options: [{ label: "Useful to know.", next: 'tavern' }],
+    };
+  },
 
   // ---------------- Lisbon: the merchant ----------------
-  merchant: () => ({
-    who: "Tomé", role: "Merchant of Lisbon", portrait: "\u{1F4B0}",
-    text: `Tomé's stall is a fortress of crates and bolts of cloth. "Buy low, sell high, never trust the sea — that is the whole of commerce." Your cargo would fetch about ${cargoValue()}g in Lisbon.`,
-    options: [
-      {
-        label: `Sell your whole cargo in Lisbon (${cargoValue()}g)`,
-        req: { cargoAny: true },
-        hint: "The home market pays full price",
-        action: () => {
-          const v = cargoValue();
-          if (v <= 0) return;
-          Game.gold += v;
-          const repGain = Math.min(3, Math.floor(v / 250));
-          if (repGain > 0) Game.rep += repGain;
-          Game.inventory = {};
-          addLog(`Cargo sold in Lisbon for ${v}g.`, 'good');
-          showToast(`Sold your cargo for ${v}g`);
-          updateHUD(); updateCargoBox(); checkQuests();
+  merchant: () => {
+    const wants = lisbonWants().map(k => TRADE_GOODS[k].name.toLowerCase());
+    return {
+      who: "Tomé", role: "Merchant of Lisbon", portrait: "\u{1F4B0}",
+      text: `Tomé's stall is a fortress of crates and bolts of cloth. "Buy low, sell high, never trust the sea — that is the whole of commerce." This week the city is short of ${wants[0]} and ${wants[1]}; the rest moves at ordinary prices. Your cargo would fetch about ${cargoValue()}g.`,
+      options: [
+        {
+          label: `Sell your whole cargo in Lisbon (${cargoValue()}g)`,
+          req: { cargoAny: true },
+          hint: "The home market pays full price",
+          action: () => {
+            const v = cargoValue();
+            if (v <= 0) return;
+            // flooding the home market moves the price against the next run
+            for (const k in Game.inventory) marketSold(PORTS[0], k, Game.inventory[k]);
+            Game.gold += v;
+            const repGain = Math.min(3, Math.floor(v / 250));
+            if (repGain > 0) Game.rep += repGain;
+            Game.inventory = {};
+            addLog(`Cargo sold in Lisbon for ${v}g.`, 'good');
+            showToast(`Sold your cargo for ${v}g`);
+            updateHUD(); updateCargoBox(); checkQuests();
+          },
+          stay: true,
         },
-        stay: true,
-      },
-      { label: "Buy 10 provisions — 20g", req: { gold: 20 }, effect: { gold: -20, food: 10 }, stay: true },
-      { label: "Buy 25 provisions — 50g", req: { gold: 50 }, effect: { gold: -50, food: 25 }, stay: true },
-      { label: "What buys well these days?", next: 'merchant_hint' },
-      { label: "Nothing today." },
-    ],
-  }),
+        { label: "Buy 10 provisions — 20g", req: { gold: 20 }, effect: { gold: -20, food: 10 }, stay: true },
+        { label: "Buy 25 provisions — 50g", req: { gold: 50 }, effect: { gold: -50, food: 25 }, stay: true },
+        { label: "Ask after the contract board", next: 'contracts',
+          hint: Game.contracts.length ? `${Game.contracts.length} in hand` : "Deliveries, for a price" },
+        { label: "What buys well these days?", next: 'merchant_hint' },
+        { label: "Nothing today." },
+      ],
+    };
+  },
 
-  merchant_hint: () => ({
-    who: "Tomé", role: "Merchant of Lisbon", portrait: "\u{1F4B0}",
-    text: "\"Spices, always spices — Lisbon cannot get enough. Silk next. Ivory is steady. Gems and gold ore are for men with deep holds and shallow fear. Buy where a thing grows; sell where it doesn't.\"",
-    options: [{ label: "Sound advice.", next: 'merchant' }],
-  }),
+  merchant_hint: () => {
+    const rows = GOODS.map(k => {
+      const p = marketSellPrice(PORTS[0], k);
+      const wanted = lisbonWants().includes(k);
+      return `${TRADE_GOODS[k].name}: ${p}g${wanted ? ' (the city is short)' : ''}`;
+    }).join('<br>');
+    return {
+      who: "Tomé", role: "Merchant of Lisbon", portrait: "\u{1F4B0}",
+      text: `"Today's board, and don't ask me to repeat it."<br><br>${rows}<br><br>"Buy where a thing grows; sell where it doesn't. And mind the calendar — the city's tastes change with the tide."`,
+      options: [{ label: "Sound advice.", next: 'merchant' }],
+    };
+  },
+
+  // ---------------- Lisbon: Tomé's contract board ----------------
+  contracts: () => {
+    const offers = boardOffers();
+    const opts = [];
+    for (const o of offers) {
+      if (Game.contracts.length >= 3) break;
+      opts.push({
+        label: `Carry ${o.qty} ${TRADE_GOODS[o.good].name} to ${o.to} — ${o.reward}g, +${o.rep} rep (due in ${contractMinutesLeft(o)} min)`,
+        hint: "You must buy the cargo yourself",
+        action: () => acceptContract(o),
+        stay: true,
+      });
+    }
+    if (!offers.length) opts.push({ label: "Nothing on the slate today — every hull has sailed." });
+    if (Game.contracts.length >= 3) opts.push({ label: "Three contracts in hand — deliver one before you take another." });
+    opts.push({ label: "Back to the stall.", next: 'merchant' });
+
+    const activeTxt = Game.contracts.length
+      ? '<br><br><b>In hand:</b><br>' + Game.contracts.map(c => {
+          const have = Game.inventory[c.good] || 0;
+          return `· ${c.qty} ${TRADE_GOODS[c.good].name} to ${c.to} — due in ${contractMinutesLeft(c)} min (you carry ${have})`;
+        }).join('<br>')
+      : '';
+    return {
+      who: "Tomé", role: "Merchant of Lisbon", portrait: "\u{1F4B0}",
+      text: `He taps a slate crowded with chalk. "Ships sail short-handed and cargo rots on the quay. Take a delivery, bring me the receipt, and I'll pay better than the market — provided you're on time. Late, and the whole city hears of it."${activeTxt}`,
+      rebuild: () => DLG.contracts(),
+      options: opts,
+    };
+  },
 
   // ---------------- Lisbon: the royal herald ----------------
   herald: () => {
@@ -4375,37 +4773,64 @@ const DLG = {
         options: [{ label: "Walk away." }],
       };
     }
-    const localPrice = Math.floor(local.buyPrice * 0.8);
+    const localPrice = marketBuyPrice(port, localKey);
+    const stock = marketOf(port).stock[localKey] || 0;
     const room = cargoRoom();
     const opts = [];
-    // a buy is only offered if it fits: a skiff takes 10 bales, a caravel 25,
-    // a nau 50. If the hold is full the trader tells you so instead.
-    const buy = (key, n, unit, name) => {
-      const fits = Math.min(n, room);
+    // a buy is only offered if it fits AND the island still has it: a skiff
+    // takes 10 bales, a caravel 25, a nau 50, and an island's shelf is finite.
+    const buy = (n, unit, name) => {
+      const fits = Math.min(n, room, stock);
       if (fits <= 0) return;
-      opts.push(fits < n
-        ? { label: `Buy ${fits} ${name} — ${unit * fits}g (all that will fit)`, req: { gold: unit * fits },
-            effect: { gold: -unit * fits, cargo: { [key]: fits } }, stay: true }
-        : { label: `Buy ${n} ${name} — ${unit * n}g${n === 1 ? ' (local price)' : ''}`, req: { gold: unit * n },
-            effect: { gold: -unit * n, cargo: { [key]: n } }, stay: true });
+      opts.push({
+        label: `Buy ${fits} ${name} — ${unit * fits}g (${unit}g each ${marketTrend(port, localKey)})` +
+               (fits < n ? ' (all that is left)' : ''),
+        req: { gold: unit * fits },
+        effect: { gold: -unit * fits, cargo: { [localKey]: fits } },
+        action: () => marketBought(port, localKey, fits),
+        stay: true,
+      });
     };
-    buy(localKey, 1, localPrice, local.name);
-    buy(localKey, 5, localPrice, local.name);
-    for (const key of Object.keys(TRADE_GOODS)) {
-      if (key === localKey) continue;
-      const g = TRADE_GOODS[key];
-      buy(key, 1, g.buyPrice, g.name);
+    if (stock > 0) {
+      buy(1, localPrice, local.name);
+      buy(5, localPrice, local.name);
+    }
+    if (room > 0) {
+      // they buy anything but their own product, and they pay according to how
+      // badly they want it -- that is the whole game of the voyage
+      for (const key of GOODS) {
+        const have = Game.inventory[key] || 0;
+        if (!have) continue;
+        const unit = marketSellPrice(port, key);
+        opts.push({
+          label: `Sell ${have} ${TRADE_GOODS[key].name} — ${unit * have}g (${unit}g each ${marketTrend(port, key)})`,
+          action: () => {
+            const total = unit * have;
+            Game.gold += total;
+            delete Game.inventory[key];
+            marketSold(port, key, have);
+            addLog(`Sold ${have} ${TRADE_GOODS[key].name.toLowerCase()} at ${port.def.name} for ${total}g.`, 'good');
+            showToast(`Sold ${have} ${TRADE_GOODS[key].name} — ${total}g`);
+            updateHUD(); updateCargoBox();
+          },
+          stay: true,
+        });
+      }
     }
     if (room <= 0) {
       opts.length = 0;
       // a notice, not a button: it used to be `stay: true`, so clicking it
       // re-opened the same words forever -- the one true dead circle in the game
-      opts.push({ label: `Your hold is full — ${cargoUnits()} of ${cargoCapacity()} bales. Sell in Lisbon and come back.` });
+      opts.push({ label: `Your hold is full — ${cargoUnits()} of ${cargoCapacity()} bales. Sell here, or carry them home.` });
     }
     opts.push({ label: "Trade is done." });
+    const wants = marketWants(port).map(k => TRADE_GOODS[k].name.toLowerCase());
+    const wantTxt = wants.length
+      ? `They are short of ${wants.join(' and ')}, and pay well for it.`
+      : '';
     return {
       who: "The Natives", role: port.def.name, portrait: "\u{1F9F1}",
-      text: `The people of ${port.def.name} spread bolts of cloth and baskets of ${local.name.toLowerCase()} on the sand, eyeing your ship with open curiosity. They trade gladly — ${local.name.toLowerCase()} is theirs to sell cheap, and they will take your silver for anything else you fancy.`,
+      text: `The people of ${port.def.name} spread bolts of cloth and baskets of ${local.name.toLowerCase()} on the sand, eyeing your ship with open curiosity. ${local.name} they sell cheap — ${stock} bale${stock === 1 ? '' : 's'} on the shelf this morning. ${wantTxt}`,
       rebuild: () => DLG.trade_post({ port }),      // re-price after every purchase
       options: opts,
     };
@@ -4422,15 +4847,15 @@ const SEA_EVENTS = [
       text: "The sky turns green-black. Waves like cathedral walls. Your crew looks to you, and nobody says the word 'pray' out loud.",
       options: [
         { label: "Ride it out", roll: { chance: 0.55,
-            good: { effect: { food: -12, morale: -5 }, text: "You come through soaked, half-drowned and grinning. The ship holds." },
+            good: { effect: { food: -12, morale: -5, hull: -14 }, text: "You come through soaked, half-drowned and grinning. The ship holds — though she has opened a seam or two." },
             bad: { death: "Your ship was broken on the rocks in the storm." } } },
         { label: "Reef the sails and run before it", effect: { food: -6, time: 40 },
           roll: { chance: 0.85,
-            good: { effect: { morale: -3 }, text: "You run for hours until the sky clears. Costly — but alive." },
+            good: { effect: { morale: -3, hull: -6 }, text: "You run for hours until the sky clears. Costly — but alive." },
             bad: { death: "A following sea pooped her, and the sea took the ship." } } },
         { label: "Pray to São Vicente", roll: { chance: 0.6,
             good: { effect: { morale: 5 }, text: "The patron saint of Lisbon hears you. The wind turns aside at dusk." },
-            bad: { effect: { food: -20 }, text: "The storm does not care for prayers. You lose a third of your provisions." } } },
+            bad: { effect: { food: -20, hull: -9 }, text: "The storm does not care for prayers. You lose a third of your provisions and a strake of the hull." } } },
       ],
     }),
   },
@@ -4459,11 +4884,11 @@ const SEA_EVENTS = [
         text: "A black-hulled corsair, her rails thick with armed men, comes up fast from windward. Your crew seizes whatever is to hand.",
         options: [
           { label: "Fight", roll: { chance: fight,
-              good: { effect: { gold: 140, morale: 10 }, text: "You pour a broadside into her and she strikes her colours. Her strongbox is yours." },
+              good: { effect: { gold: 140, morale: 10, hull: -12 }, text: "You pour a broadside into her and she strikes her colours. Her strongbox is yours — and a little of your bulwark is not." },
               bad: { death: "The corsairs boarded you. Lisbon never learned your fate." } } },
           { label: "Show them your heels", roll: { chance: 0.6,
               good: { text: "You run three hours before the wind and lose her in the dark." },
-              bad: { effect: { cargo: 'all' }, text: "They rake you from astern and take the cargo, but your ship is swift enough to live." } } },
+              bad: { effect: { cargo: 'all', hull: -10 }, text: "They rake you from astern and take the cargo, but your ship is swift enough to live." } } },
           { label: "Pay tribute — 90g", req: { gold: 90 }, effect: { gold: -90 },
             roll: { chance: 1, good: { text: "They count the silver, jeer, and let you pass. Humiliation is cheaper than a coffin." } } },
         ],
@@ -4938,6 +5363,10 @@ function goAshore(port) {
   showToast(port.def.type === 'home'
     ? 'Ashore at Lisbon — E boards your ship; walk inland for the town'
     : `Ashore at ${port.def.name} — E boards your ship; the trading post is inland`, 4200);
+
+  // a delivery is settled the moment you set foot on the right shore, and its
+  // receipt is worth more to read than the hint above
+  deliverContracts(port);
   updateHUD();
 }
 
@@ -5227,7 +5656,7 @@ const SHIP_PHYS = { vf: 0, vl: 0, yawRate: 0, pitch: 0, roll: 0, grounded: 0 };
 function updateShipPhysics(dt) {
   if (!Game.ship || !playerShip) return;
   const cls = SHIP_CLASSES[Game.ship.cls];
-  const maxSpeed = cls.maxSpeed;
+  const maxSpeed = shipMaxSpeed();      // fittings, and how sound her hull is
   const atHelm = Player.mode === 'helm';
 
   // ---------------- controls ----------------
@@ -5291,9 +5720,16 @@ function updateShipPhysics(dt) {
   const probe = 6 * cls.scale;
   const bedAhead = groundY(playerShip.position.x + fx * probe, playerShip.position.z + fz * probe);
   const bedHere = groundY(playerShip.position.x, playerShip.position.z);
+  const wasAground = SHIP_PHYS.grounded;
   if (bedAhead > -1.7 || bedHere > -1.5) {
     SHIP_PHYS.grounded = 1;
     if (Math.abs(SHIP_PHYS.vf) > 2.2) {
+      if (!wasAground) {
+        // only the strike itself hurts: sitting on the sand does not grind her
+        // to matchwood while you work out how to get off
+        const hit = damageHull(Math.min(12, Math.abs(SHIP_PHYS.vf) * 0.8));
+        if (hit >= 1) addLog(`The keel takes the bottom at speed — ${Math.round(hit)}% off the hull.`, 'bad');
+      }
       showToast('The keel strikes bottom — you are aground!', 2600);
       addLog('Sand and weed under the keel. You are aground.', 'bad');
     }
@@ -5626,7 +6062,9 @@ function updateHUD() {
   document.getElementById('repVal').textContent = Math.floor(Game.rep);
   document.getElementById('crewVal').textContent = Game.crew;
   document.getElementById('foodVal').textContent = Math.floor(Game.food);
-  document.getElementById('shipVal').textContent = Game.ship ? SHIP_CLASSES[Game.ship.cls].name : 'none';
+  document.getElementById('shipVal').textContent = Game.ship
+    ? `${SHIP_CLASSES[Game.ship.cls].name}${Game.hull < 99.5 ? ` · ${Math.round(Game.hull)}%` : ''}`
+    : 'none';
   document.getElementById('titleVal').textContent = repTitle(Game.rep);
 
   const timer = document.getElementById('lifeTimer');
@@ -5634,10 +6072,23 @@ function updateHUD() {
   timer.classList.toggle('low', Game.lifeLeft < 600);
   document.getElementById('gameClock').textContent = fmtClock();
 
+  // a contract you have forgotten is a contract you will fail
+  const cl = document.getElementById('contractLine');
+  if (cl) {
+    if (Game.contracts && Game.contracts.length) {
+      const next = Game.contracts.reduce((a, b) => (a.dueAt <= b.dueAt ? a : b));
+      cl.textContent = `${Game.contracts.length} contract${Game.contracts.length > 1 ? 's' : ''} · next due in ${contractMinutesLeft(next)} min`;
+      cl.classList.remove('hidden');
+      cl.classList.toggle('low', contractMinutesLeft(next) < 15);
+    } else {
+      cl.classList.add('hidden');
+    }
+  }
+
   const atSea = Player.mode !== 'foot';
   document.getElementById('speedo').classList.toggle('hidden', !atSea);
   if (atSea) {
-    const pct = Math.min(100, Math.abs(Ship.speed) / (Game.ship ? SHIP_CLASSES[Game.ship.cls].maxSpeed : 12) * 100);
+    const pct = Math.min(100, Math.abs(Ship.speed) / (Game.ship ? shipMaxSpeed() : 12) * 100);
     document.getElementById('speedFill').style.height = pct + '%';
     document.getElementById('speedVal').textContent = (Math.abs(Ship.speed) * 2.2).toFixed(1) + ' kn';
   }
@@ -5843,6 +6294,11 @@ function saveGame(slot) {
     commissions: Game.commissions.map(c => ({ ...c })),
     gameMinutes: Game.gameMinutes, lifeLeft: Game.lifeLeft,
     quests: { ...Game.quests }, stats: { ...Game.stats }, won: !!Game.won,
+    hull: Game.hull, upgrades: { ...Game.upgrades },
+    contracts: Game.contracts.map(c => ({ ...c })),
+    board: Game.board ? { at: Game.board.at, offers: Game.board.offers.map(o => ({ ...o })) } : null,
+    market: Game.market ? JSON.parse(JSON.stringify(Game.market)) : null,
+    marketAt: Game.marketAt,
     player: { mode: Player.mode, x: Player.x, y: Player.y, z: Player.z, lookYaw: Player.lookYaw },
     dockedAt: dockedAt ? dockedAt.def.name : null,
     island: Player.island ? Player.island.def.name : null,
@@ -5875,15 +6331,27 @@ function loadGame(slot) {
     quests: { ...s.quests },
     // older saves predate the ledger's new rows: fill them in, then overwrite
     stats: { jobs: 0, voyages: 0, earned: 0, spent: 0, distance: 0,
-             fish: 0, talked: 0, duels: 0, duelsWon: 0, duelsLost: 0, prayers: 0, ...s.stats },
+             fish: 0, talked: 0, duels: 0, duelsWon: 0, duelsLost: 0, prayers: 0,
+             contracts: 0, ...s.stats },
+    // saves from before the market and the dry dock simply get a fresh start
+    hull: typeof s.hull === 'number' ? s.hull : 100,
+    upgrades: { hold: 0, sheathing: 0, oak: 0, ...(s.upgrades || {}) },
+    contracts: (s.contracts || []).map(c => ({ ...c })),
+    board: s.board ? { at: s.board.at, offers: s.board.offers.map(o => ({ ...o })) } : null,
+    market: s.market ? JSON.parse(JSON.stringify(s.market)) : null,
+    marketAt: s.marketAt || 0,
     won: !!s.won, cause: '',
   });
   goldLedgerPause = false;
+  if (!Game.market) initMarket();
 
   PORTS.forEach(p => { p.discovered = s.discovered.includes(p.def.name); });
 
   removePlayerShip();
+  // spawnPlayerShip fits a brand-new hull; a loaded one must be as you left her
+  const savedHull = Game.hull;
   if (s.ship) spawnPlayerShip(s.ship.cls, s.ship.x, s.ship.z, s.ship.heading);
+  Game.hull = savedHull;
 
   dockedAt = s.dockedAt ? PORTS.find(p => p.def.name === s.dockedAt) : null;
   Player.island = s.island ? PORTS.find(p => p.def.name === s.island) : null;
@@ -5995,10 +6463,14 @@ function resetLife() {
     inventory: {}, discovered: new Set(['Lisbon']), charts: [],
     ship: null, commissions: [], gameMinutes: 360, lifeLeft: LIFE_SECONDS,
     quests: {}, stats: { jobs: 0, voyages: 0, earned: 0, spent: 0, distance: 0,
-                         fish: 0, talked: 0, duels: 0, duelsWon: 0, duelsLost: 0, prayers: 0 },
+                         fish: 0, talked: 0, duels: 0, duelsWon: 0, duelsLost: 0,
+                         prayers: 0, contracts: 0 },
+    hull: 100, upgrades: { hold: 0, sheathing: 0, oak: 0 },
+    contracts: [], board: null, market: null, marketAt: 0,
     cause: '', won: false,
   });
   goldLedgerPause = false;
+  initMarket();
   removePlayerShip();
   PORTS.forEach(p => { p.discovered = !!p.def.discovered; });
   dockedAt = null;
@@ -6131,6 +6603,13 @@ function animate() {
       }
     }
 
+    // ---- the market breathes, and deadlines come due ----
+    if (Game.gameMinutes - (Game.marketAt || 0) >= 10) {
+      Game.marketAt = Game.gameMinutes;
+      driftMarket();
+      tickContracts();
+    }
+
     // ---- events ----
     if (Game.ship && Player.mode !== 'foot') {
       seaEventTimer -= dt;
@@ -6255,6 +6734,12 @@ window.__voyage = {
   SHIP_CAM,
   updateAvatar, boomClearance, camRig, get avatar() { return avatar; },
   updateHUD, updateCargoBox, applyEffect, cargoValue, fmtClock, stepPhysics,
+  // the merchant's game: markets, contracts, and the state of her hull
+  GOODS, PORT_WANTS, UPGRADES, TRADE_GOODS,
+  initMarket, marketOf, marketBuyPrice, marketSellPrice, marketWants,
+  marketBought, marketSold, marketTrend, driftMarket, lisbonWants, cargoValueAt,
+  makeContractOffer, boardOffers, acceptContract, deliverContracts, tickContracts,
+  contractMinutesLeft, shipMaxSpeed, damageHull, repairCost, hullPenalty,
   get ship() { return playerShip; }
 };
 </script>
