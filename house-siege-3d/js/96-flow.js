@@ -54,6 +54,9 @@ function startGame(mode, mapId) {
 
   buildRoster();
   buildMapBase();
+  /* online, the other humans' bodies and nameplates were detached above and
+     the container was cleared — put them back into the new match */
+  if (typeof netRehomeRemotes === 'function') netRehomeRemotes();
 
   $('modeName').textContent = def.id === 'tutorial' ? 'TRAINING' : def.name;
   $('mapName').textContent = mapDef(G.mapId).name;
@@ -110,8 +113,23 @@ function updateSurvival() {
     if (red === 0) red = aliveOn('red', allActors());
     if (blue === 0) blue = aliveOn('blue', allActors());
   }
+  /* ...but a team with no bodies at all has not been wiped, it has not arrived.
+     Hosting a room on your own with AI off used to end the round in the first
+     frame — red 1, blue 0 — with a victory for a match nobody had played. A
+     side only forfeits once it has actually fielded somebody. */
+  const roster = G.bots.concat(G.player ? [G.player] : [])
+    .concat(G.netMode ? NET.remoteList : []);
+  const fielded = t => roster.some(a => a.team === t);
+  if (!fielded('red') || !fielded('blue')) {
+    /* the clock is the only thing that can end a match with an empty side */
+    if (G.timeLeft <= 0) endMatch();
+    return;
+  }
   if (red > 0 && blue > 0) return;          // still a live round
-  if (red === 0 && blue === 0) return;      // mutual wipe: nobody scores
+  /* both sides wiped in the same frame (one grenade, say) — nobody survives to
+     claim it, and with no respawns nothing can ever change, so call it a draw
+     instead of waiting for a clock that already stopped */
+  if (red === 0 && blue === 0) { endMatch(); return; }
   const winner = red > 0 ? 'red' : 'blue';
   G.score[winner] = 1;
   endMatch();
@@ -201,6 +219,11 @@ function pauseGame() {
   hideScope();                       // the lens must not sit over the pause card
   $('pause').classList.add('show');
   $('pauseScore').textContent = 'RED ' + G.score.red + '  —  ' + G.score.blue + ' BLUE   ·   ' + $('clock').textContent;
+  /* In a room this is not a pause: the other machines keep playing and you are
+     standing still in their match. Say so, rather than freezing the player in
+     front of a card that claims the world has stopped. */
+  const note = $('pauseNote');
+  if (note) note.textContent = (G.netMode && NET.room) ? 'ONLINE MATCH — THE OTHERS ARE STILL PLAYING' : '';
   document.exitPointerLock && document.exitPointerLock();
 }
 
@@ -345,6 +368,12 @@ function loop(ts) {
   if (G.state === 'playing') {
     update(dt);
   } else if (G.state === 'paused' || G.state === 'ended') {
+    /* Pausing must not look like leaving. The simulation is frozen, so without
+       this no state is published at all and every other machine drops the
+       paused player after the nine-second peer timeout — the room sees them
+       vanish, and a flag they were carrying is dropped. Keep the wire warm
+       while the card is up; the body is standing still, which is the truth. */
+    if (G.state === 'paused' && G.netMode && NET.room) netTick(dt);
     updateEffects(dt * 0.3);
     camera.updateMatrixWorld();
     updateNameplates();
