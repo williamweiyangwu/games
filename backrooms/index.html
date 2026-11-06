@@ -620,7 +620,7 @@ body.touch #cross{opacity:.35}
   <div id="danger"></div>
   <div class="netbar" id="netbar"></div>
   <div id="objective">
-    <div id="objlevel">LEVEL 1 · THE LOBBY</div>
+    <div id="objlevel">LEVEL 0 · THE LOBBY</div>
     <span id="objtext">SEARCH THE LOCKERS &nbsp;·&nbsp; FIND <b>3 FUSES</b> &nbsp;·&nbsp; POWER THE DESCENT</span>
     <div id="fuses"><div class="fuse"></div><div class="fuse"></div><div class="fuse"></div></div>
   </div>
@@ -712,9 +712,9 @@ body.touch #cross{opacity:.35}
     <div class="opsbody">
       <div class="opsmap">
         <div class="opstabs">
-          <div class="opstab on" data-lv="0">LEVEL 1 · THE LOBBY</div>
-          <div class="opstab" data-lv="1">LEVEL 2 · THE BLOCK</div>
-          <div class="opstab" data-lv="2">LEVEL 3 · THE WORKS</div>
+          <div class="opstab on" data-lv="0">LEVEL 0 · THE LOBBY</div>
+          <div class="opstab" data-lv="1">LEVEL 1 · THE BLOCK</div>
+          <div class="opstab" data-lv="2">LEVEL 2 · THE WORKS</div>
         </div>
         <canvas id="opscanvas"></canvas>
       </div>
@@ -728,17 +728,17 @@ body.touch #cross{opacity:.35}
     <div class="oselhead">SELECT SURVEILLANCE MAP<span class="x" id="opselclose">CANCEL</span></div>
     <div class="oselgrid">
       <div class="oselcard" data-lv="0">
-        <div class="oselname">LEVEL 1</div>
+        <div class="oselname">LEVEL 0</div>
         <div class="oselsub">THE LOBBY</div>
         <div class="oselmeta">ENDLESS YELLOW HALLS<br>CLASSIC MAZE · LIVE FEED</div>
       </div>
       <div class="oselcard" data-lv="1">
-        <div class="oselname">LEVEL 2</div>
+        <div class="oselname">LEVEL 1</div>
         <div class="oselsub">THE BLOCK</div>
         <div class="oselmeta">HOSPITAL · PRECINCT · SHOPS<br>WALK-IN DOORS · ARCHIVE RELAY</div>
       </div>
       <div class="oselcard" data-lv="2">
-        <div class="oselname">LEVEL 3</div>
+        <div class="oselname">LEVEL 2</div>
         <div class="oselsub">THE WORKS</div>
         <div class="oselmeta">TWO STOREYS · CATWALKS<br>SHIFT LOGS · ARCHIVE RELAY</div>
       </div>
@@ -806,7 +806,7 @@ body.touch #cross{opacity:.35}
 </div>
 
 <div class="screen" id="title">
-  <div class="ghost" style="top:26px;left:28px">LEVEL 1</div>
+  <div class="ghost" style="top:26px;left:28px">LEVEL 0</div>
   <div class="ghost" style="bottom:26px;right:28px">NO CLIPPING OUT</div>
   <h1>THE BACKROOMS</h1>
   <div class="sub">YOU NO-CLIPPED OUT OF REALITY</div>
@@ -976,14 +976,14 @@ function reportStoreState(){
    collision rule and the renderer each floor uses.
    ══════════════════════════════════════════════════════════════ */
 const LEVELS=[
-  {n:1,name:'THE LOBBY',short:'LOBBY',style:'paper',mode:'maze',
+  {n:0,name:'THE LOBBY',short:'LOBBY',style:'paper',mode:'maze',
    wall:'#a4924c',grime:'58,44,18',floor:'#6d6039',ceil:'#a9a48d',ceilTint:0x8d897a,
    fog:0x080704,fogD:.050,amb:0x5a5038,ambI:.20,fix:.62,fixOn:.88,exposure:.92,
    step:'carpet',monCount:3,monCap:3,
    weights:[['smiler',30],['hound',25],['clump',15],['wretch',20],['moth',10]],
    desc:'Saturated yellow rooms. Damp carpet. The hum never stops.'},
 
-  {n:2,name:'THE BLOCK',short:'THE BLOCK',style:'paper',mode:'city',
+  {n:1,name:'THE BLOCK',short:'THE BLOCK',style:'paper',mode:'city',
    wall:'#a4924c',grime:'58,44,18',floor:'#6d6039',ceil:'#a9a48d',ceilTint:0x8d897a,
    fog:0x080704,fogD:.050,amb:0x5a5038,ambI:.20,fix:.62,fixOn:.88,exposure:.92,
    step:'carpet',monCount:3,monCap:3,
@@ -995,7 +995,7 @@ const LEVELS=[
    weights:[['smiler',30],['hound',25],['clump',15],['wretch',20],['moth',10]],
    desc:'A downtown that never got a morning. A hospital with its lights still on, a precinct with nobody in it, and doors that open.'},
 
-  {n:3,name:'THE WORKS',short:'THE WORKS',style:'metal',mode:'factory',
+  {n:2,name:'THE WORKS',short:'THE WORKS',style:'metal',mode:'factory',
    wall:'#4a5563',grime:'20,28,40',floor:'#2e343d',ceil:'#454d59',ceilTint:0x6a7484,
    fog:0x04060a,fogD:.055,amb:0x33405a,ambI:.17,fix:.44,fixOn:.74,exposure:.84,
    step:'metal',monCount:4,monCap:4,
@@ -3792,7 +3792,7 @@ const ITEM_DEFS={
    LORE — documents left behind on each floor
    ══════════════════════════════════════════════════════════════ */
 const LORE=[
-  /* ---- LEVEL 1: the yellow halls ---- */
+  /* ---- LEVEL 0: the yellow halls ---- */
   {id:'l0a',lv:0,kind:'FRONT DESK MEMO',title:'RE: EAST STAIRWELL',
    body:`Effective immediately the east stairwell is closed.\n\nThe damp has come back through the ceiling tiles and the\nlanding light will not hold a bulb for more than a day.\n\nDo not send anyone down to look. It is not worth the\npaperwork, and Dale has not come back up.`},
   {id:'l0b',lv:0,kind:'STAFF ROTA — WEEK 14',title:'NIGHT SHIFT',
@@ -3802,7 +3802,7 @@ const LORE=[
   {id:'l0d',lv:0,kind:'PAGE TORN FROM A NOTEBOOK',title:'IF YOU ARE READING THIS',
    body:`I am going down. The fuses are the only thing that\nopens the gate and there are three of them on every\nfloor, which means whoever built this wanted people\nto keep going down.\n\nThe street outside is not a street. The doors open.\nIf I do not come back, do not follow me.`},
 
-  /* ---- LEVEL 2: the block that never got a morning ---- */
+  /* ---- LEVEL 1: the block that never got a morning ---- */
   {id:'l1a',lv:1,kind:'MERCY GENERAL — TRIAGE SHEET',title:'NO ADMISSIONS',
    body:`02:14  AMBULANCE 6 ARRIVES — NO PATIENT\n02:31  AMBULANCE 6 ARRIVES — NO PATIENT\n03:02  AMBULANCE 6 ARRIVES — NO PATIENT\n\nThe drivers all give the same name. We have no bed\nfor it. We have stopped writing the time down.`},
   {id:'l1b',lv:1,kind:'PRECINCT 14 — DESK LOG',title:'SHIFT 3, NO CALLS',
@@ -3814,7 +3814,7 @@ const LORE=[
   {id:'l1e',lv:1,kind:'VALE PHARMACY — PRESCRIPTION',title:'REFILL 7',
    body:`PATIENT: SAME AS LAST TIME\nCOLLECTED: EVERY NIGHT AT 03:10\n\nThe signature changes hand each visit but the pressure\nof the pen never does.\n\nPharmacist's note: I have been filling this for longer\nthan the shop has been here.`},
 
-  /* ---- LEVEL 3: the works, both floors of it ---- */
+  /* ---- LEVEL 2: the works, both floors of it ---- */
   {id:'l2a',lv:2,kind:'SHIFT LOG — LINE 2',title:'SECOND STOREY',
    body:`GROUND  conveyors stopped, presses at rest\nUPPER   catwalk lit, control room occupied\nUPPER   catwalk lit, control room occupied\nUPPER   catwalk lit, control room occupied\n\nWe only have one person rostered up there and he\nclocked out in 1987. The upper log keeps filling in.`},
   {id:'l2b',lv:2,kind:'MAINTENANCE ORDER 77-B',title:'DO NOT REPAIR THE HUM',
@@ -4100,7 +4100,7 @@ function spawnChest(x,z,loot){
 }
 
 /* ══════════════════════════════════════════════════════════════
-   LEVEL 2 PROPS — low pipes you must hop, pressure valves
+   CITY PROPS — low pipes you must hop, pressure valves
    ══════════════════════════════════════════════════════════════ */
 function spawnLowPipe(c){
   const ci=c.i,cj=c.j;
@@ -4891,7 +4891,7 @@ function renderInv(){
      `<span class="n"><span class="dot"></span>DOCUMENTS</span>`+
      `<span class="v"><b>${player.noteIds.length}</b> / ${LORE.length}</span></div>`;
   h+=`<div class="invrow have"><span class="n"><span class="dot"></span>DEPTH</span>`+
-     `<span class="v"><b>LEVEL ${LV().n}</b> / ${LEVELS.length} · ${LV().name}</span></div>`;
+     `<span class="v"><b>LEVEL ${LV().n}</b> / ${LAST_LEVEL} · ${LV().name}</span></div>`;
   el.invbody.innerHTML=h;
 }
 let invBodyArmed=false;
@@ -5072,11 +5072,11 @@ function useItem(kind){
    ══════════════════════════════════════════════════════════════ */
 const OPS_PW='bayern muss gewinnen';
 const OPS_LEVELS=[
-  {name:'LEVEL 1',sub:'THE LOBBY',cls:'SURVIVAL DIFFICULTY: CLASS 1',
+  {name:'LEVEL 0',sub:'THE LOBBY',cls:'SURVIVAL DIFFICULTY: CLASS 1',
    bg:'#140f06',wall:'#c8a94e',dim:'#5a4a20',accent:'#e8c47f'},
-  {name:'LEVEL 2',sub:'THE BLOCK',cls:'SURVIVAL DIFFICULTY: CLASS 2',
+  {name:'LEVEL 1',sub:'THE BLOCK',cls:'SURVIVAL DIFFICULTY: CLASS 2',
    bg:'#0d100c',wall:'#8fa88c',dim:'#36443a',accent:'#a8d8b0'},
-  {name:'LEVEL 3',sub:'THE WORKS',cls:'SURVIVAL DIFFICULTY: CLASS 3',
+  {name:'LEVEL 2',sub:'THE WORKS',cls:'SURVIVAL DIFFICULTY: CLASS 3',
    bg:'#0a0c0d',wall:'#8f9a9c',dim:'#333a3c',accent:'#d0a45c'}
 ];
 let opUnlocked=false,opsOpen=false,pwOpen=false,opsLevel=0,opsFrom='menu';
@@ -5347,7 +5347,7 @@ function renderOpsSide(){
     const total=Object.values(alive).reduce((a,b)=>a+b,0);
     h+=`<div class="opscard"><h3>SURVEILLANCE<small>LIVE</small></h3>`+
        `<div class="row"><span>OPERATOR</span><b>SECTOR ${sectorOf(pcell[0],pcell[1])}</b></div>`+
-       `<div class="row"><span>DEPTH</span><b>LEVEL ${LV().n} / ${LEVELS.length}</b></div>`+
+       `<div class="row"><span>DEPTH</span><b>LEVEL ${LV().n} / ${LAST_LEVEL}</b></div>`+
        `<div class="row"><span>ENTITIES TRACKED</span><b>${total}</b></div>`+
        Object.entries(MON_DEFS).map(([k,d])=>
          `<div class="row"><span>${d.label}</span><b>${alive[k]||0}</b></div>`).join('')+
@@ -5356,7 +5356,7 @@ function renderOpsSide(){
     h+=`<div class="opscard"><h3>ARCHIVE<small>NO LIVE FEED</small></h3>`+
        `<div class="row"><span>LINK</span><b>CAMERA RELAY OFFLINE</b></div>`+
        `<div class="row"><span>FLOOR</span><b>${opsLevel<level?'CLEARED':'NOT YET ENTERED'}</b></div>`+
-       `<div class="row"><span>DEPTH</span><b>LEVEL ${LV().n} / ${LEVELS.length}</b></div></div>`;
+       `<div class="row"><span>DEPTH</span><b>LEVEL ${LEVELS[opsLevel].n} / ${LAST_LEVEL}</b></div></div>`;
   }
   h+=`<div class="opscard"><h3>LEGEND<small>MAP KEY</small></h3>`+
      `<div class="row"><span>■ EXIT</span><b>${opsLevel<LAST_LEVEL?'DESCENT GATE':'WAY OUT'}</b></div>`+
@@ -5422,8 +5422,8 @@ const ACH_DEFS=[
   {id:'loaded',name:'FULLY LOADED',desc:'FIND THE SAWN-OFF'},
   {id:'powered',name:'POWER UP',desc:'RECOVER ALL 3 FUSES'},
   {id:'survivor',name:'SURVIVOR',desc:'SURVIVE 5 MINUTES IN ONE RUN'},
-  {id:'descent',name:'GOING DOWN',desc:'DESCEND TO LEVEL 2'},
-  {id:'deep',name:'THE WORKS',desc:'REACH LEVEL 3'},
+  {id:'descent',name:'GOING DOWN',desc:'DESCEND TO LEVEL 1'},
+  {id:'deep',name:'THE WORKS',desc:'REACH LEVEL 2'},
   {id:'untouchable',name:'UNTOUCHABLE',desc:'ESCAPE WITHOUT A SCRATCH'},
   {id:'escape',name:'NO-CLIP OUT',desc:'ESCAPE ALL THREE FLOORS'}
 ];
@@ -6443,7 +6443,7 @@ function renderTitleRec(){
   const r=loadRec(),el=$('#titleRec');
   if(!el)return;
   if(!r.runs){el.innerHTML='NO RUNS LOGGED YET';return;}
-  el.innerHTML=`RECORD · DEEPEST <b>LEVEL ${(r.deepest||0)+1}</b>`+
+  el.innerHTML=`RECORD · DEEPEST <b>LEVEL ${(r.deepest||0)}</b>`+
     (r.bestTime?` · FASTEST ESCAPE <b>${fmt(r.bestTime)}</b>`:'')+
     ` · RUNS <b>${r.runs}</b>`;
 }
@@ -7150,6 +7150,9 @@ const NET=(()=>{
      players can never end up on opposite brokers and never meet. */
   /* `connected` stays true for a moment while the socket is already
      closing, and mqtt.js throws if you write to it then */
+  /* A tiny ring of network milestones. A join that dies is almost always a
+     sequencing problem, and the console cannot see inside a guest tab. */
+  const ev=(k)=>{st.ev=(st.ev||[]);st.ev.push(k);if(st.ev.length>14)st.ev.shift();};
   const liveClients=()=>st.clis.filter(c=>c&&c.connected&&!c.dead);
   const anyLive=()=>liveClients().length>0;
   function send(t,obj,retain){
@@ -7170,6 +7173,10 @@ const NET=(()=>{
     st.subs.delete(t);
     for(const c of liveClients()){try{c.unsubscribe(t);}catch(e){}}
   }
+  /* asking for a room: a joiner repeats this until the host answers, so it
+     lives here rather than inside join() — the reconnect handler and the
+     wall-clock resubscribe both need it */
+  const hello=()=>send(topic('in'),{t:'hello',i:st.id,n:st.name});
 
   /* ---------- avatars ---------- */
   function nameTag(text){
@@ -7455,7 +7462,7 @@ const NET=(()=>{
     st.mapRx=(st.mapRx||0)+1;
     if(st.role!=='client'||!m.maze)return;
     if(st.mapKey===m.k&&st.started)return;
-    st.mapKey=m.k;st.level=m.lv|0;
+    st.mapKey=m.k;st.level=m.lv|0;ev('map');
     loadLevel(st.level,{netMap:m.maze});
     // the host owns the monsters; a client keeps none of its own
     for(const g of monsters)scene.remove(g.mesh);
@@ -7473,6 +7480,7 @@ const NET=(()=>{
       endSession(m.why==='host'?'THE HOST CLOSED THE ROOM':'THE ROOM ENDED');
       return;
     }
+    if(!st.stateSeen){st.stateSeen=true;ev('state');}
     st.lastStateAt=Date.now();
     /* state can beat the retained map through. Keep asking for the layout
        instead of sitting in the lobby forever with a world we never built. */
@@ -7557,9 +7565,9 @@ const NET=(()=>{
      moving — the ghosts keep rendering, so a dead session looks alive. */
   function endSession(reason){
     if(!st.role||st.ended)return;
-    st.ended=true;
+    st.ended=true;ev('end: '+reason);
     toast(reason,4500);
-    api.leave();
+    api.leave('ended');
     setState('lobby');
   }
 
@@ -7577,6 +7585,8 @@ const NET=(()=>{
       started:!!st.started,tx:st.tx||0,rooms:[...st.rooms.keys()],
       seen:st.seen.size,mapKey:st.mapKey,mapRx:st.mapRx||0,
       ended:!!st.ended,lastStateAgo:st.lastStateAt?Date.now()-st.lastStateAt:-1,
+      leaves:st.leaves||0,leaveAgo:st.leaveAt?Date.now()-st.leaveAt:-1,ev:st.ev||[],
+      joinAgo:st.joinAt?Date.now()-st.joinAt:-1,
       netbar:(($('#netbar')||{}).textContent||'').trim()};},
     isHost(){return st.role==='host';},
     isClient(){return st.role==='client';},
@@ -7616,19 +7626,23 @@ const NET=(()=>{
       if(code.length<4){toast('A CODE IS FOUR CHARACTERS',2500);return false;}
       if(!await ensureClient())return false;
       st.role='client';st.code=code;st.started=false;st.mapKey=null;
+      st.joinAt=Date.now();st.stateSeen=false;ev('join '+code);
       st.peers.clear();clearGhosts();st.seen.clear();
       st.ended=false;st.lastStateAt=Date.now();st.spawnClear=false;
       sub(topic('state'));sub(topic('map'));
       startNetLoop();
-      const hello=()=>send(topic('in'),{t:'hello',i:st.id,n:st.name});
       st.recover=()=>{if(st.role==='client'&&!st.started)hello();};
       hello();
-      // a public broker can be slow to route the first packet; keep asking
+      /* A public broker can be slow to route the first packet, and a socket
+         that is still dialling silently swallows the SUBSCRIBE. Keep asking,
+         on wall clock, until the map lands. */
       let tries=0;
       const retry=setInterval(()=>{
-        if(st.role!=='client'||st.started||++tries>16){clearInterval(retry);return;}
+        if(st.role!=='client'||st.started||++tries>70){clearInterval(retry);return;}
+        if(!anyLive()){ensureClient();return;}
+        resub();
         hello();
-      },1800);
+      },1200);
       toast(`JOINING ${code}…`,3000);
       updateNetBar();
       // only give up when we are actually connected to something
@@ -7636,14 +7650,16 @@ const NET=(()=>{
         clearInterval(retry);
         if(st.role==='client'&&!st.started){
           toast(anyLive()?'NO ROOM ANSWERS TO THAT CODE':'CANNOT REACH THE NETWORK',3500);
-          api.leave();
+          api.leave('giveup');
           setState('lobby');
         }
-      },30000);
+      },90000);
       return true;
     },
 
-    leave(){
+    leave(why){
+      st.leaves=(st.leaves||0)+1;
+      st.leaveAt=Date.now();ev('leave '+(why||'?'));
       if(st.code){
         if(st.role==='host'){
           // tell the room first, while the topic is still subscribed
@@ -7686,6 +7702,11 @@ const NET=(()=>{
       if(Date.now()-(st.resubAt||0)>4000){
         st.resubAt=Date.now();
         if(!st.clis.length)ensureClient();else resub();
+        /* A joiner that has not received the map yet keeps knocking. The
+           SUBSCRIBE may have gone to a socket that was already closing, and
+           the host's retained map only answers a live subscription — so ask
+           again instead of sitting in the lobby until the give-up timer. */
+        if(st.role==='client'&&!st.started)hello();
       }
       // ---- network cadence: on a timer, see startNetLoop ----
       // ---- remote bodies ----
