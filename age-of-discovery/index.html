@@ -3976,6 +3976,10 @@ function applyEffect(e) {
 }
 
 function renderDialog(node) {
+  // Once the ledger is read there is nothing left to say. A victory won in the
+  // middle of a conversation used to re-render that conversation on top of the
+  // end screen, leaving you talking to a man through your own epitaph.
+  if (Game.phase === 'dead' || Game.phase === 'end') return;
   currentDialog = node;
   dlgIdle = 0;                 // a fresh page of the conversation: the clock restarts
   dlgIdleShown = -1;
@@ -4026,6 +4030,10 @@ function chooseOption(opt) {
   }
 
   if (opt.effect) applyEffect(opt.effect);
+  // applyEffect can end the life on the spot -- a contract's reward tipping
+  // you to a hundred of reputation, say. Once the ledger is up nothing else in
+  // this conversation may run, or `opt.next` would reopen a dialog over it.
+  if (Game.phase === 'dead' || Game.phase === 'end') return;
 
   // probabilistic outcome
   if (opt.roll) {
@@ -4046,13 +4054,17 @@ function chooseOption(opt) {
 
   if (opt.death) return die(opt.death);
   if (opt.action) opt.action();
+  // an action can end the life as surely as an effect can -- a chart reported
+  // to the Crown that tips you over a hundred reputation, say. The ledger is
+  // the last word, and it has already torn this conversation down.
+  if (Game.phase === 'dead' || Game.phase === 'end') return;
   if (opt.next) return renderDialog(DLG[opt.next]());
   if (opt.stay) {
     // A button that changes nothing and re-renders itself is a dead circle --
     // the hold-is-full notice used to be exactly that. Such a choice closes.
     const inert = !opt.action && !opt.effect && !opt.roll &&
                   !(currentDialog && currentDialog.rebuild);
-    if (inert) return closeDialog();
+    if (inert || !currentDialog) return closeDialog();
     // A trading dialog re-prices itself after every purchase, so the labels
     // always match what the hold can still take. Without this the buttons
     // keep their old numbers and you could pay for cargo that never loads.
@@ -4094,7 +4106,12 @@ function openDialog(id, ctx) {
   renderDialog(builder(ctx || {}));
 }
 
-function closeDialog() {
+// Wipe the conversation off the screen without touching the phase or the
+// pointer lock. A death, a knighthood or the end of the hour must not leave a
+// shop's buttons lying over the end screen -- and a new life must not begin
+// with the dead man's conversation still open in front of it, its options
+// still live against a purse that no longer exists.
+function clearDialogUI() {
   dlgEl.classList.add('hidden');
   const foot = document.getElementById('dlgFoot');
   if (foot) { foot.classList.add('hidden'); foot.innerHTML = ''; }
@@ -4103,6 +4120,10 @@ function closeDialog() {
   dlgTalkLeft = 0;
   dlgIdle = 0;
   dlgIdleShown = -1;
+}
+
+function closeDialog() {
+  clearDialogUI();
   if (Game.phase === 'dialog') Game.phase = 'play';
   if (Game.phase === 'play' && !isTouch) canvas.requestPointerLock();
 }
@@ -4205,11 +4226,19 @@ function checkQuests() {
     addLog('A thousand in gold. Lisbon is starting to know your name.', 'good');
     showToast('Quest complete: A Man of Means (+15 reputation)');
   }
-  if (Game.rep >= 100 && !Game.won) {
-    Game.won = true;
-    victory();
-  }
+  checkVictory();
   updateHUD();
+}
+
+// Reputation arrives a point at a time from a dozen small places -- an honest
+// day on the quay, a prayer at the Sé, a riddle answered -- and most of them
+// only refresh the HUD. Rather than trust every call site to remember the win
+// condition, the HUD itself asks the question: it is the one thing they all
+// touch, and it runs every frame.
+function checkVictory() {
+  if (Game.won || Game.rep < 100) return;
+  Game.won = true;              // set first: the end screen must not re-enter
+  victory();
 }
 // ============================================================
 //  DIALOG CONTENT - the people and troubles of the age
@@ -4411,9 +4440,15 @@ const DLG = {
     return {
       who: "Tomé", role: "Merchant of Lisbon", portrait: "\u{1F4B0}",
       text: `Tomé's stall is a fortress of crates and bolts of cloth. "Buy low, sell high, never trust the sea — that is the whole of commerce." This week the city is short of ${wants[0]} and ${wants[1]}; the rest moves at ordinary prices. Your cargo would fetch about ${cargoValue()}g.`,
+      // the slate quotes the hold, so it has to be re-chalked once the hold is
+      // empty: the button used to keep offering "your whole cargo (312g)" for a
+      // hold with nothing in it
+      rebuild: () => DLG.merchant(),
       options: [
         {
-          label: `Sell your whole cargo in Lisbon (${cargoValue()}g)`,
+          label: cargoUnits() > 0
+            ? `Sell your whole cargo in Lisbon (${cargoValue()}g)`
+            : 'Sell your whole cargo in Lisbon',
           req: { cargoAny: true },
           hint: "The home market pays full price",
           action: () => {
@@ -4494,18 +4529,20 @@ const DLG = {
         ? `Report ${charts} chart${charts > 1 ? 's' : ''} to the Crown (+${charts * 40}g, +${charts * 4} reputation)`
         : "Report your charts (none yet)",
       req: { rep: 0 },
-      action: () => {
-        if (Game.charts.length === 0) return;
-        const n = Game.charts.length;
-        Game.gold += n * 40;
-        Game.rep += n * 4;
-        Game.charts = [];
-        addLog(`The Crown rewards you for ${n} new chart${n > 1 ? 's' : ''}.`, 'good');
-        showToast(`Charts reported: +${n * 40}g, +${n * 4} reputation`);
-        updateHUD(); checkQuests();
-      },
-      stay: true,
-    });
+        action: () => {
+          if (Game.charts.length === 0) return;
+          const n = Game.charts.length;
+          Game.gold += n * 40;
+          Game.rep += n * 4;
+          Game.charts = [];
+          addLog(`The Crown rewards you for ${n} new chart${n > 1 ? 's' : ''}.`, 'good');
+          showToast(`Charts reported: +${n * 40}g, +${n * 4} reputation`);
+          updateHUD(); checkQuests();
+        },
+        // with nothing to declare the audience is over rather than a button
+        // that re-reads the same empty slate forever
+        stay: charts > 0,
+      });
     if (Game.rep >= 15 && !Game.quests.chart3)
       opts.push({ label: "Accept the commission: chart three islands", req: { rep: 15 }, hint: "+10 reputation, +100g",
         action: () => { Game.quests.chart3 = 'active'; addLog('Commission accepted: chart three islands.', 'good'); }, stay: true });
@@ -4520,6 +4557,8 @@ const DLG = {
     return {
       who: "Fra Diogo", role: "Royal Herald", portrait: "\u{1F4DC}",
       text: "Fra Diogo unrolls a parchment with ceremonial slowness. \"The Crown rewards those who extend the map of the world, citizen. Have you anything to declare?\"",
+      // the count of charts is on the label, so the slate is re-chalked
+      rebuild: () => DLG.herald(),
       options: opts,
     };
   },
@@ -4776,6 +4815,7 @@ const DLG = {
     const localPrice = marketBuyPrice(port, localKey);
     const stock = marketOf(port).stock[localKey] || 0;
     const room = cargoRoom();
+    const units = cargoUnits();
     const opts = [];
     // a buy is only offered if it fits AND the island still has it: a skiff
     // takes 10 bales, a caravel 25, a nau 50, and an island's shelf is finite.
@@ -4795,7 +4835,12 @@ const DLG = {
       buy(1, localPrice, local.name);
       buy(5, localPrice, local.name);
     }
-    if (room > 0) {
+    // Selling needs CARGO, not space. This used to be gated on `room > 0`, so
+    // a hold packed to the beams -- exactly the hold you sailed here to empty
+    // -- was shown a notice reading "sell here, or carry them home" with no
+    // way to sell anything at all. The one state where a merchant is most
+    // useful was the one state he refused to trade in.
+    if (units > 0) {
       // they buy anything but their own product, and they pay according to how
       // badly they want it -- that is the whole game of the voyage
       for (const key of GOODS) {
@@ -4818,10 +4863,10 @@ const DLG = {
       }
     }
     if (room <= 0) {
-      opts.length = 0;
       // a notice, not a button: it used to be `stay: true`, so clicking it
-      // re-opened the same words forever -- the one true dead circle in the game
-      opts.push({ label: `Your hold is full — ${cargoUnits()} of ${cargoCapacity()} bales. Sell here, or carry them home.` });
+      // re-opened the same words forever -- the one true dead circle in the
+      // game. It also used to wipe the slate clean, taking the sale with it.
+      opts.push({ label: `Your hold is full — ${units} of ${cargoCapacity()} bales. Sell here, or carry them home.` });
     }
     opts.push({ label: "Trade is done." });
     const wants = marketWants(port).map(k => TRADE_GOODS[k].name.toLowerCase());
@@ -6046,7 +6091,9 @@ function showToast(msg, duration = 2600) {
 
 function updateCargoBox() {
   const entries = Object.entries(Game.inventory).filter(([k, v]) => v > 0);
-  const cap = Game.ship ? ` / ${SHIP_CLASSES[Game.ship.cls].cargo}` : '';
+  // the gauge has to quote what the hold actually takes, fittings and all --
+  // it used to show the bare hull's figure, so a reinforced caravel read 25
+  const cap = Game.ship ? ` / ${cargoCapacity()}` : '';
   document.getElementById('cargoVal').textContent = entries.length === 0
     ? 'empty'
     : `${cargoUnits()}${cap} — ` + entries.map(([k, v]) => `${TRADE_GOODS[k].icon} ${TRADE_GOODS[k].name} ×${v}`).join(', ');
@@ -6092,6 +6139,7 @@ function updateHUD() {
     document.getElementById('speedFill').style.height = pct + '%';
     document.getElementById('speedVal').textContent = (Math.abs(Ship.speed) * 2.2).toFixed(1) + ' kn';
   }
+  checkVictory();
 }
 
 function updatePrompt() {
@@ -6189,8 +6237,9 @@ let endKind = 'death';
 function die(cause) {
   if (Game.phase === 'dead' || Game.phase === 'end') return;
   Game.cause = cause;
+  clearDialogUI();              // no shop front left standing over the grave
   Game.phase = 'dead';
-  Game.stats.deaths++;
+  Game.stats.deaths = (Game.stats.deaths || 0) + 1;
   try { document.exitPointerLock(); } catch (e) {}
   addLog(`You died an unnatural death: ${cause}`, 'bad');
   document.getElementById('deathFlash').classList.add('on');
@@ -6201,6 +6250,7 @@ function die(cause) {
 }
 
 function victory() {
+  clearDialogUI();              // the audience is over, whatever was being said
   Game.phase = 'end';
   addLog('The King names you Fidalgo of the Realm. Lisbon sings your name.', 'good');
   showEndScreen('victory');
@@ -6243,6 +6293,7 @@ function lifeVerdict() {
 
 function showEndScreen(kind) {
   endKind = kind;
+  clearDialogUI();
   Game.phase = 'end';
   try { document.exitPointerLock(); } catch (e) {}
   const title = document.getElementById('endTitle');
@@ -6388,6 +6439,7 @@ function loadGame(slot) {
   document.getElementById('savePanel').classList.add('hidden');
   document.getElementById('menuPanel').classList.add('hidden');
   document.getElementById('hud').classList.remove('hidden');
+  clearDialogUI();              // a loaded life begins with a clear screen
   Game.phase = 'play';
   updateHUD(); updateCargoBox();
   addLog('You take up your life where you left it.');
@@ -6493,7 +6545,7 @@ function resetLife() {
   seaEventTimer = 50 + Math.random() * 30;
   streetEventTimer = 70 + Math.random() * 50;
   // a new life starts with no conversation hanging over from the last one
-  dlgSocial = false; dlgTalkLeft = 0; dlgIdle = 0; dlgIdleShown = -1;
+  clearDialogUI();
   logPanel.innerHTML = '';
   addLog('Dawn over Lisbon. You are a citizen with nothing but your name.');
   updateHUD(); updateCargoBox(); drawMinimap();
