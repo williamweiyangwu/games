@@ -2459,6 +2459,39 @@ function buildFactoryExtras(th){
     l.position.set(cx(3+k*5),8.4,cz(3+k*4));scene.add(l);levelObjs.push(l);
   }
 
+  /* ---- work lights ------------------------------------------------------
+     The works is one open volume under a 9.6 m roof. Roof strips and four
+     point lights left most of it black — the eight-light pool only ever had
+     a handful of fittings in range, so the floor fell away into nothing.
+     Hang a fitting every other cell: high over the open hall, and just
+     under the deck soffit where a catwalk runs overhead, so both storeys
+     read and the passage underneath is not a black tunnel. */
+  const workPos=[];
+  for(let i=1;i<GX-1;i+=2)for(let j=1;j<GZ-1;j+=2){
+    if(ck(i,j)===CT_BLOCK)continue;
+    const h=deckY[i+j*GX]||0;
+    const y=h>=DECK_H-.01?DECK_H-.55:7.4;
+    fixtures.push({x:cx(i),z:cz(j),y,on:Math.random()<th.fixOn,
+      bright:rand(.5,.85),flick:0,flickT:rand(5,42),base:1});
+    workPos.push({x:cx(i),y,z:cz(j)});
+  }
+  if(workPos.length){
+    const wq=new THREE.Quaternion(),wm=new THREE.Matrix4();
+    const wg=new THREE.BoxGeometry(.46,.09,.9);
+    const wmat=new THREE.MeshBasicMaterial({color:0xcfe6e0});
+    const wi=new THREE.InstancedMesh(wg,wmat,workPos.length);
+    const from=fixtures.length-workPos.length;
+    for(let i=0;i<workPos.length;i++){
+      const l=workPos[i],f=fixtures[from+i];
+      wm.compose(new THREE.Vector3(l.x,l.y,l.z),wq,new THREE.Vector3(1,1,1));
+      wi.setMatrixAt(i,wm);
+      wi.setColorAt(i,new THREE.Color(1,.98,.92).multiplyScalar(f.on?f.bright:.06));
+    }
+    wi.instanceMatrix.needsUpdate=true;
+    if(wi.instanceColor)wi.instanceColor.needsUpdate=true;
+    scene.add(wi);levelObjs.push(wi);
+  }
+
   // ---- catwalk decks, stair treads, legs and yellow railings ----
   const parts=[];
   const B=(x,y,z,w,h,d,col)=>parts.push({x,y,z,w,h,d,col});
@@ -2701,6 +2734,9 @@ function buildCity(lv,th,isFactory){
   fixtures=[];
   for(let i=1;i<GX-1;i+=C.lampGap)for(let j=1;j<GZ-1;j+=C.lampGap){
     if(ck(i,j)!==CT_STREET)continue;
+    /* a 6.6 m post would run straight up through a catwalk deck; the works
+       gets its own fittings, hung from the roof and from the deck soffit */
+    if(isFactory&&deckY&&deckY[i+j*GX]>0)continue;
     if(Math.random()>th.fix)continue;
     fixtures.push({x:cx(i),z:cz(j),y:C.lampY,on:Math.random()<th.fixOn,
       bright:rand(.75,1.05),flick:0,flickT:rand(4,40),base:1});
@@ -7285,6 +7321,14 @@ const NET=(()=>{
     if(!st.code)return;
     for(const c of liveClients())for(const t of st.subs){try{c.subscribe(t);}catch(e){}}
   }
+  /* The one place that throws the pair away on purpose. Only a join that has
+     knocked for a quarter of a minute with nothing back calls this — the
+     socket reports itself connected, so nothing else will notice it is dead. */
+  function redial(){
+    for(const c of st.clis){try{c.end(true);}catch(e){}}
+    st.clis=[];st.conn=null;
+    return connect();
+  }
   async function connect(){
     if(typeof mqtt==='undefined'){setStatus('error','MQTT LIBRARY DID NOT LOAD');return false;}
     setStatus('connecting','CONNECTING…');
@@ -7640,6 +7684,10 @@ const NET=(()=>{
       const retry=setInterval(()=>{
         if(st.role!=='client'||st.started||++tries>70){clearInterval(retry);return;}
         if(!anyLive()){ensureClient();return;}
+        /* mqtt.js will happily call a half-open socket "connected": the hello
+           goes out, nothing comes back, and re-subscribing to that same dead
+           socket changes nothing. Every ~15 s of silence, replace the pair. */
+        if(tries%13===0){redial();return;}
         resub();
         hello();
       },1200);
