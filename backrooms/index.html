@@ -7847,7 +7847,19 @@ const NET=(()=>{
   /* ---------- the live room list ---------- */
   function onRoom(t,m){
     const code=t.slice((P+'rooms/').length);
-    if(!code||m.t!=='r')return;
+    if(!code)return;
+    /* the host saying "not you": sent on the room topic, which every client
+       has been listening to since the lobby, so a joiner whose state channel
+       is half-open still hears the refusal */
+    if(m.t==='rf'){
+      if(m.i===st.id&&st.role==='client'){
+        toast(`ROOM IS FULL · ${m.cap||MAXP} PLAYERS`,3200);
+        api.leave('full');
+        setState('lobby');
+      }
+      return;
+    }
+    if(m.t!=='r')return;
     if(m.close){st.rooms.delete(code);renderRooms();return;}
     /* the beat is retained, so a host that closed its tab leaves one behind
        for ever. Trust the sender's clock: an old beat is a dead room. */
@@ -8040,6 +8052,10 @@ const NET=(()=>{
         st.fullT.set(id,now);
         if(st.fullT.size>16)st.fullT.delete(st.fullT.keys().next().value);
         send(topic('state'),{t:'full',i:id,cap:MAXP});
+        /* A joiner can start from the retained map on a socket that never
+           delivers the state topic, so say it twice: the room topic is the
+           one every client has been listening to since the lobby. */
+        send(P+'rooms/'+st.code,{t:'rf',i:id,cap:MAXP});
       }
       return false;
     }
@@ -8285,7 +8301,15 @@ const NET=(()=>{
           redial();
           return;
         }
-        endSession('LOST CONTACT WITH THE HOST');
+        /* A joiner that never heard the host once was never in the room. If
+           the room's own beat says it is full, that silence is a refusal the
+           broker swallowed — say so instead of blaming the connection. A
+           player who was actually playing has stateSeen set and keeps the
+           honest message. */
+        const r=st.rooms.get(st.code);
+        if(!st.stateSeen&&r&&r.n>=(r.cap||MAXP))
+          endSession(`ROOM IS FULL · ${r.cap||MAXP} PLAYERS`);
+        else endSession('LOST CONTACT WITH THE HOST');
         return;
       }
       for(const[id,p]of[...st.peers]){
