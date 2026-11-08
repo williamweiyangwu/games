@@ -584,6 +584,9 @@ body.touch #cross{opacity:.35}
 .room b{color:#f0e2b2;letter-spacing:4px;font-size:13px}
 .room i{font-style:normal;color:#6d6547;font-size:9px;letter-spacing:1.5px}
 .room .rp{color:#8fa88c;font-size:10px;white-space:nowrap}
+.room.full{opacity:.5}
+.room.full:hover{background:rgba(232,86,47,.06);border-color:rgba(232,86,47,.25)}
+.room .rp b{color:#e8562f;font-size:9px;letter-spacing:1.5px}
 .netbar{position:absolute;top:14px;right:18px;font-size:9px;letter-spacing:2.5px;
   color:#8fa88c;text-align:right;opacity:0;transition:opacity .3s;line-height:1.9}
 .netbar.on{opacity:1}
@@ -7570,6 +7573,10 @@ const NET=(()=>{
   const BROKERS=['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt'];
   const ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';   // no I/O/0/1
   const TICK_MS=120, BEAT_MS=3000, ROOM_TTL=30000;
+  /* Three wanderers to a room — the host and two guests. Three is the point
+     where a corridor fight stays readable and the host's 120 ms state stream
+     still has room for every body. A fourth is told the room is full. */
+  const MAXP=3;
   /* a client gives the host this long to say something before it declares
      the room dead — comfortably longer than a throttled background tab */
   const STALL_MS=12000;
@@ -7597,7 +7604,10 @@ const NET=(()=>{
   const liveClients=()=>st.clis.filter(c=>c&&c.connected&&!c.dead);
   const anyLive=()=>liveClients().length>0;
   function send(t,obj,retain){
-    const body=JSON.stringify(Object.assign({u:++st.uid},obj));
+    /* `u` alone is not a unique key: every page counts from 1, so two guests
+       publishing at the same cadence produce the same (topic,u) pairs and the
+       receiver throws one of them away as a duplicate. Stamp the sender too. */
+    const body=JSON.stringify(Object.assign({o:st.id,u:++st.uid},obj));
     let ok=false;
     for(const c of liveClients()){
       try{c.publish(t,body,{qos:0,retain:!!retain});ok=true;}catch(e){}
@@ -7620,32 +7630,63 @@ const NET=(()=>{
   const hello=()=>send(topic('in'),{t:'hello',i:st.id,n:st.name});
 
   /* ---------- avatars ---------- */
-  function nameTag(text){
-    const S=256,[c,g]=cnv(S,64);
-    g.clearRect(0,0,S,64);
-    g.fillStyle='rgba(0,0,0,.55)';g.fillRect(0,0,S,64);
-    g.font='600 30px ui-monospace,Menlo,Consolas,monospace';
+  /* Each body gets one accent colour, derived from its id, so three players
+     standing in the same corridor are still three different people. The same
+     colour frames the name plate over the head. */
+  const ACCENTS=['#8fd8c0','#e8a45a','#8fb8e8','#e88fb0','#c9e07a'];
+  function accentFor(id){
+    let h=0;const s=String(id||'');
+    for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;
+    return ACCENTS[h%ACCENTS.length];
+  }
+  function nameTag(text,accent){
+    const W=320,H=80,[c,g]=cnv(W,H),r=14;
+    g.clearRect(0,0,W,H);
+    // a plate, not floating text: it has to stay readable against a white
+    // lobby wall and a black factory floor alike
+    g.beginPath();
+    g.moveTo(6+r,8);g.lineTo(W-6-r,8);g.quadraticCurveTo(W-6,8,W-6,8+r);
+    g.lineTo(W-6,H-8-r);g.quadraticCurveTo(W-6,H-8,W-6-r,H-8);
+    g.lineTo(6+r,H-8);g.quadraticCurveTo(6,H-8,6,H-8-r);
+    g.lineTo(6,8+r);g.quadraticCurveTo(6,8,6+r,8);g.closePath();
+    g.fillStyle='rgba(7,10,9,.74)';g.fill();
+    g.lineWidth=3;g.strokeStyle=accent;g.stroke();
+    g.fillStyle=accent;g.fillRect(7,9,9,H-18);
+    g.font='700 34px ui-monospace,Menlo,Consolas,monospace';
     g.textAlign='center';g.textBaseline='middle';
-    g.fillStyle='#cfe8c4';
-    g.fillText(text.toUpperCase().slice(0,12),S/2,34);
+    g.fillStyle='#f2f5ee';
+    g.fillText((text||'PLAYER').toUpperCase().slice(0,12),W/2+7,42);
     const t=new THREE.CanvasTexture(c);
     t.colorSpace=THREE.SRGBColorSpace;
+    t.anisotropy=4;
     return t;
   }
-  function makeAvatar(name){
+  function makeAvatar(name,id){
+    const accent=accentFor(id);
     const g=new THREE.Group();
     const skin=new THREE.MeshStandardMaterial({color:0x9fb2a8,roughness:.85,metalness:.05});
-    const coat=new THREE.MeshStandardMaterial({color:0x38423e,roughness:.9});
-    const body=new THREE.Mesh(new THREE.CylinderGeometry(.24,.3,1.02,8),coat);
+    const coat=new THREE.MeshStandardMaterial({
+      color:new THREE.Color(accent).multiplyScalar(.42),roughness:.9});
+    const body=new THREE.Mesh(new THREE.CylinderGeometry(.24,.3,1.02,10),coat);
     body.position.y=.92;g.add(body);
-    const head=new THREE.Mesh(new THREE.SphereGeometry(.2,10,8),skin);
+    const head=new THREE.Mesh(new THREE.SphereGeometry(.2,12,9),skin);
     head.position.y=1.62;g.add(head);
     for(const s of[-1,1]){
       const arm=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,.82,6),coat);
       arm.position.set(s*.32,1.05,0);arm.rotation.z=s*.12;g.add(arm);
     }
-    const tag=new THREE.Sprite(new THREE.SpriteMaterial({map:nameTag(name),transparent:true,depthWrite:false}));
-    tag.scale.set(1.5,.38,1);tag.position.y=2.1;g.add(tag);
+    // a chest badge in the accent colour: the plate's colour, on the body,
+    // so you can tell who is who even when the head is behind a door frame
+    const badge=new THREE.Mesh(new THREE.BoxGeometry(.17,.09,.03),
+      new THREE.MeshStandardMaterial({color:accent,emissive:accent,
+        emissiveIntensity:.5,roughness:.55}));
+    badge.position.set(0,1.18,-.285);g.add(badge);
+    const tag=new THREE.Sprite(new THREE.SpriteMaterial({
+      map:nameTag(name,accent),transparent:true,depthWrite:false}));
+    tag.scale.set(1.6,.4,1);tag.position.y=2.08;tag.renderOrder=3;
+    tag.userData.name=(name||'PLAYER').toUpperCase().slice(0,12);
+    g.add(tag);
+    g.userData.tag=tag;g.userData.accent=accent;
     scene.add(g);
     return g;
   }
@@ -7659,10 +7700,16 @@ const NET=(()=>{
     }
   }
   function syncAvatar(p){
-    let a=st.avatars.get(p.i);
-    if(!a){a=makeAvatar(p.n||'PLAYER');st.avatars.set(p.i,a);}
+    /* peer records carry `id`; `i` is the wire field. Keying the avatar map
+       on the wire field alone gave every peer the same undefined slot, which
+       was invisible with one guest and merged two bodies with two. */
+    const id=p.id!==undefined?p.id:p.i;
+    let a=st.avatars.get(id);
+    /* peer records keep the name under `name`; the wire field is `n` */
+    if(!a){a=makeAvatar(p.name||p.n||'PLAYER',id);st.avatars.set(id,a);}
     a.position.set(p.x,0,p.z);
     a.rotation.y=p.a||0;
+    return a;
   }
 
   /* ---------- monsters as ghosts (client side) ----------
@@ -7778,7 +7825,7 @@ const NET=(()=>{
       st.rx=(st.rx||0)+1;
       // both brokers deliver the same message: act on it once
       if(m.u!==undefined){
-        const k=t+'|'+m.u;
+        const k=t+'|'+(m.o||m.i||'?')+'|'+m.u;
         if(st.seen.has(k))return;
         st.seen.add(k);
         if(st.seen.size>800)st.seen=new Set([...st.seen].slice(-400));
@@ -7808,7 +7855,8 @@ const NET=(()=>{
     const sent=typeof m.ts==='number'?m.ts:now;
     if(now-sent>ROOM_TTL)return;
     // display age and local expiry run off our own clock, not the host's
-    st.rooms.set(code,{code,host:m.n||'—',lv:m.lv|0,n:m.p|0,ts:now});
+    st.rooms.set(code,{code,host:m.n||'—',lv:m.lv|0,n:m.p|0,
+      cap:m.cap|0||MAXP,ts:now});
     renderRooms();
   }
   function pruneRooms(){
@@ -7828,12 +7876,16 @@ const NET=(()=>{
     }
     box.innerHTML=list.map(r=>{
       const age=Math.max(0,Math.round((Date.now()-r.ts)/1000));
-      return `<div class="room" data-code="${r.code}">
+      const cap=r.cap||MAXP,n=Math.min(r.n||0,cap),full=n>=cap;
+      return `<div class="room${full?' full':''}" data-code="${r.code}" data-full="${full?1:0}">
         <span><b>${r.code}</b><br><i>${r.host}</i></span>
-        <span class="rp">LV${r.lv} · ${r.n}/6<br><i>${age}s</i></span></div>`;
+        <span class="rp">LV${r.lv} · ${n}/${cap}${full?' <b>FULL</b>':''}<br><i>${age}s</i></span></div>`;
     }).join('');
     box.querySelectorAll('.room').forEach(el=>{
-      el.addEventListener('click',()=>NET.join(el.dataset.code));
+      el.addEventListener('click',()=>{
+        if(el.dataset.full==='1'){toast('THAT ROOM IS FULL · 3 PLAYERS',2600);return;}
+        NET.join(el.dataset.code);
+      });
     });
   }
 
@@ -7891,7 +7943,8 @@ const NET=(()=>{
     },TICK_MS);
   }
   function publishBeat(){
-    send(P+'rooms/'+st.code,{t:'r',n:st.name,lv:st.level,p:1+st.peers.size,ts:Date.now()},true);
+    send(P+'rooms/'+st.code,{t:'r',n:st.name,lv:st.level,
+      p:Math.min(MAXP,1+st.peers.size),cap:MAXP,ts:Date.now()},true);
   }
   function publishState(){
     if(!anyLive())return;
@@ -7929,6 +7982,14 @@ const NET=(()=>{
       endSession(m.why==='host'?'THE HOST CLOSED THE ROOM':'THE ROOM ENDED');
       return;
     }
+    /* the room already has three: the host said so, so stop knocking instead
+       of waiting out the whole join timer */
+    if(m.t==='full'&&m.i===st.id){
+      toast(`ROOM IS FULL · ${m.cap||MAXP} PLAYERS`,3200);
+      api.leave('full');
+      setState('lobby');
+      return;
+    }
     if(!st.stateSeen){st.stateSeen=true;ev('state');}
     st.lastStateAt=Date.now();
     /* state can beat the retained map through. Keep asking for the layout
@@ -7961,17 +8022,40 @@ const NET=(()=>{
     }
     if(m.ex&&!exitPowered)powerExit(true);
   }
+  /* Admission, not just bookkeeping: a guest may first show up as a position
+     packet (the retained map can start it before its hello lands), and a
+     fourth wanderer must be turned away however it announces itself. */
+  function admit(id,name){
+    const now=Date.now();
+    /* a guest whose tab died never sends `bye`; drop it before counting, or
+       its empty slot would keep the room looking full for ever */
+    for(const[k,p]of[...st.peers])if(now-(p.ts||0)>10000){st.peers.delete(k);dropAvatar(k);}
+    if(st.peers.has(id))return true;
+    if(st.peers.size>=MAXP-1){
+      st.refused=(st.refused||0)+1;
+      // one refusal per second is enough; a joiner knocks every 120 ms
+      st.fullT=st.fullT||new Map();
+      if(now-(st.fullT.get(id)||0)>1000){
+        st.fullT.set(id,now);
+        if(st.fullT.size>16)st.fullT.delete(st.fullT.keys().next().value);
+        send(topic('state'),{t:'full',i:id,cap:MAXP});
+      }
+      return false;
+    }
+    st.peers.set(id,{id,name:name||'PLAYER',x:player.pos.x,z:player.pos.z,a:0,h:100,ts:now});
+    republishMap();publishBeat();
+    return true;
+  }
   function onIn(m){
     if(st.role!=='host')return;
     if(m.t==='hello'){
       st.hlo=(st.hlo||0)+1;
-      st.peers.set(m.i,{id:m.i,name:m.n||'PLAYER',x:player.pos.x,z:player.pos.z,a:0,h:100,ts:Date.now()});
-      republishMap();publishBeat();
+      if(admit(m.i,m.n)){republishMap();publishBeat();}
     }else if(m.t==='p'){
       st.pp=(st.pp||0)+1;
-      const p=st.peers.get(m.i)||{id:m.i,name:m.n||'PLAYER'};
+      if(!admit(m.i,m.n))return;
+      const p=st.peers.get(m.i);
       p.x=m.x;p.z=m.z;p.a=m.a;p.h=m.h;p.ts=Date.now();
-      st.peers.set(m.i,p);
     }else if(m.t==='ev'){
       if(m.e==='take'){
         const i=items.findIndex(x=>x.id===m.id);
@@ -7985,6 +8069,8 @@ const NET=(()=>{
       }
     }else if(m.t==='bye'){
       st.peers.delete(m.i);dropAvatar(m.i);
+      // a freed slot should show in the lobby list straight away
+      publishBeat();
     }
   }
 
@@ -7992,19 +8078,27 @@ const NET=(()=>{
      inside the host's model and open the game looking at the inside of a
      capsule. Step clear the first time we learn where everyone is. */
   function nudgeOffPeers(){
-    let close=false;
+    /* three players spawn around the same seed cell, so the second guest has
+       two bodies to step around, not one: pick a spot clear of all of them */
+    const clearAt=(x,z)=>{
+      if(solidAt(x,z))return false;
+      for(const p of st.peers.values())
+        if(Math.hypot(p.x-x,p.z-z)<1.8)return false;
+      return true;
+    };
+    let crowded=false;
     for(const p of st.peers.values())
-      if(Math.hypot(p.x-player.pos.x,p.z-player.pos.z)<2.2){close=true;break;}
-    if(!close)return;
-    for(let r=2.6;r<=7;r+=1.4){
-      for(let k=0;k<16;k++){
-        const a=k/16*TAU;
-        const x=player.pos.x+Math.cos(a)*r, z=player.pos.z+Math.sin(a)*r;
-        if(!solidAt(x,z)){
-          player.pos.x=x;player.pos.z=z;
-          camera.position.set(x,1.62,z);
-          return;
-        }
+      if(Math.hypot(p.x-player.pos.x,p.z-player.pos.z)<2.2){crowded=true;break;}
+    if(!crowded)return;
+    const ox=player.pos.x,oz=player.pos.z;
+    for(let r=2.6;r<=8;r+=1.2){
+      for(let k=0;k<24;k++){
+        const a=k/24*TAU;
+        const x=ox+Math.cos(a)*r, z=oz+Math.sin(a)*r;
+        if(!clearAt(x,z))continue;
+        player.pos.x=x;player.pos.z=z;
+        camera.position.set(x,1.62,z);
+        return;
       }
     }
   }
@@ -8026,10 +8120,14 @@ const NET=(()=>{
     get role(){return st.role;},
     get code(){return st.code;},
     get peerCount(){return st.peers.size;},
+    get maxPlayers(){return MAXP;},
+    get peerNames(){return[...st.peers.values()].map(p=>p.name||'PLAYER');},
     active(){return !!st.role;},
     get dbg(){return{hlo:st.hlo||0,pp:st.pp||0,ids:[...st.peers.keys()],seq:st.seq||0,pub:st.pub||0,
       subs:[...st.subs],rx:st.rx||0,rxIn:st.rxIn||0,rxState:st.rxState||0,
-      rxOther:st.rxOther||0,code:st.code,role:st.role,peers:st.peers.size,
+      rxOther:st.rxOther||0,code:st.code,role:st.role,peers:st.peers.size,maxp:MAXP,
+      peerNames:[...st.peers.values()].map(p=>p.name||'PLAYER'),
+      avatars:st.avatars.size,refused:st.refused||0,
       live:liveClients().length,connected:anyLive(),
       started:!!st.started,tx:st.tx||0,rooms:[...st.rooms.keys()],
       seen:st.seen.size,mapKey:st.mapKey,mapRx:st.mapRx||0,
@@ -8074,6 +8172,9 @@ const NET=(()=>{
       code=(code||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,4);
       if(code.length<4){toast('A CODE IS FOUR CHARACTERS',2500);return false;}
       if(!await ensureClient())return false;
+      /* a refused join and the next attempt share one timer namespace; each
+         attempt carries a generation so an old give-up cannot cancel it */
+      const gen=st.joinGen=(st.joinGen||0)+1;
       st.role='client';st.code=code;st.started=false;st.mapKey=null;
       st.joinAt=Date.now();st.stateSeen=false;ev('join '+code);
       st.peers.clear();clearGhosts();st.seen.clear();
@@ -8087,7 +8188,7 @@ const NET=(()=>{
          on wall clock, until the map lands. */
       let tries=0;
       const retry=setInterval(()=>{
-        if(st.role!=='client'||st.started||++tries>70){clearInterval(retry);return;}
+        if(gen!==st.joinGen||st.role!=='client'||st.started||++tries>70){clearInterval(retry);return;}
         if(!anyLive()){ensureClient();return;}
         /* mqtt.js will happily call a half-open socket "connected": the hello
            goes out, nothing comes back, and re-subscribing to that same dead
@@ -8101,7 +8202,7 @@ const NET=(()=>{
       // only give up when we are actually connected to something
       setTimeout(()=>{
         clearInterval(retry);
-        if(st.role==='client'&&!st.started){
+        if(gen===st.joinGen&&st.role==='client'&&!st.started){
           toast(anyLive()?'NO ROOM ANSWERS TO THAT CODE':'CANNOT REACH THE NETWORK',3500);
           api.leave('giveup');
           setState('lobby');
@@ -8175,11 +8276,21 @@ const NET=(()=>{
         // while our own socket is down we cannot judge anyone's silence
         if(online&&now-p.ts>10000){st.peers.delete(id);dropAvatar(id);continue;}
         const a=st.avatars.get(id);
-        if(!a)syncAvatar(p);
+        let av=a;
+        if(!av)av=syncAvatar(p);
         else{
-          a.position.x+=(p.x-a.position.x)*Math.min(1,dt*9);
-          a.position.z+=(p.z-a.position.z)*Math.min(1,dt*9);
-          a.rotation.y=p.a;
+          av.position.x+=(p.x-av.position.x)*Math.min(1,dt*9);
+          av.position.z+=(p.z-av.position.z)*Math.min(1,dt*9);
+          av.rotation.y=p.a;
+        }
+        /* A world-sized plate shrinks to nothing at the end of a corridor.
+           Push its scale with distance so the name stays legible out to about
+           25 m, then let perspective take over again. */
+        const tag=av&&av.userData.tag;
+        if(tag){
+          const d=Math.hypot(camera.position.x-av.position.x,camera.position.z-av.position.z);
+          const k=clamp(d/9,1,2.6);
+          tag.scale.set(1.6*k,.4*k,1);
         }
       }
       // ---- ghosts ----
@@ -8218,7 +8329,7 @@ const NET=(()=>{
     for(const p of st.peers.values())names.push((p.name||'PLAYER').toUpperCase().slice(0,9));
     const shown=names.slice(0,3).join(' · ')+(names.length>3?` +${names.length-3}`:'');
     const head=st.role==='host'?`HOSTING <b>${st.code}</b>`:`ROOM <b>${st.code}</b>`;
-    el.innerHTML=`${head}<br>${1+st.peers.size} IN THE ROOM<br><i>${shown}</i>`;
+    el.innerHTML=`${head}<br>${1+st.peers.size}/${MAXP} IN THE ROOM<br><i>${shown}</i>`;
   }
 
   // per tab, not per browser: two tabs are two players
