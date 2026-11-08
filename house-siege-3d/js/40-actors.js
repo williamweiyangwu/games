@@ -22,7 +22,7 @@ function dirFromAngles(yaw, pitch, out) {
 }
 function allActors() { return G.bots.concat(G.player ? [G.player] : []); }
 
-/* Who counts for an OBJECTIVE — a flag pickup, the hill, an elimination.
+/* Who counts for an OBJECTIVE — a flag pickup, an elimination.
    Offline that is everybody. Online it is the humans only: the bots are
    simulated separately on each machine and drift apart within seconds, so
    letting them hold a flag or win a round would put the two scoreboards in
@@ -147,6 +147,14 @@ function spawnPoint(team, i) {
   if (!list.length) return new V3(0, 0, team === 'red' ? 20 : -20);
   /* normalise into range so a negative or huge index can never miss the list */
   const k = ((Math.floor(i) % list.length) + list.length) % list.length;
+  /* Chests are solid, so a slot that shares a cell with one would deploy you
+     inside a box. Walk to the next free slot — the list is ordered by distance
+     from the HQ, so the neighbour is a step further out, not across the map. */
+  const spots = G.chestSpots || [];
+  for (let n = 0; n < list.length; n++) {
+    const s = list[(k + n) % list.length];
+    if (spots.every(c => Math.hypot(c[0] - s.x, c[2] - s.z) > 2.0)) return new V3(s.x, 0, s.z);
+  }
   const s = list[k];
   return new V3(s.x, 0, s.z);
 }
