@@ -7992,6 +7992,7 @@ const NET=(()=>{
     }
     if(!st.stateSeen){st.stateSeen=true;ev('state');}
     st.lastStateAt=Date.now();
+    st.stallRetry=0;
     /* state can beat the retained map through. Keep asking for the layout
        instead of sitting in the lobby forever with a world we never built. */
     if(st.role==='client'&&!st.started&&Date.now()-(st.lastMapReq||0)>1800){
@@ -8178,7 +8179,7 @@ const NET=(()=>{
       st.role='client';st.code=code;st.started=false;st.mapKey=null;
       st.joinAt=Date.now();st.stateSeen=false;ev('join '+code);
       st.peers.clear();clearGhosts();st.seen.clear();
-      st.ended=false;st.lastStateAt=Date.now();st.spawnClear=false;
+      st.ended=false;st.lastStateAt=Date.now();st.spawnClear=false;st.stallRetry=0;
       sub(topic('state'));sub(topic('map'));
       startNetLoop();
       st.recover=()=>{if(st.role==='client'&&!st.started)hello();};
@@ -8188,7 +8189,12 @@ const NET=(()=>{
          on wall clock, until the map lands. */
       let tries=0;
       const retry=setInterval(()=>{
-        if(gen!==st.joinGen||st.role!=='client'||st.started||++tries>70){clearInterval(retry);return;}
+        /* Keep knocking until the host's state is actually flowing. A joiner
+           can build the world from the retained map and start playing before
+           its hello is answered — and a refused joiner must still hear the
+           refusal instead of sitting in a room that never speaks to it. */
+        const flowing=st.stateSeen&&Date.now()-st.lastStateAt<4000;
+        if(gen!==st.joinGen||st.role!=='client'||(st.started&&flowing)||++tries>70){clearInterval(retry);return;}
         if(!anyLive()){ensureClient();return;}
         /* mqtt.js will happily call a half-open socket "connected": the hello
            goes out, nothing comes back, and re-subscribing to that same dead
@@ -8267,8 +8273,18 @@ const NET=(()=>{
       const now=Date.now(),online=anyLive();
       /* A quiet host and a vanished host look identical from here, so give
          the room a deadline. Only judge it while our own sockets are up —
-         otherwise the silence is ours, not theirs. */
+         otherwise the silence is ours, not theirs.
+         One clean redial first: a joiner can start from the retained map on
+         a socket that is alive in one direction only — the map arrived, the
+         state stream never does. Without the redial that half-open socket
+         looks exactly like a dead room, and a refusal that was never heard
+         turns into a false "lost contact". */
       if(st.role==='client'&&st.started&&online&&now-st.lastStateAt>STALL_MS){
+        if(!st.stallRetry){
+          st.stallRetry=now;st.lastStateAt=now;
+          redial();
+          return;
+        }
         endSession('LOST CONTACT WITH THE HOST');
         return;
       }
