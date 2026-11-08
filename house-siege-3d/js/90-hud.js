@@ -340,16 +340,13 @@ function updateHUD(dt) {
     $('vSub').textContent = names.join('   ');
   }
 
-  // crosshair spread
+  // crosshair spread — the box grows with movement and weapon spread, and the
+  // four corner brackets ride the corners, so it stays a square at any size
   const sp = Math.hypot(p.vel.x, p.vel.z);
   const cdef = st ? defOf(st.id) : null;
-  const spread = 4 + sp * 1.6 + (cdef && cdef.spread ? cdef.spread * 320 : 0);
+  const spread = clamp(4 + sp * 1.6 + (cdef && cdef.spread ? cdef.spread * 320 : 0), 4, 30);
   const ch = $('crosshair');
   ch.style.width = ch.style.height = (34 + spread) + 'px';
-  ch.querySelector('.t').style.top = '0px';
-  ch.querySelector('.b').style.bottom = '0px';
-  ch.querySelector('.l').style.left = '0px';
-  ch.querySelector('.r').style.right = '0px';
 
   // crossbow draw bar
   const chargeWrap = $('chargeWrap');
