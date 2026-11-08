@@ -100,10 +100,9 @@ window.__wh = {
   get MAPS() { return MAPS; },
   get MAP() { return MAP; },
   get VOTE() { return VOTE; },
-  get HILL() { return HILL; },
   modeDef, mapDef, ensureWorld, disposeWorld,
   voteBegin, voteCast, voteClick, voteSkip, voteResolve, voteTally, voteLaunch,
-  updateVote, botPick,
+  updateVote, voteSetCands, voteWinnerMap, votePickMaps, beginLobbyReturn,
   /* performance governor, for the diagnostics */
   get PERF() { return PERF; },
   perfToggle, perfApply,
