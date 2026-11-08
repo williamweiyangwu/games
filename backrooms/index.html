@@ -924,6 +924,79 @@ const $=s=>document.querySelector(s);
 const cnv=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return[c,c.getContext('2d')];};
 
 /* ══════════════════════════════════════════════════════════════
+   CHAMFERED BOX — the workhorse geometry for every prop.
+
+   A BoxGeometry has 90° edges, so under the game's handful of point
+   lights a crate is a flat silhouette with no highlight anywhere on
+   it: two faces of the same colour, one lit and one black, meeting on
+   a line that the eye reads as paper. Cutting every edge by a few
+   percent inserts a narrow bevel that catches the light, separates
+   the planes and gives the object a real corner.
+
+   One unit-sized geometry is shared by every prop and every instanced
+   batch, so the bevel is proportional: a 6 cm table leg gets a 3 mm
+   chamfer, a 2 m cabinet gets 10 cm. No per-object geometry, no extra
+   draw calls.
+   ══════════════════════════════════════════════════════════════ */
+const _chamferCache=new Map();
+function chamferGeo(b=.05){
+  const key=b.toFixed(4);
+  const hit=_chamferCache.get(key);
+  if(hit)return hit;
+  const h=.5,i=h-b,pos=[];
+  const add=(...v)=>{for(const p of v)pos.push(p[0],p[1],p[2]);};
+  const Q=(a,b2,c,d)=>add(a,b2,c,a,c,d);
+  const S=[-1,1];
+  // the six flat faces, each inset by the bevel
+  for(const s of S){
+    Q([s*h,-i,-i],[s*h,i,-i],[s*h,i,i],[s*h,-i,i]);
+    Q([-i,s*h,-i],[i,s*h,-i],[i,s*h,i],[-i,s*h,i]);
+    Q([-i,-i,s*h],[i,-i,s*h],[i,i,s*h],[-i,i,s*h]);
+  }
+  // the twelve edge bevels
+  for(const sx of S)for(const sy of S){
+    Q([sx*h,sy*i,-i],[sx*h,sy*i,i],[sx*i,sy*h,i],[sx*i,sy*h,-i]);
+    Q([sx*h,-i,sy*i],[sx*h,i,sy*i],[sx*i,i,sy*h],[sx*i,-i,sy*h]);
+  }
+  for(const sy of S)for(const sz of S)
+    Q([-i,sy*h,sz*i],[i,sy*h,sz*i],[i,sy*i,sz*h],[-i,sy*i,sz*h]);
+  // the eight corners
+  for(const sx of S)for(const sy of S)for(const sz of S)
+    add([sx*h,sy*i,sz*i],[sx*i,sy*h,sz*i],[sx*i,sy*i,sz*h]);
+
+  const p=new Float32Array(pos);
+  const A=new THREE.Vector3(),B=new THREE.Vector3(),C=new THREE.Vector3(),N=new THREE.Vector3();
+  /* build the quads without worrying about winding, then flip any triangle
+     whose normal points back at the centre — cheaper than getting the order
+     of 44 triangles right by hand, and it cannot be subtly wrong */
+  for(let t=0;t<p.length;t+=9){
+    A.fromArray(p,t);B.fromArray(p,t+3);C.fromArray(p,t+6);
+    N.subVectors(B,A).cross(C.sub(A));
+    if(N.x*(A.x+B.x+C.x)+N.y*(A.y+B.y+C.y)+N.z*(A.z+B.z+C.z)<0)
+      for(let c=0;c<3;c++){const s=p[t+3+c];p[t+3+c]=p[t+6+c];p[t+6+c]=s;}
+  }
+  // planar UVs per triangle, so a textured crate still maps like a box
+  const uv=new Float32Array(p.length/3*2);
+  for(let t=0;t<p.length;t+=9){
+    A.fromArray(p,t);B.fromArray(p,t+3);C.fromArray(p,t+6);
+    N.subVectors(B,A).cross(C.sub(A)).normalize();
+    const ax=Math.abs(N.x),ay=Math.abs(N.y),az=Math.abs(N.z);
+    for(let v=0;v<3;v++){
+      const o=t+v*3,k=(t/9)*6+v*2;
+      if(ax>=ay&&ax>=az){uv[k]=p[o+2]+.5;uv[k+1]=p[o+1]+.5;}
+      else if(ay>=az){uv[k]=p[o]+.5;uv[k+1]=p[o+2]+.5;}
+      else{uv[k]=p[o]+.5;uv[k+1]=p[o+1]+.5;}
+    }
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(p,3));
+  g.setAttribute('uv',new THREE.BufferAttribute(uv,2));
+  g.computeVertexNormals();
+  _chamferCache.set(key,g);
+  return g;
+}
+
+/* ══════════════════════════════════════════════════════════════
    STORE — every write goes through here.
 
    localStorage is the only thing keeping a run, a setting or an
@@ -2141,6 +2214,27 @@ function texGlass(){
   t.colorSpace=THREE.SRGBColorSpace;
   return t;
 }
+/* a rolling shutter for the ground floor of a dead block: horizontal ribs,
+   rust bleeding down from the top rail, one tag nobody cleaned off */
+let _shutterTex=null;
+function texShutter(){
+  if(_shutterTex)return _shutterTex;
+  const W=128,H=256,[c,g]=cnv(W,H);
+  g.fillStyle='#3f4346';g.fillRect(0,0,W,H);
+  for(let y=0;y<H;y+=8){
+    g.fillStyle='rgba(0,0,0,.40)';g.fillRect(0,y,W,3);
+    g.fillStyle='rgba(255,255,255,.06)';g.fillRect(0,y+3,W,2);
+  }
+  for(let k=0;k<34;k++){
+    g.fillStyle=`rgba(122,72,32,${rand(.04,.15)})`;
+    g.fillRect(Math.random()*W,Math.random()*H,rand(1,3),rand(8,46));
+  }
+  g.strokeStyle='rgba(205,195,155,.12)';g.lineWidth=3;
+  g.beginPath();g.moveTo(16,186);g.bezierCurveTo(42,152,72,214,112,172);g.stroke();
+  const t=new THREE.CanvasTexture(c);
+  t.colorSpace=THREE.SRGBColorSpace;
+  _shutterTex=t;return t;
+}
 function texSky(th){
   const C=th.city||{};
   const[c,g]=cnv(8,256);
@@ -2222,6 +2316,15 @@ function buildMaze(lv,th){
   if(fixtureInst.instanceColor)fixtureInst.instanceColor.needsUpdate=true;
   scene.add(fixtureInst);levelObjs.push(fixtureInst);
 
+  /* the panels were glowing rectangles glued to the ceiling; a rim around
+     each one turns it into a recessed fitting */
+  const hous=[];
+  for(const f of fixtures){
+    for(const sz of[-1,1])hous.push({x:f.x,y:f.y,z:f.z+sz*.21,w:1.46,h:.075,d:.06,col:0x2b2822});
+    for(const sx of[-1,1])hous.push({x:f.x+sx*.70,y:f.y,z:f.z,w:.06,h:.075,d:.46,col:0x2b2822});
+  }
+  instBoxes(hous,false,.02);
+
   for(let k=0;k<8;k++){
     const l=new THREE.PointLight(0xffe7b4,0,17,1.9);
     scene.add(l);lightPool.push({light:l,fix:null});
@@ -2268,13 +2371,21 @@ function furnishRooms(lv,th){
     };
     switch(kind){
       case 'bed':
-        B(0,.46,0,1.7,.16,.78,steel);B(0,.56,0,1.6,.10,.70,0xbfd8cc);
-        B(-.6,.63,0,.34,.08,.52,paper);
-        for(const sx of[-1,1])for(const sz of[-1,1])B(sx*.75,.22,sz*.30,.06,.44,.06,steel);
+        B(0,.34,0,1.78,.09,.86,0x2a2c2a);              // frame
+        B(0,.46,0,1.7,.16,.78,steel);                  // mattress
+        B(0,.56,0,1.6,.10,.70,0xbfd8cc);               // sheet
+        B(-.6,.63,0,.34,.09,.52,paper);                // pillow
+        B(-.87,.74,0,.07,.9,.78,0x3a3d3a);             // headboard
+        for(const sx of[-1,1])for(const sz of[-1,1])B(sx*.78,.16,sz*.34,.06,.32,.06,steel);
         break;
       case 'cab':
-        B(0,.72,0,.62,1.44,.5,0x8e938d);
+        B(0,.05,0,.56,.10,.44,dark);                   // plinth
+        B(0,.74,0,.62,1.40,.5,0x8e938d);
         for(let k=0;k<3;k++)B(0,.32+k*.42,.26,.5,.02,.02,dark);
+        for(const sx of[-1,1]){
+          B(sx*.155,.74,.252,.29,1.30,.02,0x7d827c);   // door
+          B(sx*.155,.60,.266,.06,.03,.02,dark);        // handle
+        }
         break;
       case 'chair':
         B(0,.46,0,.44,.07,.44,wood);B(0,.72,-.20,.44,.48,.06,wood);
@@ -2284,6 +2395,9 @@ function furnishRooms(lv,th){
         B(0,.76,0,1.5,.09,.72,wood);
         for(const sx of[-1,1])for(const sz of[-1,1])B(sx*.66,.38,sz*.30,.06,.76,.06,dark);
         B(0,1.04,-.16,.46,.32,.05,dark);B(0,1.04,-.13,.40,.26,.01,0x35505a);
+        B(.46,.56,0,.52,.34,.66,0x584732);              // drawer stack
+        for(let k=0;k<2;k++)B(.46,.62+k*.17,.335,.42,.02,.02,dark);
+        B(.46,.62,.35,.10,.03,.02,0xa9a184);
         break;
       case 'counter':
         B(0,.52,0,2.1,1.04,.62,wood);B(0,1.07,0,2.2,.07,.74,acc);
@@ -2300,6 +2414,7 @@ function furnishRooms(lv,th){
       case 'shelf':
         B(0,1.0,-.16,1.5,2.0,.08,steel);
         for(let k=0;k<4;k++)B(0,.25+k*.5,0,1.5,.05,.42,0x8d9188);
+        for(const sx of[-1,1])B(sx*.72,.5,0,.06,1.0,.42,0x5d6260);   // uprights
         for(let k=0;k<5;k++)B(-.55+(k%3)*.45,.55+Math.floor(k/3)*.5,0,.22,.28,.24,acc);
         break;
       case 'crate':
@@ -2310,7 +2425,11 @@ function furnishRooms(lv,th){
         break;
       case 'trolley':
         B(0,.48,0,.8,.09,.5,0xd8ded6);
-        for(const sx of[-1,1])for(const sz of[-1,1])C(sx*.34,.12,sz*.20,.07,.05,dark);
+        B(0,.20,0,.70,.06,.42,0xc6cdc6);                 // lower shelf
+        for(const sx of[-1,1])for(const sz of[-1,1]){
+          B(sx*.34,.31,sz*.20,.05,.48,.05,steel);        // legs
+          C(sx*.34,.06,sz*.20,.06,.06,dark);             // castors
+        }
         C(-.3,1.10,0,.025,1.4,steel);B(-.3,1.76,0,.15,.28,.09,0x9fd8e8);
         break;
       case 'bars':
@@ -2366,7 +2485,7 @@ function furnishRooms(lv,th){
     }
   }
 
-  const unit=new THREE.BoxGeometry(1,1,1);
+  const unit=chamferGeo(.05);
   const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),
         pv=new THREE.Vector3(),sv=new THREE.Vector3(),up=new THREE.Vector3(0,1,0);
   if(boxes.length){
@@ -2382,7 +2501,7 @@ function furnishRooms(lv,th){
     scene.add(mi);levelObjs.push(mi);
   }
   if(cyls.length){
-    const ci=new THREE.InstancedMesh(new THREE.CylinderGeometry(1,1,1,8),
+    const ci=new THREE.InstancedMesh(new THREE.CylinderGeometry(1,1,1,14),
       new THREE.MeshStandardMaterial({color:0xffffff,roughness:.7,metalness:.25}),cyls.length);
     q.identity();
     cyls.forEach((b,i)=>{
@@ -2427,14 +2546,16 @@ function texFactoryRoof(){
   t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(18,18);
   t.colorSpace=THREE.SRGBColorSpace;return t;
 }
-function instBoxes(list,sceneAdd){
+function instBoxes(list,sceneAdd,bevel){
   if(!list.length)return;
-  const mi=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),
+  const mi=new THREE.InstancedMesh(chamferGeo(bevel||.045),
     new THREE.MeshStandardMaterial({color:0xffffff,roughness:.78,metalness:.28}),list.length);
   const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),
         pv=new THREE.Vector3(),sv=new THREE.Vector3();
+  const up=new THREE.Vector3(0,1,0);
   list.forEach((b,i)=>{
-    q.identity();m4.compose(pv.set(b.x,b.y,b.z),q,sv.set(b.w,b.h,b.d));
+    if(b.ry)q.setFromAxisAngle(up,b.ry);else q.identity();
+    m4.compose(pv.set(b.x,b.y,b.z),q,sv.set(b.w,b.h,b.d));
     mi.setMatrixAt(i,m4);mi.setColorAt(i,new THREE.Color(b.col));
   });
   mi.instanceMatrix.needsUpdate=true;
@@ -2520,13 +2641,24 @@ function buildFactoryExtras(th){
 }
 
 function buildFactoryMachines(th){
-  const boxes=[],cyls=[];
+  const boxes=[],cyls=[],rolls=[],rings=[];
   const B=(x,y,z,w,h,d,col)=>boxes.push({x,y,z,w,h,d,col});
   const C=(x,y,z,r,h,col)=>cyls.push({x,y,z,r,h,col});
   // overhead pipe runs — high enough to walk and jump under
   for(let j=2;j<GZ;j+=6){
     B(0,6.6,cz(j),GX*CELL,.22,.22,0x59615f);
     B(0,6.2,cz(j)+.9,GX*CELL,.14,.14,0x6a5038);
+    for(let i=1;i<GX;i++){
+      /* a pipe that runs the whole hall with nothing on it reads as a painted
+         line. Hangers tie it to the roof, collars break it into lengths, and
+         every so often a valve hangs off it. */
+      if(i%2===0)B(cx(i),8.05,cz(j),.07,2.9,.07,0x4b5351);
+      if(i%3===1)B(cx(i),6.6,cz(j),.07,.34,.34,0x6b7371);
+      if(i%5===2){
+        B(cx(i),6.08,cz(j),.08,.86,.08,0x6b7371);
+        rings.push({x:cx(i),y:5.64,z:cz(j),r:.26});
+      }
+    }
     for(let i=2;i<GX;i+=4)B(cx(i),5.4,cz(j),.16,2.4,.16,0x59615f);
   }
   for(let i=1;i<GX-1;i++)for(let j=1;j<GZ-1;j++){
@@ -2542,13 +2674,19 @@ function buildFactoryMachines(th){
       B(x,.88,z,3.3,.16,.95,0x3b4245);
       B(x,.98,z,3.1,.05,.82,0x20262a);
       for(const sx of[-1,1])B(x+sx*1.5,.45,z,.12,.9,.95,0x555c5c);
-      for(let k=-2;k<=2;k++)B(x+k*.6,1.02,z,.12,.05,.85,0x8a8f88);
+      for(let k=-3;k<=3;k++)rolls.push({x:x+k*.42,y:1.01,z,r:.055,len:.86});
+      for(const sz of[-1,1])B(x,1.14,z+sz*.43,3.3,.12,.07,0x6b7370);
       B(x,1.25,z+.3,.5,.35,.2,0x8a7a3a);
     }else if(kind===1){                               // pressure tank
       C(x,1.45,z,.78,2.9,0x59615e);
       C(x,2.95,z,.8,.12,0x8a9088);
       B(x,.25,z,1.9,.5,1.9,0x303638);
       B(x,2.1,z+.7,.5,.45,.1,0xc9a23c);
+      for(const yy of[.85,2.35])C(x,yy,z,.805,.07,0x6b7371);   // ring bands
+      for(let k=0;k<7;k++)B(x+.86,.5+k*.36,z,.32,.05,.05,0x8a9088);  // ladder
+      for(const sz of[-1,1])B(x+.86,1.55,z+sz*.16,.05,2.6,.05,0x8a9088);
+      B(x,1.55,z+.84,.08,.5,.08,0x6b7371);            // side valve
+      rings.push({x:x,y:1.9,z:z+.84,r:.2});
     }else if(kind===2){                               // hydraulic press + ram
       B(x,.4,z,1.6,.8,1.4,0x4a5052);
       B(x,2.3,z,1.8,.3,1.5,0x5c6365);
@@ -2569,7 +2707,7 @@ function buildFactoryMachines(th){
   }
   instBoxes(boxes);
   if(cyls.length){
-    const ci=new THREE.InstancedMesh(new THREE.CylinderGeometry(1,1,1,10),
+    const ci=new THREE.InstancedMesh(new THREE.CylinderGeometry(1,1,1,16),
       new THREE.MeshStandardMaterial({color:0xffffff,roughness:.6,metalness:.4}),cyls.length);
     const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),
           pv=new THREE.Vector3(),sv=new THREE.Vector3();
@@ -2581,6 +2719,36 @@ function buildFactoryMachines(th){
     if(ci.instanceColor)ci.instanceColor.needsUpdate=true;
     scene.add(ci);levelObjs.push(ci);
   }
+  if(rolls.length){
+    const rg=new THREE.CylinderGeometry(1,1,1,10);
+    rg.rotateX(Math.PI/2);                          // axle across the belt
+    const ri=new THREE.InstancedMesh(rg,
+      new THREE.MeshStandardMaterial({color:0x8d938c,roughness:.55,metalness:.55}),rolls.length);
+    const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),
+          pv=new THREE.Vector3(),sv=new THREE.Vector3();
+    q.identity();
+    rolls.forEach((b,i)=>{
+      m4.compose(pv.set(b.x,b.y,b.z),q,sv.set(b.r,b.r,b.len));
+      ri.setMatrixAt(i,m4);
+    });
+    ri.instanceMatrix.needsUpdate=true;
+    scene.add(ri);levelObjs.push(ri);
+  }
+  if(rings.length){
+    const tg=new THREE.TorusGeometry(1,.14,5,12);
+    tg.rotateX(Math.PI/2);                          // a handwheel, lying flat
+    const ti=new THREE.InstancedMesh(tg,
+      new THREE.MeshStandardMaterial({color:0x8a3a28,roughness:.6,metalness:.4}),rings.length);
+    const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),
+          pv=new THREE.Vector3(),sv=new THREE.Vector3();
+    q.identity();
+    rings.forEach((b,i)=>{
+      m4.compose(pv.set(b.x,b.y,b.z),q,sv.set(b.r,b.r,b.r));
+      ti.setMatrixAt(i,m4);
+    });
+    ti.instanceMatrix.needsUpdate=true;
+    scene.add(ti);levelObjs.push(ti);
+  }
 }
 function updateFactory(dt){
   if(navMode!=='factory'||!factoryAnim.length)return;
@@ -2588,6 +2756,143 @@ function updateFactory(dt){
     if(a.t==='ram')a.mesh.position.y=a.base-Math.max(0,Math.sin(elapsed*1.1+a.phase))*.6;
     else if(a.t==='beacon')a.mesh.scale.setScalar(.75+.5*Math.max(0,Math.sin(elapsed*2.6+a.phase)));
     else if(a.t==='fan')a.mesh.rotation.y=elapsed*2.4+a.phase;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   STREET DRESSING — the layer between the buildings.
+
+   The road was a single asphalt plane with lamp posts standing on
+   it, so a street read as a corridor between two walls. Kerbs, a
+   walkway band, lane dashes, parked cars, hydrants, bollards, bin
+   bags and gully gratings are what tell the eye this was a street
+   somebody drove down. All of it is instanced; only the cars are on
+   the nav grid, and only where no window or door looks out on them.
+   ══════════════════════════════════════════════════════════════ */
+function buildStreetDetail(th,C){
+  const parts=[],cyls=[],wheels=[];
+  const B=(x,y,z,w,h,d,col,ry)=>parts.push({x,y,z,w,h,d,col,ry:ry||0});
+  const D=(x,y,z,r,h,col)=>cyls.push({x,y,z,r,h,col});
+  const roomCell=new Set(rooms.map(r=>r.i+','+r.j));
+  const nearRoom=(i,j)=>{
+    for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++)
+      if(roomCell.has((i+a)+','+(j+b)))return true;
+    return false;
+  };
+  const doorFront=doorFrontCells();
+  const carCols=[0x2b3138,0x3a2f2a,0x24303a,0x39332b,0x2a3a32,0x33303a,0x474741];
+  const cs=Math.cos, sn=Math.sin;
+  const carCells=new Set();
+  const carNear=(i,j)=>{
+    for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++)
+      if(carCells.has((i+a)+','+(j+b)))return true;
+    return false;
+  };
+
+  const car=(x,z,ry,col)=>{
+    const S=(lx,ly,lz,w,h,d,c)=>{
+      B(x+lx*cs(ry)+lz*sn(ry),ly,z-lx*sn(ry)+lz*cs(ry),w,h,d,c,ry);
+    };
+    S(0,.60,0,1.68,.52,4.0,col);              // hull, floor pan clear of the road
+    S(0,1.10,-.18,1.56,.48,2.05,col);         // cabin
+    S(0,1.36,-.18,1.40,.05,1.75,0x101216);    // roof
+    S(0,1.10,.86,1.44,.38,.05,0x0a0d12);      // windscreen
+    S(0,1.10,-1.22,1.42,.34,.05,0x0a0d12);    // rear glass
+    for(const s of[-1,1])S(s*.78,1.10,-.18,.05,.30,1.6,0x0a0d12);
+    for(const s of[-1,1]){
+      S(s*.56,.72,2.01,.32,.16,.05,0xd8cba0);  // headlight
+      S(s*.56,.74,-2.01,.28,.13,.05,0x6a1a14); // tail light
+      S(s*.86,.94,.92,.07,.13,.16,0x101216);   // mirror
+    }
+    for(const s of[-1,1])for(const t of[-1,1])
+      wheels.push({x:x+s*.79*cs(ry)+t*1.30*sn(ry),
+                   z:z-s*.79*sn(ry)+t*1.30*cs(ry),y:.33,ry});
+  };
+
+  for(let i=0;i<GX;i++)for(let j=0;j<GZ;j++){
+    if(ck(i,j)!==CT_STREET)continue;
+    const x=cx(i),z=cz(j),h=hash01(i,j,301);
+    let openX=false,openZ=false;
+    const edges=[];
+    for(const[dx,dz]of[[1,0],[-1,0],[0,1],[0,-1]]){
+      if(ck(i+dx,j+dz)===CT_STREET){if(dx)openX=true;else openZ=true;}
+      else edges.push([dx,dz]);
+    }
+    // kerb and a lighter walkway band along every building line
+    for(const[dx,dz]of edges){
+      if(doorFront.has(i+','+j))continue;       // no kerb across a walk-in door
+      const ax=dx!==0;                          // the wall runs along z
+      B(x+dx*(CELL/2-.12),.09,z+dz*(CELL/2-.12),
+        ax?.24:CELL,.18,ax?CELL:.24,0x6d6d63);
+      B(x+dx*(CELL/2-.56),.014,z+dz*(CELL/2-.56),
+        ax?.68:CELL,.028,ax?CELL:.68,0x4a4b4f);
+    }
+    // lane dashes, only where the street runs straight through
+    if(!(openX&&openZ)&&(openX||openZ)&&h<.62)
+      B(x,.012,z,openX?2.1:.14,.024,openX?.14:2.1,0x8d8a72);
+
+    if(!edges.length)continue;
+    const[ex,ez]=edges[0];
+    const px=x+ex*(CELL/2-.72),pz=z+ez*(CELL/2-.72);
+
+    /* parked cars — tight to a solid block, never outside a room, so the
+       collider can never seal a window the player is meant to vault */
+    const farExit=!exitCell||Math.abs(i-exitCell[0])+Math.abs(j-exitCell[1])>3;
+    const farSpawn=Math.hypot(x-player.pos.x,z-player.pos.z)>7;   // never box the player in
+    if(farSpawn&&farExit&&!nearRoom(i,j)&&!carNear(i,j)&&(openX||openZ)&&hash01(i,j,307)<.22){
+      const along=openX;
+      const side=(hash01(i,j,311)<.5?-1:1)*1.15;
+      const cxp=x+(along?0:side),czp=z+(along?side:0);
+      car(cxp,czp,along?Math.PI/2:0,pick(carCols));
+      carCells.add(i+','+j);
+      collidersExtra.push({x:cxp,z:czp,hx:along?2.12:.98,hz:along?.98:2.12,prop:'car'});
+      continue;
+    }
+    if(hash01(i,j,317)<.09){                     // hydrant
+      D(px,.29,pz,.115,.58,0x8a2a22);
+      D(px,.61,pz,.09,.10,0x6a201a);
+      B(px,.44,pz,.36,.10,.13,0x8a2a22);
+    }else if(hash01(i,j,331)<.16){               // bollard
+      D(px,.45,pz,.085,.90,0x23262a);
+      D(px,.82,pz,.088,.06,0xb8b090);
+    }else if(hash01(i,j,337)<.12){               // bin bags
+      B(px,.23,pz,.54,.46,.48,0x14161a,rand(0,TAU));
+      B(px+.42,.17,pz+.22,.38,.34,.34,0x181a1e,rand(0,TAU));
+    }else if(hash01(i,j,347)<.18){               // gully grating
+      B(px,.02,pz,.54,.035,.34,0x191b1d);
+      for(let k=-1;k<=1;k++)B(px+k*.17,.035,pz,.05,.035,.34,0x3b3e41);
+    }
+  }
+
+  instBoxes(parts,false,.018);
+  if(cyls.length){
+    const ci=new THREE.InstancedMesh(new THREE.CylinderGeometry(1,1,1,14),
+      new THREE.MeshStandardMaterial({color:0xffffff,roughness:.62,metalness:.3}),cyls.length);
+    const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),
+          pv=new THREE.Vector3(),sv=new THREE.Vector3();
+    q.identity();
+    cyls.forEach((b,i)=>{
+      m4.compose(pv.set(b.x,b.y,b.z),q,sv.set(b.r,b.h,b.r));
+      ci.setMatrixAt(i,m4);ci.setColorAt(i,new THREE.Color(b.col));
+    });
+    ci.instanceMatrix.needsUpdate=true;
+    if(ci.instanceColor)ci.instanceColor.needsUpdate=true;
+    scene.add(ci);levelObjs.push(ci);
+  }
+  if(wheels.length){
+    const wg=new THREE.CylinderGeometry(.34,.34,.26,14);
+    wg.rotateZ(Math.PI/2);                       // axle along x
+    const wi=new THREE.InstancedMesh(wg,
+      new THREE.MeshStandardMaterial({color:0x111316,roughness:.94}),wheels.length);
+    const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),
+          pv=new THREE.Vector3(),sv=new THREE.Vector3(1,1,1),up=new THREE.Vector3(0,1,0);
+    wheels.forEach((b,i)=>{
+      q.setFromAxisAngle(up,b.ry);
+      m4.compose(pv.set(b.x,b.y,b.z),q,sv);
+      wi.setMatrixAt(i,m4);
+    });
+    wi.instanceMatrix.needsUpdate=true;
+    scene.add(wi);levelObjs.push(wi);
   }
 }
 
@@ -2666,18 +2971,59 @@ function buildCity(lv,th,isFactory){
   massInst.instanceMatrix.needsUpdate=true;
   scene.add(massInst);levelObjs.push(massInst);
 
-  // ---------- windows on every street-facing wall ----------
-  const quads=[];
+  /* ---------- facades ---------------------------------------------------
+     A block is a flat box with a texture on it, so every street wall read
+     as a picture of a building: the windows were decals lying flat on the
+     surface, and nothing on the face caught the light. A window is now an
+     opening with a frame standing proud of the wall, a sill under it and a
+     mullion across it; every block gets a plinth at pavement level and a
+     cornice under the roof, and the ground floor gets a shuttered unit or
+     a dark doorway. It is all instanced — four draw calls for the lot. */
+  const quads=[],trim=[],shutters=[],holes=[];
+  const trimCol=new THREE.Color(C.facade||'#4b463a').multiplyScalar(1.55).getHex();
+  const sillCol=new THREE.Color(trimCol).multiplyScalar(.7).getHex();
   const pushFace=(x,z,dir,top)=>{
+    const nx=dir.nx,nz=dir.nz;
+    const tx=nz,tz=nx;                        // tangent, along the wall
+    const ry=nx?nx*Math.PI/2:(nz>0?0:Math.PI);
+    const at=(s,dep)=>[x+nx*(CELL/2+dep)+tx*s, z+nz*(CELL/2+dep)+tz*s];
+    const W=(s,y,tw,h,dep,col)=>{
+      const p=at(s,dep/2-.015);
+      trim.push({x:p[0],y,z:p[1],w:tw,h,d:dep,col,ry});
+    };
+    /* pick the ground floor first: a plinth across a doorway would wall it
+       up to waist height */
+    const roll=Math.random();
+    if(roll<.34||roll>=.5)W(0,.46,CELL,.92,.13,sillCol);   // plinth (not across a doorway)
+    W(0,top-.36,CELL,.4,.24,trimCol);               // cornice
     const floors=Math.max(1,Math.floor((top-4.6)/3.1));
     for(let f=0;f<floors;f++){
       const y=4.6+f*3.1;
       for(const off of[-1.02,1.02]){
-        const wx=x+(dir.nx?dir.nx*(CELL/2+.03):off);
-        const wz=z+(dir.nz?dir.nz*(CELL/2+.03):off);
-        quads.push({x:wx,y,z:wz,ry:dir.nx?dir.nx*Math.PI/2:(dir.nz>0?0:Math.PI),
-                    lit:Math.random()<C.lit});
+        const p=at(off,.02);
+        quads.push({x:p[0],y,z:p[1],ry,
+          lit:Math.random()<C.lit,boarded:Math.random()<.07});
+        for(const s of[-1,1]){
+          W(off+s*.645,y,.13,1.86,.10,trimCol);   // stiles
+          W(off,y+s*.865,1.42,.13,.10,trimCol);   // rails
+        }
+        W(off,y-1.0,1.66,.13,.28,sillCol);        // sill, deeper than the frame
+        W(off,y,.055,1.60,.05,trimCol);           // mullion
+        W(off,y+.30,1.16,.05,.05,trimCol);        // transom
       }
+    }
+    // ground floor: a shuttered unit, a doorway, or bare wall
+    if(roll<.34){
+      const p=at(0,.02);
+      shutters.push({x:p[0],y:1.98,z:p[1],ry});
+      for(const s of[-1,1])W(s*1.42,1.98,.16,2.24,.12,trimCol);
+      W(0,3.14,2.98,.16,.12,trimCol);
+      W(0,.86,2.98,.16,.12,trimCol);
+    }else if(roll<.5){
+      const p=at(0,.02);
+      holes.push({x:p[0],y:1.12,z:p[1],ry});
+      for(const s of[-1,1])W(s*.63,1.12,.12,2.24,.10,trimCol);
+      W(0,2.22,1.38,.12,.10,trimCol);
     }
   };
   for(let i=0;i<GX;i++)for(let j=0;j<GZ;j++){
@@ -2688,21 +3034,56 @@ function buildCity(lv,th,isFactory){
     if(ck(i,j+1)===CT_STREET)pushFace(x,z,{nx:0,nz:1},top);
     if(ck(i,j-1)===CT_STREET)pushFace(x,z,{nx:0,nz:-1},top);
   }
+  const upv=new THREE.Vector3(0,1,0);
   if(quads.length){
     const gmat=new THREE.MeshBasicMaterial({map:texGlass(),color:0xffffff,
       transparent:true,opacity:.94});
     const ginst=new THREE.InstancedMesh(new THREE.PlaneGeometry(1.16,1.6),gmat,quads.length);
     quads.forEach((wd,i)=>{
-      q.setFromAxisAngle(new THREE.Vector3(0,1,0),wd.ry);
-      m4.compose(new THREE.Vector3(wd.x,wd.y,wd.z),q,new THREE.Vector3(1,1,1));
+      q.setFromAxisAngle(upv,wd.ry);
+      m4.compose(v3.set(wd.x,wd.y,wd.z),q,sc.set(1,1,1));
       ginst.setMatrixAt(i,m4);
-      ginst.setColorAt(i,wd.lit
-        ? new THREE.Color(1,.82,.5).multiplyScalar(rand(.5,1))
-        : new THREE.Color(.10,.12,.17));
+      ginst.setColorAt(i,wd.boarded?new THREE.Color(.06,.055,.05)
+        :wd.lit?new THREE.Color(1,.82,.5).multiplyScalar(rand(.5,1))
+        :new THREE.Color(.10,.12,.17));
     });
     ginst.instanceMatrix.needsUpdate=true;
     if(ginst.instanceColor)ginst.instanceColor.needsUpdate=true;
     scene.add(ginst);levelObjs.push(ginst);
+  }
+  if(trim.length){
+    const tinst=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),
+      new THREE.MeshStandardMaterial({color:0xffffff,roughness:.87,metalness:.05}),trim.length);
+    trim.forEach((b,i)=>{
+      q.setFromAxisAngle(upv,b.ry);
+      m4.compose(v3.set(b.x,b.y,b.z),q,sc.set(b.w,b.h,b.d));
+      tinst.setMatrixAt(i,m4);tinst.setColorAt(i,new THREE.Color(b.col));
+    });
+    tinst.instanceMatrix.needsUpdate=true;
+    if(tinst.instanceColor)tinst.instanceColor.needsUpdate=true;
+    scene.add(tinst);levelObjs.push(tinst);
+  }
+  if(shutters.length){
+    const sinst=new THREE.InstancedMesh(new THREE.PlaneGeometry(2.62,2.1),
+      new THREE.MeshStandardMaterial({map:texShutter(),roughness:.72,metalness:.35}),shutters.length);
+    shutters.forEach((s,i)=>{
+      q.setFromAxisAngle(upv,s.ry);
+      m4.compose(v3.set(s.x,s.y,s.z),q,sc.set(1,1,1));
+      sinst.setMatrixAt(i,m4);
+    });
+    sinst.instanceMatrix.needsUpdate=true;
+    scene.add(sinst);levelObjs.push(sinst);
+  }
+  if(holes.length){
+    const hinst=new THREE.InstancedMesh(new THREE.PlaneGeometry(1.14,2.2),
+      new THREE.MeshBasicMaterial({color:0x060708}),holes.length);
+    holes.forEach((s,i)=>{
+      q.setFromAxisAngle(upv,s.ry);
+      m4.compose(v3.set(s.x,s.y,s.z),q,sc.set(1,1,1));
+      hinst.setMatrixAt(i,m4);
+    });
+    hinst.instanceMatrix.needsUpdate=true;
+    scene.add(hinst);levelObjs.push(hinst);
   }
 
   // ---------- sky + the city beyond the map ----------
@@ -2753,6 +3134,18 @@ function buildCity(lv,th,isFactory){
   }
   lampInst.instanceMatrix.needsUpdate=true;
   scene.add(lampInst);levelObjs.push(lampInst);
+
+  /* the post alone read as a stick with a glow floating over it — give the
+     fixture a head to hang from and the post a boot at the kerb */
+  if(lampCount){
+    const lp=[];
+    for(let i=0;i<lampCount;i++){
+      const f=fixtures[i];
+      lp.push({x:f.x,y:f.y+.20,z:f.z,w:.86,h:.20,d:.52,col:0x15181a});
+      lp.push({x:f.x,y:.17,z:f.z,w:.36,h:.34,d:.36,col:0x22262a});
+    }
+    instBoxes(lp,false,.02);
+  }
 
   // ---------- a bare bulb in every hollow room ----------
   // without one the rooms are pitch black holes you cannot read as rooms
@@ -2805,6 +3198,7 @@ function buildCity(lv,th,isFactory){
     scene.add(l);lightPool.push({light:l,fix:null});
   }
   if(isFactory)buildFactoryExtras(th);
+  else buildStreetDetail(th,C);
 }
 
 function buildLevel(lv,mz){
@@ -4341,13 +4735,16 @@ function pmat(key,color,rough,metal,tex){
   return m;
 }
 function pbox(g,w,h,d,x,y,z,mat,ry){
-  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+  /* one shared chamfered unit cube, scaled — every prop corner catches the
+     light without paying for a geometry per object */
+  const m=new THREE.Mesh(chamferGeo(),mat);
+  m.scale.set(w,h,d);
   m.position.set(x,y,z);
   if(ry)m.rotation.y=ry;
   g.add(m);return m;
 }
 function pcyl(g,rt,rb,h,seg,x,y,z,mat){
-  const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg||10),mat);
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg||12),mat);
   m.position.set(x,y,z);
   g.add(m);return m;
 }
@@ -4371,8 +4768,10 @@ function propChair(){
   const met=pmat('darkmetal',0x2a2b28,.5,.55);
   pbox(g,.5,.07,.5,0,.45,0,fab);
   pbox(g,.5,.56,.07,0,.73,-.24,fab);
-  pcyl(g,.035,.035,.42,8,0,.22,0,met);
-  pcyl(g,.28,.3,.05,12,0,.03,0,met);
+  for(const sx of[-1,1])for(const sz of[-1,1])
+    pbox(g,.05,.42,.05,sx*.21,.21,sz*.21,met);
+  pbox(g,.44,.04,.04,0,.08,-.21,met);
+  pbox(g,.44,.04,.04,0,.08,.21,met);
   return{g,hx:.32,hz:.32};
 }
 function propBoxes(){
@@ -4393,6 +4792,10 @@ function propCabinet(th){
   pbox(g,.62,1.28,.46,0,.64,0,body);
   for(let k=0;k<3;k++)pbox(g,.56,.025,.02,0,.38+k*.33,.235,seam);
   pbox(g,.16,.03,.03,0,.52,.24,pmat('handle',0x9a9276,.4,.7));
+  for(const sx of[-1,1]){
+    pbox(g,.28,1.18,.02,sx*.15,.68,.236,body);
+    pbox(g,.05,.03,.03,sx*.05,.86,.25,pmat('handle',0x9a9276,.4,.7));
+  }
   return{g,hx:.31,hz:.24};
 }
 function propTable(){
@@ -4445,6 +4848,8 @@ function propCrate(){
   pbox(g,.8,.8,.8,0,.4,0,w);
   pbox(g,.84,.07,.84,0,.77,0,d);
   pbox(g,.84,.07,.84,0,.07,0,d);
+  for(const sx of[-1,1])for(const sz of[-1,1])
+    pbox(g,.075,.82,.075,sx*.395,.42,sz*.395,d);
   return{g,hx:.4,hz:.4};
 }
 function propBarrel(color,key){
@@ -4545,7 +4950,7 @@ function doorFrontCells(){
 
 function builtPropNear(x,z,r){
   for(const c of collidersExtra){
-    if(c.prop!=='furniture'&&c.prop!=='machine')continue;
+    if(c.prop!=='furniture'&&c.prop!=='machine'&&c.prop!=='car')continue;
     if(Math.abs(c.x-x)<c.hx+r&&Math.abs(c.z-z)<c.hz+r)return true;
   }
   return false;
