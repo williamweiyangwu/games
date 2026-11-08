@@ -920,67 +920,97 @@
 
     // ---- pit lane (physical geometry near start/finish) ----
     (function buildPitLane() {
-      var pitMat = new THREE.MeshLambertMaterial({ color: 0x2a2f36 });
-      var pitLine = new THREE.MeshBasicMaterial({ color: 0xffffff });
-      var pitBox = new THREE.MeshLambertMaterial({ color: 0x1e2430 });
-      var pitLat = -(HALF_W + 2.6);
-      var pitW = 3.2;
-      var s0 = wrapS(LEN - 85);
-      var s1 = wrapS(LEN - 10);
-      // build in segments, handling wrap
-      var segs = 60;
-      var total = 75;
+      var pitMat = new THREE.MeshLambertMaterial({ color: 0x3a4048 });
+      var pitLineMat = new THREE.MeshBasicMaterial({ color: 0xfff06a });
+      var pitWhite = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      var pitBox = new THREE.MeshLambertMaterial({ color: 0x252b36 });
+      var pitLat = -(HALF_W + 3.2);
+      var pitW = 4.2;
+      // build pit road segments
+      var segs = 70;
+      var total = 78;
       for (var i = 0; i < segs; i++) {
-        var sa = wrapS(LEN - 85 + (i/segs)*total);
-        var sb = wrapS(LEN - 85 + ((i+1)/segs)*total);
+        var sa = wrapS(LEN - 86 + (i/segs)*total);
+        var sb = wrapS(LEN - 86 + ((i+1)/segs)*total);
         var a1 = offsetPos(sa, pitLat - pitW/2), a2 = offsetPos(sa, pitLat + pitW/2);
         var b1 = offsetPos(sb, pitLat - pitW/2), b2 = offsetPos(sb, pitLat + pitW/2);
-        // simple quad as two triangles via BufferGeometry
         var g = new THREE.BufferGeometry();
         var verts = new Float32Array([
-          a1.x,0.022,a1.z, a2.x,0.022,a2.z, b2.x,0.022,b2.z,
-          a1.x,0.022,a1.z, b2.x,0.022,b2.z, b1.x,0.022,b1.z
+          a1.x,0.028,a1.z, a2.x,0.028,a2.z, b2.x,0.028,b2.z,
+          a1.x,0.028,a1.z, b2.x,0.028,b2.z, b1.x,0.028,b1.z
         ]);
         g.setAttribute('position', new THREE.BufferAttribute(verts,3));
         g.computeVertexNormals();
         world.add(new THREE.Mesh(g, pitMat));
+        // yellow edge line on track side
+        var e1 = offsetPos(sa, pitLat + pitW/2 - 0.15), e2 = offsetPos(sb, pitLat + pitW/2 - 0.15);
+        var eg = new THREE.BufferGeometry();
+        var ev = new Float32Array([
+          e1.x,0.032,e1.z, offsetPos(sa,pitLat+pitW/2).x,0.032,offsetPos(sa,pitLat+pitW/2).z, offsetPos(sb,pitLat+pitW/2).x,0.032,offsetPos(sb,pitLat+pitW/2).z,
+          e1.x,0.032,e1.z, offsetPos(sb,pitLat+pitW/2).x,0.032,offsetPos(sb,pitLat+pitW/2).z, e2.x,0.032,e2.z
+        ]);
+        eg.setAttribute('position', new THREE.BufferAttribute(ev,3));
+        eg.computeVertexNormals();
+        world.add(new THREE.Mesh(eg, pitLineMat));
       }
-      // pit entry/exit markings (tapers toward track)
-      [LEN-85, LEN-10].forEach(function(ss, idx){
+      // pit entry/exit markers
+      [LEN-86, LEN-8].forEach(function(ss){
         var s = wrapS(ss);
         var y = yawAt(s);
-        var m = offsetPos(s, pitLat + pitW/2 + 0.8);
-        var mark = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.03, 3.5), pitLine);
-        mark.position.set(m.x, 0.03, m.z);
+        var m = offsetPos(s, pitLat + pitW/2 + 1.0);
+        var mark = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.04, 5.0), pitWhite);
+        mark.position.set(m.x, 0.035, m.z);
         mark.rotation.y = y;
         world.add(mark);
+        // cone-like marker
+        var cone = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.9, 8), new THREE.MeshLambertMaterial({color:0xff6600}));
+        cone.position.set(m.x, 0.45, m.z);
+        world.add(cone);
       });
       // pit boxes
-      for (var b = 0; b < 6; b++) {
-        var sbx = wrapS(LEN - 75 + b*10);
-        var pb = offsetPos(sbx, pitLat - pitW/2 - 1.0);
-        var box = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.04, 6.5), pitBox);
-        box.position.set(pb.x, 0.025, pb.z);
+      for (var b = 0; b < 7; b++) {
+        var sbx = wrapS(LEN - 76 + b*9);
+        var pb = offsetPos(sbx, pitLat - pitW/2 - 1.2);
+        var box = new THREE.Mesh(new THREE.BoxGeometry(5.0, 0.05, 7.0), pitBox);
+        box.position.set(pb.x, 0.03, pb.z);
         box.rotation.y = yawAt(sbx);
         world.add(box);
+        // box outline
+        var ob = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.055, 0.2), pitWhite);
+        ob.position.set(pb.x, 0.032, pb.z);
+        ob.rotation.y = yawAt(sbx);
+        world.add(ob);
       }
       // pit wall
-      for (var w = 0; w < 30; w++) {
-        var sw = wrapS(LEN - 82 + (w/29)*68);
-        var pw = offsetPos(sw, pitLat - pitW/2 - 2.2);
-        var wall = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.1, 2.6), new THREE.MeshLambertMaterial({color:0x888d95}));
-        wall.position.set(pw.x, 0.55, pw.z);
+      for (var w = 0; w < 34; w++) {
+        var sw = wrapS(LEN - 84 + (w/33)*72);
+        var pw = offsetPos(sw, pitLat - pitW/2 - 2.6);
+        var wall = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.2, 2.4), new THREE.MeshLambertMaterial({color:0x9aa0a8}));
+        wall.position.set(pw.x, 0.6, pw.z);
         wall.rotation.y = yawAt(sw);
         world.add(wall);
       }
-      // "PIT" label
+      // big ground label
       try {
-        var lpos = offsetPos(wrapS(LEN - 45), pitLat);
-        var lbl = new THREE.Mesh(new THREE.PlaneGeometry(6,1.4), new THREE.MeshBasicMaterial({map: signTexture('PIT LANE','#1a2233','#ffffff'), side:THREE.DoubleSide}));
-        lbl.position.set(lpos.x, 0.04, lpos.z);
+        var lpos = offsetPos(wrapS(LEN - 46), pitLat);
+        var lbl = new THREE.Mesh(
+          new THREE.PlaneGeometry(10, 2.2),
+          new THREE.MeshBasicMaterial({map: signTexture('PIT LANE','#162033','#7CFF9A'), side:THREE.DoubleSide, transparent:true})
+        );
+        lbl.position.set(lpos.x, 0.038, lpos.z);
         lbl.rotation.x = -Math.PI/2;
-        lbl.rotation.z = yawAt(wrapS(LEN - 45));
         world.add(lbl);
+      } catch(e){}
+      // overhead PIT sign
+      try {
+        var sp = offsetPos(wrapS(LEN - 88), -(HALF_W + 1.0));
+        var sign = new THREE.Mesh(new THREE.PlaneGeometry(7,2.2), new THREE.MeshBasicMaterial({map: signTexture('PIT ENTRY','#111827','#ffd75e'), side:THREE.DoubleSide}));
+        sign.position.set(sp.x, 5.5, sp.z);
+        sign.rotation.y = yawAt(wrapS(LEN - 88)) + Math.PI;
+        world.add(sign);
+        var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,5.5,8), new THREE.MeshLambertMaterial({color:0x888}));
+        pole.position.set(sp.x, 2.75, sp.z);
+        world.add(pole);
       } catch(e){}
     })();
 
@@ -3298,24 +3328,26 @@ var pr = projectTrack(c.x, c.z, c.i);
     var msg = document.getElementById('pitMsg');
     if (!player || !started || !lightsOut || raceOver) { if(msg) msg.style.display='none'; return; }
     var s = wrapS(player.s);
-    var nearPit = (s > wrapS(LEN - 95) || s < wrapS(12));
+    var nearPit = (s > wrapS(LEN - 100) || s < wrapS(18));
     var inZone = inPitArea(player);
     if (player.inPits) {
       pitServiceTime += dt;
-      player.speed *= 0.85; player.vx *= 0.85; player.vz *= 0.85;
-      if (msg) { msg.style.display='block'; msg.textContent = 'PIT SERVICE: ' + Math.ceil(Math.max(0, 2.2 - pitServiceTime)) + 's'; }
-      if (pitServiceTime >= 2.2) {
+      player.speed *= 0.82; player.vx *= 0.82; player.vz *= 0.82;
+      if (msg) { msg.style.display='block'; msg.style.background='rgba(20,60,30,.9)'; msg.textContent = 'PIT SERVICE: ' + Math.ceil(Math.max(0, 2.0 - pitServiceTime)) + 's'; }
+      if (pitServiceTime >= 2.0) {
         player.damage = 0; player.fuel = 1.0; player.tyreWear = 0; player.inPits = false; player.pitCount = (player.pitCount||0)+1;
-        if (msg) msg.style.display='none';
+        if (msg) { msg.style.display='none'; msg.style.background='rgba(0,0,0,.75)'; }
         flash('PIT COMPLETE');
       }
-    } else if (inZone && Math.abs(player.speed) < 10) {
+    } else if (inZone && Math.abs(player.speed) < 12) {
       player.inPits = true; pitServiceTime = 0;
       if (msg) { msg.style.display='block'; msg.textContent = 'PIT SERVICE...'; }
-    } else if (nearPit && player.lat < -HALF_W - 0.8) {
+    } else if (inZone) {
+      if (msg) { msg.style.display='block'; msg.textContent = 'IN PIT LANE — slow below 12 km/h'; }
+    } else if (nearPit && player.lat < -HALF_W - 0.5) {
       if (msg) { msg.style.display='block'; msg.textContent = 'PIT LANE — slow down to service'; }
     } else if (nearPit) {
-      if (msg) { msg.style.display='block'; msg.textContent = 'PIT ENTRY AHEAD (inside edge)'; setTimeout(function(){ if(msg && !inPitArea(player)) msg.style.display='none'; }, 1200); }
+      if (msg) { msg.style.display='block'; msg.textContent = 'PIT AHEAD: move to inside edge (left side) near start/finish'; }
     } else {
       if (msg) msg.style.display='none';
     }
