@@ -112,12 +112,39 @@
   #cargoBox { position: absolute; right: 14px; bottom: 14px; padding: 8px 12px; font-size: 12px; color: #c8b888; max-width: 210px; }
   #cargoBox .ttl { color: #b3a378; font-size: 10px; letter-spacing: 2px; margin-bottom: 3px; }
 
-  #speedo { position: absolute; right: 18px; top: 46%; transform: translateY(-50%); padding: 10px 12px; text-align: center; width: 74px; }
+  #speedo { position: absolute; right: 18px; top: 46%; transform: translateY(-50%); padding: 10px 12px; text-align: center; width: 104px; }
   #speedo .lbl { font-size: 10px; letter-spacing: 2px; color: #8fa4b5; }
-  #speedBarBg { width: 100%; height: 90px; background: rgba(0,0,0,0.45); border-radius: 4px; margin: 6px 0 4px; position: relative; overflow: hidden; }
+  #speedBarBg { width: 100%; height: 78px; background: rgba(0,0,0,0.45); border-radius: 4px; margin: 6px 0 4px; position: relative; overflow: hidden; }
   #speedFill { position: absolute; bottom: 0; left: 0; right: 0; height: 0%; background: linear-gradient(180deg,#7ec8f0,#2f86b8); transition: height .15s; }
   #speedVal { font-size: 15px; color: #ffd700; font-weight: bold; }
   #helmHint { font-size: 10px; color: #8fa4b5; margin-top: 4px; line-height: 1.4; }
+
+  /* ---- a sailor's body: what is left of it, and what is left in it ---- */
+  #vitals { margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(200,170,80,0.18); }
+  .vbar { display: flex; align-items: center; gap: 7px; margin-bottom: 3px; }
+  .vbar .vk { font-size: 9px; letter-spacing: 1.4px; color: #8fa4b5; width: 32px; flex: none; }
+  .vtrack { flex: 1; height: 7px; border-radius: 3px; background: rgba(0,0,0,0.55);
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.5); overflow: hidden; }
+  .vfill { height: 100%; width: 100%; transition: width .16s linear; }
+  .vfill.hp { background: linear-gradient(90deg, #7e2626, #e0604a); }
+  .vfill.st { background: linear-gradient(90deg, #7a5f1c, #e8c860); }
+  .vbar.low .vfill { animation: pulse .9s infinite; }
+  .vn { font-size: 10px; color: #b3a378; width: 22px; text-align: right; flex: none;
+        font-variant-numeric: tabular-nums; }
+
+  /* ---- the yards: where they are, and where the wind wants them ---- */
+  #trimWrap { margin-top: 7px; }
+  #trimBar { position: relative; height: 12px; border-radius: 5px; background: rgba(0,0,0,0.55);
+             overflow: hidden; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.5); }
+  #trimZone { position: absolute; top: 0; bottom: 0; background: rgba(110,215,140,0.55);
+              border-left: 1px solid rgba(160,250,180,0.85); border-right: 1px solid rgba(160,250,180,0.85); }
+  #trimNeedle { position: absolute; top: -1px; bottom: -1px; width: 3px; background: #ffd700;
+                box-shadow: 0 0 6px rgba(255,215,0,0.9); }
+  #trimLbl { font-size: 9px; letter-spacing: 1.4px; color: #8fa4b5; margin-top: 3px; }
+  #windLbl { font-size: 10px; color: #9fd8ff; margin-top: 2px; }
+  #windLbl.bad { color: #ff8a6a; }
+  #shiftLine { font-size: 11px; color: #9fe89f; margin-top: 3px; letter-spacing: 0.4px; }
+  #shiftLine .num { color: #ffd700; font-weight: bold; }
 </style>
 </head>
 <body>
@@ -249,19 +276,23 @@
   <div class="desc">
     Lisbon, the year of our Lord 1498. You are a common citizen &mdash; no ship, no crew,
     scarcely a coin to your name. You have one hour of life before you.
-    Haul cargo on the docks, commission a ship at the estaleiro, hire brave sailors
-    in the tavern, and sail beyond the edge of the known world.
+    Shoulder crates on the quay for a shift, commission a ship at the estaleiro, hire brave sailors
+    in the tavern, and sail beyond the edge of the known world &mdash; bracing the yards yourself
+    when the wind backs, for a square rig will not sail herself.
     Fish off the pier head, pray at the S&eacute;, and talk with every citizen you meet &mdash;
     each one will trade words with you, and most will throw dice or ask riddles for silver.
     Buy where goods are cheap, sell them at home, and carve your name into the age &mdash;
     from unknown citizen to Fidalgo of the Realm.
+    Your body is not iron: running, swimming and hauling all spend your wind, and a man
+    spent in deep water drowns.
     When your hour is done, the ledger of your life will be read aloud.
-    But beware: the sea is vast, and a man can <i>die an unnatural death</i> upon it.
   </div>
   <div class="controls-info">
     <div><b>W A S D</b><span> Move / Sail</span></div>
     <div><b>Mouse</b><span> Look</span></div>
     <div><b>E</b><span> Talk / Interact / Helm</span></div>
+    <div><b>Shift</b><span> Run &mdash; it costs your wind</span></div>
+    <div><b>Z / X</b><span> Brace the yards to the wind</span></div>
     <div><b>Space</b><span> Jump / Climb out / Anchor</span></div>
     <div><b>Esc</b><span> Menu &amp; Save</span></div>
   </div>
@@ -281,6 +312,14 @@
     <div class="row"><span class="k">Crew</span><span class="v" id="crewVal">0</span></div>
     <div class="row"><span class="k">Supplies</span><span class="v" id="foodVal">20</span></div>
     <div class="row"><span class="k">Ship</span><span class="v" id="shipVal">none</span></div>
+    <div id="vitals">
+      <div class="vbar" id="hpBar"><span class="vk">BODY</span>
+        <div class="vtrack"><div class="vfill hp" id="hpFill"></div></div>
+        <span class="vn" id="hpVal">100</span></div>
+      <div class="vbar" id="stBar"><span class="vk">WIND</span>
+        <div class="vtrack"><div class="vfill st" id="stFill"></div></div>
+        <span class="vn" id="stVal">100</span></div>
+    </div>
     <div class="title-line" id="titleVal">Unknown Citizen</div>
   </div>
 
@@ -288,6 +327,7 @@
     <div id="lifeTimer">60:00</div>
     <div id="gameClock">Day 1 &middot; 06:00</div>
     <div id="contractLine" class="hidden"></div>
+    <div id="shiftLine" class="hidden"></div>
   </div>
 
   <div id="minimapWrap" class="panel">
@@ -303,7 +343,12 @@
     <div class="lbl">SAIL</div>
     <div id="speedBarBg"><div id="speedFill"></div></div>
     <div id="speedVal">0 kn</div>
-    <div id="helmHint">W hoist &middot; S reef<br>A / D helm &middot; E step back</div>
+    <div id="trimWrap">
+      <div id="trimBar"><div id="trimZone"></div><div id="trimNeedle"></div></div>
+      <div id="trimLbl">YARDS</div>
+    </div>
+    <div id="windLbl">wind &mdash;</div>
+    <div id="helmHint">W hoist &middot; S reef<br>A / D helm<br>Z / X brace the yards</div>
   </div>
 </div>
 
@@ -2405,7 +2450,18 @@ function makeSailor() {
   crown.castShadow = true;
   body.add(crown);
 
-  g.userData = { body, legs, arms, head };
+  // A crate for the docks. It rides on the shoulder rather than in the arms:
+  // the camera sits behind your back, and a crate hugged to the chest is a
+  // crate you never see. The timber is pale so it reads against your coat.
+  const crateWood = new THREE.MeshStandardMaterial({ color: 0xa8834a, roughness: 0.88 });
+  const carried = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.50, 0.54), crateWood);
+  carried.position.set(0.38, 1.50, 0.02);
+  carried.rotation.z = -0.08;
+  carried.castShadow = true;
+  carried.visible = false;
+  body.add(carried);
+
+  g.userData = { body, legs, arms, head, carried };
   return g;
 }
 
@@ -2424,6 +2480,7 @@ function updateAvatar(dt) {
   const a = ensureAvatar();
   const ud = a.userData;
   const sc = Game.ship ? SHIP_CLASSES[Game.ship.cls].scale : 1;
+  ud.carried.visible = Player.carry > 0;
 
   let yaw, moving = false, speed = 0;
   if (Player.mode === 'helm' && playerShip) {
@@ -2484,6 +2541,11 @@ function updateAvatar(dt) {
     ud.body.position.y = Math.sin(elapsed * 1.5) * 0.012;
     ud.body.rotation.z = 0;
   }
+  // a shouldered crate owns your arms: one hand up to steady it, one free
+  if (Player.carry > 0) {
+    ud.arms[1].rotation.x = -1.95; ud.arms[1].rotation.z = -0.55;
+    ud.arms[0].rotation.x = -0.18; ud.arms[0].rotation.z = 0.10;
+  }
   a.rotation.set(0, yaw, 0);
 }
 
@@ -2505,7 +2567,9 @@ const interactables = [];   // { x, z, radius, label, onUse, hidden }
 let lisbonBerth = null;     // world position where the player's ship waits
 
 function addInteractable(worldX, worldZ, worldY, radius, label, onUse) {
-  interactables.push({ x: worldX, z: worldZ, y: worldY, radius, label, onUse, hidden: false });
+  const it = { x: worldX, z: worldZ, y: worldY, radius, label, onUse, hidden: false };
+  interactables.push(it);
+  return it;
 }
 
 function buildPorts() {
@@ -2591,6 +2655,13 @@ let lisbonDock = { x: 0, z: 44 };
 // boarding reach -- so landing there left a silent stretch with no [E] prompt
 // and no hint that you had to walk back down the pier to your own ship.
 let lisbonGangway = null;
+
+// The dock shift: the lighter's cargo on the east quay, and the customs table
+// it has to reach. Both are filled in by buildLisbon, which is why they are
+// declared out here.
+let dockWork = null;            // { pickup, drop, pickupIt, dropIt }
+let dockCrateGroup = null;      // the stack, shrinking as you clear it
+const DOCK_SHIFT = { total: 8, wage: 5, bonus: 8 };
 
 function buildLisbon(group, island, pointAt) {
   const OX = group.position.x, OZ = group.position.z;
@@ -3158,6 +3229,56 @@ function buildLisbon(group, island, pointAt) {
   }
 
   // ---------------------------------------------------------
+  //  THE DOCK SHIFT - the lighter's cargo, and the customs table
+  // ---------------------------------------------------------
+  {
+    const PX = 26, PZ = 21;        // the stack, at the quay's edge
+    const DX = 26, DZ = 8;         // the table it has to reach
+    dockWork = {
+      pickup: { x: OX + PX, z: OZ + PZ, y: Y },
+      drop:   { x: OX + DX, z: OZ + DZ, y: Y },
+    };
+
+    // the crates come off the lighter two-by-two and three deep
+    dockCrateGroup = new THREE.Group();
+    dockCrateGroup.visible = false;
+    group.add(dockCrateGroup);
+    for (let i = 0; i < DOCK_SHIFT.total; i++) {
+      const col = i % 2, row = Math.floor(i / 2) % 2, layer = Math.floor(i / 4);
+      const crate = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.74, 0.84), CITY_MAT.timber);
+      crate.position.set(PX + (col - 0.5) * 1.0, Y + 0.38 + layer * 0.78, PZ + (row - 0.5) * 0.95);
+      crate.rotation.y = (i % 3) * 0.12;
+      crate.castShadow = true;
+      dockCrateGroup.add(crate);
+    }
+
+    // the customs counter: a solid trestle with a lip, not a floating plank
+    const counterWood = new THREE.MeshStandardMaterial({ color: 0x8a6a42, roughness: 0.9 });
+    const counterBody = new THREE.MeshStandardMaterial({ color: 0x6d5334, roughness: 0.94 });
+    const top = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.22, 1.5), counterWood);
+    add(top, DX, Y + 0.98, DZ);
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.88, 1.3), counterBody);
+    add(body, DX, Y + 0.44, DZ);
+    for (const sx of [-1.2, 1.2]) {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.18, 1.1, 1.4), CITY_MAT.timber);
+      add(post, DX + sx, Y + 0.55, DZ);
+    }
+    coll(DX, DZ, 2.8, 1.5, Y + 1.1);      // you cannot walk through a counter
+    const ring = new THREE.Mesh(new THREE.RingGeometry(1.28, 1.62, 28),
+      new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.72,
+                                    side: THREE.DoubleSide, depthWrite: false }));
+    ring.rotation.x = -Math.PI / 2;
+    add(ring, DX, Y + 0.05, DZ + 1.7);   // on the approach side, where you stand
+
+    dockWork.pickupIt = addInteractable(OX + PX, OZ + PZ, Y, 3.2,
+      'Shoulder a crate', shoulderCrate);
+    dockWork.dropIt = addInteractable(OX + DX, OZ + DZ + 1.7, Y, 2.8,
+      'Set the crate down on the table', dropCrate);
+    dockWork.pickupIt.hidden = true;
+    dockWork.dropIt.hidden = true;
+  }
+
+  // ---------------------------------------------------------
   //  PEOPLE
   // ---------------------------------------------------------
   const npc = (x, z, robe, hat, markerColor, label, onUse, facing = 0) => {
@@ -3573,10 +3694,11 @@ const Game = {
   board: null,                  // Tomé's current offers, refreshed over time
   market: null,                 // per-port prices and stock, built on first use
   marketAt: 0,
+  shift: null,                  // the dock shift you are working: { active, total, left, done, paid }
   // the ledger of a life: everything the end-of-hour screen reads aloud
   stats: { jobs: 0, voyages: 0, earned: 0, spent: 0, distance: 0,
            fish: 0, talked: 0, duels: 0, duelsWon: 0, duelsLost: 0, prayers: 0,
-           contracts: 0 },
+           contracts: 0, hauled: 0 },
   cause: '',
 };
 
@@ -3590,17 +3712,263 @@ const Player = {
   island: null,                 // PORTS entry while ashore
   bob: 0,
   bobY: 0,                      // head-bob camera offset (never touches the physics y)
+  // the man inside the sailor: both 0..100, and both now decide what he can do
+  health: 100, stamina: 100,
+  carry: 0,                     // crates shouldered on the quay
+  healthWarn: false, staminaWarn: false,
 };
 
 const Ship = {
   speed: 0, heading: 0,
   maxSpeed: 12.5, turn: 1.2,
   bobPhase: 0, anchored: false,
+  trim: 0,                      // yards: -1 hard to port .. +1 hard to starboard
 };
 
 let playerShip = null;          // THREE.Group
 let dockedAt = null;            // PORTS entry while docked
 let spaceLatch = false;         // edge detection so one key press = one toggle
+
+// ============================================================
+//  THE MAN HIMSELF - health and wind
+// ============================================================
+// Until now the only things that could kill you were the clock, a long fall and
+// a starving crew: you could sprint the length of the Baixa, swim the Tagus and
+// haul crates for an hour without drawing breath. A sailor has a body, and it is
+// the body that turns the helm and the quay from buttons into work.
+const VITALS = {
+  health: 100, stamina: 100,
+  sprint: 10.5,        // wind spent running flat out, per second
+  swim: 6.2,           // and swimming
+  carry: 2.4,          // per crate shouldered, while moving
+  brace: 3.0,          // hauling the sheets by hand
+  regenIdle: 14, regenWalk: 7.5, regenDeck: 5.5,
+  healRest: 1.1,       // a rested, fed man knits
+  drown: 7.5,          // health per second, spent and in deep water
+  starveSea: 2.2, starveLand: 1.1,
+};
+
+// A wound is a number, not a sentence: small hurts only bleed your body, and
+// the body can be rested back. Anything that should end the life says so.
+function hurtPlayer(amount, cause) {
+  if (!(amount > 0) || Game.phase !== 'play') return;
+  Player.health = Math.max(0, Player.health - amount);
+  if (Player.health <= 0) { die(cause || 'Your body gave out.'); return; }
+  if (Player.health < 30 && !Player.healthWarn) {
+    Player.healthWarn = true;
+    showToast('You are badly hurt — rest, and eat something', 3200);
+  }
+}
+
+// Is there a full crew aboard? They trim the yards and take the strain of the
+// sheets, which is the difference between a ship you sail and a ship you work.
+function crewAboard() {
+  return !!(Game.ship && Game.crew >= SHIP_CLASSES[Game.ship.cls].minCrew);
+}
+
+// One fixed step of the body: what it spends, what it gets back, and what
+// finally wears it out. Driven from stepPhysics so it shares the physics clock.
+function tickVitals(h) {
+  if (Game.phase !== 'play') return;
+
+  // ---------------- the wind backs and veers ----------------
+  WIND.next -= h;
+  if (WIND.next <= 0) {
+    WIND.next = 55 + Math.random() * 70;
+    WIND.targetDir = WIND.dir + (Math.random() * 2 - 1) * 1.5;
+    WIND.targetStrength = 0.35 + Math.random() * 0.6;
+  }
+  const ease = Math.min(1, 0.06 * h);
+  WIND.dir += (WIND.targetDir - WIND.dir) * ease;
+  WIND.strength += (WIND.targetStrength - WIND.strength) * ease;
+
+  // ---------------- wind in the lungs ----------------
+  const moving = Math.hypot(Player.vx, Player.vz) > 0.6;
+  let drain = 0;
+  if (Player.mode === 'foot') {
+    if (Player.inWater) drain += VITALS.swim * (moving ? 1 : 0.5);
+    // holding Shift spends wind whether or not there is any left, so a spent
+    // man stays spent until he lets go and gets his breath back
+    else if (keys['shift'] && moving) drain += VITALS.sprint;
+  } else if (Player.mode === 'helm') {
+    // bracing the yards yourself; a crew takes most of the strain
+    if (keys['z'] || keys['x']) drain += VITALS.brace * (crewAboard() ? 0.45 : 1);
+  }
+  if (Player.carry > 0 && moving) drain += VITALS.carry * Player.carry;
+
+  if (drain > 0) {
+    Player.stamina = Math.max(0, Player.stamina - drain * h);
+  } else {
+    const regen = Player.mode === 'foot'
+      ? (moving ? VITALS.regenWalk : VITALS.regenIdle)
+      : VITALS.regenDeck;
+    // a hungry man does not get his wind back
+    const fed = Game.food <= 0 ? 0.3 : 1;
+    Player.stamina = Math.min(VITALS.stamina, Player.stamina + regen * fed * h);
+  }
+  if (Player.stamina > 25) Player.staminaWarn = false;
+
+  // ---------------- the body ----------------
+  let hurt = 0;
+  if (Player.inWater && Player.stamina <= 0.5) hurt += VITALS.drown;
+  if (Game.food <= 0) hurt += (Player.mode === 'foot' ? VITALS.starveLand : VITALS.starveSea);
+  if (hurt > 0) {
+    hurtPlayer(hurt * h, Player.inWater
+      ? 'The river took you when your strength ran out.'
+      : 'Hunger finished what the sea began.');
+  } else if (Player.mode === 'foot' && !moving && !Player.inWater && Game.food > 0) {
+    Player.health = Math.min(VITALS.health, Player.health + VITALS.healRest * h);
+  }
+  if (Player.health > 45) Player.healthWarn = false;
+}
+
+// ============================================================
+//  THE WIND - and the work of sailing
+// ============================================================
+// `dir` is the direction the wind blows TOWARD, in the same convention as the
+// hull's heading, so 0 relative means a following wind and PI means in irons.
+const WIND = { dir: 0.9, strength: 0.72, targetDir: 0.9, targetStrength: 0.72, next: 0 };
+
+function windRelative() {          // 0 = wind astern, ±PI = dead ahead
+  let d = WIND.dir - Ship.heading;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d < -Math.PI) d += Math.PI * 2;
+  return d;
+}
+
+// The yards want to sit where the wind splits the angle between itself and the
+// course: square when running, braced hard over when the wind is on the beam.
+function optimalTrim() {
+  const rel = windRelative();
+  return Math.max(-1, Math.min(1, -0.92 * (rel / (Math.PI / 2))));
+}
+
+// A square rig runs well, reaches best, and cannot beat worth a damn.
+function pointOfSail(off) {
+  if (off < 0.6) return 0.86 + (off / 0.6) * 0.09;
+  if (off < 1.5) return 0.95 + ((off - 0.6) / 0.9) * 0.05;
+  if (off < 2.1) return 1.00 - ((off - 1.5) / 0.6) * 0.30;
+  if (off < 2.6) return 0.70 - ((off - 2.1) / 0.5) * 0.50;
+  return 0.18;                                              // in irons
+}
+
+function windPhrase() {
+  const off = Math.abs(windRelative());
+  if (off < 0.45) return 'astern';
+  if (off < 0.95) return 'on the quarter';
+  if (off < 1.65) return 'abeam';
+  if (off < 2.35) return 'on the bow';
+  return 'dead ahead';
+}
+
+// How much of her hull speed the wind will actually give her.
+function sailDrive() {
+  const off = Math.abs(windRelative());
+  const point = pointOfSail(off);
+  const err = Math.abs(Ship.trim - optimalTrim());
+  const trimEff = Math.max(0.28, 1 - 0.52 * err);
+  const air = 0.62 + 0.38 * WIND.strength;
+  return Math.max(0.12, point * trimEff * air);
+}
+
+// ============================================================
+//  THE DOCK SHIFT - cargo you carry with your own back
+// ============================================================
+// Zé used to hand out ten minutes of work as a single button: click, wait,
+// collect twelve silver. Now he points at a lighter and a customs table, and
+// the wage is whatever you actually shift between them.
+function startDockShift() {
+  if (Game.shift && Game.shift.active) {
+    showToast('Your shift is already running', 2400);
+    return;
+  }
+  if (Player.carry > 0) { showToast('Set that crate down first'); return; }
+  Game.shift = { active: true, total: DOCK_SHIFT.total, left: DOCK_SHIFT.total, done: 0, paid: 0 };
+  syncDockWork();
+  addLog(`Zé waves you at the lighter: ${DOCK_SHIFT.total} crates to the customs table.`);
+  showToast('Shift started — shoulder a crate at the lighter', 3600);
+  updateHUD();
+}
+
+// The prompt at the stack and the prompt at the table are the same two
+// interactables all shift long; only their labels and their visibility change.
+function syncDockWork() {
+  if (!dockWork) return;
+  const s = Game.shift;
+  const on = !!(s && s.active);
+  dockWork.pickupIt.hidden = !(on && s.left > 0 && Player.carry === 0);
+  dockWork.dropIt.hidden = !(on && Player.carry > 0);
+  dockWork.pickupIt.label = (on && s.left > 0)
+    ? `Shoulder a crate (${s.left} left)` : 'Shoulder a crate';
+  if (dockCrateGroup) {
+    dockCrateGroup.visible = on;
+    for (let i = 0; i < dockCrateGroup.children.length; i++) {
+      dockCrateGroup.children[i].visible = i < (s ? s.left : 0);
+    }
+  }
+}
+
+function shoulderCrate() {
+  const s = Game.shift;
+  if (!s || !s.active) { showToast('You are not on a shift'); return; }
+  if (Player.carry > 0) { showToast('You are already carrying one'); return; }
+  if (s.left <= 0) { showToast('The lighter is empty — take that one to the table'); return; }
+  if (Player.stamina < 6) { showToast('No strength left to lift it — rest a moment', 2600); return; }
+  s.left--;
+  Player.carry = 1;
+  Player.stamina = Math.max(0, Player.stamina - 5);
+  syncDockWork();
+  showToast('Crate shouldered — carry it to the customs table', 2600);
+  updateHUD();
+}
+
+function dropCrate() {
+  const s = Game.shift;
+  if (!s || !s.active) { showToast('You are not on a shift'); return; }
+  if (Player.carry <= 0) { showToast('You have nothing to set down'); return; }
+  Player.carry = 0;
+  s.done++;
+  s.paid += DOCK_SHIFT.wage;
+  Game.gold += DOCK_SHIFT.wage;
+  Game.stats.hauled = (Game.stats.hauled || 0) + 1;
+  Player.stamina = Math.max(0, Player.stamina - 3);
+  addLog(`Crate stacked on the customs table. +${DOCK_SHIFT.wage}g`);
+  if (s.done >= s.total) finishDockShift();
+  else showToast(`+${DOCK_SHIFT.wage}g — ${s.total - s.done} to go`, 2000);
+  syncDockWork();
+  updateHUD();
+}
+
+function finishDockShift() {
+  const s = Game.shift;
+  if (!s) return;
+  s.paid += DOCK_SHIFT.bonus;
+  Game.gold += DOCK_SHIFT.bonus;
+  Game.stats.jobs++;
+  if (Math.random() < 0.4) Game.rep += 1;
+  addLog(`Shift done — ${s.total} crates for ${s.paid}g.`, 'good');
+  showToast(`Shift done: ${s.paid}g`, 3200);
+  s.active = false;
+  Player.carry = 0;
+  syncDockWork();
+  updateHUD();
+}
+
+// Leaving the quay, or knocking off: the crate goes back on the stack and the
+// wage already earned stays in your purse. Nothing is ever taken from you here.
+function endDockShift(reason) {
+  const s = Game.shift;
+  if (Player.carry > 0) {
+    Player.carry = 0;
+    if (s && s.active && s.left < s.total - s.done) s.left++;
+  }
+  if (s && s.active) {
+    s.active = false;
+    if (reason) addLog(reason);
+  }
+  syncDockWork();
+  updateHUD();
+}
 
 // The ledger of a life needs honest totals, so every change to the purse --
 // wherever it happens in the code -- is tallied here. loadGame and resetLife
@@ -3748,7 +4116,7 @@ function normKey(e) {
 
 window.addEventListener('keydown', (e) => {
   const k = normKey(e);
-  if (['w', 'a', 's', 'd', ' ', 'shift'].includes(k)) {
+  if (['w', 'a', 's', 'd', ' ', 'shift', 'z', 'x'].includes(k)) {
     keys[k] = true;
     if (Game.phase === 'play') e.preventDefault();
   }
@@ -3766,6 +4134,7 @@ window.addEventListener('keydown', (e) => {
         // enough to mount the 0.62 m steps and the market tables
         Player.vy = 7.4;
         Player.onGround = false;
+        Player.stamina = Math.max(0, Player.stamina - 1.5);
       }
     } else {
       toggleAnchor();
@@ -4570,39 +4939,39 @@ const DLG = {
   }),
 
   // ---------------- Lisbon: the dockmaster ----------------
-  dockmaster: () => ({
-    who: "Zé Caolho", role: "Dockmaster", portrait: "⚓",
-    text: "Zé spits into the water. \"Work? There's always work. Hauling cargo pays silver and ruins your back. You want work, or news?\"",
-    options: [
-      {
-        label: "Haul cargo on the docks (10 minutes)",
-        hint: "8–16g, mostly honest",
-        action: () => {
-          spendMinutes(10);
-          const r = Math.random();
-          if (r < 0.08) {
-            Game.gold = Math.max(0, Game.gold - 5);
-            addLog("A crate slipped. You paid for the damage out of your wage.", 'bad');
-            showToast("A crate slipped — you lost 5g");
-          } else if (r < 0.12) {
-            Game.rep += 1;
-            addLog("You worked twice as hard as any man on the quay. People noticed.", 'good');
-            showToast("An honest day's work — +1 reputation");
-          } else {
-            const pay = 8 + Math.floor(Math.random() * 9);
-            Game.gold += pay;
-            Game.stats.jobs++;
-            addLog(`You hauled cargo until your hands bled. +${pay}g`);
-            showToast(`Hauled cargo: +${pay}g`);
-          }
-          updateHUD();
-        },
-        stay: true,
-      },
-      { label: "What news from the sea?", next: 'dockmaster_news' },
-      { label: "Not today." },
-    ],
-  }),
+  // The work is no longer a button that prints silver: Zé points at the lighter
+  // and at the customs table, and the wage is whatever you carry between them.
+  dockmaster: () => {
+    const s = Game.shift;
+    const working = !!(s && s.active);
+    const opts = [];
+    if (working) {
+      opts.push({
+        label: `Back to the crates (${s.done}/${s.total} shifted, ${s.paid}g so far)`,
+        hint: "The lighter is on the east quay",
+      });
+      opts.push({
+        label: `Knock off for now — the ${s.paid}g is yours`,
+        action: () => endDockShift('You knock off, pockets heavier.'),
+      });
+    } else {
+      opts.push({
+        label: `Haul cargo on the docks (${DOCK_SHIFT.total} crates)`,
+        hint: `${DOCK_SHIFT.wage}g a crate, ${DOCK_SHIFT.bonus}g more when the lighter is clear`,
+        action: () => startDockShift(),
+      });
+    }
+    opts.push({ label: "What news from the sea?", next: 'dockmaster_news' });
+    opts.push({ label: "Not today." });
+    return {
+      who: "Zé Caolho", role: "Dockmaster", portrait: "⚓",
+      text: working
+        ? `"Back again? There's still ${s.total - s.done} on the lighter. Shift's not done till the table's full."`
+        : `Zé spits into the water. "Work? There's always work. A lighter came in this morning — ${DOCK_SHIFT.total} crates of it, and they want them on the customs table before the tide. ${DOCK_SHIFT.wage} the crate, and I'll stand you ${DOCK_SHIFT.bonus} more when the lighter's clear. Ruins your back, mind."`,
+      rebuild: () => DLG.dockmaster(),
+      options: opts,
+    };
+  },
 
   dockmaster_news: () => ({
     who: "Zé Caolho", role: "Dockmaster", portrait: "⚓",
@@ -5236,6 +5605,7 @@ function currentTarget() {
   // the game the moment you owned a ship.
   let best = null, bestD = 1e9;
   for (const it of interactables) {
+    if (it.hidden) continue;        // the crate stack is silent between shifts
     const d = Math.hypot(it.x - Player.x, it.z - Player.z);
     if (d < it.radius && d < bestD) { best = it; bestD = d; }
   }
@@ -5418,6 +5788,11 @@ function goAshore(port) {
 function boardShip() {
   Player.mode = 'deck';
   Player.island = null;
+  // Zé's work stays on the quay: you cannot carry a crate up the gangway, and
+  // a shift you have sailed away from is a shift you have knocked off.
+  if (Player.carry > 0 || (Game.shift && Game.shift.active)) {
+    endDockShift('You leave the quay — the shift is over.');
+  }
   // dockedAt is deliberately KEPT: "Go ashore" on deck is gated on it, and
   // clearing it here left the quay reachable only by taking the helm first.
   // updateShipPhysics drops it once she is maxR + 70 from the port.
@@ -5590,14 +5965,21 @@ function updateFoot(dt) {
   const len = Math.hypot(wx, wz);
   if (len > 1e-4) { wx /= len; wz /= len; }
 
-  const runSpeed = keys['shift'] ? 7.2 : 4.4;
+  // Your legs are only as good as your wind. Sprinting empties the tank, an
+  // empty tank leaves you at a plod, and a shouldered crate keeps you honest —
+  // the quay is meant to feel like a day's work, not a stroll.
+  let runSpeed = 4.4;
+  if (keys['shift'] && Player.stamina > 6) runSpeed = 7.2;
+  if (Player.stamina <= 1.5) runSpeed = Math.min(runSpeed, 3.4);
+  if (Player.carry > 0) runSpeed = Math.min(runSpeed, 3.05 - 0.30 * Player.carry);
   const support = supportY(Player.x, Player.z, Player.y);
   const swimming = support < -1.25 && Player.y < 0.55;
   // in the water you can haul yourself onto a step you could never climb on foot
   const stepLim = swimming ? 1.7 : STEP_UP;
   Player.inWater = swimming;
 
-  const target = swimming ? 2.4 : runSpeed;
+  // spent in the water, you swim like a man who is drowning, because you are
+  const target = swimming ? (Player.stamina > 0.5 ? 2.4 : 1.5) : runSpeed;
   const grip = swimming ? 2.6 : (Player.onGround ? 14 : 2.2);
   const k = Math.min(1, grip * dt);
   Player.vx += (wx * target - Player.vx) * k;
@@ -5610,10 +5992,17 @@ function updateFoot(dt) {
     Player.vy *= Math.max(0, 1 - 5.5 * dt);
     Player.vy = Math.max(-4.5, Math.min(3.2, Player.vy));
     Player.wetT = (Player.wetT || 0) + dt;
-    if (Player.wetT > 26) { die('The river closed over your head.'); return; }
+    // Drowning is a matter of wind now, not a stopwatch: the tank runs dry in
+    // about fifteen seconds of swimming and the body starts taking water. This
+    // timer is only a backstop so nobody can tread water forever.
+    if (Player.wetT > 75) { die('The river closed over your head.'); return; }
     if (Player.wetT > 4 && !Player.warnedWater) {
       Player.warnedWater = true;
       showToast('You are in the water — swim for the stairs!', 3200);
+    }
+    if (Player.stamina <= 0.5 && !Player.staminaWarn) {
+      Player.staminaWarn = true;
+      showToast('Your strength is gone — you are going under!', 3400);
     }
   } else {
     Player.vy -= GRAVITY * dt;
@@ -5638,7 +6027,11 @@ function updateFoot(dt) {
     Player.onGround = true;
     if (wasAir) {
       if (impact < -22) { die('You fell from the heights of Lisbon.'); return; }
-      if (impact < -10) showToast('You land hard on the stones.', 1800);
+      if (impact < -10) {
+        showToast('You land hard on the stones.', 1800);
+        hurtPlayer(Math.min(30, (-impact - 9) * 2.2), 'You fell from the heights of Lisbon.');
+        if (Game.phase !== 'play') return;
+      }
     }
   } else {
     Player.onGround = false;
@@ -5701,7 +6094,11 @@ const SHIP_PHYS = { vf: 0, vl: 0, yawRate: 0, pitch: 0, roll: 0, grounded: 0 };
 function updateShipPhysics(dt) {
   if (!Game.ship || !playerShip) return;
   const cls = SHIP_CLASSES[Game.ship.cls];
-  const maxSpeed = shipMaxSpeed();      // fittings, and how sound her hull is
+  // Her hull speed is only the ceiling. What she actually makes is decided by
+  // where the wind sits and whether the yards are braced for it -- a ship left
+  // to sail herself will still move, but she will crawl.
+  const hullSpeed = shipMaxSpeed();
+  const maxSpeed = Math.max(1.2, hullSpeed * sailDrive());
   const atHelm = Player.mode === 'helm';
 
   // ---------------- controls ----------------
@@ -5731,6 +6128,22 @@ function updateShipPhysics(dt) {
     SHIP_PHYS.vf *= Math.exp(-3.5 * dt);
     SHIP_PHYS.vl *= Math.exp(-3.5 * dt);
     SHIP_PHYS.yawRate *= Math.exp(-3.0 * dt);
+  }
+
+  // ---------------- the yards: your hands, or the crew's ----------------
+  // Z and X walk the yards across the ship. Get them where the green band on
+  // the gauge wants them and she flies; leave them squared to a beam wind and
+  // you are pushing a barn through the water.
+  let brace = 0;
+  if (atHelm && !Ship.anchored) {
+    if (keys['z']) brace -= 1;
+    if (keys['x']) brace += 1;
+  }
+  if (brace && Player.stamina > 0.5) {
+    Ship.trim = Math.max(-1, Math.min(1, Ship.trim + brace * 0.9 * dt));
+  } else if (crewAboard()) {
+    // a full crew trims the yards without being told; a thin one waits for you
+    Ship.trim += (optimalTrim() - Ship.trim) * Math.min(1, 0.40 * dt);
   }
 
   // ---------------- forward: thrust vs quadratic hull drag ----------------
@@ -6132,12 +6545,54 @@ function updateHUD() {
     }
   }
 
+  // ---- the body ----
+  const hp = Math.max(0, Math.min(100, Player.health));
+  const st = Math.max(0, Math.min(100, Player.stamina));
+  const hpFill = document.getElementById('hpFill');
+  if (hpFill) {
+    hpFill.style.width = hp + '%';
+    document.getElementById('stFill').style.width = st + '%';
+    document.getElementById('hpVal').textContent = Math.round(hp);
+    document.getElementById('stVal').textContent = Math.round(st);
+    document.getElementById('hpBar').classList.toggle('low', hp < 30);
+    document.getElementById('stBar').classList.toggle('low', st < 20);
+  }
+
+  // ---- the dock shift, if you are working one ----
+  const sl = document.getElementById('shiftLine');
+  if (sl) {
+    const s = Game.shift;
+    if (s && s.active) {
+      const txt = `Dock shift · ${s.done}/${s.total} crates · ${s.paid}g`;
+      if (sl.dataset.txt !== txt) {
+        sl.dataset.txt = txt;
+        sl.innerHTML = `Dock shift · <span class="num">${s.done}/${s.total}</span> crates · ${s.paid}g`;
+      }
+      sl.classList.remove('hidden');
+    } else {
+      sl.classList.add('hidden');
+    }
+  }
+
   const atSea = Player.mode !== 'foot';
   document.getElementById('speedo').classList.toggle('hidden', !atSea);
   if (atSea) {
     const pct = Math.min(100, Math.abs(Ship.speed) / (Game.ship ? shipMaxSpeed() : 12) * 100);
     document.getElementById('speedFill').style.height = pct + '%';
     document.getElementById('speedVal').textContent = (Math.abs(Ship.speed) * 2.2).toFixed(1) + ' kn';
+
+    // where the yards are against where the wind wants them
+    const want = optimalTrim();
+    const zone = document.getElementById('trimZone');
+    const zl = Math.max(0, Math.min(80, ((want + 1) / 2) * 100 - 10));
+    zone.style.left = zl + '%';
+    zone.style.width = '20%';
+    document.getElementById('trimNeedle').style.left = ((Ship.trim + 1) / 2) * 100 + '%';
+
+    const wl = document.getElementById('windLbl');
+    const off = Math.abs(windRelative());
+    wl.textContent = off > 2.45 ? 'in irons!' : `wind ${windPhrase()}`;
+    wl.classList.toggle('bad', off > 2.45);
   }
   checkVictory();
 }
@@ -6271,7 +6726,7 @@ function endStats() {
     row('Charts reported to the Crown', reported) +
     row('Leagues sailed', Math.floor(s.distance || 0)) +
     row('Landfalls abroad', s.voyages || 0) +
-    row('Days worked the docks', s.jobs || 0) +
+    row('Days worked the docks', (s.jobs || 0) + (s.hauled ? ` · ${s.hauled} crates` : '')) +
     row('Fish caught', s.fish || 0) +
     row('Citizens you came to know', s.talked || 0) +
     row('Dice and riddles', (s.duelsWon || 0) + ' won / ' + (s.duelsLost || 0) + ' lost') +
@@ -6350,7 +6805,8 @@ function saveGame(slot) {
     board: Game.board ? { at: Game.board.at, offers: Game.board.offers.map(o => ({ ...o })) } : null,
     market: Game.market ? JSON.parse(JSON.stringify(Game.market)) : null,
     marketAt: Game.marketAt,
-    player: { mode: Player.mode, x: Player.x, y: Player.y, z: Player.z, lookYaw: Player.lookYaw },
+    player: { mode: Player.mode, x: Player.x, y: Player.y, z: Player.z, lookYaw: Player.lookYaw,
+              health: Player.health, stamina: Player.stamina },
     dockedAt: dockedAt ? dockedAt.def.name : null,
     island: Player.island ? Player.island.def.name : null,
   };
@@ -6383,7 +6839,7 @@ function loadGame(slot) {
     // older saves predate the ledger's new rows: fill them in, then overwrite
     stats: { jobs: 0, voyages: 0, earned: 0, spent: 0, distance: 0,
              fish: 0, talked: 0, duels: 0, duelsWon: 0, duelsLost: 0, prayers: 0,
-             contracts: 0, ...s.stats },
+             contracts: 0, hauled: 0, ...s.stats },
     // saves from before the market and the dry dock simply get a fresh start
     hull: typeof s.hull === 'number' ? s.hull : 100,
     upgrades: { hold: 0, sheathing: 0, oak: 0, ...(s.upgrades || {}) },
@@ -6409,6 +6865,13 @@ function loadGame(slot) {
   Player.mode = s.player.mode;
   Player.x = s.player.x; Player.z = s.player.z;
   Player.lookYaw = s.player.lookYaw; Player.lookPitch = 0;
+  // a life saved before the body existed comes back whole
+  Player.health = typeof s.player.health === 'number' ? s.player.health : VITALS.health;
+  Player.stamina = typeof s.player.stamina === 'number' ? s.player.stamina : VITALS.stamina;
+  Player.healthWarn = false; Player.staminaWarn = false;
+  Player.carry = 0;
+  Game.shift = null;            // a shift is not a thing you can save
+  syncDockWork();
   if ((Player.mode === 'helm' || Player.mode === 'deck') && !playerShip) {
     Player.mode = 'foot';
     Player.island = PORTS[0];
@@ -6516,9 +6979,9 @@ function resetLife() {
     ship: null, commissions: [], gameMinutes: 360, lifeLeft: LIFE_SECONDS,
     quests: {}, stats: { jobs: 0, voyages: 0, earned: 0, spent: 0, distance: 0,
                          fish: 0, talked: 0, duels: 0, duelsWon: 0, duelsLost: 0,
-                         prayers: 0, contracts: 0 },
+                         prayers: 0, contracts: 0, hauled: 0 },
     hull: 100, upgrades: { hold: 0, sheathing: 0, oak: 0 },
-    contracts: [], board: null, market: null, marketAt: 0,
+    contracts: [], board: null, market: null, marketAt: 0, shift: null,
     cause: '', won: false,
   });
   goldLedgerPause = false;
@@ -6527,6 +6990,14 @@ function resetLife() {
   PORTS.forEach(p => { p.discovered = !!p.def.discovered; });
   dockedAt = null;
   camRig.ready = false;
+
+  // a new life in a new body
+  Player.health = VITALS.health;
+  Player.stamina = VITALS.stamina;
+  Player.carry = 0;
+  Player.healthWarn = false; Player.staminaWarn = false;
+  Ship.trim = 0;
+  syncDockWork();
 
   const p0 = PORTS[0];
   Player.island = p0;
@@ -6602,6 +7073,8 @@ const PHYS_STEP = 1 / 120;
 let physAcc = 0;
 
 function stepPhysics(h) {
+  tickVitals(h);
+  if (Game.phase !== 'play') return;   // the body gave out during the step
   if (Player.mode === 'foot') {
     updateFoot(h);
     wakeGroup.visible = false;
@@ -6792,6 +7265,14 @@ window.__voyage = {
   marketBought, marketSold, marketTrend, driftMarket, lisbonWants, cargoValueAt,
   makeContractOffer, boardOffers, acceptContract, deliverContracts, tickContracts,
   contractMinutesLeft, shipMaxSpeed, damageHull, repairCost, hullPenalty,
+  // the body, the wind, and the work of sailing
+  VITALS, WIND, tickVitals, hurtPlayer, sailDrive, optimalTrim, windRelative,
+  pointOfSail, windPhrase, crewAboard,
+  // the dock shift
+  DOCK_SHIFT, startDockShift, endDockShift, syncDockWork,
+  shoulderCrate, dropCrate, finishDockShift,
+  get dockWork() { return dockWork; },
+  get dockCrateGroup() { return dockCrateGroup; },
   get ship() { return playerShip; }
 };
 </script>
