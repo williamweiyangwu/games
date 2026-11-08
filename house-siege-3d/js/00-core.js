@@ -110,15 +110,6 @@ const MODES = {
     objective: 'STEAL THE <span class="hl">ENEMY FLAG</span> AND RETURN IT TO YOUR HQ',
     golden: 'THE NEXT CAPTURE WINS'
   },
-  koth: {
-    id: 'koth', name: 'KING OF THE HILL', title: 'King of the Hill', short: 'THE HILL',
-    tag: 'HOLD THE CIRCLE', tagClass: 'gold', time: '5:00',
-    blurb: 'One circle in the middle of the map. Hold it with no enemy inside and your score climbs one point a second. First to 90.',
-    clock: 300, scoreLabel: 'HELD', limit: 90, respawn: true,
-    kicker: 'HILL HELD',
-    objective: 'HOLD THE <span class="hl">CIRCLE</span> — IT SCORES WHILE YOU STAND IN IT',
-    golden: 'THE NEXT SECOND WINS'
-  },
   survival: {
     id: 'survival', name: 'LAST STAND', title: 'Last Stand', short: 'LAST STAND',
     tag: 'ONE LIFE', tagClass: 'blue', time: 'ONE ROUND',
@@ -143,7 +134,7 @@ const MODES = {
   }
 };
 /* the order the menu and the vote screen list them in */
-const MODE_ORDER = ['tdm', 'flag', 'koth', 'survival'];
+const MODE_ORDER = ['tdm', 'flag', 'survival'];
 function modeDef(id) { return MODES[id] || MODES.tdm; }
 
 /* ------------------------------------------------------------
