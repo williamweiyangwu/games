@@ -283,7 +283,13 @@ b{font-weight:700}
 /* prompt */
 /* the crate in reach: name and numbers, sitting on top of the take prompt so
    you read the weapon and the decision in one glance */
-#lootCard{position:absolute;left:50%;top:60%;transform:translate(-50%,calc(-100% - 9px));
+/* The loot card sits directly above the prompt, and the two of them are
+   stacked a fixed 112 px below the middle rather than at a percentage of the
+   height: at 60% the card's top edge landed 18 px inside the crosshair box and
+   hid its lower brackets, and a percentage would creep back over the reticle on
+   a short window. 112 px = 21 (half the reticle) + 9 + 68 (the card) + 9 + a
+   little air, so the reticle stays whole at any height. */
+#lootCard{position:absolute;left:50%;top:calc(50% + 112px);transform:translate(-50%,calc(-100% - 9px));
   min-width:224px;padding:8px 13px 9px;background:rgba(8,11,17,.88);
   border:1px solid rgba(255,196,77,.26);border-radius:2px;
   opacity:0;transition:opacity .15s}
@@ -296,7 +302,7 @@ b{font-weight:700}
 .lc-stat b{font:700 13px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:#dfe7f2;
   font-variant-numeric:tabular-nums}
 
-#prompt{position:absolute;left:50%;top:60%;transform:translateX(-50%);font-size:11px;letter-spacing:.16em;
+#prompt{position:absolute;left:50%;top:calc(50% + 112px);transform:translateX(-50%);font-size:11px;letter-spacing:.16em;
   color:#dfe6f2;background:rgba(8,11,17,.82);border:1px solid rgba(255,196,77,.45);padding:7px 15px;
   border-radius:2px;opacity:0;transition:opacity .15s}
 #prompt.show{opacity:1}
