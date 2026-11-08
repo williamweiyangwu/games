@@ -182,14 +182,23 @@ b{font-weight:700}
 #objBanner.show{opacity:1}
 #objBanner .hl{color:var(--gold);font-weight:700}
 
-/* crosshair */
-#crosshair{position:absolute;left:50%;top:50%;width:34px;height:34px;transform:translate(-50%,-50%)}
-.ch{position:absolute;background:#fff;box-shadow:0 0 3px rgba(0,0,0,.9);opacity:.9}
-.ch.t,.ch.b{width:2px;height:7px;left:16px}
-.ch.l,.ch.r{height:2px;width:7px;top:16px}
-.ch.t{top:0} .ch.b{bottom:0} .ch.l{left:0} .ch.r{right:0}
-.ch.dot{width:2px;height:2px;left:16px;top:16px;border-radius:50%;background:#fff}
-#crosshair.enemy .ch{background:#ff5555}
+/* crosshair — a square, drawn as four corner brackets anchored to the corners
+   of the box. The old version was four dashes pinned to the box edges with a
+   hard-coded 16px offset, so the moment the box grew with movement the dashes
+   drifted off centre and the "cross" fell apart. Corner brackets cannot drift:
+   they are pinned to the four corners, so the reticle is a true square at
+   every spread, and the implied square is what you aim with. */
+#crosshair{--ch:#fff;position:absolute;left:50%;top:50%;width:34px;height:34px;
+  transform:translate(-50%,-50%);filter:drop-shadow(0 0 2px rgba(0,0,0,.85))}
+.ch{position:absolute;background:none}
+.ch.tl,.ch.tr,.ch.bl,.ch.br{width:12px;height:12px;border:0 solid var(--ch)}
+.ch.tl{left:0;top:0;border-left-width:2px;border-top-width:2px}
+.ch.tr{right:0;top:0;border-right-width:2px;border-top-width:2px}
+.ch.bl{left:0;bottom:0;border-left-width:2px;border-bottom-width:2px}
+.ch.br{right:0;bottom:0;border-right-width:2px;border-bottom-width:2px}
+.ch.dot{width:2px;height:2px;left:50%;top:50%;transform:translate(-50%,-50%);
+  border-radius:50%;background:var(--ch)}
+#crosshair.enemy{--ch:#ff5555}
 #hitmarker{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:22px;
   color:#fff;opacity:0;font-weight:300;text-shadow:0 0 6px #000}
 #hitmarker.on{animation:hm .22s ease-out}
