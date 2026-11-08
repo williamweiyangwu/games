@@ -29,7 +29,7 @@ function fovForZoom(z) {
 }
 
 /* Step the AWP through its magnification ring. dir is +1 / -1; it wraps, so
-   a player holding the key or flicking the wheel keeps cycling. */
+   holding the key keeps cycling. Bound to Z only — the wheel is weapons. */
 function cycleZoom(dir) {
   const p = G.player;
   if (!p) return false;
@@ -483,7 +483,7 @@ function updateViewModel(dt, speed) {
       }
 
       /* magnification ring readout — the current setting and the one a
-         further turn of the wheel would give you */
+         further press of Z would give you */
       const zEl = $('scZoom');
       if (zEl) {
         const z = currentZoom();
@@ -494,7 +494,7 @@ function updateViewModel(dt, speed) {
       const zHint = $('scZoomHint');
       if (zHint) {
         const nxt = SCOPE_ZOOMS[(VM.zoomIdx + 1) % SCOPE_ZOOMS.length];
-        const label = 'Z / WHEEL → ' + nxt.toFixed(0) + '×';
+        const label = 'Z → ' + nxt.toFixed(0) + '×';
         if (zHint.textContent !== label) zHint.textContent = label;
       }
     } else {
