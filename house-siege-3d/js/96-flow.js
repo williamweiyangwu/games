@@ -8,6 +8,8 @@
    GAME FLOW
    ------------------------------------------------------------ */
 function startGame(mode, mapId) {
+  /* a vote left running would keep painting its panel over the new match */
+  if (typeof VOTE !== 'undefined' && VOTE.active) voteEnd();
   Snd.init();
   if (Snd.ctx && Snd.ctx.state === 'suspended') Snd.ctx.resume();
   const def = modeDef(mode);
@@ -19,6 +21,7 @@ function startGame(mode, mapId) {
   G.score.red = 0; G.score.blue = 0;
   $('clock').classList.remove('gold');
   G.tutorial.active = false;
+  cancelLobbyReturn();
   $('tutTasks').classList.remove('show');
   $('end').classList.remove('show');
   $('pause').classList.remove('show');
@@ -50,7 +53,6 @@ function startGame(mode, mapId) {
   createChests();
   createFlags();
   for (const t of ['red', 'blue']) G.flags[t].group.visible = (def.id === 'flag');
-  createHill();
 
   buildRoster();
   buildMapBase();
@@ -60,8 +62,6 @@ function startGame(mode, mapId) {
 
   $('modeName').textContent = def.id === 'tutorial' ? 'TRAINING' : def.name;
   $('mapName').textContent = mapDef(G.mapId).name;
-  /* the hill meter belongs to one mode only */
-  $('hillBar').classList.toggle('show', def.id === 'koth');
   /* paint the score strip now instead of waiting for the first HUD tick, so
      the previous match's numbers and label are never visible for a frame */
   const cap0 = def.scoreLabel;
@@ -186,11 +186,46 @@ function reviveDummy(b) {
   if (b.np) b.np.style.opacity = '1';
 }
 
+/* ------------------------------------------------------------
+   BACK TO THE LOBBY
+   ------------------------------------------------------------
+   A finished offline match used to sit on the result card until the player
+   clicked something. The card is a result, not a lobby: it counts down and
+   puts you back in the menu, and the button does it immediately. Online this
+   never runs — the room votes instead. */
+const LOBBY_RETURN = { t: 0, on: false, secs: 10 };
+
+function beginLobbyReturn() {
+  LOBBY_RETURN.on = true;
+  LOBBY_RETURN.t = LOBBY_RETURN.secs;
+  updateLobbyReturn(0);
+}
+
+function cancelLobbyReturn() {
+  LOBBY_RETURN.on = false;
+  const el = $('endAuto');
+  if (el) el.textContent = '';
+}
+
+function updateLobbyReturn(dt) {
+  if (!LOBBY_RETURN.on) return;
+  if (G.state !== 'ended') { cancelLobbyReturn(); return; }
+  LOBBY_RETURN.t -= dt;
+  const el = $('endAuto');
+  if (el) {
+    const n = Math.max(0, Math.ceil(LOBBY_RETURN.t));
+    const txt = 'RETURNING TO LOBBY IN <b>' + n + '</b>';
+    if (el.dataset.txt !== txt) { el.innerHTML = txt; el.dataset.txt = txt; }
+  }
+  if (LOBBY_RETURN.t <= 0) { LOBBY_RETURN.on = false; quitToMenu(); }
+}
+
 function quitToMenu() {
   /* leaving a match means leaving the room: the others must see us go, and
      the host must tear the room down so it stops showing in the lobby */
   if (NET.room) netLeave();
   if (typeof VOTE !== 'undefined' && VOTE.active) voteEnd();
+  cancelLobbyReturn();
   G.state = 'menu';
   document.exitPointerLock && document.exitPointerLock();
   $('hud').classList.remove('show');
@@ -218,6 +253,9 @@ function pauseGame() {
   hideAimLine();
   hideScope();                       // the lens must not sit over the pause card
   $('pause').classList.add('show');
+  $('prompt').classList.remove('show');
+  const lc = $('lootCard');
+  if (lc) lc.classList.remove('show');
   $('pauseScore').textContent = 'RED ' + G.score.red + '  —  ' + G.score.blue + ' BLUE   ·   ' + $('clock').textContent;
   /* In a room this is not a pause: the other machines keep playing and you are
      standing still in their match. Say so, rather than freezing the player in
@@ -275,7 +313,6 @@ function update(dt) {
   updateProjectiles(dt);
   updateChests(dt);
   updateFlags(dt);
-  updateHill(dt);
   updateSurvival();
   updateEffects(dt);
   if (G.netMode) netTick(dt);
@@ -365,6 +402,7 @@ function loop(ts) {
   syncLockHint(raw);
   PERF.uiT = (PERF.uiT || 0) + dt;
   if (PERF.show && PERF.uiT > 0.25) { PERF.uiT = 0; updatePerfReadout(); }
+  if (G.state === 'ended') updateLobbyReturn(Math.min(1, raw));
   if (G.state === 'playing') {
     update(dt);
   } else if (G.state === 'paused' || G.state === 'ended') {
