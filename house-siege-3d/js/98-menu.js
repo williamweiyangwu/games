@@ -49,12 +49,12 @@ const HT_PAGES = [
       <tr><td><kbd>RIGHT CLICK</kbd></td><td>Open a crate when standing on one</td></tr>
       <tr><td><kbd>E</kbd></td><td>Aim down sights — tighter spread, slight zoom, slower turn. The <b>AWP</b> gets a full scope: mil-dot reticle, selectable <b>2× / 4× / 8×</b> magnification, very slow turn</td></tr>
       <tr><td><kbd>Q</kbd></td><td><b>Hold your breath</b> while scoped — costs stamina, steadies the wobble</td></tr>
-      <tr><td><kbd>Z</kbd></td><td>Cycle the AWP magnification — <b>2× / 4× / 8×</b>. While scoped the mouse wheel does the same thing</td></tr>
+      <tr><td><kbd>Z</kbd></td><td>Cycle the AWP magnification — <b>2× / 4× / 8×</b>. This is the only control that changes it, scoped or not</td></tr>
       <tr><td><kbd>R</kbd></td><td>Reload</td></tr>
       <tr><td><kbd>SHIFT</kbd></td><td>Sprint (forward) — <b>drains stamina</b></td></tr>
       <tr><td><kbd>SPACE</kbd></td><td>Jump</td></tr>
       <tr><td><kbd>1</kbd>–<kbd>5</kbd></td><td>Select a bag slot</td></tr>
-      <tr><td><kbd>MOUSE WHEEL</kbd></td><td>Roll up / down to cycle to the previous / next bag slot</td></tr>
+      <tr><td><kbd>MOUSE WHEEL</kbd></td><td>Roll up / down to cycle to the previous / next bag slot — <b>always</b>, even while scoped</td></tr>
       <tr><td><kbd>MIDDLE CLICK</kbd></td><td>Cycle to the next bag slot</td></tr>
       <tr><td><kbd>TAB</kbd></td><td>Scoreboard (kills / deaths / HP)</td></tr>
       <tr><td><kbd>ESC</kbd></td><td>Pause</td></tr>
