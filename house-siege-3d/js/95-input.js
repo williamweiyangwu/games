@@ -71,16 +71,13 @@ function initInput() {
      locked. deltaY > 0 = scroll down = next slot; deltaY < 0 = previous.
      The sign guard means a single notch always advances exactly one slot.
 
-     While the AWP lens is up the wheel drives the magnification ring
-     instead, which is where your hand already is — changing weapon in the
-     middle of a scoped shot is never what you wanted. */
+     The wheel is weapons and nothing else — scoped or not. Magnification is
+     the Z key's job alone, so a notch while you are lining up a shot can
+     never move the ring under you. */
   window.addEventListener('wheel', e => {
     if (G.state !== 'playing') return;
     if (!G.player || !G.player.alive) return;
     e.preventDefault();
-    const scopedNow = VM.adsOn && VM.ads > 0.5 &&
-      (() => { const st = G.player.weapons[G.player.cur]; const w = st ? defOf(st.id) : null; return !!(w && w.scope); })();
-    if (scopedNow) { cycleZoom(e.deltaY > 0 ? 1 : -1); return; }
     const before = G.player.cur;
     if (e.deltaY > 0) cycleWeapon(1);
     else if (e.deltaY < 0) cycleWeapon(-1);
