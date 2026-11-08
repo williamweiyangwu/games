@@ -11,6 +11,57 @@ window.REF = window.REF || {};
   var pointerNDC = null;
   var clockLast = 0;
 
+  /* ---------------------------------------------------------- pointer lock */
+  REF.Pointer = (function () {
+    var locked = false;
+
+    function dom() { return REF.Engine.renderer && REF.Engine.renderer.domElement; }
+
+    var api = {
+      supported: typeof document !== 'undefined' && 'pointerLockElement' in document,
+
+      lock: function () {
+        var d = dom();
+        if (!d || !api.supported) return;
+        if (document.pointerLockElement === d) return;
+        if (REF.UI && REF.UI.currentScreen()) return;
+        if (REF.Game.paused || !REF.Game.match || REF.Game.match.ended) return;
+        try { d.requestPointerLock(); } catch (e) { }
+      },
+
+      unlock: function () {
+        if (document.pointerLockElement) {
+          try { document.exitPointerLock(); } catch (e) { }
+        }
+      },
+
+      isLocked: function () { return locked; },
+
+      refresh: function () {
+        var h = document.getElementById('lockhint');
+        if (!h) return;
+        var on = !locked && !!REF.Game.match && !REF.Game.match.ended &&
+          !REF.Game.paused && !REF.UI.currentScreen() && !REF.UI.isDialogueOpen();
+        h.classList.toggle('on', on);
+      }
+    };
+
+    document.addEventListener('pointerlockchange', function () {
+      var d = dom();
+      locked = !!d && document.pointerLockElement === d;
+      document.body.classList.toggle('locked', locked);
+      api.refresh();
+    });
+    document.addEventListener('pointerlockerror', function () {
+      locked = false;
+      api.failed = true;
+      document.body.classList.remove('locked');
+      api.refresh();
+    });
+
+    return api;
+  })();
+
   /* ---------------------------------------------------------- the referee */
   REF.Ref = {
     ch: null,
@@ -179,6 +230,7 @@ window.REF = window.REF || {};
 
     doWhistle: function () {
       if (REF.Game.paused || !REF.Game.match) return;
+      if (REF.Game.match.freezeT > 0) return 'busy';
       this.state = 'whistle';
       this.stateT = 0.85;
       if (this.ch) this.ch.parts.whistle.visible = true;
@@ -210,6 +262,7 @@ window.REF = window.REF || {};
     match: null,
     ballMesh: null,
     paused: false,
+    tourResult: false,
     cam: { yaw: 0, pitch: 0.34, dist: 9.5, dragT: 0 },
     tut: null,
     scene: null,
@@ -274,6 +327,7 @@ window.REF = window.REF || {};
     resume: function () {
       this.paused = false;
       REF.UI.show(null);
+      REF.Pointer.lock();
     },
 
     restart: function () {
@@ -298,6 +352,7 @@ window.REF = window.REF || {};
     pause: function () {
       if (!this.match || this.match.ended) return;
       this.paused = true;
+      REF.Pointer.unlock();
       REF.UI.show('pause');
     },
 
@@ -306,6 +361,19 @@ window.REF = window.REF || {};
       if (!m) return;
       var pts = 25 + m.stats.yellows * 4 + m.stats.reds * 8 + m.stats.offsides * 3 + m.stats.goals * 2;
       pts = Math.min(pts, 120);
+
+      if (m.data.tournament && REF.Tour) {
+        var tour = REF.Tour.record(m);
+        m.tourOutcome = tour;
+        pts += 40;
+        if (tour && tour.done) pts += 200;
+        REF.Save.ach('tour_tie');
+        if (tour && tour.done) REF.Save.ach('tour_champ');
+        this.tourResult = true;
+      } else {
+        this.tourResult = false;
+      }
+
       REF.Save.addPoints(pts);
       REF.Save.data.history.unshift({
         id: m.data.id, score: m.score.join('-'), date: Date.now()
@@ -496,21 +564,33 @@ window.REF = window.REF || {};
   function onPointerDown(e) {
     if (e.target !== REF.Engine.renderer.domElement) return;
     REF.Audio.resume();
+    if (REF.UI.currentScreen() || REF.Game.paused) return;
+
+    var locked = REF.Pointer.isLocked();
 
     if (e.button === 2) {
+      if (locked) return;
       dragging = true;
       lastX = e.clientX;
       lastY = e.clientY;
       return;
     }
     if (e.button !== 0) return;
-    if (REF.UI.currentScreen() || REF.Game.paused) return;
+
+    /* the first click just takes the mouse back */
+    if (!locked && !REF.Pointer.failed) {
+      REF.Pointer.lock();
+      return;
+    }
+
+    var px = locked ? window.innerWidth / 2 : e.clientX;
+    var py = locked ? window.innerHeight / 2 : e.clientY;
 
     var tool = REF.UI.tool();
     if (tool === 'yellow' || tool === 'red' || tool === 'talk') {
-      var p = pickPlayer(e.clientX, e.clientY);
+      var p = (locked && REF.Game.aimPlayer) ? REF.Game.aimPlayer : pickPlayer(px, py);
       if (!p) {
-        REF.UI.flash('No player there — click directly on a player');
+        REF.UI.flash(locked ? 'Nothing under the crosshair — line him up' : 'No player there — click directly on a player');
         return;
       }
       if (tool === 'talk') REF.Game.talk(p);
@@ -522,6 +602,16 @@ window.REF = window.REF || {};
   }
 
   function onPointerMove(e) {
+    /* mouse look while the pointer is captured */
+    if (REF.Pointer.isLocked()) {
+      if (!REF.Game.match || REF.Game.paused || REF.UI.currentScreen()) return;
+      var mx = e.movementX || 0, my = e.movementY || 0;
+      if (!mx && !my) return;
+      REF.Game.cam.yaw -= mx * 0.0026;
+      REF.Game.cam.pitch = U.clamp(REF.Game.cam.pitch + my * 0.0019, 0.04, 1.15);
+      REF.Game.cam.dragT = 1.5;
+      return;
+    }
     if (!dragging) return;
     var dx = e.clientX - lastX;
     var dy = e.clientY - lastY;
@@ -575,6 +665,27 @@ window.REF = window.REF || {};
     camera.lookAt(lookX, 1.35 + REF.Ref.y * 0.6, lookZ);
   }
 
+  /* ------------------------------------------------------------- crosshair */
+  var aimTick = 0;
+
+  function updateAim() {
+    var cross = document.getElementById('crosshair');
+    if (!cross) return;
+    var tool = REF.UI.tool();
+    var armed = tool === 'yellow' || tool === 'red' || tool === 'talk';
+    var live = REF.Pointer.isLocked() && !!REF.Game.match && !REF.Game.paused;
+    var hot = false;
+    if (armed && live) {
+      var p = pickPlayer(window.innerWidth / 2, window.innerHeight / 2);
+      hot = !!p;
+      REF.Game.aimPlayer = p;
+    } else {
+      REF.Game.aimPlayer = null;
+    }
+    cross.classList.toggle('on', live);
+    cross.classList.toggle('hot', hot);
+  }
+
   /* --------------------------------------------------------------- loop */
   function frame(now) {
     requestAnimationFrame(frame);
@@ -596,6 +707,12 @@ window.REF = window.REF || {};
 
     if (REF.Ref.ch) REF.Actors.animate(REF.Ref.ch, dt, t);
     if (REF.Game.match) REF.UI.updateHUD(REF.Game.match, REF.Ref);
+
+    if (now - aimTick > 90) {
+      aimTick = now;
+      updateAim();
+      REF.Pointer.refresh();
+    }
 
     REF.Engine.renderer.render(REF.Engine.scene, REF.Engine.camera);
   }
@@ -630,6 +747,14 @@ window.REF = window.REF || {};
     window.addEventListener('pointerup', onPointerUp);
     dom.addEventListener('wheel', onWheel, { passive: false });
     dom.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+    var hint = document.getElementById('lockhint');
+    if (hint) {
+      hint.addEventListener('click', function () {
+        REF.Audio.resume();
+        REF.Pointer.lock();
+      });
+    }
 
     document.addEventListener('visibilitychange', function () {
       if (document.hidden && REF.Game.match && !REF.Game.match.ended) REF.Game.pause();

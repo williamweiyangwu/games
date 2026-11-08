@@ -37,6 +37,8 @@ REF.UI = (function () {
     }
     currentScreen = name;
     $('hud').classList.toggle('on', !name || name === 'pause' || name === 'result');
+    if (name && REF.Pointer) REF.Pointer.unlock();
+    if (REF.Pointer) REF.Pointer.refresh();
   }
 
   /* --------------------------------------------------------------- toasts */
@@ -73,6 +75,13 @@ REF.UI = (function () {
     var d = REF.Save.data;
     pts.textContent = d.points + ' PTS';
     $('menu-stats').textContent = d.stats.matches + ' matches · ' + (d.stats.yellows + d.stats.reds) + ' cards · ' + d.stats.whistles + ' whistles';
+    var sub = $('lt-sub');
+    if (sub && REF.Tour) {
+      var t = REF.Tour.state();
+      if (!t) sub.textContent = 'Random draw · knockout';
+      else if (t.done) sub.textContent = D.TEAMS[t.champ].name + ' won it';
+      else sub.textContent = t.comp + ' · ' + REF.Tour.stageName(t.round);
+    }
   }
 
   function buildMatchList() {
@@ -193,6 +202,129 @@ REF.UI = (function () {
     $('ach-points').textContent = d.points + ' PTS';
   }
 
+  /* ---------------------------------------------------------- tournament */
+  function teamChip(id) {
+    var i = h('i', 'chip');
+    var t = D.TEAMS[id];
+    i.style.background = t.shirt;
+    if (t.shirt2) {
+      i.style.backgroundImage = 'repeating-linear-gradient(90deg,' + t.shirt + ' 0 4px,' + t.shirt2 + ' 4px 8px)';
+    }
+    return i;
+  }
+
+  function buildTour() {
+    var body = $('tour-body');
+    if (!body) return;
+    body.innerHTML = '';
+    var t = REF.Tour.state();
+    if (!t) renderTourPicker(body);
+    else renderBracket(body, t);
+  }
+
+  function renderTourPicker(body) {
+    body.appendChild(h('p', 'tour-lead',
+      'Pick a competition and the draw does the rest. You referee the first tie of every round — the other results come in on their own.'));
+    var grid = h('div', 'tour-cards');
+    D.TOURNAMENTS.forEach(function (c) {
+      var card = h('button', 'tcard');
+      card.type = 'button';
+      card.appendChild(h('div', 'tcard-kick', 'NEW DRAW'));
+      card.appendChild(h('h3', null, c.name));
+      card.appendChild(h('p', null, c.blurb));
+      var chips = h('div', 'tchips');
+      c.pool.forEach(function (id) { chips.appendChild(teamChip(id)); });
+      card.appendChild(chips);
+      card.addEventListener('click', function () {
+        REF.Audio.click();
+        REF.Tour.start(c.id);
+        buildTour();
+      });
+      grid.appendChild(card);
+    });
+    body.appendChild(grid);
+  }
+
+  function tieNode(tie) {
+    var node = h('div', 'btie' + (tie.player ? ' you' : '') + (tie.done ? ' done' : ''));
+    [['h', tie.h, tie.hs], ['a', tie.a, tie.as]].forEach(function (row) {
+      var r = h('div', 'trow' + (tie.done && tie.winner === row[1] ? ' win' : ''));
+      r.appendChild(teamChip(row[1]));
+      r.appendChild(h('span', null, D.TEAMS[row[1]].abbr));
+      if (row[2] !== null && row[2] !== undefined) r.appendChild(h('b', null, String(row[2])));
+      node.appendChild(r);
+    });
+    if (tie.note) node.appendChild(h('div', 'tnote', tie.note));
+    if (tie.player && !tie.done) node.appendChild(h('div', 'tyou', 'YOU REFEREE'));
+    return node;
+  }
+
+  function renderBracket(body, t) {
+    var head = h('div', 'tour-head');
+    var left = h('div');
+    left.appendChild(h('div', 'tour-comp', t.comp + ' · ' + t.year));
+    left.appendChild(h('div', 'tour-status',
+      t.done ? 'COMPLETE' : REF.Tour.stageName(t.round) + ' · ' + t.alive.length + ' teams left'));
+    head.appendChild(left);
+    if (t.champ) {
+      var ch = h('div', 'tour-champ');
+      ch.appendChild(h('span', 'tc-kick', 'CHAMPIONS'));
+      ch.appendChild(teamChip(t.champ));
+      ch.appendChild(h('b', null, D.TEAMS[t.champ].name));
+      head.appendChild(ch);
+    }
+    body.appendChild(head);
+
+    var grid = h('div', 'bracket');
+    for (var r = 0; r < 3; r++) {
+      var col = h('div', 'bcol');
+      col.appendChild(h('div', 'bcol-head', D.ROUND_NAMES[r]));
+      var list = h('div', 'blist');
+      var ties = t.rounds[r];
+      if (!ties) list.appendChild(h('div', 'btie empty', 'to be decided'));
+      else ties.forEach(function (tie) { list.appendChild(tieNode(tie)); });
+      col.appendChild(list);
+      grid.appendChild(col);
+    }
+    body.appendChild(grid);
+
+    var foot = h('div', 'tour-foot');
+    if (!t.done) {
+      var tie = REF.Tour.fixture();
+      var btn = h('button', 'btn primary tour-go');
+      btn.type = 'button';
+      btn.innerHTML = '<b>Referee ' + D.TEAMS[tie.h].name + ' v ' + D.TEAMS[tie.a].name +
+        '</b><em>' + REF.Tour.stageName(t.round) + ' · ' + t.venue + '</em>';
+      btn.addEventListener('click', function () {
+        REF.Audio.click();
+        REF.Tour.play();
+      });
+      foot.appendChild(btn);
+    } else {
+      var again = h('button', 'btn primary tour-go');
+      again.type = 'button';
+      again.innerHTML = '<b>New tournament</b><em>Fresh draw</em>';
+      again.addEventListener('click', function () {
+        REF.Audio.click();
+        REF.Tour.reset();
+        buildTour();
+      });
+      foot.appendChild(again);
+    }
+    var abandon = h('button', 'btn tour-abandon');
+    abandon.type = 'button';
+    abandon.innerHTML = '<b>Abandon</b><em>Start over</em>';
+    abandon.addEventListener('click', function () {
+      REF.Audio.click();
+      if (confirm('Abandon this tournament?')) {
+        REF.Tour.reset();
+        buildTour();
+      }
+    });
+    foot.appendChild(abandon);
+    body.appendChild(foot);
+  }
+
   /* -------------------------------------------------------------- toolbox */
   function buildToolbox() {
     var box = $('toolbox');
@@ -234,11 +366,14 @@ REF.UI = (function () {
     } else {
       updatePromptNow();
     }
+    if (REF.Pointer && (id === 'yellow' || id === 'red' || id === 'talk')) REF.Pointer.lock();
   }
 
   function openToolbox(open) {
     $('toolbox').classList.toggle('on', open);
+    if (open && REF.Pointer) REF.Pointer.unlock();
     if (!open && (tool === 'yellow' || tool === 'red' || tool === 'talk')) selectTool(null);
+    if (REF.Pointer) REF.Pointer.refresh();
   }
 
   function openBook() {
@@ -254,6 +389,7 @@ REF.UI = (function () {
       list.appendChild(row);
     });
     panel.classList.add('on');
+    if (REF.Pointer) REF.Pointer.unlock();
   }
 
   /* ------------------------------------------------------------- dialogue */
@@ -299,6 +435,7 @@ REF.UI = (function () {
 
     $('dialogue').classList.add('on');
     REF.Game.paused = true;
+    if (REF.Pointer) { REF.Pointer.unlock(); REF.Pointer.refresh(); }
 
     var key = p.team + ':' + p.idx;
     if (!REF.Save.data.talkedTo[key]) {
@@ -356,6 +493,7 @@ REF.UI = (function () {
     $('dialogue').classList.remove('on');
     REF.Game.paused = false;
     dialoguePlayer = null;
+    if (REF.Pointer) { REF.Pointer.lock(); REF.Pointer.refresh(); }
   }
 
   /* -------------------------------------------------------------- card fx */
@@ -378,7 +516,8 @@ REF.UI = (function () {
     $('intro-hc').style.background = D.TEAMS[m.home].shirt;
     $('intro-ac').style.background = D.TEAMS[m.away].shirt;
     $('intro-venue').textContent = m.venue;
-    $('intro-score').textContent = m.score;
+    $('intro-reslabel').textContent = m.tournament ? 'Knockout tie' : 'Historic result';
+    $('intro-score').textContent = m.tournament ? '—' : m.score;
     $('intro').classList.add('on');
     setTimeout(function () { $('intro').classList.remove('on'); }, 3000);
   }
@@ -425,6 +564,10 @@ REF.UI = (function () {
       sc.classList.add('pop');
     }
     $('sb-clock').textContent = U.fmtClock(match.min) + (match.half === 2 ? '  2H' : '');
+    var frozen = match.freezeT > 0;
+    $('sb-clock').classList.toggle('frozen', frozen);
+    var ps = $('playstop');
+    if (ps) ps.classList.toggle('on', frozen);
     $('sb-comp').textContent = match.data.comp + ' · ' + match.data.stage + ' · ' + match.data.year;
 
     $('sb-n0').textContent = match.teams[0].info.abbr;
@@ -503,6 +646,34 @@ REF.UI = (function () {
     $('res-home').textContent = match.teams[0].info.name;
     $('res-away').textContent = match.teams[1].info.name;
     $('res-pts').textContent = '+' + pts + ' PTS';
+    $('res-kicker').textContent = match.data.tournament
+      ? match.data.stage.toUpperCase() + ' · FULL TIME'
+      : 'FULL TIME';
+
+    var note = $('res-note');
+    if (match.data.tournament && match.tourOutcome) {
+      var o = match.tourOutcome;
+      note.textContent = o.done
+        ? D.TEAMS[o.champion].name + ' lift the trophy'
+        : D.TEAMS[o.advanced].name + ' go through';
+      note.classList.add('on');
+    } else {
+      note.textContent = '';
+      note.classList.remove('on');
+    }
+
+    var again = $('btn-result-again');
+    if (match.data.tournament) {
+      var t = REF.Tour.state();
+      if (t && !t.done) {
+        again.innerHTML = '<b>Next round</b><em>' + REF.Tour.stageName(t.round) + ' awaits</em>';
+      } else {
+        again.innerHTML = '<b>See the bracket</b><em>The trophy is decided</em>';
+      }
+    } else {
+      again.innerHTML = '<b>Referee it again</b><em>Same fixture</em>';
+    }
+
     $('res-stats').innerHTML = '';
     var rows = [
       ['Fouls called', match.stats.fouls],
@@ -563,7 +734,11 @@ REF.UI = (function () {
     $('btn-restart').addEventListener('click', function () { REF.Audio.click(); REF.Game.restart(); });
     $('btn-quit').addEventListener('click', function () { REF.Audio.click(); REF.Game.quit(); });
     $('btn-result-menu').addEventListener('click', function () { REF.Audio.click(); REF.Game.quit(); });
-    $('btn-result-again').addEventListener('click', function () { REF.Audio.click(); REF.Game.restart(); });
+    $('btn-result-again').addEventListener('click', function () {
+      REF.Audio.click();
+      if (REF.Game.tourResult && REF.Tour) REF.Tour.continueFromResult();
+      else REF.Game.restart();
+    });
     $('btn-close-book').addEventListener('click', function () { REF.Audio.click(); $('book').classList.remove('on'); selectTool(null); });
     $('dlg-close').addEventListener('click', closeDialogue);
     $('toolbox-toggle').addEventListener('click', function (ev) {
@@ -571,6 +746,16 @@ REF.UI = (function () {
       REF.Audio.click();
       openToolbox(!$('toolbox').classList.contains('on'));
     });
+
+    var tourBtn = $('btn-tour');
+    if (tourBtn) {
+      tourBtn.addEventListener('click', function () {
+        REF.Audio.resume();
+        REF.Audio.click();
+        buildTour();
+        show('tour');
+      });
+    }
 
     $('btn-reset').addEventListener('click', function () {
       if (confirm('Erase all progress — points, skins and achievements?')) {
@@ -601,11 +786,15 @@ REF.UI = (function () {
     buildSkins: buildSkins,
     buildAch: buildAch,
     buildMatchList: buildMatchList,
+    buildTour: buildTour,
     setPrompt: setPrompt,
     flash: flash,
     currentScreen: function () { return currentScreen; },
     tool: function () { return tool; },
-    closeBook: function () { $('book').classList.remove('on'); },
+    closeBook: function () {
+      $('book').classList.remove('on');
+      if (REF.Pointer) REF.Pointer.lock();
+    },
     isDialogueOpen: function () { return $('dialogue').classList.contains('on'); },
     hideIntro: function () { $('intro').classList.remove('on'); }
   };

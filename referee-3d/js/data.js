@@ -94,8 +94,32 @@ REF.DATA = (function () {
       shorts: '#ffffff', socks: '#1b4fa0',
       squad: ['G. Donnarumma', 'L. Bonucci', 'G. Chiellini', 'Emerson', 'L. Spinazzola', 'Jorginho',
         'M. Verratti', 'N. Barella', 'L. Insigne', 'C. Immobile', 'F. Chiesa']
+    },
+    bar: {
+      name: 'Barcelona', abbr: 'BAR', shirt: '#a50044', shirt2: '#004d98',
+      shorts: '#004d98', socks: '#a50044',
+      squad: ['V. Valdés', 'D. Alves', 'G. Piqué', 'C. Puyol', 'J. Alba', 'S. Busquets',
+        'X. Hernández', 'A. Iniesta', 'L. Messi', 'S. Eto\'o', 'T. Henry']
     }
   };
+
+  /* ---------------------------------------------------------- tournaments */
+  var TOURNAMENTS = [
+    {
+      id: 'wc', name: 'World Cup', comp: 'WORLD CUP',
+      blurb: 'Eight nations, drawn at random. Three knockout ties between you and the trophy.',
+      pool: ['arg', 'fra', 'esp', 'ned', 'ger', 'eng', 'bra', 'ita'],
+      venues: ['Lusail Stadium', 'Maracanã', 'Wembley', 'Estadio Azteca', 'Soccer City', 'Allianz Arena']
+    },
+    {
+      id: 'ucl', name: 'Champions League', comp: 'CHAMPIONS LEAGUE',
+      blurb: 'Eight clubs, drawn at random. European nights, no second legs.',
+      pool: ['liv', 'mil', 'mun', 'bay', 'rma', 'juv', 'atm', 'bar'],
+      venues: ['Wembley', 'San Siro', 'Santiago Bernabéu', 'Allianz Arena', 'Anfield', 'Camp Nou']
+    }
+  ];
+
+  var ROUND_NAMES = ['Quarter-final', 'Semi-final', 'Final'];
 
   var MATCHES = [
     {
@@ -170,7 +194,9 @@ REF.DATA = (function () {
     { id: 'full90', name: 'Full Time', desc: 'Complete a full match.', pts: 50 },
     { id: 'tutorial', name: 'Academy', desc: 'Finish the tutorial.', pts: 100 },
     { id: 'whistler', name: 'Whistle Happy', desc: 'Blow 50 whistles across your career.', pts: 60 },
-    { id: 'collector', name: 'Wardrobe', desc: 'Unlock three referee kits.', pts: 60 }
+    { id: 'collector', name: 'Wardrobe', desc: 'Unlock three referee kits.', pts: 60 },
+    { id: 'tour_tie', name: 'Knockout', desc: 'Take charge of a tournament tie.', pts: 45 },
+    { id: 'tour_champ', name: 'The Trophy', desc: 'Referee a tournament all the way to the final whistle.', pts: 180 }
   ];
 
   var DIALOGUE = {
@@ -236,5 +262,8 @@ REF.DATA = (function () {
     { id: 'book', name: 'Notebook', key: '5', glyph: '▤', hint: 'Review the match log' }
   ];
 
-  return { TEAMS: TEAMS, MATCHES: MATCHES, SKINS: SKINS, ACH: ACH, DIALOGUE: DIALOGUE, TOOLS: TOOLS };
+  return {
+    TEAMS: TEAMS, MATCHES: MATCHES, SKINS: SKINS, ACH: ACH, DIALOGUE: DIALOGUE, TOOLS: TOOLS,
+    TOURNAMENTS: TOURNAMENTS, ROUND_NAMES: ROUND_NAMES
+  };
 })();

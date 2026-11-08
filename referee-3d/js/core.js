@@ -49,7 +49,9 @@ REF.Save = (function () {
       stats: { matches: 0, whistles: 0, yellows: 0, reds: 0, goals: 0, talks: 0, offsides: 0, fouls: 0, seconds: 0 },
       talkedTo: {},
       tutorial: { done: false },
-      history: []
+      history: [],
+      tournament: null,
+      tourCups: 0
     };
   }
 
@@ -73,6 +75,8 @@ REF.Save = (function () {
             if (p.talkedTo) d.talkedTo = p.talkedTo;
             if (p.tutorial) d.tutorial = { done: !!p.tutorial.done };
             if (Array.isArray(p.history)) d.history = p.history.slice(0, 20);
+            if (p.tournament && Array.isArray(p.tournament.rounds)) d.tournament = p.tournament;
+            if (typeof p.tourCups === 'number') d.tourCups = p.tourCups;
           }
         } catch (e) { /* corrupted save, start clean */ }
       }

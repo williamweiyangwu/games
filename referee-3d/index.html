@@ -41,6 +41,7 @@
       </div>
     </div>
     <div class="sb-comp" id="sb-comp">WORLD CUP · FINAL · 2022</div>
+    <div class="playstop" id="playstop">PLAY STOPPED</div>
   </div>
 
   <div id="ticker"></div>
@@ -58,17 +59,21 @@
       <div class="bar"><i id="stamina-bar"></i></div>
     </div>
     <div class="hintline">
-      <b>WASD</b> move · <b>SHIFT</b> sprint · <b>SPACE</b> jump · <b>E</b> toolbox · <b>T</b> talk · <b>LMB</b> whistle · <b>RMB</b> look
+      <b>WASD</b> move · <b>SHIFT</b> sprint · <b>SPACE</b> jump · <b>E</b> toolbox · <b>T</b> talk · <b>LMB</b> whistle · <b>MOUSE</b> look
     </div>
   </div>
 
   <div class="hud-bc"><div class="prompt" id="prompt"></div></div>
   <div class="hud-tc"><div class="objectives" id="objectives"></div></div>
 
+  <div id="crosshair"></div>
+
   <button id="toolbox-toggle" type="button" title="Toolbox (E)">
     <span>▣</span><em>E</em>
   </button>
 </div>
+
+<div id="lockhint"><b>Click to look around</b><em>Your mouse is free — click the pitch to take control again</em></div>
 
 <!-- ============================ TOOLBOX ============================ -->
 <div id="toolbox"></div>
@@ -115,7 +120,7 @@
     <div class="intro-meta">
       <span id="intro-venue">Lusail Stadium</span>
       <span class="dot">·</span>
-      <span>Historic result <b id="intro-score">3–3</b></span>
+      <span><span id="intro-reslabel">Historic result</span> <b id="intro-score">3–3</b></span>
     </div>
     <div class="intro-role">YOU ARE THE REFEREE</div>
   </div>
@@ -144,6 +149,10 @@
         <span id="menu-points">0 PTS</span>
         <span id="menu-stats">0 matches</span>
       </div>
+      <button class="lobby-tour" id="btn-tour" type="button">
+        <span class="lt-ico">✦</span>
+        <span class="lt-body"><b>Tournament</b><em id="lt-sub">Random draw · knockout</em></span>
+      </button>
     </div>
   </section>
 
@@ -157,6 +166,19 @@
         </div>
       </header>
       <div class="match-grid" id="match-grid"></div>
+    </div>
+  </section>
+
+  <section class="screen" id="scr-tour">
+    <div class="page">
+      <header class="page-head">
+        <button class="back" data-back="1" type="button">← Back</button>
+        <div>
+          <h2>Tournament</h2>
+          <p>Eight teams, drawn at random. Quarter-final, semi-final, final — you take charge of one tie each round.</p>
+        </div>
+      </header>
+      <div id="tour-body"></div>
     </div>
   </section>
 
@@ -206,7 +228,7 @@
         <div><b>SPACE</b><span>jump</span></div>
         <div><b>E</b><span>toolbox</span></div>
         <div><b>LMB</b><span>blow the whistle</span></div>
-        <div><b>RMB drag</b><span>look around</span></div>
+        <div><b>MOUSE</b><span>look around (locked)</span></div>
         <div><b>T</b><span>talk to nearest player</span></div>
         <div><b>1 – 5</b><span>quick tools</span></div>
       </div>
@@ -215,12 +237,13 @@
 
   <section class="screen" id="scr-result">
     <div class="result-wrap">
-      <div class="res-kicker">FULL TIME</div>
+      <div class="res-kicker" id="res-kicker">FULL TIME</div>
       <div class="res-row">
         <span id="res-home">Argentina</span>
         <b id="res-score">0 – 0</b>
         <span id="res-away">France</span>
       </div>
+      <div class="res-note" id="res-note"></div>
       <div class="res-pts" id="res-pts">+25 PTS</div>
       <div class="res-stats" id="res-stats"></div>
       <div class="res-actions">
@@ -237,6 +260,7 @@
 <script src="js/core.js"></script>
 <script src="js/actors.js"></script>
 <script src="js/match.js"></script>
+<script src="js/tour.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/main.js"></script>
 </body>
