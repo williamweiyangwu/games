@@ -281,6 +281,21 @@ b{font-weight:700}
   letter-spacing:.18em;color:#ffd98a;white-space:nowrap;font-weight:700}
 
 /* prompt */
+/* the crate in reach: name and numbers, sitting on top of the take prompt so
+   you read the weapon and the decision in one glance */
+#lootCard{position:absolute;left:50%;top:60%;transform:translate(-50%,calc(-100% - 9px));
+  min-width:224px;padding:8px 13px 9px;background:rgba(8,11,17,.88);
+  border:1px solid rgba(255,196,77,.26);border-radius:2px;
+  opacity:0;transition:opacity .15s}
+#lootCard.show{opacity:1}
+.lc-head{display:flex;justify-content:space-between;align-items:baseline;gap:16px}
+.lc-name{font-size:12px;font-weight:800;letter-spacing:.06em;color:#fff;white-space:nowrap}
+.lc-tag{font-size:7px;letter-spacing:.22em;color:#ffc44d}
+.lc-stats{display:flex;gap:16px;margin-top:7px}
+.lc-stat{display:flex;flex-direction:column;gap:3px;font-size:7px;letter-spacing:.18em;color:#6f7c90}
+.lc-stat b{font:700 13px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:#dfe7f2;
+  font-variant-numeric:tabular-nums}
+
 #prompt{position:absolute;left:50%;top:60%;transform:translateX(-50%);font-size:11px;letter-spacing:.16em;
   color:#dfe6f2;background:rgba(8,11,17,.82);border:1px solid rgba(255,196,77,.45);padding:7px 15px;
   border-radius:2px;opacity:0;transition:opacity .15s}
@@ -630,23 +645,9 @@ b{font-weight:700}
 #lockHint b{color:#ffd76a}
 
 /* ============================================================
-   MAP NAME + KING OF THE HILL
+   MAP NAME
    ============================================================ */
 .map-name{font-size:8px;letter-spacing:.26em;color:#5c6779;margin-top:2px}
-
-/* The hill meter sits above the objective strip, over open sky on most maps —
-   bare grey text there was almost invisible, so it gets the same dark plate the
-   objective banner uses. */
-#hillBar{position:fixed;left:50%;top:120px;transform:translateX(-50%);
-  width:260px;display:none;flex-direction:column;gap:4px;z-index:22;pointer-events:none;
-  padding:5px 10px 6px;background:rgba(8,11,17,.62);border:1px solid rgba(255,255,255,.10);
-  border-radius:2px}
-#hillBar.show{display:flex}
-.hb-head{display:flex;justify-content:space-between;align-items:center;
-  font:700 8px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.2em;color:#cfd8e6}
-.hb-head .hb-tag{color:#93a1b6}
-.hb-track{height:5px;background:rgba(8,11,17,.62);border:1px solid rgba(255,255,255,.12);border-radius:1px;overflow:hidden}
-.hb-fill{height:100%;width:0%;background:#7fe08a;transition:width .12s linear}
 
 /* ============================================================
    VOTE
@@ -662,9 +663,13 @@ b{font-weight:700}
 .vote-bar{height:2px;background:rgba(255,255,255,.08);margin-bottom:12px;overflow:hidden}
 .vote-bar i{display:block;height:100%;width:100%;background:var(--gold);transition:width .25s linear}
 
-.vote-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.vote-cols{display:grid;grid-template-columns:1fr;gap:16px}
 .vote-col-h{font-size:8px;letter-spacing:.3em;color:#5f6b80;margin-bottom:7px}
-.vote-list{display:flex;flex-direction:column;gap:5px}
+.vote-col-h b{color:#93a1b6;letter-spacing:.14em}
+/* three cards across: the map vote is one decision, not a list to scroll */
+.vote-list{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.vote-wait{grid-column:1/-1;padding:14px 0;text-align:center;
+  font-size:9px;letter-spacing:.24em;color:#5f6b80}
 .vote-card{position:relative;padding:7px 10px;border:1px solid var(--line);border-radius:2px;
   background:rgba(255,255,255,.025);cursor:pointer;transition:.14s;overflow:hidden}
 .vote-card:hover{border-color:rgba(255,255,255,.3);background:rgba(255,255,255,.06)}
@@ -687,6 +692,12 @@ b{font-weight:700}
   font-size:11px;letter-spacing:.08em;color:#e8dfc8;text-align:center}
 .vote-result.show{display:block}
 .vote-result b{color:var(--gold)}
+
+/* the count back to the lobby, offline */
+.end-auto{min-height:14px;margin:2px 0 14px;font-size:9px;letter-spacing:.22em;
+  color:#7f8b9f;text-align:center}
+.end-auto:empty{display:none}
+.end-auto b{color:var(--gold);font-variant-numeric:tabular-nums}
 
 /* map picker */
 .map-block{margin-top:18px}
