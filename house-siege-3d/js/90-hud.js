@@ -27,9 +27,7 @@ function startGoldenPoint() {
   Snd.tone(560, 900, 0.28, 0.22, 'triangle');
   setTimeout(() => Snd.tone(900, 1200, 0.3, 0.18, 'triangle'), 160);
   banner('<span class="hl">GOLDEN POINT</span> — ' +
-    (G.mode === 'flag' ? 'THE NEXT CAPTURE WINS'
-      : G.mode === 'koth' ? 'THE NEXT SECOND ON THE HILL WINS'
-        : 'THE NEXT KILL WINS'), 5);
+    (G.mode === 'flag' ? 'THE NEXT CAPTURE WINS' : 'THE NEXT KILL WINS'), 5);
   $('clock').classList.add('gold');
 }
 
@@ -65,8 +63,21 @@ function endMatch() {
   else if (win === mine) Ach.bump('wins');
   else Ach.bump('losses');
 
-  /* hand over to the vote for the next match */
-  voteBegin(win);
+  /* A room votes on the next map. Alone, there is nothing to vote on: the
+     card is a result, so it counts you back to the lobby. */
+  $('endAuto').textContent = '';
+  const voting = !!(NET.room && voteBegin(win));
+  if (voting) {
+    $('btnAgain').textContent = 'DEPLOY NOW';
+    $('btnMenu').textContent = 'LEAVE ROOM';
+    $('btnMenu').style.display = '';
+    const vm = $('voteModeName');
+    if (vm) vm.textContent = modeDef(VOTE.mode || G.mode).name;
+  } else {
+    $('btnAgain').textContent = 'RETURN TO LOBBY';
+    $('btnMenu').style.display = 'none';
+    beginLobbyReturn();
+  }
 }
 
 
@@ -267,8 +278,8 @@ function updateHUD(dt) {
   $('scoreRed').textContent = G.score.red;
   $('scoreBlue').textContent = G.score.blue;
   /* the caption is part of the mode definition, not a flag/TDM special case:
-     the hill scores seconds held and last stand scores a round, so hard-coding
-     "KILLS" left both of them mislabelled for the whole match */
+     last stand scores a round rather than kills, so hard-coding "KILLS" left
+     it mislabelled for the whole match */
   const capLabel = modeDef(G.mode).scoreLabel;
   $('capRed').textContent = capLabel;
   $('capBlue').textContent = capLabel;
