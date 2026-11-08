@@ -112,13 +112,6 @@ const HT_PAGES = [
       <li>The team with the most captures when the clock hits 0:00 wins.</li>
       <li>Respawn after <b>3 seconds</b>. Carriers are marked on the HUD.</li>
     </ul>
-    <h3><span class="g">KING OF THE HILL</span> — first to 90</h3>
-    <ul>
-      <li>One <b>circle in the middle of the map</b> — a lit column you can see over the walls. On a map with a platform, it is on top of it.</li>
-      <li>Stand in it with <b>no enemy inside</b> and your score climbs <b>1 point per second</b>.</li>
-      <li>Both teams inside = <span class="accent">contested</span>: nobody scores until one side is cleared out.</li>
-      <li>First team to <b>90</b> wins; most time held at 0:00 otherwise.</li>
-    </ul>
     <h3><span class="b">LAST STAND</span> — one round</h3>
     <ul>
       <li><b>One life each, no respawns.</b> Die and you stay down, watching, until the match is decided.</li>
@@ -128,13 +121,13 @@ const HT_PAGES = [
     <h4>GOLDEN POINT</h4>
     <p>If the clock runs out with the scores <b>level</b>, the match does not end in a draw — it goes to
     <span class="accent">golden point</span>. The next score wins it outright: the next kill in Team Deathmatch,
-    the next capture in Flag Raid, the next second held in King of the Hill. A suicide leaves both scores untouched,
-    so the round simply plays on.</p>
-    <h4>AFTER THE MATCH — THE VOTE</h4>
-    <p>Every match ends on a <b>vote</b>, not a menu. Everyone in the room gets a say — you by clicking a mode
-    and a map, every AI operator on a timer of its own. The counts update live, the timer runs
-    <b>25 seconds</b>, and whatever won is what you play next. <b>DEPLOY NOW</b> skips the wait and starts the
-    current leader immediately.</p>
+    the next capture in Flag Raid. A suicide leaves both scores untouched, so the round simply plays on.</p>
+    <h4>AFTER THE MATCH</h4>
+    <p><b>Alone against the AI</b> the match ends on the result card, which counts you back to the
+    <b>lobby</b> after ten seconds — <b>RETURN TO LOBBY</b> goes straight away.</p>
+    <p><b>Online</b> the room votes for the <b>next map only</b>: three maps are on the card, every human in the
+    room gets one pick, and the mode stays whatever the host chose when the room opened. The timer runs
+    <b>20 seconds</b>; if the pick is tied the host rolls between the leaders. <b>DEPLOY NOW</b> skips the wait.</p>
     <h4>WHEN YOU GO DOWN</h4>
     <p>The camera stays in the arena: first over your own body, then it swings onto
     <span class="accent">whoever killed you</span> and follows them until you respawn —
@@ -198,8 +191,8 @@ const HT_PAGES = [
     <ul>
       <li><b>Hosting</b> — pick a mode, a map, a visibility, whether AI squads join, and how hard they are. You get a
       four-character <b>invite code</b> the moment the room opens.</li>
-      <li><b>Every mode is playable online</b> — deathmatch, flag raid, king of the hill and last stand. The mode and
-      map are chosen when the room is hosted; after that the end-of-match vote decides.</li>
+      <li><b>Every mode is playable online</b> — deathmatch, flag raid and last stand. The mode and map are chosen
+      when the room is hosted; after that only the <b>map</b> is voted on, so the room keeps the mode it opened with.</li>
       <li><b>Public</b> rooms appear in the room list for everyone connected, and can also be joined by code.</li>
       <li><b>Private</b> rooms never appear in the list. The invite code is the only way in.</li>
       <li><b>AI squads</b> — with AI on, your machine also simulates a bot squad that fights you and the other
@@ -209,19 +202,22 @@ const HT_PAGES = [
     <h4>Who judges the objective</h4>
     <p>Bots are simulated separately on every machine, so two computers can never agree about where a bot is
     standing. Objectives are therefore judged by the <b>host</b>, from the human players in the room, and broadcast:
-    a flag is carried, dropped and captured on the host, the hill counts the seconds the host sees you standing in
-    it, and a last-stand round ends when the host sees a team's humans go down. Every other machine draws that
-    state. Bots still shoot at you — they just never score, which is how a kill already worked online.</p>
+    a flag is carried, dropped and captured on the host, and a last-stand round ends when the host sees a team's
+    humans go down. Every other machine draws that state. Bots still shoot at you — they just never score, which is
+    how a kill already worked online.</p>
     <h4>What to expect from the netcode</h4>
     <p>Each player owns their own body: your position and health are yours, and a hit you land is sent to the
     person you hit. The host owns the scoreboard and the clock, so two machines can never disagree about the
     score. Other players are drawn by interpolating the last position they sent, which keeps them smooth even
     when a public broker is slow — a round trip of 100–700 ms is normal, so lead your shots at range.</p>
     <h4>Voting in a room</h4>
-    <p>The end-of-match vote works online too, and <b>the host counts</b>. You pick a mode and a map, the host
-    folds your vote in with its own squad's and sends the running total back, so everybody sees the same numbers.
-    When the host's timer runs out it announces the winner and every machine deploys to it — you cannot start a
-    different match by yourself, and <b>DEPLOY NOW</b> only works for the host.</p>
+    <p>When the match ends, the room votes on the <b>next map</b> — three are offered, chosen by the host so
+    everybody sees the same three. <b>Only humans vote</b>: the AI squads on your machine have no say. The
+    <b>mode never changes</b>; it stays the one the host picked when the room opened. <b>The host counts</b>, folds
+    each vote in as it arrives, and sends the running total back so every screen agrees. If two maps finish level
+    the host <b>rolls a die between them</b> rather than defaulting to one. When its timer runs out the host
+    announces the map and every machine deploys to it — you cannot start a different match by yourself, and
+    <b>DEPLOY NOW</b> only works for the host.</p>
     <h4>Achievements</h4>
     <p>Twenty-two badges, from <b>First Blood</b> to <b>Full House</b>. Everything is saved on this device the
     moment you earn it, so closing the browser or shutting the machine down does not lose progress. The
@@ -334,9 +330,11 @@ function initMenu() {
   $('btnQuit').addEventListener('click', quitToMenu);
   /* the end screen now leads with a vote, so "play again" means "deploy the
      result now" rather than silently skipping the vote */
+  /* In a room this is "deploy the vote now". Alone there is no vote to skip,
+     and the result card is a lobby door, so it goes back to the menu. */
   $('btnAgain').addEventListener('click', () => {
     if (typeof VOTE !== 'undefined' && VOTE.active) voteSkip();
-    else startGame(G.mode, G.mapId);
+    else quitToMenu();
   });
   $('btnMenu').addEventListener('click', quitToMenu);
 
