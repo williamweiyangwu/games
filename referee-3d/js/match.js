@@ -73,6 +73,15 @@ REF.Match = (function () {
       this.ball.mesh.position.set(0, BALL_R, 0);
     }
 
+    /* ground marker so a lofted ball is easy to follow */
+    this.ballRing = new THREE.Mesh(
+      new THREE.RingGeometry(0.22, 0.34, 22),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.0, depthWrite: false, side: THREE.DoubleSide })
+    );
+    this.ballRing.rotation.x = -Math.PI / 2;
+    this.ballRing.position.y = 0.02;
+    this.scene.add(this.ballRing);
+
     for (var t = 0; t < 2; t++) {
       var info = this.teams[t].info;
       var dir = this.teams[t].dir;
@@ -278,6 +287,14 @@ REF.Match = (function () {
         var axis = new THREE.Vector3(-v.z, 0, v.x).normalize();
         b.mesh.rotateOnWorldAxis(axis, (spd * dt) / BALL_R * 0.6);
       }
+    }
+
+    if (this.ballRing) {
+      this.ballRing.position.set(b.pos.x, 0.02, b.pos.z);
+      var h = b.pos.y - BALL_R;
+      this.ballRing.material.opacity = U.clamp((h - 0.45) * 0.6, 0, 0.42);
+      var sc = 1 + h * 0.14;
+      this.ballRing.scale.set(sc, sc, 1);
     }
   };
 
@@ -1047,6 +1064,12 @@ REF.Match = (function () {
     }
     this.players.length = 0;
     if (this.ball.mesh) this.ball.mesh.visible = false;
+    if (this.ballRing) {
+      this.scene.remove(this.ballRing);
+      this.ballRing.geometry.dispose();
+      this.ballRing.material.dispose();
+      this.ballRing = null;
+    }
     this.handlers = {};
   };
 

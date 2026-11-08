@@ -210,7 +210,7 @@ window.REF = window.REF || {};
     match: null,
     ballMesh: null,
     paused: false,
-    cam: { yaw: 0, pitch: 0.3, dist: 12, dragT: 0 },
+    cam: { yaw: 0, pitch: 0.34, dist: 9.5, dragT: 0 },
     tut: null,
     scene: null,
 
@@ -537,7 +537,7 @@ window.REF = window.REF || {};
   function onWheel(e) {
     if (REF.UI.currentScreen()) return;
     e.preventDefault();
-    REF.Game.cam.dist = U.clamp(REF.Game.cam.dist + e.deltaY * 0.012, 6, 22);
+    REF.Game.cam.dist = U.clamp(REF.Game.cam.dist + e.deltaY * 0.012, 5, 20);
   }
 
   /* ------------------------------------------------------------- camera */
