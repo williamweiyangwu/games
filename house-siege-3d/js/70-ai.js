@@ -59,19 +59,7 @@ function botThink(b) {
   let goal = null, kind = '';
   const p = G.player;
 
-  if (G.mode === 'koth' && HILL.active) {
-    /* The hill is the only thing that scores, so it is the only place worth
-       going — but not all of them onto the same square metre. Attackers stand
-       in it; defenders ring it, which is what stops the enemy walking in. */
-    if (b.role !== 'defend' || HILL.holder === otherTeam(b.team)) {
-      goal = HILL.pos; kind = 'hill';
-    } else {
-      if (b.hillAng === undefined) b.hillAng = Math.random() * Math.PI * 2;
-      goal = new V3(HILL.pos.x + Math.cos(b.hillAng) * (HILL.r + 1.6), HILL.pos.y,
-        HILL.pos.z + Math.sin(b.hillAng) * (HILL.r + 1.6));
-      kind = 'hillring';
-    }
-  } else if (G.mode === 'flag' && !G.netMode) {
+  if (G.mode === 'flag' && !G.netMode) {
     const enemyFlagTeam = b.team === 'red' ? 'blue' : 'red';
     const ef = G.flagState[enemyFlagTeam];
     const mf = G.flagState[b.team];
