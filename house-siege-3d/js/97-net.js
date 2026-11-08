@@ -408,6 +408,8 @@ function netLeave(quiet) {
   NET.isHost = false;
   NET.peers.clear();
   NET._wantRoom = null;
+  /* an in-flight join belongs to the room we just walked out of */
+  NET._pendingJoin = null;
   G.netMode = false;
   G.netAi = false;
   netShowChip(false);
@@ -484,6 +486,12 @@ function netOnMessage(topic, payload) {
 
   if (rest === 'cfg') {
     if (m.closed) {
+      /* "closed" is published retained, so it outlives the room. A guest that
+         has already moved to a different room — or is in the middle of joining
+         one — must not be kicked out by the death notice of the room it left.
+         Only the room we are actually standing in can close on us. */
+      const live = (NET.room && NET.room.code) || NET._pendingJoin || '';
+      if (live && m.code && m.code !== live) return;
       netToast('The host closed the room.');
       netLeave(true);
       if (G.state === 'playing' || G.state === 'paused') quitToMenu();
@@ -515,7 +523,7 @@ function netOnMessage(topic, payload) {
     /* The host decides when a match is over, and its verdict only reaches us
        as a score. Without this check a guest kept playing a round the host had
        already finished — which is every mode whose limit is small: a flag
-       capture in golden point, the 90th second on the hill, the last stand. */
+       capture in golden point, the last stand. */
     checkRoundEnd();
     return;
   }
@@ -541,6 +549,13 @@ function netOnMessage(topic, payload) {
     return;
   }
 
+  if (rest === 'vote/def') {
+    /* the host's three candidates — a guest draws exactly what it is counting */
+    if (NET.isHost) return;
+    if (VOTE.active) voteSetCands(m.maps || []);
+    return;
+  }
+
   if (rest.startsWith('vote/')) {
     /* only the host counts; a guest ignores other guests' picks and waits for
        the tally instead, so the two can never disagree */
@@ -553,7 +568,7 @@ function netOnMessage(topic, payload) {
 
   if (rest === 'tally') {
     if (NET.isHost) return;
-    VOTE.hostTally = { mode: m.mode || {}, map: m.map || {}, count: m.n || 0 };
+    VOTE.hostTally = { map: m.map || {}, count: m.n || 0 };
     if (VOTE.active) voteRender();
     return;
   }
@@ -873,7 +888,7 @@ function netSendState(force) {
    OBJECTIVE SYNC
    ------------------------------------------------------------
    Bots are simulated separately on every machine, so two clients can never
-   agree about where a flag is lying or who is standing on the hill. The
+   agree about where a flag is lying or who is carrying it. The
    objective is therefore judged by the host alone, from the humans in the
    room, and broadcast: the host's world is the only one that counts and every
    guest draws it. Bots still fight — they just never score, which is exactly
@@ -892,26 +907,20 @@ function netCarrierActor(cid) {
 
 function netPublishObj() {
   if (!NET.isHost || !NET.room || !NET.connected) return;
-  if (G.mode !== 'flag' && G.mode !== 'koth') return;
+  if (G.mode !== 'flag') return;
   const m = { m: G.mode, ts: Date.now() };
-  if (G.mode === 'flag') {
-    if (!G.flagState) return;
-    m.f = {};
-    for (const team of ['red', 'blue']) {
-      const fs = G.flagState[team];
-      m.f[team] = {
-        at: fs.at,
-        c: netCidOf(fs.carrier),
-        x: Math.round(fs.pos.x * 100) / 100,
-        y: Math.round(fs.pos.y * 100) / 100,
-        z: Math.round(fs.pos.z * 100) / 100,
-        d: Math.round((fs.dropT || 0) * 10) / 10
-      };
-    }
-  } else {
-    m.hr = Math.round(HILL.acc.red * 10) / 10;
-    m.hb = Math.round(HILL.acc.blue * 10) / 10;
-    m.h = HILL.holder || '';
+  if (!G.flagState) return;
+  m.f = {};
+  for (const team of ['red', 'blue']) {
+    const fs = G.flagState[team];
+    m.f[team] = {
+      at: fs.at,
+      c: netCidOf(fs.carrier),
+      x: Math.round(fs.pos.x * 100) / 100,
+      y: Math.round(fs.pos.y * 100) / 100,
+      z: Math.round(fs.pos.z * 100) / 100,
+      d: Math.round((fs.dropT || 0) * 10) / 10
+    };
   }
   netPub(netTopic('room/' + NET.room.code + '/obj'), m, { retain: true });
 }
@@ -926,41 +935,32 @@ function netObjCapture(a) {
 
 function netApplyObj(m) {
   if (!m || m.m !== G.mode || !G.player) return;
-
-  if (G.mode === 'flag') {
-    if (!m.f || !G.flagState) return;
-    const before = G.player.carrying;
-    for (const team of ['red', 'blue']) {
-      const s = m.f[team];
-      if (!s) continue;
-      const fs = G.flagState[team];
-      fs.at = s.at;
-      fs.dropT = s.d || 0;
-      fs.pos.set(s.x, s.y, s.z);
-      fs.carrier = s.at === 'carried' ? netCarrierActor(s.c) : null;
-    }
-    /* mirror the carriers onto the bodies we can see */
-    G.player.carrying = null;
-    for (const a of NET.remoteList) a.carrying = null;
-    for (const team of ['red', 'blue']) {
-      const c = G.flagState[team].carrier;
-      if (c) c.carrying = team;
-    }
-    const now = G.player.carrying;
-    if (now && !before) {
-      Snd.flag();
-      banner('YOU HAVE THE <span class="hl">' + now.toUpperCase() + ' FLAG</span> — RUN HOME', 3);
-      $('carryBanner').classList.add('show');
-    } else if (!now && before) {
-      $('carryBanner').classList.remove('show');
-    }
-    return;
+  if (G.mode !== 'flag') return;
+  if (!m.f || !G.flagState) return;
+  const before = G.player.carrying;
+  for (const team of ['red', 'blue']) {
+    const s = m.f[team];
+    if (!s) continue;
+    const fs = G.flagState[team];
+    fs.at = s.at;
+    fs.dropT = s.d || 0;
+    fs.pos.set(s.x, s.y, s.z);
+    fs.carrier = s.at === 'carried' ? netCarrierActor(s.c) : null;
   }
-
-  if (G.mode === 'koth') {
-    if (typeof m.hr === 'number') HILL.acc.red = m.hr;
-    if (typeof m.hb === 'number') HILL.acc.blue = m.hb;
-    HILL.holder = m.h || '';
+  /* mirror the carriers onto the bodies we can see */
+  G.player.carrying = null;
+  for (const a of NET.remoteList) a.carrying = null;
+  for (const team of ['red', 'blue']) {
+    const c = G.flagState[team].carrier;
+    if (c) c.carrying = team;
+  }
+  const now = G.player.carrying;
+  if (now && !before) {
+    Snd.flag();
+    banner('YOU HAVE THE <span class="hl">' + now.toUpperCase() + ' FLAG</span> — RUN HOME', 3);
+    $('carryBanner').classList.add('show');
+  } else if (!now && before) {
+    $('carryBanner').classList.remove('show');
   }
 }
 
@@ -1001,7 +1001,7 @@ function netTick(dt) {
     if (NET.scoreT >= 0.25) {
       NET.scoreT = 0;
       netPublishScore();
-      /* flag and hill state ride along: small, retained, and the only way a
+      /* flag state rides along: small, retained, and the only way a
          guest can know what the objective is doing on the host's machine */
       netPublishObj();
     }
@@ -1153,11 +1153,15 @@ function initNet() {
    the host folds it in with its local bots and republishes the running total,
    which every guest renders. The host is the only one that starts the match,
    and it announces the winner so nobody has to guess. */
+function netPublishVoteDef(list) {
+  if (!NET.isHost || !NET.room) return;
+  netPub(netTopic('room/' + NET.room.code + '/vote/def'), { maps: list }, { retain: true });
+}
+
 function netSendVote(kind, pick) {
   if (!NET.room) return;
   /* Remember the pick even if the socket is down: a dropped connection during
-     the vote is exactly when a guest would otherwise lose their say silently.
-     One entry per kind, so a mode and a map picked offline both survive. */
+     the vote is exactly when a guest would otherwise lose their say silently. */
   const q = (NET._pendingVotes || []).filter(v => !(v.code === NET.room.code && v.kind === kind));
   q.push({ kind: kind, pick: pick, code: NET.room.code });
   NET._pendingVotes = q;
@@ -1182,9 +1186,12 @@ function netFlushPendingVote() {
 
 function netHostVote(cid, kind, pick) {
   if (!NET.isHost || !VOTE.active) return;
-  if (kind !== 'mode' && kind !== 'map') return;
-  const rec = VOTE.votes[cid] || (VOTE.votes[cid] = { mode: '', map: '' });
-  rec[kind] = pick;
+  if (kind !== 'map') return;                     // the mode is not up for vote
+  /* a pick outside the host's three is not counted: a guest that drew a
+     different set (a stale retained card, say) must not be able to smuggle a
+     map onto the ballot */
+  if (VOTE.cands.length && VOTE.cands.indexOf(pick) < 0) return;
+  VOTE.votes[cid] = pick;
   voteRender();
   netPublishTally();
   voteCheckAll();
@@ -1194,12 +1201,13 @@ function netPublishTally() {
   if (!NET.isHost || !NET.room) return;
   const t = voteTally();
   netPub(netTopic('room/' + NET.room.code + '/tally'),
-    { mode: t.mode, map: t.map, n: t.count }, { retain: true });
+    { map: t.map, n: t.count }, { retain: true });
 }
 
 function netAnnounceNext(mode, map) {
   if (!NET.isHost || !NET.room) return;
-  NET.room.mode = mode;
+  /* the mode is whatever the room opened with; only the map can change */
+  NET.room.mode = NET.room.mode || mode;
   NET.room.map = map;
   netPub(netTopic('room/' + NET.room.code + '/ev'), { k: 'next', mode: mode, map: map });
   netPub(netTopic('room/' + NET.room.code + '/cfg'), NET.room, { retain: true });
