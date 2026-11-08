@@ -556,7 +556,10 @@ scene.add(fillLight);
 //  OCEAN
 // ============================================================
 const SEA_SIZE = 1200;
-const oceanGeo = new THREE.PlaneGeometry(SEA_SIZE * 3, SEA_SIZE * 3, 160, 160);
+// The chart is twice the size it was, so the water had to grow with it: the
+// old plane stopped 350 m past Timor and you could see the edge of the world
+// from her anchorage. Same vertex spacing as before (22.5 m), more of them.
+const oceanGeo = new THREE.PlaneGeometry(SEA_SIZE * 4.2, SEA_SIZE * 4.2, 224, 224);
 const oceanMat = new THREE.ShaderMaterial({
   uniforms: {
     time:        { value: 0 },
@@ -814,7 +817,12 @@ function buildDeckGeometry(stations) {
   });
   for (let i = 0; i < stations.length - 1; i++) {
     const a = i * 2, b = a + 1, c = a + 2, d = a + 3;
-    indices.push(a, b, c, b, d, c);
+    // wound so the plank surface faces UP. The old order gave the deck a
+    // downward normal, so with a single-sided material the whole deck was
+    // invisible from above and you looked straight into the bilges -- which
+    // the player's ship hid under its hatches and planks, and every other
+    // ship did not.
+    indices.push(a, c, b, b, c, d);
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
@@ -1903,21 +1911,33 @@ for (let i = 0; i < CLOUD_COUNT; i++) {
 // ============================================================
 //  WORLD DATA
 // ============================================================
+// Twenty ports in an ocean twice the size of the old one. The old chart ran
+// from Lisbon to Timor in fourteen islands and about 1,600 m of water; this
+// one is 2,300 m across. Lisbon stays where she was -- the whole city is built
+// around her -- and everything else has been pushed out from her, with six new
+// anchorages in the gaps: the Atlantic islands you can reach on your first
+// afternoon, and the long haul down the African coast into the Indian Ocean.
 const PORT_DEFS = [
-  { name: "Lisbon",          x: -480, z: 420,  type: "home",     discovered: true,  color: 0xc8a850 },
-  { name: "Canary Islands",  x: -60,  z: 660,  type: "spice",    color: 0x8bc34a },
-  { name: "Cape Verde",      x: 420,  z: 560,  type: "ivory",    color: 0xf0e6d0 },
-  { name: "Gold Coast",      x: 720,  z: 120,  type: "gold_ore", color: 0xffd700 },
-  { name: "Cape of Storms",  x: 380,  z: -420, type: "gems",     color: 0x9c27b0 },
-  { name: "Madagascar",      x: -80,  z: -680, type: "spice",    color: 0x4caf50 },
-  { name: "Zanzibar",        x: -520, z: -520, type: "silk",     color: 0xe91e63 },
-  { name: "Calicut",         x: -740, z: 60,   type: "spice",    color: 0xff9800 },
-  { name: "Malacca",         x: -180, z: -140, type: "silk",     color: 0x00bcd4 },
-  { name: "Goa",             x: -860, z: -430, type: "silk",     color: 0xff7043 },
-  { name: "Hormuz",          x: -320, z: -250, type: "gems",     color: 0x7e57c2 },
-  { name: "Elmina",          x: 620,  z: -170, type: "gold_ore", color: 0xd4a017 },
-  { name: "Timor",           x: 880,  z: -470, type: "spice",    color: 0xcddc39 },
-  { name: "St. Helena",      x: -620, z: 630,  type: "ivory",    color: 0xffffff },
+  { name: "Lisbon",          x: -480, z: 420,   type: "home",     discovered: true,  color: 0xc8a850 },
+  { name: "Madeira",         x: -820, z: 250,   type: "spice",    color: 0x9ccc65 },
+  { name: "Canary Islands",  x: 108,  z: 756,   type: "spice",    color: 0x8bc34a },
+  { name: "Cape Verde",      x: 780,  z: 616,   type: "ivory",    color: 0xf0e6d0 },
+  { name: "Sierra Leone",    x: 1020, z: 740,   type: "ivory",    color: 0xe8dcc0 },
+  { name: "Gold Coast",      x: 1200, z: 0,     type: "gold_ore", color: 0xffd700 },
+  { name: "Elmina",          x: 1060, z: -406,  type: "gold_ore", color: 0xd4a017 },
+  { name: "Benin",           x: 1330, z: -180,  type: "silk",     color: 0xdda0a0 },
+  { name: "Cape of Storms",  x: 724,  z: -756,  type: "gems",     color: 0x9c27b0 },
+  { name: "Mozambique",      x: 420,  z: -1060, type: "ivory",    color: 0xe6d8b8 },
+  { name: "Mombasa",         x: 760,  z: -1180, type: "spice",    color: 0xffb74d },
+  { name: "Zanzibar",        x: -536, z: -896,  type: "silk",     color: 0xe91e63 },
+  { name: "Madagascar",      x: 80,   z: -1120, type: "spice",    color: 0x4caf50 },
+  { name: "St. Helena",      x: -676, z: 714,   type: "ivory",    color: 0xffffff },
+  { name: "Hormuz",          x: -256, z: -518,  type: "gems",     color: 0x7e57c2 },
+  { name: "Malacca",         x: -60,  z: -364,  type: "silk",     color: 0x00bcd4 },
+  { name: "Calicut",         x: -844, z: -84,   type: "spice",    color: 0xff9800 },
+  { name: "Goa",             x: -1012, z: -770, type: "silk",     color: 0xff7043 },
+  { name: "Ceylon",          x: 1060, z: -1000, type: "gems",     color: 0x9575cd },
+  { name: "Timor",           x: 1424, z: -826,  type: "spice",    color: 0xcddc39 },
 ];
 
 const TRADE_GOODS = {
@@ -1977,19 +1997,25 @@ const GOODS = ['spice', 'silk', 'ivory', 'gold_ore', 'gems'];
 // pays a premium for the thing growing outside their own door.
 const PORT_WANTS = {
   'Lisbon':         null,                     // rotates; see lisbonWants()
+  'Madeira':        ['ivory', 'gems'],
   'Canary Islands': ['ivory', 'gems'],
   'Cape Verde':     ['spice', 'silk'],
+  'Sierra Leone':   ['spice', 'gold_ore'],
   'Gold Coast':     ['silk', 'ivory'],
-  'Cape of Storms': ['gold_ore', 'spice'],
-  'Madagascar':     ['silk', 'gems'],
-  'Zanzibar':       ['spice', 'gold_ore'],
-  'Calicut':        ['ivory', 'gold_ore'],
-  'Malacca':        ['spice', 'ivory'],
-  'Goa':            ['gems', 'spice'],
-  'Hormuz':         ['silk', 'ivory'],
   'Elmina':         ['silk', 'spice'],
-  'Timor':          ['gold_ore', 'silk'],
+  'Benin':          ['gold_ore', 'ivory'],
+  'Cape of Storms': ['gold_ore', 'spice'],
+  'Mozambique':     ['silk', 'spice'],
+  'Mombasa':        ['gems', 'silk'],
+  'Zanzibar':       ['spice', 'gold_ore'],
+  'Madagascar':     ['silk', 'gems'],
   'St. Helena':     ['spice', 'gems'],
+  'Hormuz':         ['silk', 'ivory'],
+  'Malacca':        ['spice', 'ivory'],
+  'Calicut':        ['ivory', 'gold_ore'],
+  'Goa':            ['gems', 'spice'],
+  'Ceylon':         ['silk', 'spice'],
+  'Timor':          ['gold_ore', 'silk'],
 };
 
 // Lisbon's two appetites for the current six-hour window. This is the heart of
@@ -3369,8 +3395,14 @@ function buildLisbon(group, island, pointAt) {
     [{ x: 46, z: 10 }, { x: 46, z: -32 }, { x: 8, z: -32 }, { x: 8, z: 10 }],
     [{ x: -60, z: -180 }, { x: 60, z: -180 }, { x: 60, z: -192 }, { x: -60, z: -192 }],
     [{ x: -70, z: 10 }, { x: -40, z: 10 }, { x: -40, z: 22 }, { x: -70, z: 22 }],
+    // four more streets' worth of traffic: the same blocks, the other side
+    [{ x: 4, z: 6 }, { x: 4, z: -32 }, { x: 1, z: -62 }, { x: 1, z: -138 }, { x: 6, z: -158 }, { x: 6, z: -58 }, { x: 4, z: -18 }],
+    [{ x: -28, z: -18 }, { x: 32, z: -18 }, { x: 32, z: -32 }, { x: -28, z: -32 }],
+    [{ x: -18, z: -66 }, { x: 22, z: -66 }, { x: 22, z: -88 }, { x: -18, z: -88 }],
+    [{ x: -58, z: -176 }, { x: 62, z: -176 }, { x: 62, z: -188 }, { x: -58, z: -188 }],
   ];
-  const ROBES = [0x6b5a3a, 0x3a4a5a, 0x7a4a3a, 0x4a5a3a, 0x5a3a4a, 0x6a6a5a];
+  const ROBES = [0x6b5a3a, 0x3a4a5a, 0x7a4a3a, 0x4a5a3a, 0x5a3a4a, 0x6a6a5a,
+                 0x7a6a4a, 0x3a5a5a, 0x5a4a6a, 0x6a5a5a];
   // Every citizen of Lisbon has a name, a trade and a temperament. Walk up to
   // one and you may talk, drink, or contend -- dice and riddles for silver.
   // `skill` is how good they are: it sets the odds they will beat you.
@@ -3381,6 +3413,10 @@ function buildLisbon(group, island, pointAt) {
     { name: "Catarina", job: "weaver",  portrait: "\u{1F9D5}", talk: "Flemish cloth and Lisbon wool" },
     { name: "Gil",     job: "porter",   portrait: "\u{1F9D4}", talk: "which crates are heavy and which lie" },
     { name: "Inês",    job: "baker",    portrait: "\u{1F9D5}", talk: "bread, and the king's new grain tax" },
+    { name: "Rui",     job: "cooper",   portrait: "\u{1F9D4}", talk: "barrels, and the wine that leaks out of them" },
+    { name: "Branca",  job: "fishmonger", portrait: "\u{1F9D5}", talk: "which fish lie about their freshness" },
+    { name: "Vasco",   job: "pilot",    portrait: "\u{1F9D3}", talk: "the bar off Cascais and the tides at Setúbal" },
+    { name: "Mécia",   job: "ropemaker", portrait: "\u{1F9D5}", talk: "hemp, and what a frayed halyard costs" },
   ];
   for (let i = 0; i < WALK_PATHS.length; i++) {
     const p = makePerson(ROBES[i], i % 2 ? 0x2a2a1a : null);
@@ -3644,10 +3680,13 @@ function buildTradePost(group, island, pointAt, def) {
     { name: 'Aruan',  job: 'hunter',        portrait: '\u{1F3F9}', talk: 'the forest paths inland' },
   ];
   const folkStart = Math.floor(island.rng() * FOLK.length);
-  for (let i = 0; i < 3; i++) {
+  // five of them now, not three: a village of two men and a trader read as a
+  // stage set. They stand inside the ring of huts (0.40-0.48 R), so nobody is
+  // put down on somebody's floorboards.
+  for (let i = 0; i < 5; i++) {
     const id = FOLK[(folkStart + i) % FOLK.length];
-    const fa = a + 0.5 + i * 1.7;
-    const fr = R * (0.50 + (i % 2) * 0.10);
+    const fa = a + 0.4 + i * 1.15;
+    const fr = R * (0.40 + (i % 2) * 0.08);
     const vx = Math.cos(fa) * fr, vz = Math.sin(fa) * fr;
     const vy = island.heightAt(vx, vz);
     const villager = makePerson([0x8a5a2a, 0x6a5a3a, 0x7a6a4a][i % 3], i % 2 ? 0x2a2a1a : null);
@@ -4006,6 +4045,359 @@ function toggleAnchor() {
   if (b) b.classList.toggle('on', Ship.anchored);
 }
 
+// ============================================================
+//  SHIPS AT SEA
+// ============================================================
+// The ocean used to be empty: you, the gulls, and a random encounter every
+// forty-five seconds. Now there are ships on it -- caravels working the trade
+// routes that you can hail and deal with, and corsairs that will run you down.
+// They are ordinary objects with a position and a heading, driven by the same
+// forward convention as your own ship (+Z), so nothing about them is special.
+
+const AI_SHIPS = [];
+
+const AI_KINDS = {
+  merchant: { speed: 6.6, turn: 0.55, hull: 0x6d4b2a, sail: 0xf2ead6, flag: 0xc0392b },
+  pirate:   { speed: 9.0, turn: 0.78, hull: 0x2b2320, sail: 0x26262c, flag: 0x141418 },
+};
+
+const AI_HAIL = 34;       // a merchant will answer you this close
+const AI_AGGRO = 270;     // a corsair notices you this far off
+const AI_GRAPPLE = 26;    // and comes alongside here
+
+const MERCHANT_NAMES = [
+  'Santa Cruz', 'São Rafael', 'Boa Esperança', 'Nossa Senhora da Guia',
+  'Santo António', 'Pérola do Tejo', 'Santa Bárbara', 'Flor de Lisboa',
+  'São Vicente', 'Estrela do Mar', 'Bom Jesus', 'Rainha dos Anjos',
+];
+const PIRATE_NAMES = ['Aljava', 'Serpente', 'Vento Negro', 'Lobo do Mar', 'Falcão'];
+
+// Two ports apiece, and they work the leg back and forth. A route is a place
+// you can go to find a sail, which is what makes the sea feel inhabited.
+const MERCHANT_ROUTES = [
+  ['Lisbon', 'Canary Islands'], ['Canary Islands', 'Cape Verde'],
+  ['Cape Verde', 'Sierra Leone'], ['Sierra Leone', 'Gold Coast'],
+  ['Gold Coast', 'Elmina'], ['Elmina', 'Cape of Storms'],
+  ['Cape of Storms', 'Mozambique'], ['Mozambique', 'Mombasa'],
+  ['Mombasa', 'Zanzibar'], ['Zanzibar', 'Madagascar'],
+  ['Madagascar', 'Ceylon'], ['Ceylon', 'Timor'],
+  ['Calicut', 'Goa'], ['Goa', 'Hormuz'], ['Hormuz', 'Malacca'],
+  ['Madeira', 'Lisbon'], ['St. Helena', 'Lisbon'],
+];
+
+function portByName(name) {
+  for (const p of PORTS) if (p.def.name === name) return p;
+  return null;
+}
+
+// Nudge a point out of the shallows and out of the harbours: step away from the
+// nearest land until there is water under the keel and no quay within reach.
+function seaPointNear(x, z) {
+  for (let i = 0; i < 26; i++) {
+    let crowded = false;
+    for (const p of PORTS) {
+      if (Math.hypot(p.position.x - x, p.position.z - z) < p.maxR + 34) crowded = true;
+    }
+    if (!crowded && groundY(x, z) < -4) return { x, z };
+    let bx = 0, bz = 0;
+    for (const p of PORTS) {
+      const dx = x - p.position.x, dz = z - p.position.z;
+      const d = Math.hypot(dx, dz) || 1;
+      bx += dx / d; bz += dz / d;
+    }
+    const bl = Math.hypot(bx, bz) || 1;
+    x += (bx / bl) * 28; z += (bz / bl) * 28;
+  }
+  return { x, z };
+}
+
+// A compact ship: hull and deck from the same geometry your own caravel uses,
+// two masts, three sails and a flag. The full model -- ratlines, fighting tops,
+// capstan, twenty rope lines -- costs about two hundred draw calls, and there
+// are fourteen of these on the water.
+function buildAIShipModel(kind) {
+  const spec = AI_KINDS[kind];
+  const g = new THREE.Group();
+  g.rotation.order = 'YXZ';
+
+  const { geo: hullGeo, stations } = buildHullGeometry();
+  const hull = new THREE.Mesh(hullGeo, new THREE.MeshStandardMaterial({
+    color: spec.hull, roughness: 0.88, metalness: 0.04,
+  }));
+  hull.castShadow = true;
+  g.add(hull);
+
+  const deck = new THREE.Mesh(buildDeckGeometry(stations), MAT.deck);
+  deck.receiveShadow = true;
+  g.add(deck);
+
+  // a low cabin aft and a rail along each side. Without them a bare hull reads
+  // as an open boat at any distance, however good the rig is. The cabin is
+  // planked wood with a window band and a roof overhang — in MAT.trim it was so
+  // dark that alongside her it looked like a coal box dropped on the deck.
+  const woodMat = new THREE.MeshStandardMaterial({
+    color: kind === 'pirate' ? 0x3a2e26 : 0x7a5230, roughness: 0.86,
+  });
+  const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.1, 1.15, 1.8), woodMat);
+  cabin.position.set(0, 2.42, -2.9);
+  cabin.castShadow = true;
+  g.add(cabin);
+  const windows = new THREE.Mesh(new THREE.BoxGeometry(2.14, 0.24, 1.84),
+    new THREE.MeshStandardMaterial({ color: 0x1a1208, roughness: 0.55 }));
+  windows.position.set(0, 2.56, -2.9);
+  g.add(windows);
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(2.36, 0.12, 2.02), woodMat);
+  roof.position.set(0, 3.03, -2.9);
+  roof.castShadow = true;
+  g.add(roof);
+  const railMat = new THREE.MeshStandardMaterial({
+    color: kind === 'pirate' ? 0x3a2f26 : 0x8a6236, roughness: 0.85,
+  });
+  for (const side of [-1, 1]) {
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.34, 6.6), railMat);
+    rail.position.set(side * 1.86, 2.02, 0.3);
+    rail.castShadow = true;
+    g.add(rail);
+  }
+
+  const sailMat = new THREE.MeshStandardMaterial({
+    color: spec.sail, roughness: 0.95, side: THREE.DoubleSide,
+  });
+  // canvas that bellies in the wind: a flat plane read as a painted card the
+  // moment you came alongside her, and 40 cm of curve fixes it for six vertices
+  const addSail = (w, h, y, z) => {
+    const geo = new THREE.PlaneGeometry(w, h, 6, 4);
+    const pos = geo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const across = 1 - Math.pow((2 * pos.getX(i)) / w, 2);
+      const down = 0.55 + 0.45 * (1 - (pos.getY(i) + h / 2) / h);
+      pos.setZ(i, 0.34 * across * down - 0.11);
+    }
+    geo.computeVertexNormals();
+    const m = new THREE.Mesh(geo, sailMat);
+    m.position.set(0, y, z);
+    m.castShadow = true;
+    g.add(m);
+  };
+
+  // bow at +Z, as on the player's ship: foremast forward, mizzen aft
+  for (const [mz, mh] of [[2.5, 10.6], [-2.3, 8.4]]) {
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.2, mh, 7), MAT.mast);
+    mast.position.set(0, 1.85 + mh / 2, mz);
+    mast.castShadow = true;
+    g.add(mast);
+    // a course low down and a topsail above it: one sail at the masthead left
+    // three metres of bare pole over the deck and she read as a lugger
+    for (const [frac, sw, sh] of [[0.42, 5.2, 3.2], [0.74, 4.4, 2.6]]) {
+      const y = 1.85 + mh * frac;
+      const yard = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, sw + 0.5, 6), MAT.mast);
+      yard.rotation.z = Math.PI / 2;
+      yard.position.set(0, y, mz);
+      g.add(yard);
+      addSail(sw, sh, y - sh / 2 - 0.12, mz);
+    }
+  }
+
+  // a pennant at the foremast head: red for a Portuguese merchantman, black
+  // for the other sort, and you can tell them apart before you are close
+  const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.55),
+    new THREE.MeshStandardMaterial({ color: spec.flag, roughness: 0.9, side: THREE.DoubleSide }));
+  flag.position.set(0.9, 1.85 + 10.6, 2.5);
+  g.add(flag);
+
+  // the crew on deck: pirates stand about in numbers, a merchant has a hand aft
+  const crewSpots = kind === 'pirate'
+    ? [[0.7, -0.4], [-0.7, 0.5], [0.3, 1.7]]
+    : [[-0.5, -1.6]];
+  for (const [cx, cz] of crewSpots) {
+    const man = makePerson(kind === 'pirate' ? 0x2c2c34 : 0x5a4a34, kind === 'pirate' ? 0x1a1a1e : null);
+    man.position.set(cx, 1.85, cz);
+    man.scale.setScalar(0.92);
+    man.rotation.y = Math.random() * 6.28;
+    g.add(man);
+  }
+
+  return g;
+}
+
+function spawnAIFleet() {
+  for (const s of AI_SHIPS) scene.remove(s.group);
+  AI_SHIPS.length = 0;
+
+  // ---- merchantmen on the routes ----
+  for (let i = 0; i < MERCHANT_ROUTES.length && i < 12; i++) {
+    const [fromName, toName] = MERCHANT_ROUTES[i];
+    const from = portByName(fromName), to = portByName(toName);
+    if (!from || !to) continue;
+
+    const t = 0.32 + Math.random() * 0.36;
+    const bx = from.position.x + (to.position.x - from.position.x) * t;
+    const bz = from.position.z + (to.position.z - from.position.z) * t;
+    // stand her a little off the rhumb line, so the sea is not a tram track
+    const nx = -(to.position.z - from.position.z), nz = (to.position.x - from.position.x);
+    const nl = Math.hypot(nx, nz) || 1;
+    const off = (Math.random() < 0.5 ? -1 : 1) * (18 + Math.random() * 34);
+    const at = seaPointNear(bx + (nx / nl) * off, bz + (nz / nl) * off);
+
+    const group = buildAIShipModel('merchant');
+    scene.add(group);
+
+    const goodPort = from.def.type === 'home' ? to : from;
+    AI_SHIPS.push({
+      kind: 'merchant', name: MERCHANT_NAMES[i % MERCHANT_NAMES.length],
+      group, x: at.x, z: at.z,
+      heading: Math.atan2(to.position.x - at.x, to.position.z - at.z),
+      speed: 3 + Math.random() * 2, seed: Math.random() * 6.28,
+      avoid: Math.random() < 0.5 ? 1 : -1,
+      route: [from, to], leg: 1, target: to,
+      cargo: { good: goodPort.def.type, qty: 3 + Math.floor(Math.random() * 5) },
+      hunt: false, paid: 0, cooldown: 0, hailedAt: -999,
+    });
+  }
+
+  // ---- corsairs, well away from home ----
+  for (let i = 0; i < PIRATE_NAMES.length; i++) {
+    let at = null;
+    for (let tries = 0; tries < 40 && !at; tries++) {
+      const x = (Math.random() - 0.5) * 2600;
+      const z = (Math.random() - 0.5) * 2200;
+      if (Math.hypot(x - PORTS[0].position.x, z - PORTS[0].position.z) < 520) continue;
+      at = seaPointNear(x, z);
+      if (groundY(at.x, at.z) > -6) at = null;
+    }
+    if (!at) at = seaPointNear(600, -300);
+
+    const group = buildAIShipModel('pirate');
+    scene.add(group);
+    AI_SHIPS.push({
+      kind: 'pirate', name: PIRATE_NAMES[i],
+      group, x: at.x, z: at.z, heading: Math.random() * 6.28,
+      speed: 4, seed: Math.random() * 6.28,
+      avoid: Math.random() < 0.5 ? 1 : -1,
+      route: null, leg: 0, target: at,
+      cargo: { good: 'gems', qty: 0 },
+      hunt: false, paid: 0, cooldown: 6, hailedAt: -999,
+    });
+  }
+
+  // Put them on the water before the first frame. NOT via updateAIFleet(): it
+  // reads `elapsed`, which is still in its temporal dead zone this early in
+  // the script -- the whole world failed to boot on exactly that.
+  for (const s of AI_SHIPS) {
+    s.group.position.set(s.x, waveHeightAt(s.x, s.z, 0), s.z);
+    s.group.rotation.set(0, s.heading, 0);
+  }
+}
+
+function nearestShipWithin(dist) {
+  if (!playerShip) return null;
+  let best = null, bd = dist;
+  for (const s of AI_SHIPS) {
+    if (s.kind === 'pirate') continue;          // corsairs do not answer hails
+    if (Game.gameMinutes - (s.hailedAt || -999) < 45) continue;
+    const d = Math.hypot(s.x - playerShip.position.x, s.z - playerShip.position.z);
+    if (d < bd) { bd = d; best = s; }
+  }
+  return best;
+}
+
+function sinkAIShip(s) {
+  const i = AI_SHIPS.indexOf(s);
+  if (i >= 0) AI_SHIPS.splice(i, 1);
+  if (s.group) {
+    scene.remove(s.group);
+    s.group.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+  }
+}
+
+function updateAIFleet(dt) {
+  if (Game.phase !== 'play' && dt > 0) return;
+  const px = playerShip ? playerShip.position.x : 0;
+  const pz = playerShip ? playerShip.position.z : 0;
+  const atSea = !!(Game.ship && playerShip && Player.mode !== 'foot');
+  // no corsair boards you inside a harbour: the forts would have something to say
+  const inPort = atSea && !!nearestIslandWithin(70);
+
+  for (const s of AI_SHIPS) {
+    if (s.cooldown > 0) s.cooldown -= dt;
+    if (s.paid > 0) s.paid = Math.max(0, s.paid - dt);
+    const spec = AI_KINDS[s.kind];
+
+    // ---- what is she steering for? ----
+    if (s.kind === 'pirate') {
+      const dp = Math.hypot(px - s.x, pz - s.z);
+      s.hunt = atSea && !inPort && s.paid <= 0 && dp < AI_AGGRO;
+      if (s.hunt && dp < AI_GRAPPLE && s.cooldown <= 0) {
+        s.cooldown = 45;
+        startPirateFight(s);
+        return;                    // the sea can wait while you argue with a corsair
+      }
+      if (!s.hunt && Math.hypot(s.target.x - s.x, s.target.z - s.z) < 90) {
+        // idle cruising: pick another patch of open water
+        s.target = seaPointNear(s.x + (Math.random() - 0.5) * 700,
+                                s.z + (Math.random() - 0.5) * 700);
+      }
+    } else if (Math.hypot(s.target.position.x - s.x, s.target.position.z - s.z)
+               < s.target.maxR + 62) {
+      s.leg = s.leg ? 0 : 1;
+      s.target = s.route[s.leg];
+    }
+
+    const tx = s.hunt ? px : (s.target.position ? s.target.position.x : s.target.x);
+    const tz = s.hunt ? pz : (s.target.position ? s.target.position.z : s.target.z);
+    let want = Math.atan2(tx - s.x, tz - s.z);
+
+    // ---- and keeping off the shore ----
+    const ahead = 16 + s.speed * 1.3;
+    if (groundY(s.x + Math.sin(want) * ahead, s.z + Math.cos(want) * ahead) > -2.6) {
+      want += 0.9 * s.avoid;
+    }
+
+    let d = ((want - s.heading + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+    const maxTurn = spec.turn * dt;
+    s.heading += Math.max(-maxTurn, Math.min(maxTurn, d));
+
+    // ---- making way ----
+    const wanted = s.hunt ? spec.speed * 1.15 : spec.speed;
+    s.speed += (wanted - s.speed) * Math.min(1, 0.8 * dt);
+    s.x += Math.sin(s.heading) * s.speed * dt;
+    s.z += Math.cos(s.heading) * s.speed * dt;
+    const lim = 1600;
+    s.x = Math.max(-lim, Math.min(lim, s.x));
+    s.z = Math.max(-lim, Math.min(lim, s.z));
+
+    // ---- on the water, with the swell under her ----
+    const fx = Math.sin(s.heading), fz = Math.cos(s.heading);
+    const L = 5.4;
+    const hb = waveHeightAt(s.x + fx * L, s.z + fz * L, elapsed);
+    const hs = waveHeightAt(s.x - fx * L, s.z - fz * L, elapsed);
+    s.group.position.set(s.x, waveHeightAt(s.x, s.z, elapsed), s.z);
+    s.group.rotation.set(
+      -Math.atan2(hb - hs, 2 * L),
+      s.heading,
+      Math.sin(elapsed * 0.8 + s.seed) * 0.045 - d * 0.12,
+    );
+  }
+}
+
+function hailShip(s) {
+  if (!s || s.kind !== 'merchant') return;
+  s.hailedAt = Game.gameMinutes;
+  s.speed *= 0.35;                 // she backs her topsail to speak with you
+  openDialog('hail_ship', { ship: s });
+}
+
+function startPirateFight(s) {
+  if (Game.phase !== 'play') return;
+  s.hunt = true;
+  // The cooldown is set HERE, not by the caller: a player who shuts the
+  // boarding with Escape must not have it open again on the very next frame.
+  s.cooldown = 45;
+  addLog(`A corsair, the ${s.name}, comes alongside with grapnels out.`, 'bad');
+  showToast(`${s.name} runs out her guns — she means to board you!`, 4200);
+  openDialog('sea_fight', { ship: s });
+}
+
 // ---- camera (first person) ----
 const camera = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerHeight, 0.1, 1200);
 camera.rotation.order = 'YXZ';
@@ -4015,6 +4407,7 @@ const solidCircles = [];
 
 // ---- build the world ----
 buildPorts();
+spawnAIFleet();          // the other ships need the ports to know where to go
 
 // ============================================================
 //  GROUND SAMPLING
@@ -4379,6 +4772,11 @@ function renderDialog(node) {
   });
 
   dlgEl.classList.remove('hidden');
+  // the "[E] Hail the Santa Cruz" line used to stay on screen under the box:
+  // updatePrompt only runs while the game is playing, so a prompt that was up
+  // when the dialog opened was never taken down again
+  const pr = document.getElementById('prompt');
+  if (pr) pr.classList.add('hidden');
   renderDialogFoot();
   Game.phase = 'dialog';
   if (document.pointerLockElement === canvas) document.exitPointerLock();
@@ -4409,6 +4807,9 @@ function chooseOption(opt) {
     const good = Math.random() < opt.roll.chance;
     const out = good ? opt.roll.good : opt.roll.bad;
     if (out.effect) applyEffect(out.effect);
+    // an outcome can do more than move numbers: a beaten corsair has to leave
+    // the sea, and only code can take her off it
+    if (out.action) out.action();
     if (out.death) return die(out.death);
     if (out.text) {
       // show the outcome, then continue
@@ -5251,6 +5652,194 @@ const DLG = {
   },
 };
 // ============================================================
+//  THE FLEET'S DIALOGS - hailing a merchantman, and a corsair
+// ============================================================
+// Attached to DLG here rather than written into the literal above, because the
+// table is a thousand lines long already and these two belong with the ships.
+
+// "south-west of here", from a chart delta: +Z is south on this sea.
+function bearingWord(dx, dz) {
+  const dirs = ['north', 'north-east', 'east', 'south-east',
+                'south', 'south-west', 'west', 'north-west'];
+  const a = Math.atan2(dx, -dz);
+  const i = Math.round(((a + Math.PI * 2) % (Math.PI * 2)) / (Math.PI / 4)) % 8;
+  return dirs[i];
+}
+
+DLG.hail_ship = (ctx) => {
+  const s = ctx.ship;
+  const good = s.cargo.good;
+  const qty = s.cargo.qty;
+  const gd = TRADE_GOODS[good];
+  const buyUnit = Math.max(1, Math.round(gd.buyPrice * 1.05));
+  const room = cargoRoom();
+  const opts = [];
+
+  if (qty > 0 && room > 0) {
+    // five bales at a time: her whole stock in one click left you no way to
+    // see the price move, and no reason to come back to her rail
+    const take = Math.min(qty, room, 5);
+    opts.push({
+      label: `Buy ${take} ${gd.name} — ${buyUnit * take}g`,
+      hint: `${buyUnit}g a bale, out of her own hold`,
+      req: { gold: buyUnit * take },
+      action: () => {
+        const cost = buyUnit * take;
+        Game.gold -= cost;
+        Game.inventory[good] = (Game.inventory[good] || 0) + take;
+        s.cargo.qty -= take;
+        addLog(`Bought ${take} ${gd.name.toLowerCase()} from the ${s.name} at sea for ${cost}g.`);
+        showToast(`Bought ${take} ${gd.name} — ${cost}g`);
+        updateHUD(); updateCargoBox();
+      },
+      stay: true,
+    });
+  }
+
+  for (const key of GOODS) {
+    const have = Game.inventory[key] || 0;
+    if (!have) continue;
+    const unit = Math.max(1, Math.round(TRADE_GOODS[key].sellPrice * 0.70));
+    opts.push({
+      label: `Sell ${have} ${TRADE_GOODS[key].name} — ${unit * have}g`,
+      hint: 'less than a port would pay, and she knows it',
+      action: () => {
+        const total = unit * have;
+        Game.gold += total;
+        delete Game.inventory[key];
+        addLog(`Sold ${have} ${TRADE_GOODS[key].name.toLowerCase()} to the ${s.name} at sea for ${total}g.`);
+        showToast(`Sold ${have} ${TRADE_GOODS[key].name} — ${total}g`);
+        updateHUD(); updateCargoBox();
+      },
+      stay: true,
+    });
+  }
+
+  opts.push({
+    label: 'Ask for news of the sea',
+    action: () => {
+      const undisc = PORTS.filter(p => !p.discovered && p.def.type !== 'home');
+      let line = `"${RUMORS[Math.floor(Math.random() * RUMORS.length)]}"`;
+      if (undisc.length) {
+        let best = undisc[0], bd = 1e9;
+        for (const p of undisc) {
+          const d = Math.hypot(p.position.x - s.x, p.position.z - s.z);
+          if (d < bd) { bd = d; best = p; }
+        }
+        line = `He squints at the sun and points. "${best.def.name} lies ` +
+               `${bearingWord(best.position.x - s.x, best.position.z - s.z)} of us, ` +
+               `a day's sail if the wind holds." Then, because sailors cannot help it: ` +
+               `"${RUMORS[Math.floor(Math.random() * RUMORS.length)]}"`;
+      }
+      addLog(`The master of the ${s.name}: ${line}`);
+      showToast('News from a passing ship');
+    },
+    stay: true,
+  });
+  opts.push({ label: 'Wish them a fair wind' });
+
+  const dest = s.target && s.target.def ? s.target.def.name : 'the next port';
+  const holdTxt = room <= 0
+    ? ' Your own hold is full to the beams — you can only sell to her.'
+    : '';
+  return {
+    who: s.name,
+    role: qty > 0
+      ? `Merchant caravel — ${qty} bale${qty === 1 ? '' : 's'} of ${gd.name.toLowerCase()}`
+      : 'Merchant caravel — light in the hold',
+    portrait: '\u26F5',
+    text: `Her topsail backs and she lies to, rolling in the swell. The master ` +
+          `leans over the rail with a wine cup in his hand. "Bound for ${dest}, ` +
+          `God and the wind willing. You have the look of a man with a hold to ` +
+          `fill."${holdTxt}`,
+    rebuild: () => DLG.hail_ship({ ship: s }),     // re-price after every trade
+    options: opts,
+  };
+};
+
+DLG.sea_fight = (ctx) => {
+  const s = ctx.ship;
+  const crew = Game.crew;
+  // your hands against hers: a full crew and a sound hull are worth a great
+  // deal, an empty deck and a holed ship are worth almost nothing
+  const fightChance = Math.max(0.16, Math.min(0.86,
+    0.18 + crew * 0.048 + (Game.hull - 60) * 0.003));
+  const toll = Math.max(35, Math.round(45 + cargoValue() * 0.22));
+  const runChance = Math.max(0.18, Math.min(0.88, 0.20 + Math.abs(Ship.speed) / 15));
+  const doomed = Game.hull <= 26;
+  const pct = Math.round(fightChance * 100);
+
+  return {
+    who: s.name,
+    role: 'Corsair — black flag',
+    portrait: '\u{1F3F4}',
+    text: `She comes up under your lee with her gunports open and thirty men ` +
+          `along her rail. The captain stands in the shrouds and shouts across ` +
+          `the water, pleasantly: "Your cargo or your ship, captain. I am not ` +
+          `particular which."`,
+    options: [
+      {
+        label: 'Beat to quarters and fight her',
+        hint: `${pct}% — ${crew} hand${crew === 1 ? '' : 's'}, hull ${Math.round(Game.hull)}%`,
+        roll: {
+          chance: fightChance,
+          good: {
+            effect: { gold: 130, rep: 3, morale: 8, hull: -9 },
+            action: () => { sinkAIShip(s); },
+            text: `You put a broadside into her at pistol range. Her mainmast ` +
+                  `goes by the board, her colours come down, and what is left of ` +
+                  `her fills and goes under. Her strongbox is yours, and so is a ` +
+                  `little of your bulwark.`,
+          },
+          bad: doomed
+            ? { death: 'They boarded you, and there were too many of them.' }
+            : {
+                effect: { hull: -19, cargo: 'all', crew: -1, rep: -2 },
+                action: () => { s.paid = 120; },      // they have what they came for
+                text: `They swarm over the rail and hold the deck while the rest ` +
+                      `empty your hold. Then, laughing, they cut the grapnels and ` +
+                      `are gone — with your cargo and one hand fewer.`,
+              },
+        },
+      },
+      {
+        label: `Pay them off — ${toll}g`,
+        hint: 'humiliation is cheaper than a coffin',
+        req: { gold: toll },
+        effect: { gold: -toll, rep: -1 },
+        roll: { chance: 1, good: {
+          // the action lives inside the roll: chooseOption returns from the
+          // roll branch, so an action on the option itself would never run
+          action: () => { s.paid = 200; },
+          text: `They count the silver at their leisure, jeer at your flag, and ` +
+                `sheer off. You are poorer and alive, which is the arithmetic ` +
+                `that matters.`,
+        } },
+      },
+      {
+        label: 'Clap on sail and run',
+        hint: `${Math.round(runChance * 100)}% at this speed`,
+        roll: {
+          chance: runChance,
+          good: {
+            action: () => { s.paid = 90; },
+            text: `You crack on every stitch she will carry and hold your course ` +
+                  `while the corsair falls astern, mile by mile, until she is a ` +
+                  `smudge of black sail on the horizon.`,
+          },
+          bad: {
+            effect: { hull: -12, cargo: 'all' },
+            action: () => { s.paid = 90; },
+            text: `She is the faster ship. A shot takes your mainsail and she ` +
+                  `rakes you from astern at leisure, then takes the cargo and ` +
+                  `leaves you to your pumps.`,
+          },
+        },
+      },
+    ],
+  };
+};
+// ============================================================
 //  SEA EVENTS - trouble finds you on the water
 // ============================================================
 const SEA_EVENTS = [
@@ -5565,6 +6154,11 @@ function currentTarget() {
     if (near && Math.abs(Ship.speed) < 1.2) {
       return { label: `Put in to shore at ${near.def.name}`, use: () => goAshore(near) };
     }
+    // another sail close aboard: back your topsail and speak with her. Only
+    // when you are not running -- at eight knots you are past her before the
+    // hail is out of your mouth.
+    const sail = Math.abs(Ship.speed) < 6 ? nearestShipWithin(AI_HAIL) : null;
+    if (sail) return { label: `Hail the ${sail.name}`, use: () => hailShip(sail) };
     return { label: 'Step back from the wheel', use: () => {
       Player.mode = 'deck';
       Player.lookYaw = 0; Player.lookPitch = 0;
@@ -5589,6 +6183,8 @@ function currentTarget() {
     if (dockedAt && Math.abs(Ship.speed) < 1.2) {
       return { label: `Go ashore at ${dockedAt.def.name}`, use: () => goAshore(dockedAt) };
     }
+    const sailDeck = Math.abs(Ship.speed) < 6 ? nearestShipWithin(AI_HAIL) : null;
+    if (sailDeck) return { label: `Hail the ${sailDeck.name}`, use: () => hailShip(sailDeck) };
     if (playerShip && Math.abs(Ship.speed) < 3) {
       return { label: 'Fish from the rail', use: () => openDialog('fish_sea') };
     }
@@ -6211,7 +6807,31 @@ function updateShipPhysics(dt) {
   playerShip.position.x = pos.x;
   playerShip.position.z = pos.z;
 
-  const limit = 1020;
+  // ---------------- other hulls are solid too ----------------
+  // No damage from a nudge: the stones do enough of that. But two ships cannot
+  // occupy the same water, or a corsair's boarding party would walk through
+  // your bulwark and the collision would read as a bug.
+  for (const a of AI_SHIPS) {
+    const ax = playerShip.position.x - a.x, az = playerShip.position.z - a.z;
+    const ad = Math.hypot(ax, az);
+    const minD = 4.4 * cls.scale + 4.4;
+    if (ad <= 0.01) {
+      // dead centre on her -- exactly the state a teleport or a spawn leaves
+      // behind, and the one case a normalised push cannot solve
+      const rx = Math.cos(Ship.heading), rz = -Math.sin(Ship.heading);
+      playerShip.position.x += rx * 1.4; playerShip.position.z += rz * 1.4;
+      a.x -= rx * 1.4; a.z -= rz * 1.4;
+    } else if (ad < minD) {
+      const push = (minD - ad) * 0.5;
+      playerShip.position.x += (ax / ad) * push;
+      playerShip.position.z += (az / ad) * push;
+      a.x -= (ax / ad) * push;
+      a.z -= (az / ad) * push;
+      SHIP_PHYS.vf *= 0.55;
+    }
+  }
+
+  const limit = 1620;
   playerShip.position.x = Math.max(-limit, Math.min(limit, playerShip.position.x));
   playerShip.position.z = Math.max(-limit, Math.min(limit, playerShip.position.z));
 
@@ -6622,8 +7242,9 @@ function drawMinimap() {
   mmCtx.arc(cx, cy, 98, 0, Math.PI * 2);
   mmCtx.fill();
 
-  // player-centred view of ~900 units
-  const scale = 96 / 900;
+  // player-centred view of ~1,500 units -- the chart is twice the size it was,
+  // and a 900-unit window showed you nothing but empty water mid-passage
+  const scale = 96 / 1500;
   const px = Player.x, pz = Player.z;
   const toMap = (wx, wz) => ({
     x: cx + (wx - px) * scale,
@@ -6653,6 +7274,16 @@ function drawMinimap() {
     mmCtx.font = '9px Georgia';
     mmCtx.textAlign = 'center';
     mmCtx.fillText(p.def.name, m.x, m.y - 8);
+  }
+
+  // other ships under sail: white for a merchantman, red for a black flag
+  for (const s of AI_SHIPS) {
+    const m = toMap(s.x, s.z);
+    if (Math.hypot(m.x - cx, m.y - cy) > 94) continue;
+    mmCtx.fillStyle = s.kind === 'pirate' ? '#e04a3a' : '#e8e2cc';
+    mmCtx.beginPath();
+    mmCtx.arc(m.x, m.y, s.kind === 'pirate' ? 2.6 : 2.1, 0, Math.PI * 2);
+    mmCtx.fill();
   }
 
   // your ship
@@ -6853,6 +7484,7 @@ function loadGame(slot) {
   if (!Game.market) initMarket();
 
   PORTS.forEach(p => { p.discovered = s.discovered.includes(p.def.name); });
+  spawnAIFleet();              // the traffic is ambient; it is not in the save
 
   removePlayerShip();
   // spawnPlayerShip fits a brand-new hull; a loaded one must be as you left her
@@ -6988,6 +7620,8 @@ function resetLife() {
   initMarket();
   removePlayerShip();
   PORTS.forEach(p => { p.discovered = !!p.def.discovered; });
+  // a new life gets a new sea: the old fleet's positions mean nothing now
+  spawnAIFleet();
   dockedAt = null;
   camRig.ready = false;
 
@@ -7197,6 +7831,9 @@ function animate() {
       w.obj.position.y = LIS_CITY.Y + Math.abs(Math.sin(w.phase)) * 0.05;
     }
 
+    // ---- other ships: merchants working their routes, corsairs hunting ----
+    updateAIFleet(dt);
+
     updateAvatar(dt);
     updateCameraRig(dt);
     updateDayNight();
@@ -7259,6 +7896,7 @@ window.__voyage = {
   SHIP_CAM,
   updateAvatar, boomClearance, camRig, get avatar() { return avatar; },
   updateHUD, updateCargoBox, applyEffect, cargoValue, fmtClock, stepPhysics,
+  updatePrompt,
   // the merchant's game: markets, contracts, and the state of her hull
   GOODS, PORT_WANTS, UPGRADES, TRADE_GOODS,
   initMarket, marketOf, marketBuyPrice, marketSellPrice, marketWants,
@@ -7273,6 +7911,10 @@ window.__voyage = {
   shoulderCrate, dropCrate, finishDockShift,
   get dockWork() { return dockWork; },
   get dockCrateGroup() { return dockCrateGroup; },
+  // the other ships on the water
+  AI_SHIPS, AI_KINDS, AI_HAIL, AI_AGGRO, AI_GRAPPLE,
+  spawnAIFleet, updateAIFleet, nearestShipWithin, hailShip, startPirateFight,
+  sinkAIShip, buildAIShipModel, bearingWord, seaPointNear,
   get ship() { return playerShip; }
 };
 </script>
