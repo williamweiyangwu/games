@@ -605,9 +605,9 @@ function buildWorld() {
       if (spots.indexOf(j) < 0) spots.push(j);
     }
   }
-  /* Keep the middle of the map clear: that is where the hill sits in King of
-     the Hill, and a crate's beam and diamond marker under the hill's beam is
-     unreadable. Backfill from the junctions so the count stays the same. */
+  /* Keep the middle of the map clear: it is the landmark every map is read
+     from, and a crate's beam and diamond marker in front of it is unreadable.
+     Backfill from the junctions so the count stays the same. */
   const clearOfCentre = s => Math.hypot(s.x, s.z) > 6.5;
   const kept = spots.filter(clearOfCentre);
   for (const j of junctions) {
@@ -616,7 +616,19 @@ function buildWorld() {
     if (kept.some(k => Math.hypot(k.x - j.x, k.z - j.z) < 1)) continue;
     kept.push(j);
   }
-  G.chestSpots = kept.map(s => [s.x, s.y || 0, s.z]);
+  /* ...and never on a spawn slot. A chest is solid, so a crate sitting on the
+     cell you deploy onto would drop you inside a box. Two metres of clearance
+     is a body plus a chest; backfill from the junctions as before. */
+  const slots = (G.spawns.red || []).concat(G.spawns.blue || []);
+  const clearOfSpawns = p => slots.every(s => Math.hypot(p.x - s.x, p.z - s.z) > 2.6);
+  const final = kept.filter(clearOfSpawns);
+  for (const j of junctions) {
+    if (final.length >= kept.length) break;
+    if (!clearOfSpawns(j)) continue;
+    if (final.some(k => Math.hypot(k.x - j.x, k.z - j.z) < 1)) continue;
+    final.push(j);
+  }
+  G.chestSpots = final.map(s => [s.x, s.y || 0, s.z]);
 
   mergeStaticWorld();
   buildWaypoints();
