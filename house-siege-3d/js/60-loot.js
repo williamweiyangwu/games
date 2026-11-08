@@ -52,8 +52,21 @@ function buildChest(x, y, z) {
   glow.position.y = 0.9; grp.add(glow);
 
   scene.add(grp);
+
+  /* A chest is a solid object. Without a collider you walked straight through
+     one, which made them invisible furniture: you could stand inside a crate,
+     its beam washed the screen, and the take prompt fired from within it.
+     It is 0.72 m tall, so it blocks rather than steps — you can jump on top. */
+  const col = {
+    minX: x - 0.52, maxX: x + 0.52,
+    minY: y, maxY: y + 0.72,
+    minZ: z - 0.35, maxZ: z + 0.35,
+    name: 'chest', chest: true
+  };
+  G.colliders.push(col);
+
   return {
-    grp, lidPivot, ring, glow, beam, mark, beamMat,
+    grp, lidPivot, ring, glow, beam, mark, beamMat, col,
     pos: new V3(x, y, z), content: null, label: '', available: true, respawnT: 0, openT: 0
   };
 }
@@ -76,12 +89,16 @@ function applyChestContent(c) {
 }
 
 function createChests() {
-  /* free the previous match's crates: geometry, beams and their lights */
+  /* free the previous match's crates: geometry, beams, their lights, and the
+     colliders they put in the physics world */
   for (const c of G.chests) {
     if (c.glow) scene.remove(c.glow);
     disposeTree(c.grp);
   }
   G.chests.length = 0;
+  for (let i = G.colliders.length - 1; i >= 0; i--) {
+    if (G.colliders[i].chest) G.colliders.splice(i, 1);
+  }
   for (const s of chestSpots()) {
     const c = buildChest(s[0], s[1], s[2]);
     c.content = rollChestContent();
@@ -170,6 +187,31 @@ function updateChests(dt) {
     const txt = '<b>RMB</b> TAKE ' + (near.c.label || 'CRATE');
     if (promptEl.dataset.txt !== txt) { promptEl.innerHTML = txt; promptEl.dataset.txt = txt; }
   }
+  lootCard(near ? near.c : null);
+}
+
+/* What is in the crate you are standing at. A weapon crate is a decision — you
+   may be trading away what is already in your hands — so the card shows the
+   numbers you would be trading for rather than just the name. Consumables have
+   no numbers worth reading and get no card. */
+function lootCard(c) {
+  const el = $('lootCard');
+  if (!el) return;
+  const w = c && c.content && !c.content.item ? WEAPONS[c.content.id] : null;
+  const show = !!w && G.state === 'playing';
+  el.classList.toggle('show', show);
+  if (!show) { el.dataset.sig = ''; return; }
+  if (el.dataset.sig === w.id) return;      // nothing changed, do not re-lay-out
+  el.dataset.sig = w.id;
+  const rpm = w.rate > 0 ? Math.round(60 / w.rate) : 0;
+  const dmg = w.pellets ? w.dmg + '×' + w.pellets : String(w.dmg);
+  const mag = w.mag ? w.mag + ' / ' + w.reserve : '—';
+  $('lcName').textContent = w.name;
+  $('lcStats').innerHTML =
+    '<span class="lc-stat"><b>' + dmg + '</b>DAMAGE</span>' +
+    '<span class="lc-stat"><b>' + (rpm || '—') + '</b>ROUNDS / MIN</span>' +
+    '<span class="lc-stat"><b>' + mag + '</b>MAG / RESERVE</span>' +
+    '<span class="lc-stat"><b>' + (w.range || 0) + ' m</b>RANGE</span>';
 }
 
 function takeChest(c, a) {
