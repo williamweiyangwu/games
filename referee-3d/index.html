@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WHISTLE — Third-Person Referee Simulator</title>
+<meta name="description" content="A 3D third-person referee simulator. Take charge of World Cup and Champions League classics — blow the whistle, book players, call offside and keep twenty-two AI footballers under control.">
+<meta name="theme-color" content="#070a10">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b0f16'/%3E%3Ccircle cx='32' cy='32' r='17' fill='none' stroke='%23ffd75e' stroke-width='4'/%3E%3Ccircle cx='32' cy='32' r='5' fill='%23ffd75e'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="stage"></div>
+
+<!-- loading -->
+<div id="boot">
+  <div class="boot-inner">
+    <div class="boot-logo"><i></i>WHISTLE</div>
+    <div class="boot-sub">warming up the stadium…</div>
+  </div>
+</div>
+<div id="boot-error">
+  <h2>3D engine failed to load</h2>
+  <p>The local <code>lib/three.min.js</code> file could not be read. Make sure the whole <code>referee-3d</code> folder was copied, then reload.</p>
+</div>
+
+<!-- ============================== HUD ============================== -->
+<div id="hud">
+  <div class="hud-top">
+    <div class="sb">
+      <div class="sb-team">
+        <i id="sb-c0" class="chip"></i><span id="sb-n0">ARG</span>
+      </div>
+      <div class="sb-mid">
+        <b id="sb-score">0 – 0</b>
+        <span id="sb-clock">00:00</span>
+      </div>
+      <div class="sb-team away">
+        <span id="sb-n1">FRA</span><i id="sb-c1" class="chip"></i>
+      </div>
+    </div>
+    <div class="sb-comp" id="sb-comp">WORLD CUP · FINAL · 2022</div>
+  </div>
+
+  <div id="ticker"></div>
+
+  <div class="hud-tr">
+    <div class="mm-wrap">
+      <canvas id="minimap" width="180" height="120"></canvas>
+      <div class="mm-label">REF RADAR</div>
+    </div>
+  </div>
+
+  <div class="hud-bl">
+    <div class="stamina">
+      <span>STAMINA</span>
+      <div class="bar"><i id="stamina-bar"></i></div>
+    </div>
+    <div class="hintline">
+      <b>WASD</b> move · <b>SHIFT</b> sprint · <b>SPACE</b> jump · <b>E</b> toolbox · <b>T</b> talk · <b>LMB</b> whistle · <b>RMB</b> look
+    </div>
+  </div>
+
+  <div class="hud-bc"><div class="prompt" id="prompt"></div></div>
+  <div class="hud-tc"><div class="objectives" id="objectives"></div></div>
+
+  <button id="toolbox-toggle" type="button" title="Toolbox (E)">
+    <span>▣</span><em>E</em>
+  </button>
+</div>
+
+<!-- ============================ TOOLBOX ============================ -->
+<div id="toolbox"></div>
+
+<!-- ============================ DIALOGUE =========================== -->
+<div id="dialogue">
+  <div class="dlg-card">
+    <div class="dlg-head">
+      <div class="dlg-who">
+        <span id="dlg-name">Player</span>
+        <span id="dlg-team">Team</span>
+      </div>
+      <span id="dlg-mood" class="mood">CALM</span>
+      <button id="dlg-close" class="xbtn" type="button">✕</button>
+    </div>
+    <div class="dlg-text" id="dlg-text"></div>
+    <div class="dlg-actions" id="dlg-actions"></div>
+  </div>
+</div>
+
+<!-- ============================== BOOK ============================= -->
+<div id="book">
+  <div class="book-card">
+    <div class="book-head">
+      <h3>Match notebook</h3>
+      <button id="btn-close-book" class="xbtn" type="button">✕</button>
+    </div>
+    <div class="book-list" id="book-list"></div>
+  </div>
+</div>
+
+<!-- ============================ CARD FX ============================ -->
+<div id="cardfx"></div>
+
+<!-- ============================= INTRO ============================= -->
+<div id="intro">
+  <div class="intro-inner">
+    <div class="intro-comp" id="intro-comp">WORLD CUP · FINAL · 2022</div>
+    <div class="intro-row">
+      <div class="intro-team"><i id="intro-hc"></i><span id="intro-home">Argentina</span></div>
+      <div class="intro-vs">V</div>
+      <div class="intro-team away"><span id="intro-away">France</span><i id="intro-ac"></i></div>
+    </div>
+    <div class="intro-meta">
+      <span id="intro-venue">Lusail Stadium</span>
+      <span class="dot">·</span>
+      <span>Historic result <b id="intro-score">3–3</b></span>
+    </div>
+    <div class="intro-role">YOU ARE THE REFEREE</div>
+  </div>
+</div>
+
+<!-- ============================= TOASTS ============================ -->
+<div id="toasts"></div>
+
+<!-- ============================= SCREENS =========================== -->
+<div id="screens">
+
+  <section class="screen" id="scr-menu">
+    <div class="menu-wrap">
+      <div class="brand">
+        <div class="kicker">THIRD-PERSON REFEREE SIMULATOR</div>
+        <h1>WHISTLE</h1>
+        <p>Twenty-two footballers. One whistle. Every call is yours.</p>
+      </div>
+      <div class="menu-actions">
+        <button class="btn primary" data-act="play" type="button"><b>Play a match</b><em>World Cup · Champions League · classics</em></button>
+        <button class="btn" data-act="tutorial" type="button"><b>Tutorial</b><em>Learn the whistle in two minutes</em></button>
+        <button class="btn" data-act="skins" type="button"><b>Kits</b><em>Look the part</em></button>
+        <button class="btn" data-act="ach" type="button"><b>Achievements</b><em>Your career record</em></button>
+      </div>
+      <div class="menu-foot">
+        <span id="menu-points">0 PTS</span>
+        <span id="menu-stats">0 matches</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="scr-matches">
+    <div class="page">
+      <header class="page-head">
+        <button class="back" data-back="1" type="button">← Back</button>
+        <div>
+          <h2>Choose your match</h2>
+          <p>Every one of these really happened. Tonight you are in charge of it.</p>
+        </div>
+      </header>
+      <div class="match-grid" id="match-grid"></div>
+    </div>
+  </section>
+
+  <section class="screen" id="scr-skins">
+    <div class="page">
+      <header class="page-head">
+        <button class="back" data-back="1" type="button">← Back</button>
+        <div>
+          <h2>Referee kits</h2>
+          <p>Earn points by working matches. Spend them on looking ridiculous.</p>
+        </div>
+        <div class="points-pill" id="skin-points">0 PTS</div>
+      </header>
+      <div class="skin-grid" id="skin-grid"></div>
+    </div>
+  </section>
+
+  <section class="screen" id="scr-ach">
+    <div class="page">
+      <header class="page-head">
+        <button class="back" data-back="1" type="button">← Back</button>
+        <div>
+          <h2>Achievements</h2>
+          <p>Everything here is saved on this device, forever.</p>
+        </div>
+        <div class="points-pill">
+          <span id="ach-count">0 / 12</span>
+          <span id="ach-points">0 PTS</span>
+        </div>
+      </header>
+      <div class="ach-list" id="ach-list"></div>
+    </div>
+  </section>
+
+  <section class="screen" id="scr-pause">
+    <div class="pause-wrap">
+      <h2>Paused</h2>
+      <div class="pause-actions">
+        <button class="btn primary" id="btn-resume" type="button"><b>Resume</b><em>Back to the match</em></button>
+        <button class="btn" id="btn-restart" type="button"><b>Restart match</b><em>Same fixture, clean slate</em></button>
+        <button class="btn" id="btn-quit" type="button"><b>Quit to menu</b><em>Abandon the match</em></button>
+        <button class="btn ghost" id="btn-reset" type="button"><b>Reset all progress</b><em>Deletes points, kits and achievements</em></button>
+      </div>
+      <div class="controls">
+        <div><b>WASD</b><span>move</span></div>
+        <div><b>SHIFT</b><span>sprint (uses stamina)</span></div>
+        <div><b>SPACE</b><span>jump</span></div>
+        <div><b>E</b><span>toolbox</span></div>
+        <div><b>LMB</b><span>blow the whistle</span></div>
+        <div><b>RMB drag</b><span>look around</span></div>
+        <div><b>T</b><span>talk to nearest player</span></div>
+        <div><b>1 – 5</b><span>quick tools</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="scr-result">
+    <div class="result-wrap">
+      <div class="res-kicker">FULL TIME</div>
+      <div class="res-row">
+        <span id="res-home">Argentina</span>
+        <b id="res-score">0 – 0</b>
+        <span id="res-away">France</span>
+      </div>
+      <div class="res-pts" id="res-pts">+25 PTS</div>
+      <div class="res-stats" id="res-stats"></div>
+      <div class="res-actions">
+        <button class="btn primary" id="btn-result-again" type="button"><b>Referee it again</b><em>Same fixture</em></button>
+        <button class="btn" id="btn-result-menu" type="button"><b>Back to menu</b><em>Pick another match</em></button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script src="lib/three.min.js"></script>
+<script src="js/data.js"></script>
+<script src="js/core.js"></script>
+<script src="js/actors.js"></script>
+<script src="js/match.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
