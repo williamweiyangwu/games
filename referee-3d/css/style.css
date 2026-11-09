@@ -354,7 +354,9 @@ body.talking #stage canvas { cursor: help; }
 #screens { position: fixed; inset: 0; z-index: 50; pointer-events: none; }
 .screen {
   position: absolute; inset: 0; display: none;
-  align-items: center; justify-content: center;
+  /* flex-start + auto margins: content centres when it fits, but a tall page
+     scrolls from its very top instead of having the header clipped away */
+  align-items: flex-start; justify-content: center;
   padding: 28px;
   background: radial-gradient(900px 620px at 50% 20%, rgba(12, 20, 34, .62), rgba(4, 7, 12, .9) 72%);
   backdrop-filter: blur(4px);
@@ -362,6 +364,7 @@ body.talking #stage canvas { cursor: help; }
   overflow-y: auto;
 }
 .screen.on { display: flex; animation: fadein .28s ease; }
+.screen > * { margin-top: auto; margin-bottom: auto; }
 @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
 
 /* menu */
