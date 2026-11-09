@@ -75,6 +75,8 @@ REF.UI = (function () {
     var d = REF.Save.data;
     pts.textContent = d.points + ' PTS';
     $('menu-stats').textContent = d.stats.matches + ' matches · ' + (d.stats.yellows + d.stats.reds) + ' cards · ' + d.stats.whistles + ' whistles';
+    var hsub = $('hist-sub');
+    if (hsub) hsub.textContent = D.MATCHES.length + ' real classics';
     var sub = $('lt-sub');
     if (sub && REF.Tour) {
       var t = REF.Tour.state();
@@ -746,6 +748,16 @@ REF.UI = (function () {
       REF.Audio.click();
       openToolbox(!$('toolbox').classList.contains('on'));
     });
+
+    var histBtn = $('btn-hist');
+    if (histBtn) {
+      histBtn.addEventListener('click', function () {
+        REF.Audio.resume();
+        REF.Audio.click();
+        buildMatchList();
+        show('matches');
+      });
+    }
 
     var tourBtn = $('btn-tour');
     if (tourBtn) {

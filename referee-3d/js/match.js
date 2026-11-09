@@ -7,14 +7,17 @@ REF.Match = (function () {
   var BALL_R = 0.11;
   var GRAV = 16;
 
+  /* x, z as fractions of half the pitch — z is spread right across the width
+     so the side has real full-backs and wingers instead of a narrow clump */
   var FORMATION = [
     [-0.92, 0.00, 'GK'],
-    [-0.62, -0.30, 'DEF'], [-0.68, -0.10, 'DEF'], [-0.68, 0.10, 'DEF'], [-0.62, 0.30, 'DEF'],
-    [-0.24, -0.22, 'MID'], [-0.30, 0.00, 'MID'], [-0.24, 0.22, 'MID'],
-    [0.30, -0.26, 'FWD'], [0.40, 0.00, 'FWD'], [0.30, 0.26, 'FWD']
+    [-0.60, -0.74, 'DEF'], [-0.68, -0.25, 'DEF'], [-0.68, 0.25, 'DEF'], [-0.60, 0.74, 'DEF'],
+    [-0.24, -0.44, 'MID'], [-0.30, 0.00, 'MID'], [-0.24, 0.44, 'MID'],
+    [0.28, -0.80, 'FWD'], [0.40, 0.00, 'FWD'], [0.28, 0.80, 'FWD']
   ];
 
   var SPEED = { GK: 6.0, DEF: 6.4, MID: 6.9, FWD: 7.3 };
+  var BALL_DRAG = 1.35;      /* matches the ground friction in updateBall */
 
   /* squared distance from a point to the segment a→b: used to catch a pass */
   function segDist2(px, pz, ax, az, bx, bz) {
@@ -40,6 +43,9 @@ REF.Match = (function () {
     this.stateT = 2.6;
     this.time = 0;
     this.dt = 1 / 60;
+    this.passGuard = 0;
+    this.passGuardTeam = -1;
+    this.deadT = 0;
     this.decideT = 0;
     this.pendingFoul = null;
     this.pendingOffside = null;
@@ -347,12 +353,17 @@ REF.Match = (function () {
     }
 
     /* a player takes the ball if it passes within reach of him this frame */
-    var best = null, bd = 0.92 * 0.92;
+    if (this.passGuard > 0) this.passGuard -= dt;
+    var best = null, bd = 0.95 * 0.95;
     for (var i = 0; i < this.players.length; i++) {
       var p = this.players[i];
       if (!p.active || p.downT > 0 || p.noTouch > 0) continue;
+      /* the ball is not stolen off the boot the instant it is played */
+      if (this.passGuard > 0 && p.team !== this.passGuardTeam) continue;
       var d2 = segDist2(p.pos.x, p.pos.z, prev.x, prev.z, b.pos.x, b.pos.z);
       if (p.role === 'GK') d2 *= 0.7;
+      /* the man it was played to reads it a fraction earlier than anyone else */
+      if (p === this.passTo) d2 *= 0.45;
       if (d2 < bd) { bd = d2; best = p; }
     }
     if (best && speed > 30 && best.role !== 'GK') best = null;
@@ -662,40 +673,50 @@ REF.Match = (function () {
 
     var bu = b.x * dir;
     var baseU = base.x * dir;
-    var u = baseU + (bu - baseU) * 0.42;
-    var z = base.z + (b.z - base.z) * 0.3;
-
-    if (p.role === 'DEF') {
-      u = U.clamp(u, -46, 16);
-      z = U.clamp(z, -30, 30);
-    } else if (p.role === 'MID') {
-      u = U.clamp(u, -26, 36);
-      z = U.clamp(z, -30, 30);
-    } else {
-      u = U.clamp(u, -8, 46);
-    }
+    var halfW = F.W / 2 - 13;
+    var u, z;
 
     if (weHave) {
-      /* attacking shape: stretch the pitch, offer a lane */
-      if (p.role === 'FWD') {
-        p.runCd -= this.dt;
-        if (p.runCd <= 0) {
-          p.runCd = U.rand(2.4, 5.5);
-          p.runT = U.chance(0.5) ? U.rand(1.2, 2.2) : 0;
-        }
-        if (p.runT > 0) {
-          p.runT -= this.dt;
-          var line = this.secondLastX(p.team, dir);
-          /* sometimes he goes early and strays beyond the line */
-          u = line + (U.chance(0.38) ? U.rand(1.3, 3.0) : U.rand(-1.6, 0.9));
-          z = base.z + U.rand(-3, 3);
+      /* --------------------------------------------------- attacking shape
+         the whole side pushes up with the ball: full-backs to the halfway
+         line, one holder behind it, two shuttlers beyond, wide forwards
+         hugging the touchline so there is a pass on. */
+      if (p.role === 'DEF') {
+        if (p.idx === 2 || p.idx === 3) {
+          u = U.clamp(bu - 17, -36, 4);
+          z = base.z * 0.95;
         } else {
-          u = Math.max(bu + 9, baseU);
-          z = base.z * 0.6 + (base.z >= 0 ? -6 : 6);
+          u = U.clamp(bu - 4, -12, 28);
+          z = base.z * 1.05;
         }
       } else if (p.role === 'MID') {
-        u = Math.max(bu - 5, baseU - 3);
-        z = base.z * 0.55 + (base.z >= 0 ? 4 : -4);
+        if (p.idx === 6) {
+          u = U.clamp(bu - 9, -22, 26);
+          z = base.z * 0.55;
+        } else {
+          u = U.clamp(bu + 8, -10, 38);
+          z = base.z * 1.0;
+        }
+      } else if (p.idx === 9) {
+        /* the centre-forward drops in as the pivot */
+        var pl = this.secondLastX(p.team, dir);
+        u = U.clamp(Math.min(bu + 9, pl - 1.2), 2, 44);
+        z = base.z * 0.4;
+      } else {
+        /* wide forwards hold the line, then go in behind */
+        p.runCd -= this.dt;
+        if (p.runCd <= 0) {
+          p.runCd = U.rand(2.2, 4.6);
+          p.runT = U.chance(0.55) ? U.rand(0.9, 1.9) : 0;
+        }
+        var wl = this.secondLastX(p.team, dir);
+        if (p.runT > 0) {
+          p.runT -= this.dt;
+          u = wl + (U.chance(0.4) ? U.rand(1.2, 3.0) : U.rand(-1.6, 0.8));
+        } else {
+          u = Math.max(bu + 11, wl - 7);
+        }
+        z = base.z > 0 ? halfW : -halfW;
       }
     } else if (!loose) {
       /* defending: mark up, squeeze the space */
@@ -712,11 +733,22 @@ REF.Match = (function () {
         p.target.set(U.clamp(mx, -50, 50), 0, U.clamp(mz, -31, 31));
         return;
       }
-      u = baseU + (bu - baseU) * (p.role === 'DEF' ? 0.32 : 0.5);
-      z = base.z * 0.55 + b.z * 0.45;
-      u = Math.min(u, bu + 1.5);
-      u = U.clamp(u, -46, 22);
-      z = U.clamp(z, -30, 30);
+      if (p.role === 'DEF') {
+        u = U.clamp(bu - 6, -42, 16);
+        z = base.z;
+      } else if (p.role === 'MID') {
+        u = U.clamp(bu - 4, -34, 28);
+        z = base.z * 0.85 + b.z * 0.15;
+      } else {
+        /* the forwards stay high, ready to break */
+        u = U.clamp(bu + 7, -14, 30);
+        z = base.z * 0.9;
+      }
+    } else {
+      /* loose ball: everyone shifts towards it, keeping some shape */
+      u = baseU + (bu - baseU) * 0.35;
+      z = base.z + (b.z - base.z) * 0.25;
+      if (p.role === 'DEF') u = U.clamp(u, -46, 14);
     }
 
     p.target.set(U.clamp(u * dir, -50, 50), 0, U.clamp(z, -31, 31));
@@ -772,26 +804,28 @@ REF.Match = (function () {
   };
 
   Match.prototype.onBallDecision = function (p, dir, gx, distGoal, nd) {
-    var central = Math.abs(p.pos.z) < 20;
+    var central = Math.abs(p.pos.z) < 26;
 
-    /* shoot only from a real position */
-    if (distGoal < 32 && central && nd > 0.85) {
-      var sc = distGoal < 11 ? 0.7 : (distGoal < 19 ? 0.45 : 0.3);
+    /* shoot from a real position — and never turn down the box */
+    if (distGoal < 30 && central && nd > 0.9) {
+      var sc = distGoal < 13 ? 0.9 : (distGoal < 20 ? 0.6 : 0.16);
       if (U.chance(sc)) { this.shoot(p, gx); return; }
     }
 
     var opt = this.bestPass(p, dir);
-    if (opt) {
-      var want = 0.03;
-      if (nd < 1.2) want = 0.85;
-      else if (nd < 2.4) want = 0.45;
-      else if (nd < 4) want = 0.18;
-      else if (opt.score > 24) want = 0.14;
-      if (opt.mate && U.chance(want)) { this.pass(p, opt.mate); return; }
-
-      /* every so often a forward's run is picked out too early */
-      if (opt.offside && U.chance(0.4)) { this.pass(p, opt.offside); return; }
+    if (opt && opt.mate) {
+      /* football is a passing game: look for the ball forward most of the time */
+      var want = 0.34;
+      if (nd < 1.6) want = 0.94;
+      else if (nd < 3) want = 0.62;
+      else if (nd < 6) want = 0.44;
+      if (opt.score < -6) want *= 0.45;        /* nothing on at all */
+      if (opt.mate.role === 'FWD' && opt.score > 20) want = Math.max(want, 0.6);
+      if (U.chance(want)) { this.pass(p, opt.mate); return; }
     }
+
+    /* every so often a forward's run is picked out too early */
+    if (opt && opt.offside && U.chance(0.38)) { this.pass(p, opt.offside); return; }
 
     /* trapped at the back — get rid of it */
     if (nd < 2 && p.pos.x * dir < -28) this.clear(p, dir);
@@ -804,8 +838,11 @@ REF.Match = (function () {
       var m = this.players[i];
       if (!m.active || m.team !== p.team || m === p || m.role === 'GK') continue;
       var d = U.distXZ(m.pos, p.pos);
-      if (d < 4.5 || d > 40) continue;
+      if (d < 5 || d > 45) continue;
+
       var forward = (m.pos.x - p.pos.x) * dir;
+
+      /* how much room has the receiver got, and is the lane clear? */
       var oppNear = 1e9;
       for (var j = 0; j < this.players.length; j++) {
         var o = this.players[j];
@@ -813,10 +850,17 @@ REF.Match = (function () {
         var od = U.distXZ(o.pos, m.pos);
         if (od < oppNear) oppNear = od;
       }
-      var score = forward * 0.7 + Math.min(oppNear, 10) * 2.4 - d * 0.18;
-      if (forward < -2) score -= 6;
-      if (oppNear < 2.2) score -= 12;
-      if (m.role === 'FWD' && m.runT > 0 && forward > 3) score += 14;
+      var lane = 0;
+      for (var k = 0; k < this.players.length; k++) {
+        var q = this.players[k];
+        if (!q.active || q.team === p.team) continue;
+        if (segDist2(q.pos.x, q.pos.z, p.pos.x, p.pos.z, m.pos.x, m.pos.z) < 5.76) lane++;
+      }
+
+      var score = forward * 1.15 + Math.min(oppNear, 12) * 2.6 - d * 0.34 - lane * 11;
+      if (forward < -4) score -= 8;
+      if (oppNear < 2.4) score -= 10;
+      if (m.role === 'FWD' && m.runT > 0 && forward > 3) score += 12;
 
       if (this.wouldBeOffside(p, m)) {
         if (score > offScore) { offScore = score; off = m; }
@@ -837,13 +881,15 @@ REF.Match = (function () {
     var tz;
     if (gk && Math.abs(gk.pos.z - b.z) < 2.4) tz = gk.pos.z > 0 ? -2.4 : 2.4;
     else tz = U.rand(-2.5, 2.5);
-    var err = U.rand(-1, 1) * (0.3 + dist * 0.045);
-    tz = U.clamp(tz + err, -3.4, 3.4);
+    /* no striker is a machine: some of these go wide */
+    var err = U.rand(-1, 1) * (0.5 + dist * 0.055);
+    tz = U.clamp(tz + err, -4.8, 4.8);
 
     var dx = gx - b.pos.x;
     var dz = tz - b.pos.z;
     var len = Math.sqrt(dx * dx + dz * dz) || 1;
-    var power = U.clamp(19 + dist * 0.75, 22, 33);
+    /* enough power to still be travelling when it reaches the goal */
+    var power = U.clamp(BALL_DRAG * len + 18, 22, 42);
     var lift = U.clamp(0.5 + dist * 0.05, 0.9, 2.4);
     b.vel.set((dx / len) * power, lift, (dz / len) * power);
     p.kickCd = 1.2;
@@ -862,11 +908,21 @@ REF.Match = (function () {
     var dx = mate.pos.x - b.pos.x;
     var dz = mate.pos.z - b.pos.z;
     var len = Math.sqrt(dx * dx + dz * dz) || 1;
-    var speed = U.clamp(len * 1.35, 11, 23);
-    var t = len / speed;
-    /* lead the receiver into his run */
-    dx = mate.pos.x + mate.vel.x * t * 0.85 - b.pos.x;
-    dz = mate.pos.z + mate.vel.z * t * 0.85 - b.pos.z;
+
+    /* lead the receiver: work out where he will be when the ball gets there,
+       and weight the pass so it arrives at his feet rather than past him */
+    var ax = mate.pos.x, az = mate.pos.z, t = 0.6, speed = 20;
+    for (var it = 0; it < 4; it++) {
+      var lx = ax - b.pos.x, lz = az - b.pos.z;
+      var L = Math.sqrt(lx * lx + lz * lz) || 1;
+      var arrive = 4.5 + L * 0.08;
+      speed = U.clamp(BALL_DRAG * L + arrive, 11, 36);
+      t = Math.log(speed / arrive) / BALL_DRAG;
+      ax = mate.pos.x + mate.vel.x * t;
+      az = mate.pos.z + mate.vel.z * t;
+    }
+    dx = ax - b.pos.x;
+    dz = az - b.pos.z;
     var l2 = Math.sqrt(dx * dx + dz * dz) || 1;
     b.vel.set((dx / l2) * speed, len > 20 ? 2.2 : 0.6, (dz / l2) * speed);
     p.kickCd = 0.6;
@@ -874,6 +930,8 @@ REF.Match = (function () {
     this.owner = null;
     this.lastTouch = p;
     this.passTo = mate;
+    this.passGuard = 0.16;
+    this.passGuardTeam = p.team;
     REF.Audio.kick(0.5);
     if (offside) this.flagOffside(mate);
   };
@@ -951,9 +1009,9 @@ REF.Match = (function () {
   Match.prototype.tryTackle = function (defender, attacker) {
     if (defender.tackleCd > 0 || attacker.downT > 0 || defender.noTouch > 0) return;
     if (attacker.controlT > 0) return;
-    if (U.distXZ(defender.pos, attacker.pos) > 1.25) return;
-    defender.tackleCd = U.rand(1.4, 2.4);
-    if (U.chance(0.55)) {
+    if (U.distXZ(defender.pos, attacker.pos) > 1.7) return;
+    defender.tackleCd = U.rand(1.1, 2.0);
+    if (U.chance(0.5)) {
       this.owner = defender;
       defender.controlT = 0.25;
       this.ball.pos.x = defender.pos.x + Math.sin(defender.facing) * 0.4;
@@ -1335,7 +1393,7 @@ REF.Match = (function () {
         for (var k = 0; k < this.players.length; k++) {
           var d = this.players[k];
           if (!d.active || d.team === carrier.team) continue;
-          if (U.distXZ(d.pos, carrier.pos) < 1.2) {
+          if (U.distXZ(d.pos, carrier.pos) < 1.7) {
             this.tryTackle(d, carrier);
             if (this.owner !== carrier) break;
           }
@@ -1391,6 +1449,32 @@ REF.Match = (function () {
 
       if (!this.keeperSave()) {
         if (!this.checkGoal()) this.checkBounds();
+      }
+
+      /* safety net: a ball nobody can reach would stall the match for ever */
+      if (this.state === 'play' && !this.owner) {
+        this.deadT += dt;
+        if (this.deadT > 7) {
+          this.deadT = 0;
+          var np = null, nd2 = 1e9;
+          for (var di = 0; di < this.players.length; di++) {
+            var pp = this.players[di];
+            if (!pp.active || pp.downT > 0) continue;
+            var dd = U.distXZ(pp.pos, this.ball.pos);
+            if (dd < nd2) { nd2 = dd; np = pp; }
+          }
+          if (np) {
+            this.ball.pos.set(np.pos.x, BALL_R, np.pos.z);
+            this.ball.vel.set(0, 0, 0);
+            np.noTouch = 0;
+            np.controlT = 0.2;
+            this.owner = np;
+            this.lastTouch = np;
+            this.log('drop-ball', 'Ball back in play — ' + np.name);
+          }
+        }
+      } else {
+        this.deadT = 0;
       }
     } else if (this.state === 'goal') {
       this.updateBall(dt);
