@@ -134,6 +134,28 @@
   }
   #aiChat .ai-input button:disabled{opacity:.5;cursor:default}
   #aiChat .ai-note{display:block;margin-top:6px;font-size:11px;line-height:1.35;color:var(--dim)}
+  #aiChat .ai-engine{
+    padding:8px 12px;border-bottom:1px solid var(--line);background:var(--bg);
+    font-size:11.5px;color:var(--dim);display:flex;flex-direction:column;gap:6px;
+  }
+  #aiChat .ai-engine-line{display:flex;align-items:center;gap:8px}
+  #aiChat .ai-engine .dot{width:7px;height:7px;border-radius:50%;background:#e0a64a;flex:0 0 auto}
+  #aiChat .ai-engine.ready .dot{background:#4ad07a}
+  #aiChat .ai-engine button{
+    margin-left:auto;background:none;border:1px solid var(--line);color:var(--ink);
+    border-radius:999px;padding:3px 10px;font-size:11px;cursor:pointer;white-space:nowrap;
+  }
+  #aiChat .ai-engine button:hover{border-color:#3d4c74}
+  #aiChat .ai-engine button:disabled{opacity:.55;cursor:default}
+  #aiChat .ai-progress{height:3px;border-radius:2px;background:var(--line);overflow:hidden;display:none}
+  #aiChat .ai-progress.on{display:block}
+  #aiChat .ai-progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ffd75e,#ff9d2e)}
+  #aiChat .ai-cta{
+    display:inline-block;margin-top:8px;background:linear-gradient(135deg,#ffd75e,#ff9d2e);
+    color:#14161d;border:none;border-radius:8px;padding:7px 12px;font-size:12.5px;
+    font-weight:700;cursor:pointer;
+  }
+  #aiChat .ai-cta:disabled{opacity:.6;cursor:default}
 </style>
 </head>
 <body>
@@ -236,6 +258,14 @@
     <b>AI Assistant</b>
     <button id="aiClose" aria-label="Close">&#215;</button>
   </div>
+  <div class="ai-engine" id="aiEngine">
+    <div class="ai-engine-line">
+      <span class="dot"></span>
+      <span id="aiEngineText">Quick AI &middot; free &middot; no key</span>
+      <button id="aiEngineBtn" type="button">Unlimited AI</button>
+    </div>
+    <div class="ai-progress"><i id="aiProgress"></i></div>
+  </div>
   <div class="ai-msgs" id="aiMsgs"></div>
   <div class="ai-input">
     <input id="aiInput" type="text" placeholder="Ask me anything…" autocomplete="off">
@@ -246,38 +276,59 @@
 <script>
 (function () {
   /* -----------------------------------------------------------------
-     AI assistant — NO API KEY REQUIRED, no sign-in.
+     AI assistant — NO API key, no sign-in, no 45-second wall.
 
-     Engine: Pollinations (free public endpoint, CORS enabled).
-     Free tier = 1 answer every ~45 s per visitor, so this widget:
-       - answers game questions instantly from a built-in knowledge base
-       - queues anything else and auto-retries after the cooldown
-     Optional: put a Google Gemini key in GEMINI_KEY for instant answers.
+     Two free public providers answer first (usually in a few seconds).
+     When they are rate limited, a small language model that runs inside
+     this page takes over, so chat keeps working with no limit at all.
+     That model downloads once (about 460 MB) and is then cached by the
+     browser, so it only costs time the first time.
+
+     Optional: set GEMINI_KEY to switch everything to Google Gemini.
      ----------------------------------------------------------------- */
   var GEMINI_KEY = "";                     // optional, leave empty for free mode
   var GEMINI_MODEL = "gemini-2.0-flash";
-  var POLL_URL = "https://text.pollinations.ai/openai";
-  var COOLDOWN_HINT = "Free AI allows 1 answer every 45 s";
 
+  var PROVIDERS = [
+    { url: "https://text.pollinations.ai/openai", model: "openai", fallbackWait: 45, maxCool: 45, timeout: 15000 },
+    { url: "https://api.llm7.io/v1/chat/completions", model: "gpt-oss:20b", fallbackWait: 5, maxCool: 8, timeout: 20000 }
+  ];
+
+  // In-browser engine (transformers.js). The model files are served by
+  // ModelScope, which allows cross-origin reads from this site.
+  var LOCAL = {
+    repo: "Xenova/LaMini-Flan-T5-248M",
+    task: "text2text-generation",
+    cdn: "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.2",
+    host: "https://modelscope.cn/models/",
+    tpl: "{model}/resolve/master/",
+    files: [
+      { name: "encoder_model_quantized.onnx", path: "onnx/encoder_model_quantized.onnx", bytes: 110502358 },
+      { name: "decoder_model_merged_quantized.onnx", path: "onnx/decoder_model_merged_quantized.onnx", bytes: 164739632 }
+    ],
+    size: "270 MB"
+  };
+  LOCAL.total = LOCAL.files[0].bytes + LOCAL.files[1].bytes;
   var SYSTEM = "You are a friendly, concise assistant embedded on the Arcade page of William's games website. " +
-    "The site hosts nine free browser games: Age of Discovery (3D sailing and exploration), The Backrooms " +
-    "(first-person survival horror), House Siege 3D (5v5 FPS), KARDS (WWII card battles), Map Game (grand-strategy " +
-    "conquest), Blockcraft (voxel sandbox), Tank War (multiplayer tank arena), Apex Racing (3D racing) and WWII " +
-    "Europe (interactive WWII timeline and map). You may answer questions about the games or anything else. " +
-    "Always reply in plain text: no markdown, no tables, no bold or bullet symbols. Keep it to at most three " +
-    "short sentences unless the user explicitly asks for more detail.";
+    "The site hosts ten free browser games: WHISTLE (3D referee simulator), Age of Discovery (3D sailing and " +
+    "exploration), The Backrooms (first-person survival horror), House Siege 3D (5v5 FPS), KARDS (WWII card " +
+    "battles), Map Game (grand-strategy conquest), Blockcraft (voxel sandbox), Tank War (multiplayer tank arena), " +
+    "Apex Racing (3D racing) and WWII Europe (interactive WWII timeline and map). You may answer questions about " +
+    "the games or anything else. Always reply in plain text: no markdown, no tables, no bold or bullet symbols. " +
+    "Keep it to at most three short sentences unless the user explicitly asks for more detail.";
 
   var KB = [
     { keys: ["tank war"], answer: "Tank War is a multiplayer 3D tank arena. Open it from the hub card, then drive with WASD, aim with the mouse and fire with the left button. You can host or join a room to play with a friend." },
     { keys: ["apex racing", "race-car", "racing", "race car"], answer: "Apex Racing is a 3D racing game. Use the arrow keys or WASD to drive, and open it straight from the hub card. You can race against a friend in the same room." },
-    { keys: ["backrooms"], answer: "The Backrooms is a first-person survival horror walk through endless yellow corridors. Move with WASD and look with the mouse; your goal is to find the way out." },
+    { keys: ["backrooms"], answer: "The Backrooms is a first-person survival horror walk through endless corridors. Move with WASD and look with the mouse; your goal is to find the way out." },
     { keys: ["kards", "card game", "deck"], answer: "KARDS is a WWII-themed card battle game. Build a deck for a nation, spend Kredits to play units and orders, and destroy the enemy headquarters." },
     { keys: ["map game", "strategy", "conquest"], answer: "Map Game is a grand-strategy conquest game: pick a nation, manage your army and economy, then expand across the map." },
     { keys: ["blockcraft", "minecraft", "voxel", "sandbox"], answer: "Blockcraft is a voxel sandbox: break and place blocks to build whatever you like. Move with WASD, jump with Space, and click to mine or place." },
     { keys: ["wwii", "ww2", "world war", "hitler", "stalingrad"], answer: "WWII Europe is an interactive history page: a timeline, a map of territorial control that changes over time, key figures and statistics. Open its card on the hub to explore it." },
     { keys: ["age of discovery", "sailing", "sail", "exploration"], answer: "Age of Discovery is a 3D sailing and exploration game: captain a ship, discover new lands and trade along the way." },
     { keys: ["house siege", "white maze", "5v5", "shooter", "fps"], answer: "House Siege 3D is a fast 5v5 first-person shooter. Move with WASD, aim with the mouse, fire with the left button and use the keyboard to switch or reload weapons." },
-    { keys: ["how many games", "list of games", "which games", "all games"], answer: "There are nine games: Age of Discovery, The Backrooms, House Siege 3D, KARDS, Map Game, Blockcraft, Tank War, Apex Racing and WWII Europe. Each card on this page opens one." },
+    { keys: ["whistle", "referee", "football", "soccer"], answer: "WHISTLE is a 3D referee simulator. Pick one of twelve real World Cup and Champions League classics or a random eight-team knockout, then blow the whistle to stop play, show cards, call offside and manage twenty-two AI footballers." },
+    { keys: ["how many games", "list of games", "which games", "all games"], answer: "There are ten games: WHISTLE, Age of Discovery, The Backrooms, House Siege 3D, KARDS, Map Game, Blockcraft, Tank War, Apex Racing and WWII Europe. Each card on this page opens one." },
     { keys: ["who made", "who built", "creator", "william"], answer: "This arcade is William's collection of browser games — all free, all playable in the browser with no install." }
   ];
 
@@ -285,13 +336,25 @@
   var cache = {};
   var queued = [];
   var busy = false;
-  var nextFreeAt = 0;
+  var cool = {};                           // provider url -> timestamp it is usable again
+
+  var localState = "off";                  // off | loading | ready | error
+  var localGen = null;
+  var localModule = null;
+  var localPct = 0;
+  var localErr = "";
+  var waitingLocal = null;                 // question held until the in-browser model is ready
+
   var fab = document.getElementById("aiFAB");
   var chat = document.getElementById("aiChat");
   var msgs = document.getElementById("aiMsgs");
   var input = document.getElementById("aiInput");
   var send = document.getElementById("aiSend");
   var close = document.getElementById("aiClose");
+  var engineEl = document.getElementById("aiEngine");
+  var engineText = document.getElementById("aiEngineText");
+  var engineBtn = document.getElementById("aiEngineBtn");
+  var engineBar = document.getElementById("aiProgress");
 
   function addMsg(role, text) {
     var d = document.createElement("div");
@@ -330,41 +393,43 @@
     });
   }
 
-  function limitError(text) {
-    var wait = 45;
+  function parseWait(text, fallback) {
+    var wait = fallback;
     try {
       var j = JSON.parse(text);
-      var msg = (j.error && j.error.message) || j.message || "";
-      var m = /(\d+)\s*s(ec|econds)?/i.exec(msg) || /wait\s+(\d+)/i.exec(msg);
-      if (j.error && j.error.retryAfter) wait = +j.error.retryAfter;
-      else if (m) wait = +m[1];
+      if (j.retry_after) wait = +j.retry_after;
+      else if (j.error && j.error.retry_after) wait = +j.error.retry_after;
+      var m = /retry after\s+(\d+)/i.exec((j.error && j.error.message) || j.message || "");
+      if (m) wait = +m[1];
     } catch (e) {
-      var m2 = /wait\s+(\d+)/i.exec(text) || /(\d+)\s*seconds/i.exec(text);
+      var m2 = /wait\s+(\d+)/i.exec(text) || /after\s+(\d+)\s*s/i.exec(text) || /(\d+)\s*seconds/i.exec(text);
       if (m2) wait = +m2[1];
     }
-    var err = new Error("free-limit");
-    err.code = "FREE_LIMIT";
-    err.retryAfter = Math.max(2, Math.min(90, wait));
-    return err;
+    return Math.max(1, Math.min(90, wait));
   }
 
-  // ---- engine 1: Pollinations (free, no key) ----
-  function askPollinations(messages) {
-    return attempt(POLL_URL, {
+  function askProvider(prov, messages) {
+    var now = Date.now();
+    if (cool[prov.url] && cool[prov.url] > now) {
+      var e0 = new Error("cooling");
+      e0.code = "LIMIT";
+      e0.retryAfter = Math.ceil((cool[prov.url] - now) / 1000);
+      return Promise.reject(e0);
+    }
+    return attempt(prov.url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "openai",
-        messages: messages,
-        referrer: location.hostname || "local"
-      })
-    }, 70000)
-    .then(function (res) {
+      body: JSON.stringify({ model: prov.model, messages: messages, referrer: location.hostname || "local" })
+    }, prov.timeout || 15000).then(function (res) {
       return res.text().then(function (txt) {
         if (!res.ok) {
-          if (res.status === 402 || res.status === 429) throw limitError(txt);
           var e = new Error("http " + res.status);
           e.status = res.status;
+          if (res.status === 402 || res.status === 429) {
+            e.code = "LIMIT";
+            e.retryAfter = Math.min(parseWait(txt, prov.fallbackWait), prov.maxCool || 45);
+            cool[prov.url] = Date.now() + e.retryAfter * 1000;
+          }
           throw e;
         }
         var data = null;
@@ -376,7 +441,7 @@
     });
   }
 
-  // ---- engine 2: Gemini (only if a key is pasted above) ----
+  // optional engine: Google Gemini, used only when a key is pasted above
   function askGemini(messages) {
     var sys = messages[0].content;
     var contents = messages.slice(1).map(function (m) {
@@ -387,7 +452,7 @@
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ contents: contents, systemInstruction: { parts: [{ text: sys }] } })
-      }, 60000)
+      }, 30000)
       .then(function (res) { return res.json().then(function (d) { return { ok: res.ok, d: d }; }); })
       .then(function (r) {
         if (!r.ok) throw new Error((r.d.error && r.d.error.message) || "Gemini error");
@@ -397,12 +462,350 @@
       });
   }
 
+  // try each provider in turn; one being rate limited is simply skipped
+  function askChain(messages, i) {
+    i = i || 0;
+    return askProvider(PROVIDERS[i], messages).catch(function (e) {
+      if (i + 1 < PROVIDERS.length) return askChain(messages, i + 1);
+      throw e;
+    });
+  }
+
+  function askCloud(messages) {
+    return GEMINI_KEY ? askGemini(messages) : askChain(messages, 0);
+  }
+
+  /* -------------------- in-browser unlimited engine -------------------- */
+
+  // The offline model is ~270 MB in two files. Those are too big for the
+  // browser's own cache (it rejects large entries), so they are stored once
+  // in the Origin Private File System and streamed from there afterwards.
+  var opfsRoot = null;
+  var modelFetchReady = false;
+  var localStarting = false;
+
+  function modelURL(path) {
+    return LOCAL.host + LOCAL.repo + "/resolve/master/" + path;
+  }
+
+  function getRoot() {
+    if (opfsRoot) return Promise.resolve(opfsRoot);
+    if (!navigator.storage || !navigator.storage.getDirectory) {
+      return Promise.reject(new Error("this browser has no private file storage"));
+    }
+    return navigator.storage.getDirectory().then(function (root) {
+      opfsRoot = root;
+      return root;
+    });
+  }
+
+  function handleFor(name) {
+    return getRoot().then(function (root) {
+      return root.getFileHandle("arcade-" + name, { create: true });
+    });
+  }
+
+  function readChunk(reader, ms) {
+    return new Promise(function (resolve, reject) {
+      var done = false;
+      var timer = setTimeout(function () {
+        if (done) return;
+        done = true;
+        try { reader.cancel(); } catch (e) {}
+        reject(new Error("stalled"));
+      }, ms);
+      reader.read().then(function (r) {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        resolve(r);
+      }, function (e) {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        reject(e);
+      });
+    });
+  }
+
+  // Download to memory first, then store the finished file in one write.
+  // (Writing small pieces straight into a large file makes the browser copy
+  // the whole file on every re-open, which stalls badly at this size.)
+  function downloadFile(f, onProgress) {
+    var parts = [];
+    var have = 0;
+    var tries = 0;
+
+    function attempt() {
+      tries++;
+      var headers = have ? { Range: "bytes=" + have + "-" } : {};
+      var ctl = window.AbortController ? new AbortController() : null;
+      var slow = setTimeout(function () { if (ctl) ctl.abort(); }, 45000);
+      return fetch(modelURL(f.path), { headers: headers, signal: ctl ? ctl.signal : undefined })
+        .then(function (res) {
+          clearTimeout(slow);
+          // server ignored the resume point, so start this file again
+          if (have && res.status !== 206) {
+            try { if (res.body) res.body.cancel(); } catch (e) {}
+            parts = [];
+            have = 0;
+            throw new Error("restart");
+          }
+          if (!res.ok && res.status !== 206) throw new Error("http " + res.status);
+          var reader = res.body.getReader();
+          function pump() {
+            return readChunk(reader, 45000).then(function (r) {
+              if (r.done) return;
+              parts.push(r.value);
+              have += r.value.length;
+              onProgress(have);
+              return pump();
+            });
+          }
+          return pump().catch(function (e) {
+            try { reader.cancel(); } catch (e2) {}
+            throw e;
+          });
+        }, function (e) {
+          clearTimeout(slow);
+          throw e;
+        })
+        .catch(function (e) {
+          if (tries >= 12) throw e;
+          return attempt();
+        });
+    }
+
+    return attempt().then(function () {
+      if (have !== f.bytes) throw new Error("incomplete download");
+      return new Blob(parts);
+    });
+  }
+
+  function storeFile(f, blob, onProgress) {
+    return getRoot().then(function (root) {
+      return root.removeEntry("arcade-" + f.name).catch(function () {});
+    }).then(function () {
+      return handleFor(f.name);
+    }).then(function (fh) {
+      return fh.createWritable();
+    }).then(function (w) {
+      return w.write(blob).then(function () {
+        return w.close();
+      });
+    }).then(function () {
+      return handleFor(f.name);
+    }).then(function (fh) {
+      return fh.getFile();
+    }).then(function (file) {
+      if (file.size !== f.bytes) throw new Error("incomplete file");
+      onProgress(f.bytes);
+    });
+  }
+
+  function ensureOne(f, onProgress) {
+    return handleFor(f.name).then(function (fh) {
+      return fh.getFile();
+    }).then(function (file) {
+      if (file.size === f.bytes) { onProgress(f.bytes); return; }
+      onProgress(0);
+      return downloadFile(f, onProgress).then(function (blob) {
+        return storeFile(f, blob, onProgress);
+      });
+    });
+  }
+
+  function ensureModel(onProgress) {
+    var done = 0;
+    function step(i) {
+      if (i >= LOCAL.files.length) { onProgress(LOCAL.total); return Promise.resolve(); }
+      var f = LOCAL.files[i];
+      return ensureOne(f, function (loaded) {
+        onProgress(Math.min(LOCAL.total, done + loaded));
+      }).then(function () {
+        done += f.bytes;
+        return step(i + 1);
+      });
+    }
+    return step(0);
+  }
+
+  // Answer transformers.js from the stored files instead of the network.
+  function serveModel() {
+    if (modelFetchReady) return;
+    modelFetchReady = true;
+    var original = window.fetch.bind(window);
+    var prefix = LOCAL.host + LOCAL.repo + "/resolve/master/";
+    var names = {};
+    for (var i = 0; i < LOCAL.files.length; i++) names[LOCAL.files[i].path] = LOCAL.files[i].name;
+
+    window.fetch = function (input, init) {
+      var url = typeof input === "string" ? input : (input && input.url) || "";
+      if (url.indexOf(prefix) === 0 && names[url.slice(prefix.length)]) {
+        return handleFor(names[url.slice(prefix.length)]).then(function (fh) {
+          return fh.getFile();
+        }).then(function (file) {
+          return new Response(file.stream(), {
+            status: 200,
+            headers: {
+              "Content-Type": "application/octet-stream",
+              "Content-Length": String(file.size)
+            }
+          });
+        });
+      }
+      return original(input, init);
+    };
+  }
+
+  function updateEngine() {
+    if (!engineEl) return;
+    if (localState === "ready") {
+      engineEl.className = "ai-engine ready";
+      if (engineText) engineText.textContent = "Unlimited AI ready — runs in this page";
+      if (engineBtn) engineBtn.style.display = "none";
+      if (engineBar && engineBar.parentNode) engineBar.parentNode.classList.remove("on");
+    } else if (localState === "loading") {
+      engineEl.className = "ai-engine";
+      if (engineText) {
+        engineText.textContent = localStarting
+          ? "Starting the unlimited AI…"
+          : "Downloading unlimited AI " + localPct + "% (one time)";
+      }
+      if (engineBtn) engineBtn.style.display = "none";
+      if (engineBar) {
+        engineBar.parentNode.classList.add("on");
+        engineBar.style.width = localPct + "%";
+      }
+    } else if (localState === "error") {
+      engineEl.className = "ai-engine";
+      if (engineText) engineText.textContent = "Unlimited AI could not start on this browser";
+      if (engineBtn) { engineBtn.style.display = ""; engineBtn.disabled = false; engineBtn.textContent = "Retry"; }
+      if (engineBar && engineBar.parentNode) engineBar.parentNode.classList.remove("on");
+    } else {
+      engineEl.className = "ai-engine";
+      if (engineText) engineText.textContent = "Quick AI · free · no key";
+      if (engineBtn) { engineBtn.style.display = ""; engineBtn.disabled = false; engineBtn.textContent = "Unlimited AI (" + LOCAL.size + ")"; }
+      if (engineBar && engineBar.parentNode) engineBar.parentNode.classList.remove("on");
+    }
+  }
+
+  function startLocal() {
+    if (localState === "loading" || localState === "ready") return;
+    localState = "loading";
+    localPct = 0;
+    localErr = "";
+    localStarting = false;
+    updateEngine();
+    if (waitingLocal) setTyping("Downloading the unlimited AI… 0%");
+
+    // the previous version of the engine stored one much larger file here
+    getRoot().then(function (root) {
+      ["arcade-model.onnx", "arcade-model.onnx.crswap"].forEach(function (name) {
+        root.removeEntry(name).catch(function () {});
+      });
+    }).catch(function () {});
+
+    function progress(bytes) {
+      localPct = Math.max(localPct, Math.min(99, Math.round((bytes / LOCAL.total) * 99)));
+      updateEngine();
+      if (waitingLocal) setTyping("Downloading the unlimited AI… " + localPct + "%");
+    }
+
+    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+
+    ensureModel(progress)
+      .then(function () {
+        serveModel();
+        localStarting = true;
+        updateEngine();
+        if (waitingLocal) setTyping("Starting the unlimited AI…");
+        try { indexedDB.deleteDatabase("arcadeAI"); } catch (e) {}
+        return import(LOCAL.cdn);
+      })
+      .then(function (mod) {
+        localModule = mod;
+        var env = mod.env;
+        env.allowLocalModels = false;
+        env.remoteHost = LOCAL.host;
+        env.remotePathTemplate = LOCAL.tpl;
+        env.useCustomCache = false;
+        return mod.pipeline(LOCAL.task, LOCAL.repo, {
+          dtype: "q8",
+          device: "wasm",
+          progress_callback: function () {}
+        });
+      })
+      .then(function (gen) {
+        localGen = gen;
+        localState = "ready";
+        localPct = 100;
+        updateEngine();
+        try { localStorage.setItem("arcadeAI", "1"); } catch (e) {}
+        var w = waitingLocal;
+        waitingLocal = null;
+        if (w) run(w.q, w.ctx, true);
+      })
+      .catch(function (e) {
+        localState = "error";
+        localErr = String((e && e.message) || e).slice(0, 140);
+        updateEngine();
+        var w = waitingLocal;
+        waitingLocal = null;
+        if (w) localFailed(w.q, w.ctx);
+      });
+  }
+
+  function askLocal(messages, onToken) {
+    if (!localGen) return Promise.reject(new Error("no local model"));
+    var q = "";
+    for (var i = (messages || []).length - 1; i >= 0; i--) {
+      if (messages[i].role === "user") { q = messages[i].content; break; }
+    }
+    if (!q) return Promise.reject(new Error("no question"));
+    var opts = {
+      max_new_tokens: 80,
+      do_sample: false
+    };
+    if (onToken) {
+      try {
+        var Streamer = localModule && localModule.TextStreamer;
+        var tok = localGen.tokenizer;
+        if (Streamer && tok) {
+          opts.streamer = new Streamer(tok, {
+            skip_prompt: true,
+            skip_special_tokens: true,
+            callback_function: function (t) { try { onToken(t); } catch (e) {} }
+          });
+        }
+      } catch (e) {}
+    }
+    return localGen(q, opts).then(function (out) {
+      var g = out && out[0] && out[0].generated_text;
+      var text = "";
+      if (Array.isArray(g)) {
+        var last = g[g.length - 1];
+        text = (last && (last.content || last.text)) || "";
+      } else if (typeof g === "string") {
+        text = g;
+      }
+      return String(text || "").trim();
+    });
+  }
+
+  // small hook used by the site owner to check the in-browser engine
+  window.__arcade = {
+    state: function () { return localState; },
+    error: function () { return localErr; },
+    ask: askLocal,
+    model: function () { return localGen; }
+  };
+
+  /* ------------------------------ answers ------------------------------ */
+
   function clean(text) {
-    var t = String(text || "");
-    t = t.replace(/\r/g, "");
-    // drop markdown table separator rows like |---|---|
+    var t = String(text || "").replace(/\r/g, "");
     t = t.split("\n").filter(function (line) { return !/^\s*\|?[\s:|-]{4,}\|?\s*$/.test(line); }).join("\n");
-    // turn table rows into plain lines
     t = t.split("\n").map(function (line) {
       if (line.indexOf("|") === -1) return line;
       var cells = line.replace(/^\s*\|/, "").replace(/\|\s*$/, "").split("|");
@@ -434,73 +837,135 @@
       s.textContent = note;
       d.appendChild(s);
     }
+    return d;
   }
 
   function finish() {
     busy = false;
     setTyping(null);
-    if (queued.length) { var nxt = queued.shift(); run(nxt.q, nxt.ctx, 0); return; }
+    if (queued.length) { var nxt = queued.shift(); run(nxt.q, nxt.ctx, false); return; }
     if (!chat.classList.contains("hidden")) input.focus();
   }
 
-  function waitThenRetry(seconds, retry) {
-    var left = Math.max(1, Math.round(seconds));
-    var tick = function () {
-      setTyping(COOLDOWN_HINT + " — asking again in " + left + "s…");
-      if (left <= 0) { setTyping("Thinking…"); retry(); return; }
-      left--;
-      setTimeout(tick, 1000);
-    };
-    tick();
-  }
-
-  function run(q, ctx, attemptNo) {
-    busy = true;
-    setTyping("Thinking…");
-
-    var payload = [{ role: "system", content: SYSTEM }]
+  function buildMessages(q, ctx) {
+    return [{ role: "system", content: SYSTEM }]
       .concat((ctx || []).map(function (h) {
         return { role: h.role === "user" ? "user" : "assistant", content: h.text };
       }))
       .concat([{ role: "user", content: q }]);
+  }
 
-    var engine = GEMINI_KEY ? askGemini(payload) : askPollinations(payload);
+  function offerUnlimited(q, ctx) {
+    setTyping(null);
+    var d = addMsg("bot", "The free cloud AI is busy right now. Turn on the unlimited AI — it runs inside this page, needs no key, and downloads once (" + LOCAL.size + "). After that, answers never wait.");
+    var b = document.createElement("button");
+    b.className = "ai-cta";
+    b.type = "button";
+    b.textContent = "Turn on unlimited AI (" + LOCAL.size + ")";
+    b.addEventListener("click", function () {
+      b.disabled = true;
+      b.textContent = "Starting…";
+      waitingLocal = { q: q, ctx: ctx };
+      startLocal();
+    });
+    d.appendChild(b);
+    finish();
+  }
 
-    engine.then(function (reply) {
+  function localFailed(q, ctx) {
+    setTyping(null);
+    var quick = knowledge(q);
+    if (quick) {
+      say(quick, "Answered from the built-in guide.");
+      finish();
+      return;
+    }
+    say("The unlimited AI could not start on this browser" + (localErr ? " (" + localErr + ")" : "") +
+        ". The quick AI still works — try again in a moment.");
+    finish();
+  }
+
+  function run(q, ctx, forceLocal) {
+    busy = true;
+    setTyping(forceLocal ? "Thinking locally…" : "Thinking…");
+    var payload = buildMessages(q, ctx);
+
+    function done(reply, note) {
       reply = clean(reply);
       if (!reply) throw new Error("empty");
       history.push({ role: "model", text: reply });
       cache[q.toLowerCase()] = reply;
       setTyping(null);
-      addMsg("bot", reply);
+      if (note) say(reply, note); else addMsg("bot", reply);
       finish();
-    }).catch(function (e) {
-      if (e && e.code === "FREE_LIMIT") {
-        nextFreeAt = Date.now() + e.retryAfter * 1000;
-        var quick = knowledge(q);
-        if (quick) {
-          setTyping(null);
-          say(quick, "Answered instantly from the built-in guide — the free AI allows one answer per 45 s.");
-          finish();
-          return;
+    }
+
+    function unable() {
+      setTyping(null);
+      var quick = knowledge(q);
+      if (quick) { say(quick, "Answered from the built-in guide."); finish(); return; }
+      if (localState === "off" || localState === "error") { offerUnlimited(q, ctx); return; }
+      say("The AI is still getting ready. Please try again in a moment.");
+      finish();
+    }
+
+    // the offline model writes its answer word by word, so it appears while
+    // it is still thinking instead of after a long pause
+    function localAnswer() {
+      setTyping(null);
+      var bubble = null;
+      var text = "";
+      function paint() {
+        if (!bubble) {
+          bubble = document.createElement("div");
+          bubble.className = "msg bot";
+          msgs.appendChild(bubble);
         }
-        if (!attemptNo) {
-          waitThenRetry(e.retryAfter, function () { run(q, ctx, 1); });
-          return;
-        }
-        setTyping(null);
-        say("The free AI service is busy right now. Give it a minute and ask again — or click one of the game cards above.");
+        bubble.textContent = text;
+        msgs.scrollTop = msgs.scrollHeight;
+      }
+      askLocal(payload, function (t) {
+        text += t;
+        paint();
+      }).then(function (reply) {
+        var final = clean(String(reply || text || "").trim());
+        if (!final) throw new Error("empty");
+        if (!bubble) paint();
+        bubble.textContent = final;
+        var n = document.createElement("div");
+        n.className = "ai-note";
+        n.textContent = "Answered by the built-in offline AI.";
+        bubble.appendChild(n);
+        msgs.scrollTop = msgs.scrollHeight;
+        history.push({ role: "model", text: final });
+        cache[q.toLowerCase()] = final;
         finish();
+      }).catch(function () {
+        if (bubble && bubble.parentNode) bubble.parentNode.removeChild(bubble);
+        unable();
+      });
+    }
+
+    if (forceLocal && localState === "ready") { localAnswer(); return; }
+
+    askCloud(payload).then(function (r) {
+      done(r);
+    }).catch(function () {
+      // game questions are answered accurately from the built-in guide
+      // before the slower offline model is started
+      var quick = knowledge(q);
+      if (quick) { done(quick, "Answered from the built-in guide."); return; }
+      if (localState === "ready") {
+        setTyping("Thinking locally…");
+        localAnswer();
         return;
       }
-      var quick2 = knowledge(q);
-      setTyping(null);
-      if (quick2) {
-        say(quick2, "Answered offline from the built-in guide — the AI service could not be reached from this network.");
-      } else {
-        say("I could not reach the AI service from this network. Ask me about any of the nine games and I can still answer offline, or try again in a moment.");
+      if (localState === "loading") {
+        waitingLocal = { q: q, ctx: ctx };
+        setTyping("Downloading the unlimited AI… " + localPct + "%");
+        return;
       }
-      finish();
+      unable();
     });
   }
 
@@ -514,17 +979,8 @@
     var cached = cache[q.toLowerCase()];
     if (cached) { addMsg("bot", cached); return; }
 
-    // while the free tier is cooling down, game questions are answered instantly
-    if (Date.now() < nextFreeAt) {
-      var quick = knowledge(q);
-      if (quick) {
-        say(quick, "Answered instantly from the built-in guide — the free AI allows one answer per 45 s.");
-        return;
-      }
-    }
-
     if (busy) { queued.push({ q: q, ctx: history.slice(0, -1) }); return; }
-    run(q, history.slice(0, -1), 0);
+    run(q, history.slice(0, -1), false);
   }
 
   fab.addEventListener("click", function () {
@@ -534,9 +990,14 @@
   close.addEventListener("click", function () { chat.classList.add("hidden"); });
   send.addEventListener("click", ask);
   input.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); ask(); } });
+  if (engineBtn) engineBtn.addEventListener("click", function () { startLocal(); });
 
-  addMsg("bot", "Hi! I'm a free AI assistant — no key, no sign-in. Ask about any of the nine games, or anything else. " +
-                "Game questions are answered instantly; the free AI allows one general answer per 45 seconds, and I'll wait automatically.");
+  updateEngine();
+  try {
+    if (localStorage.getItem("arcadeAI") === "1") setTimeout(startLocal, 600);
+  } catch (e) {}
+
+  addMsg("bot", "Hi! I'm the AI assistant — no key, no sign-in. Ask about any of the ten games, or anything else. The quick AI is free; turn on the unlimited AI above and answers never wait.");
 })();
 </script>
 </body>
