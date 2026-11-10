@@ -10,10 +10,10 @@ REF.Match = (function () {
   /* x, z as fractions of half the pitch — z is spread right across the width
      so the side has real full-backs and wingers instead of a narrow clump */
   var FORMATION = [
-    [-0.92, 0.00, 'GK'],
-    [-0.60, -0.74, 'DEF'], [-0.68, -0.25, 'DEF'], [-0.68, 0.25, 'DEF'], [-0.60, 0.74, 'DEF'],
-    [-0.24, -0.44, 'MID'], [-0.30, 0.00, 'MID'], [-0.24, 0.44, 'MID'],
-    [0.28, -0.80, 'FWD'], [0.40, 0.00, 'FWD'], [0.28, 0.80, 'FWD']
+    [-0.94, 0.00, 'GK'],
+    [-0.58, -0.90, 'DEF'], [-0.70, -0.33, 'DEF'], [-0.70, 0.33, 'DEF'], [-0.58, 0.90, 'DEF'],
+    [-0.18, -0.66, 'MID'], [-0.30, 0.00, 'MID'], [-0.18, 0.66, 'MID'],
+    [0.34, -0.92, 'FWD'], [0.46, 0.00, 'FWD'], [0.34, 0.92, 'FWD']
   ];
 
   var SPEED = { GK: 6.0, DEF: 6.4, MID: 6.9, FWD: 7.3 };
@@ -27,6 +27,44 @@ REF.Match = (function () {
     if (t < 0) t = 0; else if (t > 1) t = 1;
     var qx = ax + dx * t, qz = az + dz * t;
     return (px - qx) * (px - qx) + (pz - qz) * (pz - qz);
+  }
+
+  /* a spray-paint blob: soft white cloud with a few hard flecks */
+  function sprayTexture() {
+    var c = document.createElement('canvas');
+    c.width = c.height = 128;
+    var g = c.getContext('2d');
+    var grd = g.createRadialGradient(64, 64, 4, 64, 64, 60);
+    grd.addColorStop(0, 'rgba(255,255,255,0.95)');
+    grd.addColorStop(0.55, 'rgba(245,250,255,0.55)');
+    grd.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grd;
+    g.fillRect(0, 0, 128, 128);
+    for (var i = 0; i < 90; i++) {
+      var a = Math.random() * Math.PI * 2;
+      var r = 20 + Math.random() * 40;
+      g.fillStyle = 'rgba(255,255,255,' + (0.25 + Math.random() * 0.5) + ')';
+      g.beginPath();
+      g.arc(64 + Math.cos(a) * r, 64 + Math.sin(a) * r, 0.8 + Math.random() * 2.2, 0, Math.PI * 2);
+      g.fill();
+    }
+    var t = new THREE.CanvasTexture(c);
+    try { t.colorSpace = THREE.SRGBColorSpace; } catch (e) { }
+    return t;
+  }
+
+  /* the dashed line the wall has to stand behind */
+  function wallTexture() {
+    var c = document.createElement('canvas');
+    c.width = 256; c.height = 32;
+    var g = c.getContext('2d');
+    g.clearRect(0, 0, 256, 32);
+    g.fillStyle = 'rgba(252,254,255,0.96)';
+    /* fat dashes: at twenty metres a hairline just disappears into the grass */
+    for (var x = 0; x < 256; x += 34) g.fillRect(x, 0, 22, 32);
+    var t = new THREE.CanvasTexture(c);
+    try { t.colorSpace = THREE.SRGBColorSpace; } catch (e) { }
+    return t;
   }
 
   function Match(scene, data, opts) {
@@ -50,7 +88,10 @@ REF.Match = (function () {
     this.pendingFoul = null;
     this.pendingOffside = null;
     this.freezeT = 0;
+    this.frozen = false;
     this.freezeAction = null;
+    this.restart = null;
+    this.wall = null;
     this.passTo = null;
     this.events = [];
     this.ended = false;
@@ -102,6 +143,26 @@ REF.Match = (function () {
     this.ballRing.position.y = 0.02;
     this.scene.add(this.ballRing);
 
+    /* spray-paint marks: the free-kick spot and the wall line */
+    this.paintGroup = new THREE.Group();
+    this.paintGroup.visible = false;
+    this.scene.add(this.paintGroup);
+
+    this.spraySpot = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.5, 1.5),
+      new THREE.MeshBasicMaterial({ map: sprayTexture(), transparent: true, depthWrite: false })
+    );
+    this.spraySpot.rotation.x = -Math.PI / 2;
+    this.spraySpot.position.y = 0.028;
+    this.paintGroup.add(this.spraySpot);
+
+    this.wallLine = new THREE.Mesh(
+      new THREE.PlaneGeometry(1, 0.55),
+      new THREE.MeshBasicMaterial({ map: wallTexture(), transparent: true, depthWrite: false })
+    );
+    this.wallLine.position.y = 0.03;
+    this.paintGroup.add(this.wallLine);
+
     for (var t = 0; t < 2; t++) {
       var info = this.teams[t].info;
       var dir = this.teams[t].dir;
@@ -109,7 +170,7 @@ REF.Match = (function () {
         var f = FORMATION[i];
         var role = f[2];
         var hx = t === 0 ? f[0] * (F.L / 2) : -f[0] * (F.L / 2);
-        var hz = t === 0 ? f[1] * (F.W / 2 - 4) : -f[1] * (F.W / 2 - 4);
+        var hz = t === 0 ? f[1] * (F.W / 2 - 3.5) : -f[1] * (F.W / 2 - 3.5);
 
         var shirt = info.shirt;
         var shirt2 = info.shirt2;
@@ -218,6 +279,7 @@ REF.Match = (function () {
 
   Match.prototype.kickoff = function (team, silent) {
     this.resetPositions();
+    this.clearPaint();
     this.setBall(0, BALL_R, 0);
     this.state = 'setpiece';
     this.stateT = 1.3;
@@ -244,7 +306,10 @@ REF.Match = (function () {
 
   Match.prototype.setPiece = function (kind, pos, team) {
     this.state = 'setpiece';
-    this.stateT = kind === 'penalty' ? 1.8 : (kind === 'free-kick' ? 1.3 : 0.9);
+    /* a corner needs a moment for both sides to get into the box */
+    this.stateT = kind === 'penalty' ? 1.9
+      : (kind === 'corner' ? 2.1
+        : (kind === 'goal-kick' ? 1.6 : (kind === 'free-kick' ? 1.5 : 1.1)));
     this.pendingFoul = null;
     this.pendingOffside = null;
     this.ball.vel.set(0, 0, 0);
@@ -252,10 +317,15 @@ REF.Match = (function () {
     this.owner = null;
     this.lastTouch = null;
     this.restart = { kind: kind, team: team, pos: pos.clone() };
-    this.taker = this.pickTaker(team, pos);
+
+    /* marks only live as long as the free kick they were sprayed for */
+    this.clearPaint();
+
+    /* a goal kick is the keeper's; everything else goes to the nearest man */
+    this.taker = kind === 'goal-kick' ? this.keeperOf(team) : this.pickTaker(team, pos);
     if (this.taker) {
       var dir = this.teams[team].dir;
-      var tx = pos.x - dir * 0.8;
+      var tx = pos.x - dir * 0.9;
       var tz = pos.z + 0.25;
       this.taker.pos.set(U.clamp(tx, -52, 52), 0, U.clamp(tz, -33, 33));
       this.taker.vel.set(0, 0, 0);
@@ -263,6 +333,178 @@ REF.Match = (function () {
       this.taker.ch.group.position.copy(this.taker.pos);
     }
     this.emit('state', this.state);
+  };
+
+  Match.prototype.clearPaint = function () {
+    if (this.paintGroup) this.paintGroup.visible = false;
+    this.wall = null;
+    for (var i = 0; i < this.players.length; i++) {
+      this.players[i].wallT = 0;
+      this.players[i].wallPos = null;
+    }
+  };
+
+  /* the closest team-mate to pass to from a dead ball */
+  Match.prototype.nearestMate = function (p, maxD) {
+    var best = null, bd = maxD || 20;
+    for (var i = 0; i < this.players.length; i++) {
+      var m = this.players[i];
+      if (!m.active || m.team !== p.team || m === p || m.role === 'GK') continue;
+      var d = U.distXZ(m.pos, p.pos);
+      if (d < bd) { bd = d; best = m; }
+    }
+    return best;
+  };
+
+  /* a corner whipped into the six-yard box */
+  Match.prototype.autoCross = function (taker, team) {
+    var b = this.ball;
+    var dir = this.teams[team].dir;
+    var tx = dir * (F.L / 2 - 8.5);
+    var tz = U.rand(-3.5, 3.5);
+    var dx = tx - b.pos.x, dz = tz - b.pos.z;
+    var len = Math.sqrt(dx * dx + dz * dz) || 1;
+    var speed = U.clamp(BALL_DRAG * len + 12, 16, 30);
+    b.vel.set((dx / len) * speed, 6.4, (dz / len) * speed);
+    taker.kickCd = 0.8;
+    taker.noTouch = 0.4;
+    this.owner = null;
+    this.lastTouch = taker;
+    this.passTo = null;
+    REF.Audio.kick(0.7);
+  };
+
+  /* a throw-in, flat and to feet */
+  Match.prototype.throwTo = function (taker, mate) {
+    var b = this.ball;
+    var dx = mate.pos.x - b.pos.x, dz = mate.pos.z - b.pos.z;
+    var len = Math.sqrt(dx * dx + dz * dz) || 1;
+    var speed = U.clamp(BALL_DRAG * len + 6, 8, 18);
+    b.vel.set((dx / len) * speed, 3.0, (dz / len) * speed);
+    taker.kickCd = 0.7;
+    taker.noTouch = 0.4;
+    this.owner = null;
+    this.lastTouch = taker;
+    this.passTo = mate;
+    REF.Audio.kick(0.35);
+  };
+
+  /* the set-piece timer has run out: somebody actually plays the ball */
+  Match.prototype.takeRestart = function () {
+    var r = this.restart;
+    if (!r) return;
+    this.restart = null;
+
+    var taker = this.taker;
+    if (!taker || !taker.active) taker = this.pickTaker(r.team, this.ball.pos);
+    if (!taker) return;
+
+    var dir = this.teams[r.team].dir;
+
+    if (r.kind === 'kick-off') {
+      var km = this.nearestMate(taker, 22);
+      if (km) this.pass(taker, km);
+      else this.clear(taker, dir);
+    } else if (r.kind === 'goal-kick') {
+      this.gkDistribute(taker, dir);
+    } else if (r.kind === 'corner') {
+      this.autoCross(taker, r.team);
+    } else if (r.kind === 'throw-in') {
+      var mate = this.nearestMate(taker, 22);
+      if (mate) this.throwTo(taker, mate);
+      else this.clear(taker, dir);
+    } else if (r.kind === 'free-kick') {
+      var gx = dir * (F.L / 2);
+      var dg = Math.sqrt((gx - this.ball.pos.x) * (gx - this.ball.pos.x) + this.ball.pos.z * this.ball.pos.z);
+      if (dg < 30 && Math.abs(this.ball.pos.z) < 20) {
+        this.shoot(taker, gx);
+        this.log('free-kick', 'Free kick — ' + taker.name + ' has a go');
+      } else {
+        var opt = this.bestPass(taker, dir);
+        if (opt && opt.mate) this.pass(taker, opt.mate);
+        else this.clear(taker, dir);
+        }
+    } else if (r.kind === 'penalty') {
+      this.shoot(taker, dir * (F.L / 2));
+      this.log('penalty', 'Penalty — ' + taker.name);
+    }
+
+    this.clearPaint();
+    this.taker = null;
+  };
+
+  /* the paint can: spray the free-kick spot and lay out the wall 9.15 m away */
+  Match.prototype.paintFreeKick = function (pt) {
+    var f = this.pendingFoul || this.lastFoul;
+    var team = f ? 1 - f.team : (this.restart ? this.restart.team : 0);
+    var dir = this.teams[team].dir;
+
+    var x = U.clamp(pt.x, -F.L / 2 + 1.2, F.L / 2 - 1.2);
+    var z = U.clamp(pt.z, -F.W / 2 + 1.2, F.W / 2 - 1.2);
+
+    this.ball.pos.set(x, BALL_R, z);
+    this.ball.vel.set(0, 0, 0);
+    this.owner = null;
+    this.passTo = null;
+
+    if (this.paintGroup) {
+      this.paintGroup.visible = true;
+      this.spraySpot.position.set(x, 0.028, z);
+    }
+
+    /* the wall: 9.15 m from the ball, square to the line to goal */
+    var gx = dir * (F.L / 2);
+    var dx = gx - x, dz = 0 - z;
+    var len = Math.sqrt(dx * dx + dz * dz) || 1;
+    var ux = dx / len, uz = dz / len;
+    var wx = U.clamp(x + ux * 9.15, -F.L / 2 + 0.6, F.L / 2 - 0.6);
+    var wz = U.clamp(z + uz * 9.15, -F.W / 2 + 0.6, F.W / 2 - 0.6);
+    var px = -uz, pz = ux;
+
+    this.wall = { x: wx, z: wz, px: px, pz: pz, team: 1 - team };
+
+    if (this.wallLine) {
+      this.wallLine.position.set(wx, 0.03, wz);
+      this.wallLine.rotation.set(-Math.PI / 2, 0, Math.atan2(-pz, px));
+      this.wallLine.scale.set(5.4, 1, 1);
+    }
+
+    /* the four nearest defenders form it */
+    var defs = [];
+    for (var i = 0; i < this.players.length; i++) {
+      var p = this.players[i];
+      if (!p.active || p.team === team || p.role === 'GK') continue;
+      defs.push(p);
+    }
+    var wv = new THREE.Vector3(wx, 0, wz);
+    defs.sort(function (a, b) { return U.distXZ(a.pos, wv) - U.distXZ(b.pos, wv); });
+    var n = Math.min(4, defs.length);
+    for (var k = 0; k < n; k++) {
+      var d = defs[k];
+      var off = (k - (n - 1) / 2) * 1.35;
+      d.wallT = 1e9;
+      d.wallPos = new THREE.Vector3(
+        U.clamp(wx + px * off, -51, 51), 0, U.clamp(wz + pz * off, -32, 32));
+      d.target.copy(d.wallPos);
+      d.vel.set(0, 0, 0);
+    }
+
+    /* this spot is the free kick now; Continue puts the ball back in play */
+    this.restart = { kind: 'free-kick', team: team, pos: new THREE.Vector3(x, 0, z) };
+    this.state = 'setpiece';
+    this.stateT = 1.7;
+    this.taker = this.pickTaker(team, this.ball.pos);
+    if (this.taker) {
+      this.taker.pos.set(U.clamp(x - ux * 1.15, -52, 52), 0, U.clamp(z - uz * 1.15, -33, 33));
+      this.taker.vel.set(0, 0, 0);
+      this.taker.target.copy(this.taker.pos);
+      this.taker.ch.group.position.copy(this.taker.pos);
+    }
+    this.pendingFoul = null;
+    this.pendingOffside = null;
+    this.freezeAction = null;
+    this.log('free-kick', 'Free kick marked — a wall of ' + n + ' for ' + this.teamName(team));
+    return { x: x, z: z, wall: this.wall, men: n };
   };
 
   /* ---------------------------------------------------------------- log */
@@ -408,7 +650,9 @@ REF.Match = (function () {
 
     var wantX = 0, wantZ = 0;
     if (d > 0.28) {
-      var spd = Math.min(p.maxSpeed, d * 2.6);
+      /* a man sent to the wall jogs there — the referee is waiting on him */
+      var cap = p.wallT > 0 ? Math.max(p.maxSpeed, 8.2) : p.maxSpeed;
+      var spd = Math.min(cap, d * 2.6);
       if (p.role === 'GK' && d < 2) spd = Math.min(spd, 6.5);
       wantX = (dx / d) * spd;
       wantZ = (dz / d) * spd;
@@ -456,9 +700,13 @@ REF.Match = (function () {
         var dx = b.pos.x - a.pos.x;
         var dz = b.pos.z - a.pos.z;
         var d2 = dx * dx + dz * dz;
-        if (d2 < 0.5 && d2 > 0.0001) {
+        /* team-mates keep their distance, which is what makes the shape look
+           spread out. An opponent may come right up to you — hold them off at
+           1.9 m and nobody can ever tackle, so there are no fouls all game. */
+        var min = a.team === b.team ? 1.9 : 0.62;
+        if (d2 < min * min && d2 > 0.0001) {
           var d = Math.sqrt(d2);
-          var push = (0.72 - d) * 0.5;
+          var push = (min - d) * 0.34;
           var nx = dx / d, nz = dz / d;
           a.pos.x -= nx * push; a.pos.z -= nz * push;
           b.pos.x += nx * push; b.pos.z += nz * push;
@@ -648,13 +896,54 @@ REF.Match = (function () {
   };
 
   /* --------------------------------------------------------- off the ball */
+  /* where a player stands for a corner: attackers crowd the six-yard box,
+     defenders pick up a man and stay goal-side of him */
+  Match.prototype.cornerTarget = function (p) {
+    var r = this.restart;
+    var atk = r.team;
+    var dir = this.teams[atk].dir;
+    var gx = dir * (F.L / 2);
+    var side = r.pos.z >= 0 ? 1 : -1;
+
+    if (p.team === atk) {
+      var i = p.idx;
+      var tx = gx - dir * (3.0 + (i % 3) * 2.6);
+      var tz = (i % 2 ? 1 : -1) * (1.8 + (i % 4) * 1.9) * side;
+      p.target.set(U.clamp(tx, -50, 50), 0, U.clamp(tz, -31, 31));
+      return;
+    }
+
+    var near = null, nd = 1e9;
+    for (var k = 0; k < this.players.length; k++) {
+      var o = this.players[k];
+      if (!o.active || o.team !== atk || o.role === 'GK') continue;
+      var d = Math.abs(o.pos.z - p.pos.z) + Math.abs(o.pos.x - p.pos.x) * 0.35;
+      if (d < nd) { nd = d; near = o; }
+    }
+    if (near) p.target.set(U.clamp(near.pos.x + dir * 0.9, -50, 50), 0, U.clamp(near.pos.z, -31, 31));
+    else p.target.copy(p.home);
+  };
+
   Match.prototype.think = function (p, ownerTeam) {
     var dir = this.teams[p.team].dir;
     var b = this.ball.pos;
     var base = p.home;
 
+    /* a wall stays exactly where the paint can told it to stand */
+    if (p.wallT > 0 && p.wallPos) {
+      p.target.copy(p.wallPos);
+      return;
+    }
+
     if (this.state !== 'play') {
       if (p === this.taker) { p.target.copy(p.pos); return; }
+      if (this.state === 'setpiece' && this.restart) {
+        if (this.restart.kind === 'corner') { this.cornerTarget(p); return; }
+        if (this.restart.kind === 'goal-kick') {
+          p.target.set(U.clamp(base.x * 0.55 + b.x * 0.45, -50, 50), 0, U.clamp(base.z, -31, 31));
+          return;
+        }
+      }
       p.target.copy(base);
       p.target.x += b.x * 0.18;
       return;
@@ -673,7 +962,7 @@ REF.Match = (function () {
 
     var bu = b.x * dir;
     var baseU = base.x * dir;
-    var halfW = F.W / 2 - 13;
+    var halfW = F.W / 2 - 6;
     var u, z;
 
     if (weHave) {
@@ -1138,12 +1427,14 @@ REF.Match = (function () {
       var defender = 1 - attacker;
       var last = this.lastTouch ? this.lastTouch.team : defender;
       if (last === attacker) {
-        var gx = goalSign * (halfL - 6);
+        /* the keeper restarts from inside his six-yard box */
+        var gx = goalSign * (halfL - 5);
         this.log('goal-kick', 'Goal kick — ' + this.teamName(defender));
-        this.setPiece('goal-kick', new THREE.Vector3(gx, 0, U.rand(-6, 6)), defender);
+        this.setPiece('goal-kick', new THREE.Vector3(gx, 0, U.rand(-4.5, 4.5)), defender);
       } else {
-        var cx = goalSign * (halfL - 0.6);
-        var cz = Math.sign(b.z || 1) * (halfW - 0.6);
+        /* the corner taker stands right on the arc */
+        var cx = goalSign * (halfL - 0.35);
+        var cz = Math.sign(b.z || 1) * (halfW - 0.35);
         this.log('corner', 'Corner — ' + this.teamName(attacker));
         this.setPiece('corner', new THREE.Vector3(cx, 0, cz), attacker);
       }
@@ -1152,7 +1443,7 @@ REF.Match = (function () {
 
   /* ------------------------------------------------------- referee inputs */
   Match.prototype.whistle = function () {
-    if (this.freezeT > 0) return 'busy';
+    if (this.frozen) return 'busy';
 
     this.stats.whistles++;
     REF.Save.stat('whistles');
@@ -1169,8 +1460,10 @@ REF.Match = (function () {
       }
     }
 
-    /* the whistle stops the clock — nothing moves until the game restarts */
-    this.freezeT = 1.15;
+    /* the whistle stops the match dead — the clock and every player wait for
+       the referee to press Continue */
+    this.frozen = true;
+    this.freezeT = 0;
     this.freezeAction = null;
 
     if (this.pendingFoul && this.pendingFoul.t > 0) {
@@ -1199,12 +1492,20 @@ REF.Match = (function () {
     return 'none';
   };
 
-  Match.prototype.afterFreeze = function () {
+  /* Continue: hand the match back to the players. Whatever the whistle
+     interrupted (a free kick, an offside) is set up first. */
+  Match.prototype.continuePlay = function () {
+    if (!this.frozen) return false;
     var act = this.freezeAction;
     this.freezeAction = null;
+    this.frozen = false;
     this.freezeT = 0;
     if (act) act.call(this);
+    this.emit('resumed', null);
+    return true;
   };
+
+  Match.prototype.afterFreeze = function () { return this.continuePlay(); };
 
   Match.prototype.showCard = function (p, type) {
     if (!p || !p.active) return null;
@@ -1273,16 +1574,22 @@ REF.Match = (function () {
   Match.prototype.update = function (dt) {
     if (this.ended) return;
 
-    /* time stops for as long as the whistle is ringing */
-    if (this.freezeT > 0) {
-      this.freezeT -= dt;
-      this.time += dt;
+    /* the whistle stops the match completely: no clock, no movement, no
+       animation — nothing happens until Continue. The one exception is a wall
+       that has just been painted: those four still walk onto their line, so
+       you can see what you marked before you restart the game. */
+    if (this.frozen) {
       for (var f = 0; f < this.players.length; f++) {
         var fp = this.players[f];
-        fp.ch.animSpeed = 0;
-        REF.Actors.animate(fp.ch, dt, this.time);
+        if (fp.wallT > 0 && fp.wallPos) {
+          fp.target.copy(fp.wallPos);
+          this.movePlayer(fp, dt);
+          fp.facing = Math.atan2(this.ball.pos.x - fp.pos.x, this.ball.pos.z - fp.pos.z);
+          fp.ch.group.rotation.y = fp.facing;
+        } else {
+          fp.ch.animSpeed = 0;
+        }
       }
-      if (this.freezeT <= 0) this.afterFreeze();
       this.emit('tick', null);
       return;
     }
@@ -1295,7 +1602,11 @@ REF.Match = (function () {
 
     if (this.state === 'setpiece') {
       this.stateT -= dt;
-      if (this.stateT <= 0) { this.state = 'play'; this.emit('state', this.state); }
+      if (this.stateT <= 0) {
+        this.state = 'play';
+        this.emit('state', this.state);
+        this.takeRestart();
+      }
     } else if (this.state === 'goal') {
       this.stateT -= dt;
       if (this.stateT <= 0) {

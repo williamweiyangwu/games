@@ -30,7 +30,19 @@ REF.Tour = (function () {
     return a;
   }
 
-  function stageName(round) { return D.ROUND_NAMES[round] || 'Final'; }
+  /* the round names that fit a competition of this size: 8 teams start at the
+     quarter-finals, 16 teams get a round of 16 first */
+  function roundNames(size) {
+    var n = Math.round(Math.log(size || 8) / Math.LN2);
+    var all = D.ROUND_NAMES;
+    return all.slice(Math.max(0, all.length - n));
+  }
+
+  function stageName(round) {
+    var t = state();
+    var names = (t && t.names) || roundNames(8);
+    return names[round] || 'Final';
+  }
 
   /* build the ties for the current round from the surviving teams */
   function makeRound(t) {
@@ -53,12 +65,15 @@ REF.Tour = (function () {
 
   function start(id) {
     var c = cfg(id);
+    var size = c.size || 8;
     var t = {
       id: c.id,
       comp: c.comp,
       year: new Date().getFullYear(),
+      size: size,
+      names: roundNames(size),
       round: 0,
-      alive: shuffle(c.pool).slice(0, 8),
+      alive: shuffle(c.pool).slice(0, size),
       rounds: [],
       focus: 0,
       champ: null,
@@ -184,6 +199,7 @@ REF.Tour = (function () {
     record: record,
     reset: reset,
     stageName: stageName,
+    roundNames: roundNames,
     continueFromResult: continueFromResult
   };
 })();

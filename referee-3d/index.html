@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>WHISTLE — Third-Person Referee Simulator</title>
-<meta name="description" content="A 3D third-person referee simulator. Take charge of World Cup and Champions League classics — blow the whistle, book players, call offside and keep twenty-two AI footballers under control.">
+<title>WHISTLE — First-Person Referee Simulator</title>
+<meta name="description" content="A 3D first-person referee simulator. Take charge of World Cup and Champions League classics — blow the whistle, book players, call offside and keep twenty-two AI footballers under control.">
 <meta name="theme-color" content="#070a10">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b0f16'/%3E%3Ccircle cx='32' cy='32' r='17' fill='none' stroke='%23ffd75e' stroke-width='4'/%3E%3Ccircle cx='32' cy='32' r='5' fill='%23ffd75e'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="css/style.css">
@@ -59,12 +59,21 @@
       <div class="bar"><i id="stamina-bar"></i></div>
     </div>
     <div class="hintline">
-      <b>WASD</b> move · <b>SHIFT</b> sprint · <b>SPACE</b> jump · <b>E</b> toolbox · <b>T</b> talk · <b>LMB</b> whistle · <b>MOUSE</b> look
+      <b>WASD</b> move · <b>SHIFT</b> sprint · <b>SPACE</b> jump · <b>E</b> toolbox · <b>T</b> talk · <b>LMB</b> whistle · <b>ENTER</b> continue
     </div>
   </div>
 
   <div class="hud-bc"><div class="prompt" id="prompt"></div></div>
   <div class="hud-tc"><div class="objectives" id="objectives"></div></div>
+
+  <div id="continuebar">
+    <div class="cb-inner">
+      <div class="cb-kicker">PLAY STOPPED</div>
+      <button id="btn-continue" class="cb-btn" type="button">
+        <b>Continue</b><em>Press ENTER — or click here</em>
+      </button>
+    </div>
+  </div>
 
   <div id="crosshair"></div>
 
@@ -91,6 +100,30 @@
     </div>
     <div class="dlg-text" id="dlg-text"></div>
     <div class="dlg-actions" id="dlg-actions"></div>
+  </div>
+</div>
+
+<!-- ============================ SAVE BACKUP ======================== -->
+<div id="savebox">
+  <div class="save-card">
+    <div class="save-head">
+      <h3>Backup &amp; restore</h3>
+      <button id="btn-close-save" class="xbtn" type="button">✕</button>
+    </div>
+    <p class="save-lead">Your career is stored in this browser. Clearing cookies and site data erases it — so keep a copy here. Download the file or copy the code, and paste it back on any device.</p>
+    <div class="save-row">
+      <button class="btn" id="btn-save-copy" type="button"><b>Copy code</b><em>Paste it back later</em></button>
+      <button class="btn" id="btn-save-file" type="button"><b>Download file</b><em>whistle-save.json</em></button>
+    </div>
+    <label class="save-label" for="save-code">Your save code</label>
+    <textarea id="save-code" readonly spellcheck="false"></textarea>
+    <label class="save-label" for="save-import">Restore from a code</label>
+    <textarea id="save-import" spellcheck="false" placeholder="Paste a WHISTLE save code here…"></textarea>
+    <div class="save-row">
+      <button class="btn primary" id="btn-save-import" type="button"><b>Restore</b><em>Replace this browser's save</em></button>
+      <label class="btn filebtn"><b>Load file</b><em>whistle-save.json</em><input type="file" id="save-file-input" accept=".json,application/json"></label>
+    </div>
+    <div class="save-status" id="save-status"></div>
   </div>
 </div>
 
@@ -135,7 +168,7 @@
   <section class="screen" id="scr-menu">
     <div class="menu-wrap">
       <div class="brand">
-        <div class="kicker">THIRD-PERSON REFEREE SIMULATOR</div>
+        <div class="kicker">FIRST-PERSON REFEREE SIMULATOR</div>
         <h1>WHISTLE</h1>
         <p>Twenty-two footballers. One whistle. Every call is yours.</p>
       </div>
@@ -150,15 +183,21 @@
       </div>
 
       <div class="lobby-corner">
-        <button class="lobby-pill gold" id="btn-tour" type="button">
-          <span class="lt-ico">✦</span>
-          <span class="lt-body"><b>Tournament</b><em id="lt-sub">Random draw · knockout</em></span>
-        </button>
         <button class="lobby-pill hist" id="btn-hist" type="button">
           <span class="lt-ico">◉</span>
           <span class="lt-body"><b>Historical matches</b><em id="hist-sub">12 real classics</em></span>
         </button>
       </div>
+
+      <button class="lobby-pill gold lobby-mid" id="btn-tour" type="button">
+        <span class="lt-ico">✦</span>
+        <span class="lt-body"><b>Tournament</b><em id="lt-sub">Random draw · knockout</em></span>
+      </button>
+
+      <button class="lobby-pill lobby-br" id="btn-save" type="button">
+        <span class="lt-ico">⛁</span>
+        <span class="lt-body"><b>Backup</b><em>Keep your career safe</em></span>
+      </button>
     </div>
   </section>
 
@@ -226,6 +265,7 @@
         <button class="btn primary" id="btn-resume" type="button"><b>Resume</b><em>Back to the match</em></button>
         <button class="btn" id="btn-restart" type="button"><b>Restart match</b><em>Same fixture, clean slate</em></button>
         <button class="btn" id="btn-quit" type="button"><b>Quit to menu</b><em>Abandon the match</em></button>
+        <button class="btn" id="btn-save-pause" type="button"><b>Backup &amp; restore</b><em>Copy or restore your career</em></button>
         <button class="btn ghost" id="btn-reset" type="button"><b>Reset all progress</b><em>Deletes points, kits and achievements</em></button>
       </div>
       <div class="controls">
@@ -236,7 +276,9 @@
         <div><b>LMB</b><span>blow the whistle</span></div>
         <div><b>MOUSE</b><span>look around (locked)</span></div>
         <div><b>T</b><span>talk to nearest player</span></div>
-        <div><b>1 – 5</b><span>quick tools</span></div>
+        <div><b>1 – 6</b><span>quick tools</span></div>
+        <div><b>5</b><span>paint can — spray the free kick</span></div>
+        <div><b>ENTER</b><span>continue after a whistle</span></div>
       </div>
     </div>
   </section>

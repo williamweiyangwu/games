@@ -37,6 +37,7 @@ REF.UI = (function () {
     }
     currentScreen = name;
     $('hud').classList.toggle('on', !name || name === 'pause' || name === 'result');
+    if (name) $('continuebar').classList.remove('on');
     if (name && REF.Pointer) REF.Pointer.unlock();
     if (REF.Pointer) REF.Pointer.refresh();
   }
@@ -231,7 +232,7 @@ REF.UI = (function () {
     D.TOURNAMENTS.forEach(function (c) {
       var card = h('button', 'tcard');
       card.type = 'button';
-      card.appendChild(h('div', 'tcard-kick', 'NEW DRAW'));
+      card.appendChild(h('div', 'tcard-kick', 'NEW DRAW · ' + (c.size || 8) + ' TEAMS'));
       card.appendChild(h('h3', null, c.name));
       card.appendChild(h('p', null, c.blurb));
       var chips = h('div', 'tchips');
@@ -278,9 +279,11 @@ REF.UI = (function () {
     body.appendChild(head);
 
     var grid = h('div', 'bracket');
-    for (var r = 0; r < 3; r++) {
+    var cols = (t.names && t.names.length) || 3;
+    grid.style.setProperty('--bcols', String(cols));
+    for (var r = 0; r < cols; r++) {
       var col = h('div', 'bcol');
-      col.appendChild(h('div', 'bcol-head', D.ROUND_NAMES[r]));
+      col.appendChild(h('div', 'bcol-head', (t.names && t.names[r]) || D.ROUND_NAMES[r]));
       var list = h('div', 'blist');
       var ties = t.rounds[r];
       if (!ties) list.appendChild(h('div', 'btie empty', 'to be decided'));
@@ -357,12 +360,20 @@ REF.UI = (function () {
     }
     document.body.classList.toggle('carding', id === 'yellow' || id === 'red');
     document.body.classList.toggle('talking', id === 'talk');
+    document.body.classList.toggle('painting', id === 'paint');
     if (id === 'yellow' || id === 'red') {
       $('toolbox').classList.remove('on');
       setPrompt(id === 'yellow' ? 'Click a player to show the YELLOW card  ·  ESC to cancel' : 'Click a player to show the RED card  ·  ESC to cancel');
     } else if (id === 'talk') {
       $('toolbox').classList.remove('on');
       setPrompt('Click a player to talk  ·  ESC to cancel');
+    } else if (id === 'paint') {
+      $('toolbox').classList.remove('on');
+      if (REF.Pointer) REF.Pointer.unlock();
+      var stopped = REF.Game.match && REF.Game.match.frozen;
+      setPrompt(stopped
+        ? 'Click the pitch to spray the free-kick mark and the wall  ·  ESC to cancel'
+        : 'Paint can — blow the whistle first, then mark the free kick');
     } else if (id === 'book') {
       openBook();
     } else {
@@ -498,6 +509,63 @@ REF.UI = (function () {
     if (REF.Pointer) { REF.Pointer.lock(); REF.Pointer.refresh(); }
   }
 
+  /* --------------------------------------------------------- continue bar */
+  function showContinue() { $('continuebar').classList.add('on'); }
+  function hideContinue() { $('continuebar').classList.remove('on'); }
+
+  /* ------------------------------------------------------------ save panel */
+  function saveStatus(txt, bad) {
+    var n = $('save-status');
+    n.textContent = txt || '';
+    n.className = 'save-status' + (bad ? ' bad' : '');
+  }
+
+  function openSave() {
+    REF.Audio.click();
+    $('save-code').value = REF.Save.code();
+    $('save-import').value = '';
+    saveStatus(REF.Save.isEmpty()
+      ? 'Nothing saved yet — play a match first.'
+      : 'This code (or the file) is your career. Keep it outside the browser.');
+    $('savebox').classList.add('on');
+    if (REF.Pointer) REF.Pointer.unlock();
+  }
+
+  function closeSave() {
+    $('savebox').classList.remove('on');
+    if (REF.Pointer) REF.Pointer.refresh();
+  }
+
+  function downloadSave() {
+    var blob = new Blob([JSON.stringify(REF.Save.data, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'whistle-save.json';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () {
+      URL.revokeObjectURL(url);
+      if (a.parentNode) a.parentNode.removeChild(a);
+    }, 800);
+    saveStatus('File downloaded — whistle-save.json');
+  }
+
+  function applySave(text) {
+    var r = REF.Save.fromCode(text);
+    if (!r.ok) { saveStatus(r.err, true); return false; }
+    buildMenu();
+    buildSkins();
+    buildAch();
+    if (REF.Game && REF.Game.applySkin) REF.Game.applySkin();
+    $('save-code').value = REF.Save.code();
+    $('save-import').value = '';
+    saveStatus('Restored — ' + REF.Save.data.points + ' PTS and ' +
+      REF.Save.data.history.length + ' matches are back.');
+    toast('SAVE RESTORED', 'Your career is back', 0);
+    return true;
+  }
+
   /* -------------------------------------------------------------- card fx */
   function cardFX(type) {
     var box = $('cardfx');
@@ -548,6 +616,16 @@ REF.UI = (function () {
     var m = REF.Game.match;
     if (!m) { setPrompt(''); return; }
     if (tool === 'yellow' || tool === 'red' || tool === 'talk') return;
+    if (m.frozen) {
+      if (tool === 'paint') { setPrompt('Click the pitch to spray the mark and the wall'); return; }
+      if (m.wall) { setPrompt('Wall set — press ENTER to continue'); return; }
+      if (m.pendingFoul || m.lastFoul) {
+        setPrompt('FREE KICK — press 5 to paint the mark and wall  ·  ENTER to continue');
+        return;
+      }
+      setPrompt('PLAY STOPPED — press ENTER to continue');
+      return;
+    }
     if (m.pendingFoul && m.pendingFoul.t > 0) { setPrompt('FOUL — blow the whistle  [LMB]'); return; }
     if (m.pendingOffside && m.pendingOffside.t > 0) { setPrompt('FLAG IS UP — blow the whistle  [LMB]'); return; }
     if (REF.Game.nearPlayer()) { setPrompt('Press T to talk to ' + REF.Game.nearPlayer().name); return; }
@@ -566,10 +644,12 @@ REF.UI = (function () {
       sc.classList.add('pop');
     }
     $('sb-clock').textContent = U.fmtClock(match.min) + (match.half === 2 ? '  2H' : '');
-    var frozen = match.freezeT > 0;
+    var frozen = !!(match.frozen || match.freezeT > 0);
     $('sb-clock').classList.toggle('frozen', frozen);
     var ps = $('playstop');
     if (ps) ps.classList.toggle('on', frozen);
+    var cb = $('continuebar');
+    if (cb) cb.classList.toggle('on', frozen);
     $('sb-comp').textContent = match.data.comp + ' · ' + match.data.stage + ' · ' + match.data.year;
 
     $('sb-n0').textContent = match.teams[0].info.abbr;
@@ -769,6 +849,48 @@ REF.UI = (function () {
       });
     }
 
+    $('btn-continue').addEventListener('click', function () {
+      REF.Audio.click();
+      REF.Game.continuePlay();
+    });
+
+    var saveOpeners = [$('btn-save'), $('btn-save-pause')];
+    for (var sb = 0; sb < saveOpeners.length; sb++) {
+      if (saveOpeners[sb]) saveOpeners[sb].addEventListener('click', openSave);
+    }
+    $('btn-close-save').addEventListener('click', closeSave);
+    $('btn-save-file').addEventListener('click', downloadSave);
+    $('btn-save-copy').addEventListener('click', function () {
+      var ta = $('save-code');
+      ta.focus();
+      ta.select();
+      var done = false;
+      try { done = document.execCommand('copy'); } catch (e) { done = false; }
+      if (!done && navigator.clipboard) {
+        navigator.clipboard.writeText(ta.value).then(function () {
+          saveStatus('Code copied — keep it somewhere safe.');
+        }, function () {
+          saveStatus('Select the code and press Ctrl+C.', true);
+        });
+        return;
+      }
+      saveStatus(done ? 'Code copied — keep it somewhere safe.' : 'Select the code and press Ctrl+C.', !done);
+    });
+    $('btn-save-import').addEventListener('click', function () {
+      REF.Audio.click();
+      applySave($('save-import').value);
+    });
+    $('save-file-input').addEventListener('change', function () {
+      var f = this.files && this.files[0];
+      if (!f) return;
+      var reader = new FileReader();
+      reader.onload = function () { applySave(String(reader.result || '')); };
+      reader.readAsText(f);
+    });
+    $('savebox').addEventListener('click', function (e) {
+      if (e.target === this) closeSave();
+    });
+
     $('btn-reset').addEventListener('click', function () {
       if (confirm('Erase all progress — points, skins and achievements?')) {
         REF.Save.reset();
@@ -801,6 +923,9 @@ REF.UI = (function () {
     buildTour: buildTour,
     setPrompt: setPrompt,
     flash: flash,
+    showContinue: showContinue,
+    hideContinue: hideContinue,
+    openSave: openSave,
     currentScreen: function () { return currentScreen; },
     tool: function () { return tool; },
     closeBook: function () {

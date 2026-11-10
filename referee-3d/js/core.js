@@ -55,6 +55,32 @@ REF.Save = (function () {
     };
   }
 
+  /* fold a stored blob (string or object) into a complete save, filling in
+     anything missing so an old or partial save still loads */
+  function parse(raw) {
+    var d = defaults();
+    if (!raw) return d;
+    try {
+      var p = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      if (p && typeof p === 'object') {
+        d.points = typeof p.points === 'number' ? p.points : 0;
+        d.skin = p.skin || 'classic';
+        if (p.skins) for (var k in p.skins) d.skins[k] = !!p.skins[k];
+        if (p.ach) for (var a in p.ach) d.ach[a] = p.ach[a];
+        if (p.stats) for (var s in p.stats) if (typeof p.stats[s] === 'number') d.stats[s] = p.stats[s];
+        if (p.talkedTo) d.talkedTo = p.talkedTo;
+        if (p.tutorial) d.tutorial = { done: !!p.tutorial.done };
+        if (Array.isArray(p.history)) d.history = p.history.slice(0, 20);
+        if (p.tournament && Array.isArray(p.tournament.rounds)) d.tournament = p.tournament;
+        if (typeof p.tourCups === 'number') d.tourCups = p.tourCups;
+      }
+    } catch (e) { /* corrupted save, start clean */ }
+    if (!d.skins.classic) d.skins.classic = true;
+    if (!d.skins.volt) d.skins.volt = true;
+    if (!d.skins[d.skin]) d.skin = 'classic';
+    return d;
+  }
+
   var api = {
     data: defaults(),
 
@@ -62,29 +88,49 @@ REF.Save = (function () {
       var raw = null;
       try { raw = window.localStorage.getItem(KEY); } catch (e) { raw = null; }
       if (!raw && mem) raw = mem;
-      var d = defaults();
-      if (raw) {
+      api.data = parse(raw);
+      return api.data;
+    },
+
+    /* a portable copy of the career: survives a browser wipe as long as the
+       player kept the text (or the downloaded file) somewhere */
+    code: function () {
+      var raw = JSON.stringify(api.data);
+      var enc = encodeURIComponent(raw).replace(/%([0-9A-F]{2})/g, function (m, h) {
+        return String.fromCharCode(parseInt(h, 16));
+      });
+      return 'WSL1.' + btoa(enc);
+    },
+
+    fromCode: function (str) {
+      var s = String(str || '').replace(/\s+/g, ' ').trim();
+      if (!s) return { ok: false, err: 'Paste a code first.' };
+      var raw = s;
+      if (s.charAt(0) !== '{') {
+        var m = s.match(/WSL1\.([A-Za-z0-9+/=]+)/);
+        if (!m) return { ok: false, err: 'That is not a WHISTLE save code.' };
         try {
-          var p = JSON.parse(raw);
-          if (p && typeof p === 'object') {
-            d.points = typeof p.points === 'number' ? p.points : 0;
-            d.skin = p.skin || 'classic';
-            if (p.skins) for (var k in p.skins) d.skins[k] = !!p.skins[k];
-            if (p.ach) for (var a in p.ach) d.ach[a] = p.ach[a];
-            if (p.stats) for (var s in p.stats) if (typeof p.stats[s] === 'number') d.stats[s] = p.stats[s];
-            if (p.talkedTo) d.talkedTo = p.talkedTo;
-            if (p.tutorial) d.tutorial = { done: !!p.tutorial.done };
-            if (Array.isArray(p.history)) d.history = p.history.slice(0, 20);
-            if (p.tournament && Array.isArray(p.tournament.rounds)) d.tournament = p.tournament;
-            if (typeof p.tourCups === 'number') d.tourCups = p.tourCups;
-          }
-        } catch (e) { /* corrupted save, start clean */ }
+          var bin = atob(m[1]);
+          raw = decodeURIComponent(bin.split('').map(function (c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+          }).join(''));
+        } catch (e) {
+          return { ok: false, err: 'That code is damaged.' };
+        }
       }
-      if (!d.skins.classic) d.skins.classic = true;
-      if (!d.skins.volt) d.skins.volt = true;
-      if (!d.skins[d.skin]) d.skin = 'classic';
-      api.data = d;
-      return d;
+      var p;
+      try { p = JSON.parse(raw); } catch (e) { return { ok: false, err: 'That code is damaged.' }; }
+      if (!p || typeof p !== 'object') return { ok: false, err: 'That code is empty.' };
+      api.data = parse(p);
+      api.save();
+      return { ok: true, data: api.data };
+    },
+
+    isEmpty: function () {
+      var d = api.data;
+      var n = 0;
+      for (var k in d.ach) if (d.ach[k]) n++;
+      return !d.points && !d.history.length && !d.tourCups && !n;
     },
 
     save: function () {

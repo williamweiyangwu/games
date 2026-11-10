@@ -622,7 +622,7 @@ body.talking #stage canvas { cursor: help; }
 .tc-kick { font-size: 8px; letter-spacing: 2.4px; color: var(--gold2); }
 .tour-champ b { font-size: 13px; letter-spacing: .8px; }
 
-.bracket { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; align-items: stretch; }
+.bracket { display: grid; grid-template-columns: repeat(var(--bcols, 3), 1fr); gap: 14px; align-items: stretch; }
 .bcol { display: flex; flex-direction: column; gap: 9px; }
 .blist { flex: 1; display: flex; flex-direction: column; justify-content: space-around; gap: 9px; }
 .bcol-head { font-size: 9px; letter-spacing: 2.4px; color: var(--gold2); text-transform: uppercase; }
@@ -653,6 +653,77 @@ body.talking #stage canvas { cursor: help; }
   .bracket { grid-template-columns: 1fr; }
   .tour-foot { grid-template-columns: 1fr; }
   .lobby-corner { left: 14px; bottom: 14px; }
+  .lobby-mid { bottom: 14px; }
+  .lobby-br { right: 14px; bottom: 14px; }
   .lobby-pill { padding: 8px 12px; }
   .lt-body em { display: none; }
+}
+
+
+/* ------------------------------------------------ lobby: middle + right */
+.lobby-mid {
+  position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%);
+}
+.lobby-mid:hover { transform: translateX(-50%) translateY(-3px); }
+.lobby-br {
+  position: absolute; right: 26px; bottom: 26px;
+  background: linear-gradient(135deg, rgba(16, 22, 34, .94), rgba(9, 13, 20, .94));
+}
+.lobby-br .lt-ico { color: #9fb0cd; }
+
+/* ------------------------------------------------------- continue bar */
+#continuebar {
+  position: fixed; left: 50%; bottom: 168px; transform: translate(-50%, 14px);
+  z-index: 42; opacity: 0; pointer-events: none;
+  transition: opacity .18s ease, transform .18s ease;
+}
+#continuebar.on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.cb-inner { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.cb-kicker { font-size: 9.5px; letter-spacing: 4.5px; color: #ff9d6b; font-weight: 800; }
+.cb-btn {
+  padding: 11px 30px 10px; border-radius: 13px; border: 1px solid #ffcf6b;
+  background: linear-gradient(180deg, #ffd75e, #eda32c);
+  color: #1b1204; box-shadow: 0 14px 34px rgba(255, 157, 46, .35);
+  transition: transform .14s, box-shadow .14s, filter .14s;
+}
+.cb-btn:hover { transform: translateY(-2px); filter: brightness(1.06); box-shadow: 0 18px 40px rgba(255, 157, 46, .45); }
+.cb-btn b { display: block; font-size: 15px; letter-spacing: 2.6px; }
+.cb-btn em { display: block; font-style: normal; font-size: 9.5px; letter-spacing: .8px; opacity: .62; margin-top: 2px; }
+
+/* --------------------------------------------------------- save panel */
+#savebox {
+  position: fixed; inset: 0; z-index: 70; display: none;
+  align-items: center; justify-content: center; padding: 22px;
+  background: rgba(3, 6, 11, .78); backdrop-filter: blur(6px);
+}
+#savebox.on { display: flex; }
+.save-card {
+  width: min(560px, 100%); max-height: 90vh; overflow-y: auto;
+  background: linear-gradient(180deg, #0e1522, #080d15);
+  border: 1px solid var(--line); border-radius: 16px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .65);
+  padding: 18px 20px 20px;
+}
+.save-head { display: flex; align-items: center; margin-bottom: 8px; }
+.save-head h3 { margin: 0; font-size: 13px; letter-spacing: 3px; text-transform: uppercase; color: var(--gold); }
+.save-lead { color: var(--dim); font-size: 12px; line-height: 1.55; margin: 0 0 14px; }
+.save-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.save-label { display: block; font-size: 9.5px; letter-spacing: 2.2px; color: #8b96ad; text-transform: uppercase; margin: 0 0 6px; }
+#savebox textarea {
+  width: 100%; min-height: 62px; resize: vertical;
+  background: #070c14; border: 1px solid #1e293e; border-radius: 9px;
+  color: #cfe0f5; font: 11px/1.5 ui-monospace, "Cascadia Mono", Consolas, monospace;
+  padding: 9px 10px; margin-bottom: 12px; word-break: break-all;
+}
+#savebox textarea:focus { outline: none; border-color: #3d5580; }
+#save-code { min-height: 78px; }
+.save-status { font-size: 11.5px; letter-spacing: .6px; color: #8ef05a; min-height: 16px; }
+.save-status.bad { color: #ff8f8f; }
+.filebtn { position: relative; overflow: hidden; }
+.filebtn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+@media (max-width: 720px) {
+  .save-row { grid-template-columns: 1fr; }
+  #continuebar { bottom: 150px; }
+  .cb-btn { padding: 9px 20px 8px; }
 }

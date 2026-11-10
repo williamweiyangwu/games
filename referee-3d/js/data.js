@@ -100,26 +100,77 @@ REF.DATA = (function () {
       shorts: '#004d98', socks: '#a50044',
       squad: ['V. Valdés', 'D. Alves', 'G. Piqué', 'C. Puyol', 'J. Alba', 'S. Busquets',
         'X. Hernández', 'A. Iniesta', 'L. Messi', 'S. Eto\'o', 'T. Henry']
+    },
+    por: {
+      name: 'Portugal', abbr: 'POR', shirt: '#c8102e', shirt2: '#0b6b3a',
+      shorts: '#0b6b3a', socks: '#c8102e',
+      squad: ['D. Costa', 'J. Cancelo', 'Pepe', 'R. Dias', 'N. Mendes', 'J. Palhinha',
+        'B. Fernandes', 'V. Ferreira', 'B. Silva', 'C. Ronaldo', 'D. Jota']
+    },
+    bel: {
+      name: 'Belgium', abbr: 'BEL', shirt: '#d21e2b', shirt2: null,
+      shorts: '#111111', socks: '#d21e2b',
+      squad: ['T. Courtois', 'T. Alderweireld', 'J. Vertonghen', 'D. Boyata', 'T. Meunier',
+        'A. Witsel', 'K. De Bruyne', 'Y. Tielemans', 'E. Hazard', 'R. Lukaku', 'D. Mertens']
+    },
+    cro: {
+      name: 'Croatia', abbr: 'CRO', shirt: '#ffffff', shirt2: '#d21e2b',
+      shorts: '#1b3f8b', socks: '#ffffff',
+      squad: ['D. Livaković', 'J. Juranović', 'D. Vida', 'J. Gvardiol', 'B. Sosa', 'M. Brozović',
+        'L. Modrić', 'M. Kovačić', 'I. Perišić', 'A. Kramarić', 'B. Petković']
+    },
+    uru: {
+      name: 'Uruguay', abbr: 'URU', shirt: '#5cb8e6', shirt2: null,
+      shorts: '#111827', socks: '#ffffff',
+      squad: ['S. Rochet', 'J. Giménez', 'D. Godín', 'R. Araujo', 'M. Olivera', 'R. Bentancur',
+        'F. Valverde', 'N. De la Cruz', 'F. Pellistri', 'D. Núñez', 'L. Suárez']
+    },
+    mex: {
+      name: 'Mexico', abbr: 'MEX', shirt: '#0b6b3a', shirt2: null,
+      shorts: '#ffffff', socks: '#0b6b3a',
+      squad: ['G. Ochoa', 'J. Sánchez', 'C. Montes', 'H. Moreno', 'J. Gallardo', 'E. Álvarez',
+        'H. Herrera', 'A. Guardado', 'H. Lozano', 'R. Jiménez', 'A. Vega']
+    },
+    jpn: {
+      name: 'Japan', abbr: 'JPN', shirt: '#1b3f8b', shirt2: null,
+      shorts: '#ffffff', socks: '#1b3f8b',
+      squad: ['S. Gonda', 'H. Sakai', 'M. Yoshida', 'K. Itakura', 'Y. Nagatomo', 'W. Endo',
+        'H. Morita', 'D. Kamada', 'R. Doan', 'T. Minamino', 'A. Ueda']
+    },
+    mar: {
+      name: 'Morocco', abbr: 'MAR', shirt: '#c8102e', shirt2: '#0b6b3a',
+      shorts: '#c8102e', socks: '#0b6b3a',
+      squad: ['Y. Bounou', 'A. Hakimi', 'N. Aguerd', 'R. Saïss', 'N. Mazraoui', 'S. Amrabat',
+        'A. Ounahi', 'H. Ziyech', 'S. Boufal', 'Y. En-Nesyri', 'A. Hamdallah']
+    },
+    usa: {
+      name: 'USA', abbr: 'USA', shirt: '#ffffff', shirt2: null,
+      shorts: '#1b3f8b', socks: '#ffffff',
+      squad: ['M. Turner', 'S. Dest', 'W. Zimmerman', 'T. Ream', 'A. Robinson', 'T. Adams',
+        'W. McKennie', 'Y. Musah', 'C. Pulisic', 'T. Weah', 'R. Pepi']
     }
   };
 
   /* ---------------------------------------------------------- tournaments */
   var TOURNAMENTS = [
     {
-      id: 'wc', name: 'World Cup', comp: 'WORLD CUP',
-      blurb: 'Eight nations, drawn at random. Three knockout ties between you and the trophy.',
-      pool: ['arg', 'fra', 'esp', 'ned', 'ger', 'eng', 'bra', 'ita'],
-      venues: ['Lusail Stadium', 'Maracanã', 'Wembley', 'Estadio Azteca', 'Soccer City', 'Allianz Arena']
+      id: 'wc', name: 'World Cup', comp: 'WORLD CUP', size: 16,
+      blurb: 'Sixteen nations, drawn at random. Four knockout rounds — a round of 16, then the quarters, the semis and the final.',
+      pool: ['arg', 'fra', 'esp', 'ned', 'ger', 'eng', 'bra', 'ita',
+        'por', 'bel', 'cro', 'uru', 'mex', 'jpn', 'mar', 'usa'],
+      venues: ['Lusail Stadium', 'Maracanã', 'Wembley', 'Estadio Azteca', 'Soccer City', 'Allianz Arena',
+        'MetLife Stadium', 'Education City']
     },
     {
-      id: 'ucl', name: 'Champions League', comp: 'CHAMPIONS LEAGUE',
-      blurb: 'Eight clubs, drawn at random. European nights, no second legs.',
+      id: 'ucl', name: 'Champions League', comp: 'CHAMPIONS LEAGUE', size: 8,
+      blurb: 'Eight clubs, drawn at random. Three knockout ties between you and the trophy. European nights, no second legs.',
       pool: ['liv', 'mil', 'mun', 'bay', 'rma', 'juv', 'atm', 'bar'],
       venues: ['Wembley', 'San Siro', 'Santiago Bernabéu', 'Allianz Arena', 'Anfield', 'Camp Nou']
     }
   ];
 
-  var ROUND_NAMES = ['Quarter-final', 'Semi-final', 'Final'];
+  /* the last four names, however many rounds a competition has */
+  var ROUND_NAMES = ['Round of 16', 'Quarter-final', 'Semi-final', 'Final'];
 
   var MATCHES = [
     {
@@ -259,7 +310,8 @@ REF.DATA = (function () {
     { id: 'yellow', name: 'Yellow card', key: '2', glyph: '▮', hint: 'Click a player to book him', color: '#ffd23f' },
     { id: 'red', name: 'Red card', key: '3', glyph: '▮', hint: 'Click a player to send him off', color: '#ff4d4d' },
     { id: 'talk', name: 'Talk', key: '4', glyph: '❝', hint: 'Click a player to have a word' },
-    { id: 'book', name: 'Notebook', key: '5', glyph: '▤', hint: 'Review the match log' }
+    { id: 'paint', name: 'Paint can', key: '5', glyph: '✚', hint: 'Click the pitch to spray the free-kick mark and the wall', color: '#e8f4ff' },
+    { id: 'book', name: 'Notebook', key: '6', glyph: '▤', hint: 'Review the match log' }
   ];
 
   return {

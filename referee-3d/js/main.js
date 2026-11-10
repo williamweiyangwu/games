@@ -26,6 +26,8 @@ window.REF = window.REF || {};
         if (document.pointerLockElement === d) return;
         if (REF.UI && REF.UI.currentScreen()) return;
         if (REF.Game.paused || !REF.Game.match || REF.Game.match.ended) return;
+        /* while play is stopped the cursor stays free so you can paint */
+        if (REF.Game.match.frozen) return;
         try { d.requestPointerLock(); } catch (e) { }
       },
 
@@ -41,6 +43,7 @@ window.REF = window.REF || {};
         var h = document.getElementById('lockhint');
         if (!h) return;
         var on = !locked && !!REF.Game.match && !REF.Game.match.ended &&
+          !REF.Game.match.frozen &&
           !REF.Game.paused && !REF.UI.currentScreen() && !REF.UI.isDialogueOpen();
         h.classList.toggle('on', on);
       }
@@ -93,12 +96,68 @@ window.REF = window.REF || {};
       scene.add(this.ch.group);
     },
 
+    /* in first person the whistle is the only part of you the camera sees,
+       so it is the skin: it wears whatever kit you have equipped */
+    buildView: function () {
+      var camera = REF.Engine.camera;
+      if (!camera || this.vm) return;
+      REF.Engine.scene.add(camera);
+
+      var g = new THREE.Group();
+      /* mostly matte: a fully metallic material has nothing to reflect at
+         night and renders as a black lump, so keep some diffuse and a faint
+         glow of the kit colour to lift it off the crowd */
+      var metal = new THREE.MeshStandardMaterial({
+        color: 0xd8dde8, roughness: 0.46, metalness: 0.3,
+        emissive: 0x2b2f3a, emissiveIntensity: 0.5
+      });
+      this.vmMat = metal;
+
+      var body = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.048, 0.105), metal);
+      g.add(body);
+
+      var barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.07, 14), metal);
+      barrel.rotation.z = Math.PI / 2;
+      barrel.position.set(0.062, 0.004, 0.008);
+      g.add(barrel);
+
+      var mouth = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.02, 0.042), metal);
+      mouth.position.set(-0.058, 0.003, 0);
+      g.add(mouth);
+
+      var ring = new THREE.Mesh(new THREE.TorusGeometry(0.017, 0.005, 8, 16), metal);
+      ring.position.set(-0.012, 0.036, 0);
+      ring.rotation.y = Math.PI / 2;
+      g.add(ring);
+
+      var cord = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.004, 6, 20), metal);
+      cord.position.set(-0.02, -0.02, 0.02);
+      cord.rotation.set(Math.PI / 2, 0, 0.4);
+      g.add(cord);
+
+      /* a tiny lamp so the whistle reads against a night stadium */
+      var lamp = new THREE.PointLight(0xffffff, 0.85, 1.8);
+      lamp.position.set(0.1, 0.06, -0.22);
+      camera.add(lamp);
+
+      g.position.set(0.20, -0.15, -0.52);
+      g.rotation.set(0.18, -0.42, -0.16);
+      g.scale.set(0.62, 0.62, 0.62);
+      g.visible = false;
+      camera.add(g);
+      this.vm = g;
+      this.applySkin();
+    },
+
     applySkin: function () {
-      if (!this.ch) return;
       var skin = REF.Save.data.skin || 'classic';
       var kit = D.SKINS[0];
       for (var i = 0; i < D.SKINS.length; i++) if (D.SKINS[i].id === skin) kit = D.SKINS[i];
-      this.ch.setKit(kit);
+      if (this.ch) this.ch.setKit(kit);
+      if (this.vmMat) {
+        this.vmMat.color.set(kit.shirt);
+        if (this.vmMat.emissive) this.vmMat.emissive.set(kit.shirt);
+      }
     },
 
     reset: function () {
@@ -170,6 +229,7 @@ window.REF = window.REF || {};
       }
 
       var speed = Math.sqrt(this.vel.x * this.vel.x + this.vel.z * this.vel.z);
+      this.stepPhase += dt * (2.2 + speed * 2.4);
       if (speed > 0.4) {
         this.facing = U.angleDamp(this.facing, Math.atan2(this.vel.x, this.vel.z), 11, dt);
         REF.Game.tutMove(speed * dt);
@@ -208,6 +268,8 @@ window.REF = window.REF || {};
         this.ch.group.rotation.y = this.facing;
         this.ch.animSpeed = speed;
         this.ch.extraY = this.y;
+        /* first person: you are inside his head, so his body is not drawn */
+        this.ch.group.visible = !REF.Game.cam.fp;
         if (this.stateT > 0) {
           this.ch.state = this.state;
           this.ch.animSpeed = Math.min(speed, 1.5);
@@ -216,6 +278,20 @@ window.REF = window.REF || {};
         } else {
           this.ch.state = speed > 0.7 ? 'run' : 'idle';
         }
+      }
+
+      if (this.vm) {
+        this.vm.visible = !!REF.Game.cam.fp;
+        var blowing = this.state === 'whistle';
+        var bob = Math.sin(this.stepPhase) * 0.006 * Math.min(1, speed / 4);
+        var tx = blowing ? 0.095 : 0.20;
+        var ty = (blowing ? -0.105 : -0.15) + bob;
+        var tz = blowing ? -0.44 : -0.52;
+        this.vm.position.x = U.damp(this.vm.position.x, tx, 15, dt);
+        this.vm.position.y = U.damp(this.vm.position.y, ty, 15, dt);
+        this.vm.position.z = U.damp(this.vm.position.z, tz, 15, dt);
+        this.vm.rotation.z = U.damp(this.vm.rotation.z, blowing ? 0.1 : -0.16, 12, dt);
+        this.vm.rotation.y = U.damp(this.vm.rotation.y, blowing ? -0.16 : -0.42, 12, dt);
       }
     },
 
@@ -230,7 +306,7 @@ window.REF = window.REF || {};
 
     doWhistle: function () {
       if (REF.Game.paused || !REF.Game.match) return;
-      if (REF.Game.match.freezeT > 0) return 'busy';
+      if (REF.Game.match.frozen) return 'busy';
       this.state = 'whistle';
       this.stateT = 0.85;
       if (this.ch) this.ch.parts.whistle.visible = true;
@@ -238,7 +314,16 @@ window.REF = window.REF || {};
       REF.Save.ach('first_whistle');
       if (REF.Save.data.stats.whistles >= 50) REF.Save.ach('whistler');
       REF.Game.tutMark('whistle');
-      if (res === 'foul') REF.UI.setPrompt('Foul given — free kick');
+
+      /* the match is stopped now: free the mouse and offer Continue. Blowing
+         the whistle is a one-off, so the tool is not left armed — otherwise
+         ESC would have to be pressed twice to reach the pause menu. */
+      if (res !== 'busy') {
+        REF.UI.selectTool(null);
+        REF.Pointer.unlock();
+        REF.UI.showContinue();
+        if (res === 'foul') REF.UI.setPrompt('Foul — press 5 to paint the free kick, ENTER to continue');
+      }
       return res;
     },
 
@@ -263,7 +348,7 @@ window.REF = window.REF || {};
     ballMesh: null,
     paused: false,
     tourResult: false,
-    cam: { yaw: 0, pitch: 0.34, dist: 9.5, dragT: 0 },
+    cam: { yaw: 0, pitch: 0.34, dist: 9.5, dragT: 0, fp: true },
     tut: null,
     scene: null,
 
@@ -328,6 +413,18 @@ window.REF = window.REF || {};
       this.paused = false;
       REF.UI.show(null);
       REF.Pointer.lock();
+    },
+
+    /* put the ball back in play after a whistle */
+    continuePlay: function () {
+      if (!this.match) return false;
+      var ok = this.match.continuePlay();
+      if (ok) {
+        REF.UI.hideContinue();
+        REF.UI.setPrompt('');
+        REF.Pointer.lock();
+      }
+      return ok;
     },
 
     restart: function () {
@@ -496,6 +593,13 @@ window.REF = window.REF || {};
       return;
     }
 
+    /* Enter is the Continue key: it only means anything while play is stopped */
+    if (k === 'enter') {
+      if (document.getElementById('savebox').classList.contains('on')) return;
+      if (REF.Game.match && REF.Game.match.frozen) REF.Game.continuePlay();
+      return;
+    }
+
     if (REF.UI.currentScreen() || REF.Game.paused) return;
 
     if (k === ' ') { REF.Ref.jump(); }
@@ -511,7 +615,8 @@ window.REF = window.REF || {};
     else if (k === '2') { REF.UI.selectTool('yellow'); REF.Game.tutMark('toolbox'); }
     else if (k === '3') { REF.UI.selectTool('red'); REF.Game.tutMark('toolbox'); }
     else if (k === '4') { REF.UI.selectTool('talk'); REF.Game.tutMark('toolbox'); }
-    else if (k === '5') { REF.UI.selectTool('book'); REF.Game.tutMark('toolbox'); }
+    else if (k === '5') { REF.UI.selectTool('paint'); REF.Game.tutMark('toolbox'); }
+    else if (k === '6') { REF.UI.selectTool('book'); REF.Game.tutMark('toolbox'); }
   }
 
   function onKeyUp(e) {
@@ -561,6 +666,22 @@ window.REF = window.REF || {};
     return best;
   }
 
+  /* where the cursor meets the grass */
+  function pickGround(clientX, clientY) {
+    if (!raycaster) {
+      raycaster = new THREE.Raycaster();
+      pointerNDC = new THREE.Vector2();
+    }
+    pointerNDC.x = (clientX / window.innerWidth) * 2 - 1;
+    pointerNDC.y = -(clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(pointerNDC, REF.Engine.camera);
+    var plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    var hit = new THREE.Vector3();
+    if (!raycaster.ray.intersectPlane(plane, hit)) return null;
+    if (Math.abs(hit.x) > 58 || Math.abs(hit.z) > 40) return null;
+    return hit;
+  }
+
   function onPointerDown(e) {
     if (e.target !== REF.Engine.renderer.domElement) return;
     REF.Audio.resume();
@@ -577,8 +698,11 @@ window.REF = window.REF || {};
     }
     if (e.button !== 0) return;
 
-    /* the first click just takes the mouse back */
-    if (!locked && !REF.Pointer.failed) {
+    var frozen = !!(REF.Game.match && REF.Game.match.frozen);
+
+    /* the first click just takes the mouse back — unless play is stopped,
+       where the free cursor is the whole point */
+    if (!locked && !REF.Pointer.failed && !frozen) {
       REF.Pointer.lock();
       return;
     }
@@ -587,6 +711,23 @@ window.REF = window.REF || {};
     var py = locked ? window.innerHeight / 2 : e.clientY;
 
     var tool = REF.UI.tool();
+    if (tool === 'paint') {
+      if (!frozen) {
+        REF.UI.flash('Stop play first — blow the whistle, then paint the mark');
+        return;
+      }
+      var gp = pickGround(px, py);
+      if (!gp) {
+        REF.UI.flash('Aim at the pitch');
+        return;
+      }
+      var marked = REF.Game.match.paintFreeKick(gp);
+      REF.UI.selectTool(null);
+      REF.UI.setPrompt('Mark sprayed — a wall of ' + marked.men + ' is set. ENTER to continue');
+      REF.Audio.kick(0.3);
+      return;
+    }
+
     if (tool === 'yellow' || tool === 'red' || tool === 'talk') {
       var p = (locked && REF.Game.aimPlayer) ? REF.Game.aimPlayer : pickPlayer(px, py);
       if (!p) {
@@ -598,6 +739,8 @@ window.REF = window.REF || {};
       REF.UI.selectTool(null);
       return;
     }
+    /* a second whistle while play is stopped would do nothing */
+    if (frozen) return;
     REF.Ref.doWhistle();
   }
 
@@ -645,8 +788,22 @@ window.REF = window.REF || {};
     if (cam.dragT > 0) cam.dragT -= dt;
 
     var moving = Math.abs(REF.Ref.vel.x) + Math.abs(REF.Ref.vel.z) > 1.2;
-    if (moving && !dragging && cam.dragT <= 0) {
+    if (moving && !dragging && cam.dragT <= 0 && !cam.fp) {
       cam.yaw = U.angleDamp(cam.yaw, REF.Ref.facing + Math.PI, 1.5, dt);
+    }
+
+    if (cam.fp) {
+      /* first person: the referee's own eyes, a whisker above the turf */
+      var eye = 1.66 + REF.Ref.y;
+      camera.position.set(REF.Ref.pos.x, eye, REF.Ref.pos.z);
+      var look = 0.5 - cam.pitch;
+      var cp = Math.cos(look), sp = Math.sin(look);
+      camera.lookAt(
+        REF.Ref.pos.x - Math.sin(cam.yaw) * cp * 10,
+        eye + sp * 10,
+        REF.Ref.pos.z - Math.cos(cam.yaw) * cp * 10
+      );
+      return;
     }
 
     var cy = Math.cos(cam.pitch), sy = Math.sin(cam.pitch);
@@ -733,6 +890,7 @@ window.REF = window.REF || {};
     REF.Game.ballMesh.visible = false;
 
     REF.Ref.build(REF.Engine.scene);
+    REF.Ref.buildView();
     REF.Ref.reset();
 
     REF.UI.init();
