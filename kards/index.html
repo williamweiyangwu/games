@@ -75,9 +75,31 @@
   .hand { display: flex; justify-content: center; gap: 6px; min-height: 140px; padding: 8px 4px; flex-wrap: wrap; }
   .hand .cardwrap { cursor: default; }
 
-  .boardrow { display: flex; justify-content: center; gap: 10px; min-height: 144px; padding: 6px 4px; }
+  .boardrow { display: flex; justify-content: center; gap: 10px; min-height: 144px; padding: 6px 4px; align-items: flex-start; }
 
-  .cardwrap { width: 98px; text-align: center; }
+  .lineLabel { width: 100%; text-align: center; font-size: 9px; letter-spacing: 3px; color: #7d865f; margin: 3px 0 -1px; }
+  .frontbar {
+    width: 100%; text-align: center; font-size: 10px; letter-spacing: 3px;
+    color: #c9b458; padding: 4px 0; margin: 2px 0;
+    background: linear-gradient(90deg, rgba(201,180,88,0), rgba(201,180,88,.16), rgba(201,180,88,0));
+    border-top: 1px solid rgba(201,180,88,.35); border-bottom: 1px solid rgba(201,180,88,.35);
+  }
+  .frontbar.mine { color: #8fe08f; }
+  .frontbar.foe { color: #e08a8a; }
+  .frontbar.open { color: #8a917c; }
+  .frontempty { align-self: center; font-size: 10px; letter-spacing: 1px; color: #5c6650; padding: 44px 0; }
+
+  .cardwrap { width: 98px; text-align: center; position: relative; }
+  .advbtn {
+    position: absolute; top: -9px; right: -6px; z-index: 3;
+    font-family: inherit; font-size: 8px; letter-spacing: 0; line-height: 1;
+    padding: 3px 5px; border-radius: 8px; cursor: pointer;
+    color: #121a10; background: #ffd95e; border: 2px solid #7a5a1f;
+    box-shadow: 0 2px 6px rgba(0,0,0,.5);
+  }
+  .advbtn:hover { background: #fff1a8; }
+  .advbtn.off { opacity: .45; }
+  .card .cost.op { background: #7a5a1f; border-color: #ffd95e; }
   .card {
     width: 94px; height: 126px; margin: 0 auto;
     border: 3px solid #6f6040; border-radius: 8px;
@@ -269,7 +291,7 @@
     border: 3px solid #c9b458; border-radius: 12px; padding: 20px 22px;
   }
   .abox h2 { font-size: 15px; letter-spacing: 3px; color: #c9b458; text-align: center; margin-bottom: 6px; }
-  .dstat { font-size: 11px; color: #c9b458; width: 66px; text-align: right; letter-spacing: 1px; }
+  .dstat { font-size: 11px; color: #c9b458; width: 100px; text-align: right; letter-spacing: 1px; }
   .srow { display: flex; justify-content: space-between; padding: 7px 2px; border-bottom: 1px solid #2c3322; font-size: 13px; color: #e6e9d5; }
   .srow .sl { color: #8a917c; }
   .srow .sv { color: #ffd95e; font-weight: bold; }
@@ -295,7 +317,7 @@
   <div id="fit">
     <div id="stage">
       <header>
-        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v23</span></h1>
+        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v24</span></h1>
         <div id="turnbar">Player 1's Turn</div>
       </header>
 
@@ -601,13 +623,35 @@ function saveFaction() {
 }
 
 var MAX_HAND = 5;
-var MAX_BOARD = 4;
+var MAX_BOARD = 4;   // support line capacity (plus HQ)
+var MAX_FRONT = 5;   // shared frontline capacity
 var MAX_RES = 12;
 var DECK_SIZE = 40;
 var MAX_COPIES = 3;
 
 function fxOf(key) { return (DEFS[key] || {}).fx || null; }
 function orderNeedsTarget(key) { var fx = fxOf(key); return !!(fx && fx.k === "target"); }
+
+// Action (operation) cost: paid to move or attack, on top of the deployment cost.
+function opOf(d) {
+  if (!d || d.type === "order") return 0;
+  if (d.op != null) return d.op;
+  var c = d.cost || 1;
+  var op = c <= 3 ? 1 : (c <= 5 ? 2 : 3);
+  if (d.air && op < 2) op = 2;
+  return op;
+}
+
+function supportCount(pl) {
+  var n = 0;
+  for (var i = 0; i < pl.board.length; i++) { if (pl.board[i].line !== "front") n++; }
+  return n;
+}
+function frontCount(p) {
+  var b = S.players[p].board, n = 0;
+  for (var i = 0; i < b.length; i++) { if (b[i].line === "front") n++; }
+  return n;
+}
 
 function factionCardKeys(faction) {
   return Object.keys(DEFS).filter(function (k) { return DEFS[k].f === faction; });
@@ -672,10 +716,16 @@ function buildDeck(faction) {
 
 function makeInst(key) {
   var d = DEFS[key];
-  return { key: key, name: d.name, cost: d.cost, type: d.type || "unit", atk: d.atk, baseAtk: d.atk, auraN: 0, hp: d.hp, maxHp: d.hp, guard: !!d.guard, air: !!d.air, canAttack: false };
+  return { key: key, name: d.name, cost: d.cost, op: opOf(d), type: d.type || "unit", atk: d.atk, baseAtk: d.atk, auraN: 0, hp: d.hp, maxHp: d.hp, guard: !!d.guard, air: !!d.air, line: "support", canAttack: false, acted: false };
 }
 
 function other(p) { return 1 - p; }
+
+function viewer() {
+  if (MODE === "online" && NET) return NET.id;
+  if (MODE === "ai") return 0;
+  return S ? S.cur : 0;
+}
 
 function log(msg) {
   var el = document.getElementById("log");
@@ -727,6 +777,7 @@ function sfx(name) {
   else if (name === "order") { tone(430, .07, "triangle", .05); tone(640, .09, "triangle", .05, .07); }
   else if (name === "attack") { tone(210, .1, "sawtooth", .05); tone(120, .14, "sawtooth", .05, .05); }
   else if (name === "hit") tone(90, .18, "square", .06);
+  else if (name === "move") tone(360, .06, "triangle", .04);
   else if (name === "draw") tone(700, .05, "triangle", .035);
   else if (name === "win") { tone(660, .12, "square", .05); tone(880, .14, "square", .05, .12); tone(1100, .2, "square", .05, .26); }
   else if (name === "ach") { tone(784, .1, "sine", .05); tone(1046, .16, "sine", .05, .09); }
@@ -789,7 +840,7 @@ function beginTurn(p) {
   var pl = S.players[p];
   pl.turnNum++;
   pl.res = Math.min(pl.turnNum, MAX_RES);
-  pl.board.forEach(function (u) { u.canAttack = true; });
+  pl.board.forEach(function (u) { u.canAttack = true; u.acted = false; });
   draw(pl, 1);
   S.cur = p;
   setTurnBar("Player " + (p + 1));
@@ -830,15 +881,17 @@ function play(hidx) {
     render();
     return;
   }
-  if (inst.type !== "order" && pl.board.length >= MAX_BOARD) { log("Board is full!"); return; }
+  if (inst.type !== "order" && supportCount(pl) >= MAX_BOARD) { log("Support line is full \u2014 move a unit to the frontline first!"); return; }
   pl.res -= inst.cost;
   pl.hand.splice(hidx, 1);
   if (inst.type === "order") {
     runOrderFx(inst, S.cur, function () { resolveOrder(inst, S.cur); });
     return;
   }
+  inst.line = "support";
+  inst.acted = false;
   pl.board.push(inst);
-  if (pl.board.length >= MAX_BOARD) track("fullBoards");
+  if (supportCount(pl) >= MAX_BOARD) track("fullBoards");
   sfx("play");
   resolveBattlecry(inst, S.cur);
   recomputeAura(pl);
@@ -847,6 +900,33 @@ function play(hidx) {
   render();
   if (MODE === "online") publish();
   if (checkVictory()) return;
+}
+
+// Move a support-line unit into the frontline (costs its action cost).
+function moveToFront(idx) {
+  if (!canAct() || S.over) return;
+  if (S.readyOrder !== null) return;
+  var p = S.cur;
+  var pl = S.players[p];
+  var u = pl.board[idx];
+  if (!u || u.line === "front") return;
+  if (u.acted) { log(u.name + " has already acted this turn."); return; }
+  if (frontCount(other(p)) > 0) { log("The enemy holds the frontline \u2014 destroy their units first!"); return; }
+  if (frontCount(p) >= MAX_FRONT) { log("The frontline is full!"); return; }
+  var op = u.op || 1;
+  if (pl.res < op) { log("Advancing " + u.name + " costs " + op + " resource."); return; }
+  ACTOR = p;
+  pl.res -= op;
+  u.line = "front";
+  u.acted = true;
+  u.canAttack = false;
+  S.attackSel = null;
+  say("Your " + u.name + " advances to the frontline.");
+  sfx("move");
+  recomputeAura(pl);
+  syncPub(p);
+  render();
+  if (MODE === "online") publish();
 }
 
 function resolveOrderTarget(tidx) {
@@ -1054,8 +1134,9 @@ function aiStep(t) {
   if (t !== AI_TICK || MODE !== "ai" || S.over) return;
   if (ORDER_BUSY) { setTimeout(function () { aiStep(t); }, 250); return; }
   var ai = S.players[1];
-  if (aiPlayOne(ai)) { if (checkVictory()) return; render(); setTimeout(function () { aiStep(t); }, AI_DELAY); return; }
   if (aiAttackOne(ai)) { if (checkVictory()) return; render(); setTimeout(function () { aiStep(t); }, AI_DELAY); return; }
+  if (aiMoveOne(ai)) { if (checkVictory()) return; render(); setTimeout(function () { aiStep(t); }, AI_DELAY); return; }
+  if (aiPlayOne(ai)) { if (checkVictory()) return; render(); setTimeout(function () { aiStep(t); }, AI_DELAY); return; }
   aiFinish();
 }
 
@@ -1063,7 +1144,7 @@ function aiUnitChoice(ai) {
   var cands = [];
   for (var i = 0; i < ai.hand.length; i++) {
     var c = ai.hand[i];
-    if (c.type !== "order" && c.cost <= ai.res && ai.board.length < MAX_BOARD) cands.push(i);
+    if (c.type !== "order" && c.cost <= ai.res && supportCount(ai) < MAX_BOARD) cands.push(i);
   }
   if (!cands.length) return -1;
   if (AI_LEVEL === "easy") return cands[Math.floor(Math.random() * cands.length)];
@@ -1104,6 +1185,8 @@ function aiPlayOne(ai) {
     var c = ai.hand[ui];
     ai.res -= c.cost;
     ai.hand.splice(ui, 1);
+    c.line = "support";
+    c.acted = false;
     ai.board.push(c);
     sfx("play");
     resolveBattlecry(c, 1);
@@ -1140,11 +1223,15 @@ function aiAttackOne(ai) {
   for (var i = 0; i < ai.board.length; i++) {
     var u = ai.board[i];
     if (!u.canAttack) continue;
-    var tgt = legalTargets(u);
+    var op = u.op || 1;
+    if (ai.res < op) continue;
+    var tgt = legalTargets(u, 1);
+    if (!tgt.units.length && !tgt.hq) continue;
     if (AI_LEVEL === "hard" && tgt.hq && S.players[0].hq <= u.atk) {
+      ai.res -= op;
       S.players[0].hq -= u.atk;
       say("Your " + u.name + " strikes the enemy HQ for " + u.atk + "!");
-      u.canAttack = false;
+      u.canAttack = false; u.acted = true;
       shakeFX();
       sfx("attack"); sfx("hit"); flashFX();
       syncPub(1);
@@ -1152,27 +1239,53 @@ function aiAttackOne(ai) {
     }
     if (tgt.units.length > 0) {
       var def = aiPickDef(tgt.units, u);
+      ai.res -= op;
       def.hp -= u.atk;
       u.hp -= def.atk;
       say("Your " + u.name + " fights the enemy " + def.name + ": deals " + u.atk + ", takes " + def.atk + ".");
       if (def.hp <= 0) say("Enemy " + def.name + " is destroyed!");
       if (u.hp <= 0) say("Your " + u.name + " is destroyed!");
-      u.canAttack = false;
+      u.canAttack = false; u.acted = true;
       cleanBoard(S.players[0]);
       cleanBoard(ai);
     } else if (tgt.hq) {
+      ai.res -= op;
       S.players[0].hq -= u.atk;
       say("Your " + u.name + " strikes the enemy HQ for " + u.atk + "!");
-      u.canAttack = false;
+      u.canAttack = false; u.acted = true;
       shakeFX();
-    } else {
-      u.canAttack = false;
     }
     sfx("attack"); sfx("hit"); flashFX();
     syncPub(1);
     return true;
   }
   return false;
+}
+
+function aiMoveOne(ai) {
+  if (frontCount(0) > 0) return false;                 // human holds the frontline
+  if (frontCount(1) >= MAX_FRONT) return false;
+  var best = null, bestScore = -1e9;
+  for (var i = 0; i < ai.board.length; i++) {
+    var u = ai.board[i];
+    if (u.line === "front" || u.acted) continue;
+    var op = u.op || 1;
+    if (ai.res < op) continue;
+    var score = u.atk * 2 + u.hp + (u.guard ? 2 : 0);
+    if (AI_LEVEL === "easy") { best = u; break; }
+    if (score > bestScore) { bestScore = score; best = u; }
+  }
+  if (!best) return false;
+  var cost = best.op || 1;
+  ai.res -= cost;
+  best.line = "front";
+  best.acted = true;
+  best.canAttack = false;
+  say("Your " + best.name + " advances to the frontline.");
+  sfx("move");
+  recomputeAura(ai);
+  syncPub(1);
+  return true;
 }
 
 function aiPickTarget(foes) {
@@ -1326,7 +1439,7 @@ function syncPub(p) {
 }
 
 function boardArr(p) {
-  return p.board.map(function (u) { return { key: u.key, hp: u.hp, atk: u.atk, baseAtk: u.baseAtk, auraN: u.auraN || 0 }; });
+  return p.board.map(function (u) { return { key: u.key, hp: u.hp, atk: u.atk, baseAtk: u.baseAtk, auraN: u.auraN || 0, op: u.op || 1, line: u.line || "support" }; });
 }
 
 function boardFromSnap(arr) {
@@ -1335,6 +1448,8 @@ function boardFromSnap(arr) {
     u.hp = s.hp; u.atk = s.atk;
     if (s.baseAtk !== undefined && s.baseAtk !== null) u.baseAtk = s.baseAtk;
     u.auraN = s.auraN || 0;
+    if (s.op) u.op = s.op;
+    u.line = s.line || "support";
     return u;
   });
 }
@@ -1423,7 +1538,7 @@ function onlineBeginMyTurn() {
   var pl = S.players[p];
   pl.turnNum++;
   pl.res = Math.min(pl.turnNum, MAX_RES);
-  pl.board.forEach(function (u) { u.canAttack = true; });
+  pl.board.forEach(function (u) { u.canAttack = true; u.acted = false; });
   draw(pl, 1);
   S.turn = p;
   render();
@@ -1753,20 +1868,27 @@ function setMode(m) {
 }
 
 // ================= COMBAT =================
-function legalTargets(srcInst) {
-  var foe = S.players[other(S.cur)];
+function legalTargets(srcInst, actor) {
+  var p = (actor == null) ? S.cur : actor;
+  var foe = S.players[other(p)];
   var lists = { units: [], hq: false };
+  var enemyFront = foe.board.filter(function (u) { return u.line === "front"; });
+  var enemySupport = foe.board.filter(function (u) { return u.line !== "front"; });
   if (srcInst.air) {
     lists.units = foe.board.slice();
     lists.hq = true;
+    return lists;
+  }
+  if (srcInst.line === "front") {
+    // Frontline units strike the enemy support line and the HQ.
+    var sguards = enemySupport.filter(function (u) { return u.guard; });
+    lists.units = sguards.length ? sguards : enemySupport.slice();
+    lists.hq = sguards.length === 0;
   } else {
-    var guards = foe.board.filter(function (u) { return u.guard; });
-    if (guards.length > 0) {
-      lists.units = guards;
-    } else {
-      lists.units = foe.board.slice();
-      lists.hq = true;
-    }
+    // Support units can only reach the enemy frontline (guards first).
+    var fguards = enemyFront.filter(function (u) { return u.guard; });
+    lists.units = fguards.length ? fguards : enemyFront.slice();
+    lists.hq = false;
   }
   return lists;
 }
@@ -1778,15 +1900,21 @@ function selectAttacker(uidx) {
   var pl = S.players[S.cur];
   var inst = pl.board[uidx];
   if (!inst) return;
-  if (!inst.canAttack) { log(inst.name + " has already attacked."); return; }
+  if (!inst.canAttack) { log(inst.name + " has already acted this turn."); return; }
+  var op = inst.op || 1;
+  if (pl.res < op) { log(inst.name + " needs " + op + " resource to attack."); return; }
   if (S.attackSel === uidx) { S.attackSel = null; }
   else S.attackSel = uidx;
   render();
   if (S.attackSel !== null) {
     var targets = legalTargets(pl.board[S.attackSel]);
+    if (!targets.units.length && !targets.hq) {
+      log(inst.name + " has no targets. Advance to the frontline to reach the enemy.");
+      return;
+    }
     var desc = targets.units.length ? targets.units.map(function (u) { return u.name; }).join(", ") : "none";
     if (targets.hq) desc += (desc ? " / " : "") + "HQ";
-    log("Choose a target for " + pl.board[S.attackSel].name + "  [" + desc + "]. Click the unit again to cancel.");
+    log("Choose a target for " + pl.board[S.attackSel].name + "  [" + desc + "]  (action cost " + op + "). Click the unit again to cancel.");
   }
 }
 
@@ -1799,25 +1927,31 @@ function doAttack(uidx, kind, tidx) {
   var foe = S.players[other(S.cur)];
   var att = me.board[S.attackSel];
   if (!att) return;
+  var op = att.op || 1;
+  if (me.res < op) { log("Not enough resources to attack \u2014 needs " + op + "."); return; }
   sfx("attack");
 
   if (kind === "hq") {
     var targets = legalTargets(att);
     if (!targets.hq) return;
+    me.res -= op;
     foe.hq -= att.atk;
     say("Your " + att.name + " strikes the enemy HQ for " + att.atk + "!");
     att.canAttack = false;
+    att.acted = true;
     sfx("hit"); flashFX(); shakeFX();
   } else {
     var targets2 = legalTargets(att);
     var def = foe.board[tidx];
     if (!def || targets2.units.indexOf(def) === -1) return;
+    me.res -= op;
     def.hp -= att.atk;
     att.hp -= def.atk;
     say("Your " + att.name + " fights the enemy " + def.name + ": deals " + att.atk + ", takes " + def.atk + ".");
     if (def.hp <= 0) say("Enemy " + def.name + " is destroyed!");
     if (att.hp <= 0) say("Your " + att.name + " is destroyed!");
     att.canAttack = false;
+    att.acted = true;
     cleanBoard(foe);
     cleanBoard(me);
     sfx("hit"); flashFX();
@@ -1882,7 +2016,7 @@ function handHTML(pl, isActive, cnt) {
     var inst = isActive ? pl.hand[i] : null;
     if (isActive) {
       var foeUnits = S.players[other(S.cur)].board.length;
-      var playable = interactive && inst.cost <= pl.res && (inst.type === "order" ? (!orderNeedsTarget(inst.key) || foeUnits > 0) : pl.board.length < MAX_BOARD);
+      var playable = interactive && inst.cost <= pl.res && (inst.type === "order" ? (!orderNeedsTarget(inst.key) || foeUnits > 0) : supportCount(pl) < MAX_BOARD);
       var skillTxt = (inst.type !== "order" && DEFS[inst.key].fx) ? DEFS[inst.key].text : "";
       var hasskill = (inst.type !== "order" && DEFS[inst.key].fx) ? " hasskill" : "";
       html += '<div class="cardwrap"><div class="card ' + (playable ? "playable" : "unplayable") + (inst.type === "order" ? " order" : "") + hasskill + '" title="' + DEFS[inst.key].text + '" onclick="play(' + i + ')">' +
@@ -1900,12 +2034,15 @@ function handHTML(pl, isActive, cnt) {
   return html;
 }
 
-function boardHTML(pl, role) {
+function boardHTML(pl, role, lineFilter, ownerP) {
   var html = "";
   var mine = (role === 'mine');
   var foe = (role === 'foe');
+  var cur = viewer();
+  var fOwner = frontCount(0) > 0 ? 0 : (frontCount(1) > 0 ? 1 : null);
   for (var i = 0; i < pl.board.length; i++) {
     var inst = pl.board[i];
+    if (lineFilter && (inst.line === "front") !== (lineFilter === "front")) continue;
     var cls = "card";
     var attm = '';
 
@@ -1934,15 +2071,23 @@ function boardHTML(pl, role) {
 
     var skillTxt = (inst.type !== "order" && DEFS[inst.key].fx) ? DEFS[inst.key].text : "";
     var hasskill = (inst.type !== "order" && DEFS[inst.key].fx) ? " hasskill" : "";
+
+    var adv = "";
+    if (mine && canAct() && inst.line !== "front" && !inst.acted &&
+        fOwner !== other(cur) && frontCount(cur) < MAX_FRONT) {
+      var op = inst.op || 1;
+      adv = '<button class="advbtn' + (pl.res < op ? " off" : "") + '" title="Advance to the frontline (action cost ' + op + ')" onclick="moveToFront(' + i + ')">\u25b2 ' + op + '</button>';
+    }
+
     html += '<div class="cardwrap"><div class="' + cls + hasskill + '"' + attm + ' title="' + DEFS[inst.key].text + '">' +
-      '<div class="cost">' + inst.cost + '</div>' +
+      '<div class="cost op" title="Action cost: ' + (inst.op || 1) + '">' + (inst.op || 1) + '</div>' +
       '<div class="cname">' + inst.name + '</div>' +
       '<div class="art">' + DEFS[inst.key].art + '</div>' +
       badges +
       '<div class="utext">' + skillTxt + '</div>' +
       '<div class="atk">' + inst.atk + '</div>' +
       '<div class="hp">' + inst.hp + '</div>' +
-      '</div></div>';
+      '</div>' + adv + '</div>';
   }
   return html;
 }
@@ -1957,7 +2102,7 @@ function hqTargetable() {
 
 function render() {
   if (!S) return;
-  var cur = (MODE === "online" && NET) ? NET.id : (MODE === "ai" ? 0 : S.cur);
+  var cur = viewer();
   var foe = other(cur);
   var my = S.players[cur], en = S.players[foe];
   var canTargetHq = hqTargetable();
@@ -1973,7 +2118,7 @@ function render() {
     setTurnBar("Player " + (cur + 1));
   }
 
-  // top = opponent
+  // top = opponent HQ, hand and support line
   var topHTML = '<div class="prow">' +
       '<div class="stackbox"><div class="stackcard"></div><span>DECK ' + S.pub.deck[foe] + '</span><span>RES ' + en.res + '</span></div>' +
       '<div class="hqbox"><div class="hqcard' + hqTgtCls + '"' + hqOnt + '>' +
@@ -1984,13 +2129,25 @@ function render() {
       '<div class="stackbox"><div class="stackcard"></div><span></span><span></span></div>' +
     '</div>' +
     '<div class="hand">' + handHTML(en, false, S.pub.hand[foe]) + '</div>' +
-    '<div class="boardrow">' + boardHTML(en, 'foe') + '</div>';
+    '<div class="lineLabel">ENEMY SUPPORT LINE</div>' +
+    '<div class="boardrow">' + boardHTML(en, 'foe', 'support', foe) + '</div>';
   document.getElementById("panelTop").innerHTML = topHTML;
 
-  var midHTML = '<div class="boardrow">' + boardHTML(my, 'mine') + '</div>';
+  // middle = the shared frontline
+  var f0 = frontCount(0), f1 = frontCount(1);
+  var fOwner = f0 > 0 ? 0 : (f1 > 0 ? 1 : null);
+  var fCls = fOwner === null ? "open" : (fOwner === cur ? "mine" : "foe");
+  var fTxt = fOwner === null ? "UNCONTESTED" : (fOwner === cur ? "YOURS" : "ENEMY") + "  (" + (fOwner === 0 ? f0 : f1) + "/" + MAX_FRONT + ")";
+  var frontUnits = boardHTML(S.players[0], 0 === cur ? 'mine' : 'foe', 'front', 0) +
+                   boardHTML(S.players[1], 1 === cur ? 'mine' : 'foe', 'front', 1);
+  var midHTML = '<div class="frontbar ' + fCls + '">FRONTLINE \u00b7 ' + fTxt + '</div>' +
+    '<div class="boardrow">' + (frontUnits || '<div class="frontempty">Advance a unit to seize the frontline.</div>') + '</div>';
   document.getElementById("panelMid").innerHTML = midHTML;
 
-  var myHq = '<div class="prow">' +
+  // bottom = my support line, HQ and hand
+  var myHq = '<div class="lineLabel">YOUR SUPPORT LINE</div>' +
+    '<div class="boardrow">' + boardHTML(my, 'mine', 'support', cur) + '</div>' +
+    '<div class="prow">' +
       '<div class="stackbox"><div class="stackcard"></div><span>DECK ' + S.pub.deck[cur] + '</span><span>RES ' + my.res + '</span></div>' +
       '<div class="hqbox"><div class="hqcard">' +
         '<div class="star">' + factionLabel(my) + '</div>' +
@@ -2030,11 +2187,12 @@ var TUT_STEPS = [
   { t: "1. THE GOAL", h: "<p>Each player commands an <b>HQ with 20 HP</b> \u2014 the enemy HQ is at the top, yours at the bottom.</p><p>Reduce the enemy HQ to <b>0 HP</b> and you win. If your HQ hits 0 first, you lose.</p>" },
   { t: "2. RESOURCES & TURNS", h: "<ul><li>Every turn you gain <b>+1 resource</b> (up to 12), so bigger cards unlock as the game goes on.</li><li>Cards you can afford <b>glow gold</b> \u2014 click one to play it. Cards you can't pay for look dark.</li><li><b>END TURN</b> passes play \u2014 in LOCAL the other player takes the screen, in VS AI the computer acts, in ONLINE you wait for your opponent.</li></ul>" },
   { t: "3. NATIONS", h: "<p>There are <b>5 nations</b>, each with its own <b>exclusive deck</b> of cards based on its real WW2 weapons. There are <b>no national buffs</b> \u2014 a nation is defined purely by its cards. Pick yours with the <b>NATION</b> button.</p><ul><li><b>USA</b> \u2605 \u2014 industrial might: Shermans, P-51s, B-17s, Marines.</li><li><b>UK</b> \u265b \u2014 Commonwealth: Spitfires, Commandos, radar, steady Guards.</li><li><b>GERMANY</b> \u2720 \u2014 Blitzkrieg: fast Panzers, Stukas, heavy Tigers.</li><li><b>USSR</b> \u262d \u2014 endless numbers: T-34s, Katyusha rockets, human waves.</li><li><b>JAPAN</b> \u2600 \u2014 aggressive air: cheap Zeros, banzai, kamikaze.</li></ul>" },
-  { t: "4. UNITS", h: "<p>Units fill your front row (max 4). Blue circle = cost, red = attack, green = HP. Hover a card to read its power. Each nation's units are different \u2014 here are the shared <b>keywords</b>:</p><ul><li><b>Haste</b> \u2014 can attack the turn it is played.</li><li><b>Guard</b> \u2014 enemies must fight it first; it shields your HQ.</li><li><b>Air</b> \u2014 ignores Guard and can always strike the HQ.</li><li><b>Battlecries</b> \u2014 many units have an effect on play: healing your HQ, damaging the enemy HQ or their units, drawing cards, or giving your other units +1 attack.</li></ul>" },
-  { t: "5. ATTACKING", h: "<ul><li>Click your unit, then click an enemy unit or the enemy HQ.</li><li>Each unit attacks <b>once per turn</b>. When two units fight, <b>both</b> deal their attack to each other.</li><li><b>Guard</b> units must be fought first \u2014 they shield the enemy HQ.</li><li><b>Air</b> units ignore Guard and can always hit the HQ.</li><li>A unit normally can't attack the turn it's played \u2014 unless it has <b>Haste</b>.</li></ul>" },
-  { t: "6. ORDERS", h: "<p>Orders are one-shot cards \u2014 they resolve, then vanish. A played order is shown in the box on the left for <b>2 seconds</b> before its effect takes place. Each nation has its own orders. The shared effects are:</p><ul><li><b>Damage a unit</b> \u2014 click the order, then pick an enemy unit.</li><li><b>Damage the enemy HQ</b> \u2014 a direct strike.</li><li><b>Damage all enemy units</b> \u2014 a sweeping barrage (hits the HQ if their board is empty).</li><li><b>Heal your HQ</b> \u2014 recover hit points.</li><li><b>Draw cards</b> \u2014 refill your hand.</li><li><b>Gain resource</b> \u2014 bank energy for bigger plays.</li><li><b>Rally</b> \u2014 all your units can attack again.</li></ul>" },
-  { t: "7. DECK BUILDER", h: "<ul><li>Open <b>DECK</b> to customize your cards with the <b>+</b> and <b>-</b> buttons \u2014 each row shows a card's <b>cost</b> (and <b>attack/HP</b> for units).</li><li>Each nation keeps its <b>own saved deck</b>. In LOCAL, use the <b>PLAYER 1 / PLAYER 2</b> toggle to build a deck for either player.</li><li>A deck must have <b>exactly 40 cards</b>, with at most <b>3 copies</b> of any card.</li><li><b>USE DEFAULT</b> restores the standard 40-card deck, <b>SAVE</b> keeps your changes, <b>CLOSE</b> cancels.</li></ul>" },
-  { t: "8. PLAY & MENU", h: "<ul><li><b>LOCAL</b> \u2014 two players share one screen (hot-seat); choose <b>both</b> players' nations.</li><li><b>VS AI</b> \u2014 battle the computer; use <b>AI: EASY/NORMAL/HARD</b> to set its skill.</li><li><b>ONLINE</b> \u2014 HOST gives you a room code to share, or press <b>ROOMS</b> to join a waiting game.</li><li><b>NATION</b> \u2014 choose your nation. <b>DECK</b> \u2014 build your deck.</li><li><b>STATS</b> \u2014 track wins, losses and records. Use <b>EXPORT SAVE</b> to back up your progress before clearing browser data.</li><li><b>TUTORIAL</b> reopens this guide, <b>SOUND</b> toggles audio.</li></ul><p>Good luck, Commander!</p>" }
+  { t: "4. UNITS & ACTION COST", h: "<p>Units are deployed into your <b>support line</b> (max 4). The blue circle in hand is the <b>deployment cost</b>. Once on the field the circle turns amber and shows the unit's <b>action cost</b> \u2014 the extra resource you pay every time it <b>moves or attacks</b>.</p><ul><li><b>Haste</b> \u2014 can attack the turn it is played.</li><li><b>Guard</b> \u2014 enemies must fight it first; it shields your HQ and support line.</li><li><b>Air</b> \u2014 ignores Guard, ignores the frontline and can always strike the HQ.</li><li><b>Battlecries</b> \u2014 many units have an effect on play: healing your HQ, damaging the enemy HQ or their units, drawing cards, or giving your other units +1 attack.</li></ul>" },
+  { t: "5. THE FRONTLINE", h: "<p>The battlefield has three zones: <b>your support line</b>, the shared <b>frontline</b>, and the <b>enemy support line</b>. Newly deployed units always arrive in your support line.</p><ul><li>Only <b>one side can hold the frontline</b> at a time (max 5 units). To take it, destroy any enemy frontline units first.</li><li>Click the <b>\u25b2 button</b> on one of your support units to advance it. It costs that unit's <b>action cost</b> and uses its action for the turn.</li><li>While you hold the frontline, your enemy cannot advance \u2014 and your frontline units can hit their support line and HQ.</li></ul>" },
+  { t: "6. ATTACKING", h: "<ul><li>Click your unit, then click an enemy unit or the enemy HQ. Every attack costs the unit's <b>action cost</b>.</li><li>Each unit acts <b>once per turn</b> (move <i>or</i> attack). When two units fight, <b>both</b> deal their attack to each other.</li><li><b>Support-line units</b> can only reach the enemy <b>frontline</b>. <b>Frontline units</b> can reach the enemy <b>support line and HQ</b>.</li><li><b>Guard</b> units must be fought first. <b>Air</b> units ignore Guard and can always hit the HQ.</li><li>A unit normally can't attack the turn it's played \u2014 unless it has <b>Haste</b>. It can still advance on that turn.</li></ul>" },
+  { t: "7. ORDERS", h: "<p>Orders are one-shot cards \u2014 they resolve, then vanish. A played order is shown in the box on the left for <b>2 seconds</b> before its effect takes place. Orders ignore the frontline and can strike any enemy unit. Each nation has its own orders. The shared effects are:</p><ul><li><b>Damage a unit</b> \u2014 click the order, then pick an enemy unit.</li><li><b>Damage the enemy HQ</b> \u2014 a direct strike.</li><li><b>Damage all enemy units</b> \u2014 a sweeping barrage (hits the HQ if their board is empty).</li><li><b>Heal your HQ</b> \u2014 recover hit points.</li><li><b>Draw cards</b> \u2014 refill your hand.</li><li><b>Gain resource</b> \u2014 bank energy for bigger plays.</li><li><b>Rally</b> \u2014 all your units can attack again.</li></ul>" },
+  { t: "8. DECK BUILDER", h: "<ul><li>Open <b>DECK</b> to customize your cards with the <b>+</b> and <b>-</b> buttons \u2014 each row shows a card's <b>deploy cost</b>, <b>action cost</b> (units) and <b>attack/HP</b>.</li><li>Each nation keeps its <b>own saved deck</b>. In LOCAL, use the <b>PLAYER 1 / PLAYER 2</b> toggle to build a deck for either player.</li><li>A deck must have <b>exactly 40 cards</b>, with at most <b>3 copies</b> of any card.</li><li><b>USE DEFAULT</b> restores the standard 40-card deck, <b>SAVE</b> keeps your changes, <b>CLOSE</b> cancels.</li></ul>" },
+  { t: "9. PLAY & MENU", h: "<ul><li><b>LOCAL</b> \u2014 two players share one screen (hot-seat); choose <b>both</b> players' nations.</li><li><b>VS AI</b> \u2014 battle the computer; use <b>AI: EASY/NORMAL/HARD</b> to set its skill.</li><li><b>ONLINE</b> \u2014 HOST gives you a room code to share, or press <b>ROOMS</b> to join a waiting game.</li><li><b>NATION</b> \u2014 choose your nation. <b>DECK</b> \u2014 build your deck.</li><li><b>STATS</b> \u2014 track wins, losses and records. Use <b>EXPORT SAVE</b> to back up your progress before clearing browser data.</li><li><b>TUTORIAL</b> reopens this guide, <b>SOUND</b> toggles audio.</li></ul><p>Good luck, Commander!</p>" }
 ];
 var TUT_PAGE = 0;
 
@@ -2169,7 +2327,7 @@ function renderDeckRows() {
   keys.forEach(function (k) {
     var d = DEFS[k];
     var n = DECK_WORK[k] || 0;
-    var stat = (d.type === "order") ? (d.cost + "c") : (d.cost + "c  " + d.atk + "/" + d.hp);
+    var stat = (d.type === "order") ? (d.cost + "c") : (d.cost + "c / " + opOf(d) + "op  " + d.atk + "/" + d.hp);
     html += '<div class="drow"><span class="dname">' + d.name + '</span><span class="dstat">' + stat + '</span><span class="dtag">' + (d.type === "order" ? "ORDER" : "UNIT") + '</span>' +
       '<button class="btn dbtn" onclick="deckDec(\'' + k + '\')">-</button><span class="dnum">' + n + '</span>' +
       '<button class="btn dbtn" onclick="deckInc(\'' + k + '\')">+</button></div>';
