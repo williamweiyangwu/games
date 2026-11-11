@@ -361,7 +361,7 @@
 
   <section id="fighter">
     <h2 data-i18n="fighterTitle">Fly a WWII Fighter</h2>
-    <p class="sub" data-i18n="fighterSub">Take the controls of a Spitfire in a third-person 3D dogfight. Move with the mouse or WASD / arrow keys; your guns fire automatically.</p>
+    <p class="sub" data-i18n="fighterSub">Take the controls of a Spitfire in a third-person 3D dogfight. Start locks the mouse for smooth steering; WASD / arrow keys also work, guns fire automatically, and Esc pauses.</p>
     <div class="game-wrap" id="gameWrap">
       <canvas id="fighterCanvas" width="900" height="560"></canvas>
       <div class="reticle" aria-hidden="true"></div>
@@ -439,7 +439,7 @@ const I18N = {
     weaponsTitle: "Weapons of World War II",
     weaponsSub: "The machines and guns that shaped the battlefield, from the Blitzkrieg to the V-2.",
     fighterTitle: "Fly a WWII Fighter",
-    fighterSub: "Take the controls of a Spitfire in a third-person 3D dogfight. Move with the mouse or WASD / arrow keys; your guns fire automatically.",
+    fighterSub: "Take the controls of a Spitfire in a third-person 3D dogfight. Start locks the mouse for smooth steering; WASD / arrow keys also work, guns fire automatically, and Esc pauses.",
     footer: "Data compiled from public historical sources for educational purposes; some figures are estimates.",
     statDuration: "Duration", statCountries: "Belligerent nations",
     statDeaths: "Fatalities (worldwide)", statCamps: "Major camps",
@@ -1546,7 +1546,7 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
   let roll = 0, pitch = 0;
   let health = 100;
   let spawnT = 0, fireT = 0, waveT = 0, invuln = 0;
-  let shake = 0, hitFlash = 0, idleT = 0;
+  let shake = 0, hitFlash = 0, idleT = 0, hudT = 0;
 
   function explode(pos, count, scale) {
     const lifeBase = 0.55;
@@ -1591,8 +1591,8 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     els.score.textContent = score;
     els.wave.textContent = wave;
     els.health.textContent = Math.max(0, Math.ceil(health));
-    els.speed.textContent = Math.round(300 + wave * 14);
-    els.alt.textContent = Math.round(player.position.y * 24);
+    els.speed.textContent = Math.round(300 + wave * 14) + " km/h";
+    els.alt.textContent = Math.round(player.position.y * 30) + " m";
   }
 
   function showOverlay(kind) {
@@ -1603,9 +1603,22 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
           <h3>Scramble!</h3>
           <p>Climb into a Spitfire and fight through waves of Luftwaffe fighters and bombers in a third-person 3D dogfight over occupied Europe.</p>
           <div class="game-btns"><button class="btn primary" id="gameStart">Start mission</button></div>
-          <p class="game-tip">Mouse or WASD / arrow keys to fly · guns fire automatically · don't get hit</p>
+          <p class="game-tip">Click Start to lock the mouse, then steer by moving it. WASD / arrow keys also work · guns fire automatically · Esc pauses</p>
         </div>`;
       document.getElementById("gameStart").onclick = startGame;
+    } else if (kind === "paused") {
+      overlay.innerHTML = `
+        <div class="game-card">
+          <h3>Paused</h3>
+          <p>Your mission is on hold over occupied Europe.</p>
+          <div class="game-btns">
+            <button class="btn primary" id="gameResume">Resume</button>
+            <button class="btn" id="gameQuit">Restart</button>
+          </div>
+          <p class="game-tip">Resume locks the mouse again · move to steer · Esc pauses</p>
+        </div>`;
+      document.getElementById("gameResume").onclick = resumeGame;
+      document.getElementById("gameQuit").onclick = startGame;
     } else if (kind === "dead") {
       overlay.innerHTML = `
         <div class="game-card">
@@ -1624,6 +1637,28 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
   }
 
   function hideOverlay() { overlay.classList.remove("open"); }
+
+  function lockPointer() {
+    const req = canvas.requestPointerLock || canvas.webkitRequestPointerLock;
+    if (!req) return;
+    try {
+      const p = req.call(canvas);
+      if (p && typeof p.catch === "function") p.catch(() => {});
+    } catch (e) { /* hover steering remains available as a fallback */ }
+  }
+  function releasePointer() {
+    if (document.pointerLockElement === canvas) document.exitPointerLock();
+  }
+  function pauseGame() {
+    if (state !== "playing") return;
+    state = "paused";
+    showOverlay("paused");
+  }
+  function resumeGame() {
+    hideOverlay();
+    state = "playing";
+    lockPointer();
+  }
 
   function resetWorld() {
     clearWorldObjects();
@@ -1654,10 +1689,12 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     hideOverlay();
     state = "playing";
     cameraSnap = true;
+    lockPointer();
   }
 
   function die() {
     state = "dead";
+    releasePointer();
     explode(player.position, 30, 1.7);
     player.visible = false;
     hitFlash = 0;
@@ -1695,10 +1732,12 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     state = "playing";
     wrap.classList.remove("hit");
     updateHud();
+    lockPointer();
   }
 
   function beginAd() {
     state = "ad";
+    releasePointer();
     hideOverlay();
     adOverlay.classList.add("open");
     adEnds = performance.now() + AD_MS;
@@ -1923,11 +1962,11 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
   function updateCamera(dt) {
     const snap = cameraSnap ? 1 : 1 - Math.exp(-6.5 * dt);
     cameraSnap = false;
-    camera.position.x += (player.position.x * 0.82 - camera.position.x) * snap;
-    camera.position.y += (player.position.y + 4.6 - camera.position.y) * snap;
-    camera.position.z = 16.5;
-    camera.lookAt(player.position.x * 0.55, player.position.y + 0.9, -60);
-    camera.rotation.z += roll * 0.22;
+    camera.position.x += (player.position.x * 0.78 - camera.position.x) * snap;
+    camera.position.y += (player.position.y + 6.4 - camera.position.y) * snap;
+    camera.position.z = 24;
+    camera.lookAt(player.position.x * 0.5, player.position.y + 1.1, -85);
+    camera.rotation.z += roll * 0.12;
     if (shake > 0) {
       camera.position.x += rand(-shake, shake);
       camera.position.y += rand(-shake, shake);
@@ -1955,15 +1994,18 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     playerPos.copy(player.position);
     const vx = (player.position.x - px) / Math.max(dt, 0.0001);
     const vy = (player.position.y - py) / Math.max(dt, 0.0001);
-    const rollTarget = clamp(vx * 0.017, -0.9, 0.9);
-    const pitchTarget = clamp(vy * 0.01, -0.42, 0.42);
+    const rollTarget = clamp(vx * 0.014, -0.7, 0.7);
+    const pitchTarget = clamp(vy * 0.008, -0.32, 0.32);
     roll += (rollTarget - roll) * (1 - Math.exp(-7 * dt));
     pitch += (pitchTarget - pitch) * (1 - Math.exp(-6 * dt));
     player.rotation.z = roll;
     player.rotation.x = pitch;
-    player.rotation.y = clamp(vx * 0.003, -0.18, 0.18);
+    player.rotation.y = clamp(vx * 0.0024, -0.14, 0.14);
     player.visible = !(invuln > 0 && Math.floor(performance.now() / 85) % 2 === 0);
     player.userData.prop.rotation.z += dt * 48;
+
+    hudT += dt;
+    if (hudT >= 0.1) { hudT = 0; updateHud(); }
 
     if (invuln > 0) invuln -= dt;
     if (shake > 0) shake = Math.max(0, shake - dt * 7);
@@ -2030,22 +2072,71 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     lastT = now;
     if (!visible) return;
     if (state === "playing") update(dt);
-    else if (state !== "ad") updateIdle(dt);
+    else if (state === "idle" || state === "dead") updateIdle(dt);
     renderer.render(scene, camera);
   }
 
+  let locked = false, wasLocked = false, dragState = null;
+
+  document.addEventListener("mousemove", ev => {
+    if (!locked || state !== "playing") return;
+    targetX = clamp(targetX + (ev.movementX || 0) * 0.115, -54, 54);
+    targetY = clamp(targetY - (ev.movementY || 0) * 0.105, 10, 56);
+  });
+
+  document.addEventListener("pointerlockchange", () => {
+    locked = document.pointerLockElement === canvas;
+    if (locked) { wasLocked = true; return; }
+    if (wasLocked && state === "playing") pauseGame();
+    wasLocked = false;
+  });
+
+  canvas.addEventListener("pointerdown", ev => {
+    if (state === "idle") { startGame(); return; }
+    if (state === "paused") { resumeGame(); return; }
+    if (state !== "playing" || locked) return;
+    if (ev.pointerType === "mouse") return;
+    dragState = { id: ev.pointerId, x: ev.clientX, y: ev.clientY, tx: targetX, ty: targetY };
+    try { canvas.setPointerCapture(ev.pointerId); } catch (e) {}
+  });
+
   canvas.addEventListener("pointermove", ev => {
-    if (state !== "playing") return;
+    if (state !== "playing" || locked) return;
+    if (dragState && ev.pointerId === dragState.id) {
+      const r = canvas.getBoundingClientRect();
+      targetX = clamp(dragState.tx + (ev.clientX - dragState.x) / Math.max(1, r.width) * 150, -54, 54);
+      targetY = clamp(dragState.ty - (ev.clientY - dragState.y) / Math.max(1, r.height) * 90, 10, 56);
+      return;
+    }
+    if (ev.pointerType === "touch" || ev.pointerType === "pen") return;
     const r = canvas.getBoundingClientRect();
     const nx = clamp((ev.clientX - r.left) / Math.max(1, r.width), 0, 1);
     const ny = clamp((ev.clientY - r.top) / Math.max(1, r.height), 0, 1);
     targetX = (nx * 2 - 1) * 54;
     targetY = 52 - ny * 40;
   });
-  canvas.addEventListener("pointerdown", () => { if (state === "idle") startGame(); });
+
+  function endDrag(ev) {
+    if (dragState && ev.pointerId === dragState.id) dragState = null;
+  }
+  canvas.addEventListener("pointerup", endDrag);
+  canvas.addEventListener("pointercancel", endDrag);
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && state === "playing") {
+      if (document.pointerLockElement === canvas) document.exitPointerLock();
+      pauseGame();
+    }
+  });
 
   const controlCodes = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "KeyA", "KeyD", "KeyW", "KeyS", "Space"];
   window.addEventListener("keydown", ev => {
+    if ((ev.code === "Escape" || ev.code === "KeyP") && state === "playing") {
+      releasePointer();
+      pauseGame();
+      ev.preventDefault();
+      return;
+    }
     if (!controlCodes.includes(ev.code)) return;
     keys[ev.code] = true;
     if (state === "playing") ev.preventDefault();
@@ -2055,7 +2146,7 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
 
   resetWorld();
   state = "idle";
-  camera.position.set(0, 34.6, 16.5);
+  camera.position.set(0, 36.4, 24);
   updateHud();
   showOverlay("idle");
   updateCamera(0);
@@ -2069,7 +2160,7 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     tick: (dt = 1 / 60, n = 1) => {
       for (let i = 0; i < n; i++) {
         if (state === "playing") update(dt);
-        else if (state !== "ad") updateIdle(dt);
+        else if (state === "idle" || state === "dead") updateIdle(dt);
       }
       renderer.render(scene, camera);
     },
@@ -2077,6 +2168,10 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
       state,
       score,
       wave,
+      x: Math.round(player.position.x * 10) / 10,
+      y: Math.round(player.position.y * 10) / 10,
+      targetX: Math.round(targetX * 10) / 10,
+      targetY: Math.round(targetY * 10) / 10,
       health: Math.round(health),
       enemies: enemies.length,
       bullets: bullets.length,
