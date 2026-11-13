@@ -119,9 +119,38 @@
   #aiChat .ai-head button{background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer;line-height:1;padding:0}
   #aiChat .ai-head button:hover{color:var(--ink)}
   #aiChat .ai-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
-  #aiChat .msg{max-width:84%;padding:10px 13px;border-radius:14px;font-size:14px;line-height:1.45;white-space:pre-wrap;word-wrap:break-word}
-  #aiChat .msg.bot{align-self:flex-start;background:var(--panel2);border:1px solid var(--line)}
-  #aiChat .msg.user{align-self:flex-end;background:linear-gradient(135deg,#2b3a63,#1b2542)}
+  #aiChat .msg{display:flex;gap:8px;max-width:100%;align-items:flex-end}
+  #aiChat .msg.user{flex-direction:row-reverse}
+  #aiChat .msg-ava{width:28px;height:28px;border-radius:50%;flex:none;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;letter-spacing:.5px}
+  #aiChat .msg.bot .msg-ava{background:linear-gradient(135deg,#ffd75e,#ff9d2e);color:#14161d}
+  #aiChat .msg.user .msg-ava{background:linear-gradient(135deg,#2b3a63,#1b2542);color:#cdd6ee;border:1px solid var(--line)}
+  #aiChat .msg-body{display:flex;flex-direction:column;max-width:86%;min-width:0}
+  #aiChat .msg.user .msg-body{align-items:flex-end}
+  #aiChat .msg-bubble{padding:10px 13px;border-radius:14px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word;overflow-wrap:break-word}
+  #aiChat .msg.bot .msg-bubble{background:var(--panel2);border:1px solid var(--line);border-bottom-left-radius:4px}
+  #aiChat .msg.user .msg-bubble{background:linear-gradient(135deg,#2b3a63,#1b2542);border-bottom-right-radius:4px}
+  #aiChat .msg-bubble p{margin:0 0 6px}
+  #aiChat .msg-bubble p:last-child{margin-bottom:0}
+  #aiChat .msg-bubble ul{margin:6px 0;padding-left:18px}
+  #aiChat .msg-bubble li{margin:2px 0}
+  #aiChat .msg-bubble code{background:rgba(255,255,255,.08);border-radius:4px;padding:1px 5px;font-family:ui-monospace,Consolas,monospace;font-size:12.5px}
+  #aiChat .msg-bubble pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;overflow-x:auto;margin:6px 0}
+  #aiChat .msg-bubble pre code{background:none;padding:0}
+  #aiChat .msg-meta{display:flex;align-items:center;gap:8px;font-size:10.5px;color:var(--dim);margin-top:4px;padding:0 2px}
+  #aiChat .msg.user .msg-meta{justify-content:flex-end}
+  #aiChat .msg-copy{background:none;border:none;color:var(--dim);font-size:10.5px;cursor:pointer;padding:0}
+  #aiChat .msg-copy:hover{color:var(--ink)}
+  #aiChat .msg.bot.typing .msg-bubble{display:flex;gap:4px;align-items:center;padding:14px 13px}
+  #aiChat .msg.bot.typing i{width:6px;height:6px;border-radius:50%;background:var(--dim);animation:blink 1.2s infinite}
+  #aiChat .msg.bot.typing i:nth-child(2){animation-delay:.2s}
+  #aiChat .msg.bot.typing i:nth-child(3){animation-delay:.4s}
+  @keyframes blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
+  #aiChat .ai-chips{display:flex;gap:6px;flex-wrap:wrap;padding:10px 12px 2px;border-top:1px solid var(--line);background:var(--panel2)}
+  #aiChat .ai-chip{background:var(--bg);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:5px 11px;font-size:12px;cursor:pointer;font-family:inherit}
+  #aiChat .ai-chip:hover{color:var(--ink);border-color:#3d4c74}
+  #aiChat .ai-title{display:flex;align-items:center;gap:9px}
+  #aiChat .ai-logo{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#ffd75e,#ff9d2e);color:#14161d;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800}
+  #aiChat .ai-head-actions{display:flex;align-items:center;gap:4px}
   #aiChat .ai-input{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line)}
   #aiChat .ai-input input{
     flex:1;background:var(--bg);border:1px solid var(--line);border-radius:10px;
@@ -156,6 +185,62 @@
     font-weight:700;cursor:pointer;
   }
   #aiChat .ai-cta:disabled{opacity:.6;cursor:default}
+
+  /* feedback + operator */
+  #fbBtn{
+    position:fixed;left:20px;bottom:20px;z-index:9998;
+    background:var(--panel2);border:1px solid var(--line);color:var(--ink);
+    border-radius:999px;padding:10px 16px;font-size:13px;font-weight:600;letter-spacing:.3px;
+    cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.4);transition:border-color .15s ease;
+  }
+  #fbBtn:hover{border-color:#3d4c74}
+  .overlay{
+    position:fixed;inset:0;z-index:10000;background:rgba(5,8,14,.72);
+    backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px;
+  }
+  .overlay.hidden{display:none}
+  .dialog{
+    width:min(420px,100%);max-height:min(84vh,640px);background:var(--panel);
+    border:1px solid var(--line);border-radius:16px;overflow:hidden;
+    display:flex;flex-direction:column;box-shadow:0 24px 70px rgba(0,0,0,.6);
+  }
+  .dialog-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 18px;border-bottom:1px solid var(--line);background:var(--panel2);
+  }
+  .dialog-head b{font-size:15px;letter-spacing:.5px}
+  .dialog-x{background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer;line-height:1;padding:0}
+  .dialog-x:hover{color:var(--ink)}
+  .dialog-body{padding:18px;overflow-y:auto;flex:1;min-height:0;display:flex;flex-direction:column;gap:10px}
+  .fb-label{font-size:12px;color:var(--dim);letter-spacing:.5px;margin-bottom:-4px}
+  .dialog-body input[type=text],.dialog-body input[type=password],.dialog-body textarea{
+    width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;
+    color:var(--ink);padding:10px 12px;font-size:14px;outline:none;font-family:inherit;resize:vertical;
+  }
+  .dialog-body input:focus,.dialog-body textarea:focus{border-color:#3d4c74}
+  .fb-stars{display:flex;gap:2px}
+  .fb-stars button{background:none;border:none;color:#3a4560;font-size:26px;cursor:pointer;padding:0;line-height:1}
+  .fb-stars button.on{color:#ffd75e}
+  .fb-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:6px}
+  .fb-ok{font-size:12.5px;color:#4ad07a;margin-right:auto}
+  .btn-primary{
+    background:linear-gradient(135deg,#ffd75e,#ff9d2e);color:#14161d;border:none;
+    border-radius:10px;padding:9px 18px;font-weight:700;cursor:pointer;font-size:14px;
+  }
+  .btn-ghost{
+    background:var(--panel2);border:1px solid var(--line);color:var(--ink);
+    border-radius:10px;padding:8px 14px;font-weight:600;cursor:pointer;font-size:13px;
+  }
+  .btn-ghost:hover{border-color:#3d4c74}
+  .btn-ghost.danger{color:#ff9d9d;border-color:#4a2530}
+  .op-err{font-size:12.5px;color:#ff9d9d;min-height:16px}
+  .op-login,.op-panel{display:flex;flex-direction:column;flex:1;min-height:0}
+  .op-login.hidden,.op-panel.hidden{display:none}
+  .op-list{display:flex;flex-direction:column;gap:10px}
+  .op-item{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .op-item .t{font-size:14px;line-height:1.45;white-space:pre-wrap;word-wrap:break-word}
+  .op-item .m{font-size:11.5px;color:var(--dim);margin-top:8px}
+  .op-empty{color:var(--dim);text-align:center;padding:26px 0;font-size:14px}
 </style>
 </head>
 <body>
@@ -169,7 +254,7 @@
       <div class="thumb c2"><span class="glyph">&#9673;</span></div>
       <span class="tag">SPORTS</span>
       <h2>WHISTLE</h2>
-      <p>3D first-person referee simulator. You are in his boots, whistle in hand — take charge of twelve real World Cup and Champions League classics, or draw a sixteen-team World Cup or an eight-team Champions League knockout at random. Nothing starts without your whistle: kick-offs, corners, goal kicks, free kicks and penalties all wait for you. Decide goal or no goal, send it to VAR, describe every foul and choose play on, a warning, yellow or red, then spray the free-kick mark and place the wall exactly where you want it. Sharper keepers and strikers make every shot count. Points, kits and trophies can be backed up as a code, so wiping your browser does not cost you your career.</p>
+      <p>3D third-person referee simulator. Take charge of twelve real World Cup and Champions League classics — or a randomly drawn eight-team knockout — blow the whistle to stop play dead, show the cards, call offside and talk twenty-two AI footballers down.</p>
       <div class="meta">Referee simulator <span class="arrow">&#8594;</span></div>
     </a>
 
@@ -248,15 +333,21 @@
   </div>
 
   <footer>
-    Built by <a href="https://github.com/williamweiyangwu">William</a> &middot; hosted on GitHub Pages
+    Built by <a href="https://github.com/williamweiyangwu">William</a> &middot; hosted on GitHub Pages &middot; <a href="#" id="opLink">Operator</a>
   </footer>
 </div>
 
 <button id="aiFAB" aria-label="Open AI assistant">AI</button>
 <div id="aiChat" class="hidden">
   <div class="ai-head">
-    <b>AI Assistant</b>
-    <button id="aiClose" aria-label="Close">&#215;</button>
+    <div class="ai-title">
+      <span class="ai-logo">AI</span>
+      <b>AI Assistant</b>
+    </div>
+    <div class="ai-head-actions">
+      <button id="aiClear" type="button" aria-label="Clear chat" title="Clear chat">&#8635;</button>
+      <button id="aiClose" aria-label="Close">&#215;</button>
+    </div>
   </div>
   <div class="ai-engine" id="aiEngine">
     <div class="ai-engine-line">
@@ -266,10 +357,72 @@
     </div>
     <div class="ai-progress"><i id="aiProgress"></i></div>
   </div>
+  <div class="ai-chips" id="aiChips"></div>
   <div class="ai-msgs" id="aiMsgs"></div>
   <div class="ai-input">
     <input id="aiInput" type="text" placeholder="Ask me anything…" autocomplete="off">
     <button id="aiSend">Send</button>
+  </div>
+</div>
+
+<button id="fbBtn" type="button" aria-label="Send feedback">Feedback</button>
+
+<div id="fbOverlay" class="overlay hidden">
+  <div class="dialog">
+    <div class="dialog-head">
+      <b>Send feedback</b>
+      <button id="fbClose" class="dialog-x" aria-label="Close">&#215;</button>
+    </div>
+    <div class="dialog-body">
+      <label class="fb-label" for="fbName">Your name (optional)</label>
+      <input id="fbName" type="text" placeholder="Anonymous" autocomplete="off">
+      <label class="fb-label">How was your visit?</label>
+      <div id="fbStars" class="fb-stars" aria-label="Rating">
+        <button type="button" data-v="1">&#9733;</button>
+        <button type="button" data-v="2">&#9733;</button>
+        <button type="button" data-v="3">&#9733;</button>
+        <button type="button" data-v="4">&#9733;</button>
+        <button type="button" data-v="5">&#9733;</button>
+      </div>
+      <label class="fb-label" for="fbText">Your message</label>
+      <textarea id="fbText" rows="4" placeholder="Tell William what you think…"></textarea>
+      <div class="fb-actions">
+        <span id="fbOk" class="fb-ok"></span>
+        <button id="fbSend" type="button" class="btn-primary">Send</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="opOverlay" class="overlay hidden">
+  <div class="dialog">
+    <div id="opLogin" class="op-login">
+      <div class="dialog-head">
+        <b>Operator access</b>
+        <button id="opClose1" class="dialog-x" aria-label="Close">&#215;</button>
+      </div>
+      <div class="dialog-body">
+        <label class="fb-label" for="opPass">Password</label>
+        <input id="opPass" type="password" placeholder="Enter password" autocomplete="off">
+        <div id="opErr" class="op-err"></div>
+        <div class="fb-actions">
+          <button id="opGo" type="button" class="btn-primary">Unlock</button>
+        </div>
+      </div>
+    </div>
+    <div id="opPanel" class="op-panel hidden">
+      <div class="dialog-head">
+        <b>Feedback</b>
+        <button id="opClose2" class="dialog-x" aria-label="Close">&#215;</button>
+      </div>
+      <div class="dialog-body">
+        <div id="opList" class="op-list"></div>
+        <div class="fb-actions">
+          <button id="opExport" type="button" class="btn-ghost">Copy JSON</button>
+          <button id="opClear" type="button" class="btn-ghost danger">Delete all</button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -314,8 +467,9 @@
     "exploration), The Backrooms (first-person survival horror), House Siege 3D (5v5 FPS), KARDS (WWII card " +
     "battles), Map Game (grand-strategy conquest), Blockcraft (voxel sandbox), Tank War (multiplayer tank arena), " +
     "Apex Racing (3D racing) and WWII Europe (interactive WWII timeline and map). You may answer questions about " +
-    "the games or anything else. Always reply in plain text: no markdown, no tables, no bold or bullet symbols. " +
-    "Keep it to at most three short sentences unless the user explicitly asks for more detail.";
+    "the games or anything else. Reply in plain text. You may use **bold** for emphasis and simple - bullet " +
+    "lists when useful, but no headings, tables, code fences or links. Keep it to at most three short sentences " +
+    "unless the user explicitly asks for more detail.";
 
   var KB = [
     { keys: ["tank war"], answer: "Tank War is a multiplayer 3D tank arena. Open it from the hub card, then drive with WASD, aim with the mouse and fire with the left button. You can host or join a room to play with a friend." },
@@ -327,7 +481,7 @@
     { keys: ["wwii", "ww2", "world war", "hitler", "stalingrad"], answer: "WWII Europe is an interactive history page: a timeline, a map of territorial control that changes over time, key figures and statistics. Open its card on the hub to explore it." },
     { keys: ["age of discovery", "sailing", "sail", "exploration"], answer: "Age of Discovery is a 3D sailing and exploration game: captain a ship, discover new lands and trade along the way." },
     { keys: ["house siege", "white maze", "5v5", "shooter", "fps"], answer: "House Siege 3D is a fast 5v5 first-person shooter. Move with WASD, aim with the mouse, fire with the left button and use the keyboard to switch or reload weapons." },
-    { keys: ["whistle", "referee", "football", "soccer"], answer: "WHISTLE is a first-person 3D referee simulator. Pick one of twelve real World Cup and Champions League classics, or a random sixteen-team World Cup or eight-team Champions League draw. Every kick-off, corner, free kick and penalty starts on your whistle. You decide goal or no goal, review it with VAR, choose how to punish each foul, and spray the mark and place the wall yourself." },
+    { keys: ["whistle", "referee", "football", "soccer"], answer: "WHISTLE is a 3D referee simulator. Pick one of twelve real World Cup and Champions League classics or a random eight-team knockout, then blow the whistle to stop play, show cards, call offside and manage twenty-two AI footballers." },
     { keys: ["how many games", "list of games", "which games", "all games"], answer: "There are ten games: WHISTLE, Age of Discovery, The Backrooms, House Siege 3D, KARDS, Map Game, Blockcraft, Tank War, Apex Racing and WWII Europe. Each card on this page opens one." },
     { keys: ["who made", "who built", "creator", "william"], answer: "This arcade is William's collection of browser games — all free, all playable in the browser with no install." }
   ];
@@ -356,13 +510,119 @@
   var engineBtn = document.getElementById("aiEngineBtn");
   var engineBar = document.getElementById("aiProgress");
 
-  function addMsg(role, text) {
-    var d = document.createElement("div");
-    d.className = "msg " + (role === "user" ? "user" : "bot");
-    d.textContent = text;
-    msgs.appendChild(d);
+  function timeNow() {
+    var d = new Date();
+    var h = d.getHours(), m = d.getMinutes();
+    return (h < 10 ? "0" + h : h) + ":" + (m < 10 ? "0" + m : m);
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  // small, safe markdown-lite renderer (bold, italic, code, lists)
+  function renderMd(text) {
+    var t = escapeHtml(text);
+    t = t.replace(/```([\s\S]*?)```/g, function (m, c) { return "<pre><code>" + c.trim() + "</code></pre>"; });
+    t = t.replace(/`([^`\n]+)`/g, "<code>$1</code>");
+    t = t.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
+    t = t.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, "$1<em>$2</em>");
+    var lines = t.split("\n");
+    var html = [];
+    var inList = false;
+    function closeList() { if (inList) { html.push("</ul>"); inList = false; } }
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      var m = line.match(/^\s*[-*]\s+(.*)$/);
+      if (m) {
+        if (!inList) { html.push("<ul>"); inList = true; }
+        html.push("<li>" + m[1] + "</li>");
+      } else {
+        closeList();
+        if (line === "") html.push(""); else html.push("<p>" + line + "</p>");
+      }
+    }
+    closeList();
+    return html.join("\n");
+  }
+
+  function newBubble(role) {
+    var row = document.createElement("div");
+    row.className = "msg " + (role === "user" ? "user" : "bot");
+    var ava = document.createElement("div");
+    ava.className = "msg-ava";
+    ava.textContent = role === "user" ? "You" : "AI";
+    var body = document.createElement("div");
+    body.className = "msg-body";
+    var bubble = document.createElement("div");
+    bubble.className = "msg-bubble";
+    body.appendChild(bubble);
+    row.appendChild(ava);
+    row.appendChild(body);
+    msgs.appendChild(row);
+    return row;
+  }
+
+  function copyText(text, btn) {
+    function ok() { if (btn) { btn.textContent = "Copied"; setTimeout(function () { btn.textContent = "Copy"; }, 1400); } }
+    function fallback() {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      try { document.execCommand("copy"); ok(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(ok, fallback);
+      } else fallback();
+    } catch (e) { fallback(); }
+  }
+
+  function finalizeBubble(row, role, rawText, note) {
+    var body = row.querySelector(".msg-body");
+    body.querySelector(".msg-bubble").innerHTML = renderMd(rawText);
+    var meta = document.createElement("div");
+    meta.className = "msg-meta";
+    var label = document.createElement("span");
+    label.textContent = (role === "user" ? "You" : "AI") + " · " + timeNow();
+    meta.appendChild(label);
+    if (role === "bot") {
+      var c = document.createElement("button");
+      c.type = "button";
+      c.className = "msg-copy";
+      c.textContent = "Copy";
+      c.addEventListener("click", function () { copyText(rawText, c); });
+      meta.appendChild(c);
+    }
+    body.appendChild(meta);
+    if (note) {
+      var n = document.createElement("div");
+      n.className = "ai-note";
+      n.textContent = note;
+      body.appendChild(n);
+    }
     msgs.scrollTop = msgs.scrollHeight;
-    return d;
+    return row;
+  }
+
+  function addMsg(role, text) {
+    var row = newBubble(role);
+    row.querySelector(".msg-bubble").textContent = text;
+    return finalizeBubble(row, role, text);
+  }
+
+  // reveal a full answer word by word so it feels like it is being typed
+  function typewriter(bubble, text, onDone) {
+    var words = String(text).split(/(\s+)/);
+    var i = 0;
+    function step() {
+      if (i >= words.length) { if (onDone) onDone(); return; }
+      bubble.textContent += words[i++];
+      msgs.scrollTop = msgs.scrollHeight;
+      setTimeout(step, 18);
+    }
+    step();
   }
 
   function setTyping(text) {
@@ -371,10 +631,14 @@
     if (!t) {
       t = document.createElement("div");
       t.id = "aiTyping";
-      t.className = "msg bot";
+      t.className = "msg bot typing";
+      t.innerHTML = '<div class="msg-ava">AI</div><div class="msg-body"><div class="msg-bubble"><i></i><i></i><i></i></div><div class="ai-note"></div></div>';
       msgs.appendChild(t);
     }
-    t.textContent = text;
+    var note = t.querySelector(".ai-note");
+    if (note) {
+      note.textContent = (text === "Thinking…" || text === "Thinking locally…") ? "" : text;
+    }
     msgs.scrollTop = msgs.scrollHeight;
   }
 
@@ -805,17 +1069,17 @@
 
   function clean(text) {
     var t = String(text || "").replace(/\r/g, "");
+    // drop fenced code blocks down to their text
+    t = t.replace(/```[a-z]*\n?/gi, "").replace(/`{3}/g, "");
+    // drop markdown-table separator lines, flatten the rest
     t = t.split("\n").filter(function (line) { return !/^\s*\|?[\s:|-]{4,}\|?\s*$/.test(line); }).join("\n");
     t = t.split("\n").map(function (line) {
       if (line.indexOf("|") === -1) return line;
       var cells = line.replace(/^\s*\|/, "").replace(/\|\s*$/, "").split("|");
       return cells.map(function (c) { return c.trim(); }).filter(Boolean).join(" — ");
     }).join("\n");
-    t = t.replace(/\*\*([^*]+)\*\*/g, "$1")
-         .replace(/__([^_]+)__/g, "$1")
-         .replace(/`([^`]+)`/g, "$1")
-         .replace(/^#{1,6}\s+/gm, "")
-         .replace(/^\s*[-*]\s+/gm, "- ");
+    // keep bullet/heading markers useful, strip heading hashes
+    t = t.replace(/^#{1,6}\s+/gm, "");
     return t.replace(/\n{3,}/g, "\n\n").trim();
   }
 
@@ -830,14 +1094,9 @@
   }
 
   function say(text, note) {
-    var d = addMsg("bot", text);
-    if (note) {
-      var s = document.createElement("div");
-      s.className = "ai-note";
-      s.textContent = note;
-      d.appendChild(s);
-    }
-    return d;
+    var row = newBubble("bot");
+    row.querySelector(".msg-bubble").textContent = text;
+    return finalizeBubble(row, "bot", text, note);
   }
 
   function finish() {
@@ -868,7 +1127,7 @@
       waitingLocal = { q: q, ctx: ctx };
       startLocal();
     });
-    d.appendChild(b);
+    d.querySelector(".msg-body").appendChild(b);
     finish();
   }
 
@@ -896,8 +1155,12 @@
       history.push({ role: "model", text: reply });
       cache[q.toLowerCase()] = reply;
       setTyping(null);
-      if (note) say(reply, note); else addMsg("bot", reply);
-      finish();
+      var row = newBubble("bot");
+      var bubble = row.querySelector(".msg-bubble");
+      typewriter(bubble, reply, function () {
+        finalizeBubble(row, "bot", reply, note);
+        finish();
+      });
     }
 
     function unable() {
@@ -913,35 +1176,22 @@
     // it is still thinking instead of after a long pause
     function localAnswer() {
       setTyping(null);
-      var bubble = null;
+      var row = newBubble("bot");
+      var bubble = row.querySelector(".msg-bubble");
       var text = "";
-      function paint() {
-        if (!bubble) {
-          bubble = document.createElement("div");
-          bubble.className = "msg bot";
-          msgs.appendChild(bubble);
-        }
-        bubble.textContent = text;
-        msgs.scrollTop = msgs.scrollHeight;
-      }
       askLocal(payload, function (t) {
         text += t;
-        paint();
+        bubble.textContent = text;
+        msgs.scrollTop = msgs.scrollHeight;
       }).then(function (reply) {
         var final = clean(String(reply || text || "").trim());
         if (!final) throw new Error("empty");
-        if (!bubble) paint();
-        bubble.textContent = final;
-        var n = document.createElement("div");
-        n.className = "ai-note";
-        n.textContent = "Answered by the built-in offline AI.";
-        bubble.appendChild(n);
-        msgs.scrollTop = msgs.scrollHeight;
+        finalizeBubble(row, "bot", final, "Answered by the built-in offline AI.");
         history.push({ role: "model", text: final });
         cache[q.toLowerCase()] = final;
         finish();
       }).catch(function () {
-        if (bubble && bubble.parentNode) bubble.parentNode.removeChild(bubble);
+        if (row.parentNode) row.parentNode.removeChild(row);
         unable();
       });
     }
@@ -991,6 +1241,178 @@
   send.addEventListener("click", ask);
   input.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); ask(); } });
   if (engineBtn) engineBtn.addEventListener("click", function () { startLocal(); });
+
+  /* ---- suggested prompts ---- */
+  var chipsEl = document.getElementById("aiChips");
+  if (chipsEl) {
+    ["What games are there?", "How do I play Tank War?", "Who made this site?"].forEach(function (c) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "ai-chip";
+      b.textContent = c;
+      b.addEventListener("click", function () {
+        if (busy) return;
+        input.value = c;
+        ask();
+      });
+      chipsEl.appendChild(b);
+    });
+  }
+
+  var clearBtn = document.getElementById("aiClear");
+  if (clearBtn) clearBtn.addEventListener("click", function () {
+    history = [];
+    cache = {};
+    queued = [];
+    msgs.innerHTML = "";
+    addMsg("bot", "Chat cleared. What can I help you with?");
+  });
+
+  /* ------------------------------ feedback ------------------------------ */
+
+  var FB_KEY = "arcade_feedback_v1";
+
+  function fbLoad() {
+    try { return JSON.parse(localStorage.getItem(FB_KEY) || "[]"); } catch (e) { return []; }
+  }
+  function fbSave(list) {
+    try { localStorage.setItem(FB_KEY, JSON.stringify(list)); } catch (e) {}
+  }
+
+  var fbBtn = document.getElementById("fbBtn");
+  var fbOverlay = document.getElementById("fbOverlay");
+  var fbText = document.getElementById("fbText");
+  var fbName = document.getElementById("fbName");
+  var fbStars = document.getElementById("fbStars");
+  var fbOk = document.getElementById("fbOk");
+  var fbRating = 0;
+
+  if (fbStars) {
+    Array.prototype.forEach.call(fbStars.children, function (s) {
+      s.addEventListener("click", function () {
+        fbRating = +s.getAttribute("data-v");
+        Array.prototype.forEach.call(fbStars.children, function (x) {
+          x.classList.toggle("on", +x.getAttribute("data-v") <= fbRating);
+        });
+      });
+    });
+  }
+
+  if (fbBtn) fbBtn.addEventListener("click", function () {
+    fbOverlay.classList.remove("hidden");
+    fbOk.textContent = "";
+    if (fbText) fbText.focus();
+  });
+  if (document.getElementById("fbClose")) document.getElementById("fbClose").addEventListener("click", function () {
+    fbOverlay.classList.add("hidden");
+  });
+  if (fbOverlay) fbOverlay.addEventListener("click", function (e) {
+    if (e.target === fbOverlay) fbOverlay.classList.add("hidden");
+  });
+
+  if (document.getElementById("fbSend")) document.getElementById("fbSend").addEventListener("click", function () {
+    var text = fbText.value.trim();
+    if (!text) { fbOk.textContent = "Please write a message."; return; }
+    var list = fbLoad();
+    list.push({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+      name: fbName.value.trim(),
+      rating: fbRating,
+      text: text,
+      ts: Date.now(),
+      page: location.pathname
+    });
+    fbSave(list);
+    fbText.value = "";
+    fbName.value = "";
+    fbRating = 0;
+    Array.prototype.forEach.call(fbStars.children, function (x) { x.classList.remove("on"); });
+    fbOk.textContent = "Thanks! Your feedback was sent.";
+    setTimeout(function () { fbOk.textContent = ""; fbOverlay.classList.add("hidden"); }, 1500);
+  });
+
+  /* ------------------------------ operator ------------------------------ */
+
+  var OP_HASH = "e83f7eda58c0f1930259f4e567b005bc24e57bdd32014d2b133ab497d13ac5bc";
+
+  var opOverlay = document.getElementById("opOverlay");
+  var opLogin = document.getElementById("opLogin");
+  var opPanel = document.getElementById("opPanel");
+  var opPass = document.getElementById("opPass");
+  var opErr = document.getElementById("opErr");
+  var opList = document.getElementById("opList");
+
+  function renderFeedback() {
+    opList.innerHTML = "";
+    var list = fbLoad().slice().reverse();
+    if (!list.length) {
+      var e = document.createElement("div");
+      e.className = "op-empty";
+      e.textContent = "No feedback yet.";
+      opList.appendChild(e);
+      return;
+    }
+    list.forEach(function (f) {
+      var d = document.createElement("div");
+      d.className = "op-item";
+      var t = document.createElement("div");
+      t.className = "t";
+      t.textContent = f.text;
+      var m = document.createElement("div");
+      m.className = "m";
+      var stars = f.rating ? "\u2605".repeat(f.rating) + "\u2606".repeat(5 - f.rating) : "";
+      m.textContent = (f.name ? f.name + " · " : "") + (stars ? stars + " · " : "") +
+        new Date(f.ts).toLocaleString();
+      d.appendChild(t);
+      d.appendChild(m);
+      opList.appendChild(d);
+    });
+  }
+
+  function opUnlock() {
+    var val = opPass.value;
+    opPass.value = "";
+    opErr.textContent = "Checking…";
+    try {
+      crypto.subtle.digest("SHA-256", new TextEncoder().encode(val)).then(function (buf) {
+        var hex = Array.prototype.map.call(new Uint8Array(buf), function (b) {
+          return ("0" + b.toString(16)).slice(-2);
+        }).join("");
+        if (hex === OP_HASH) {
+          opErr.textContent = "";
+          opLogin.classList.add("hidden");
+          opPanel.classList.remove("hidden");
+          renderFeedback();
+        } else {
+          opErr.textContent = "Wrong password.";
+        }
+      }).catch(function () { opErr.textContent = "Hashing unavailable."; });
+    } catch (e) { opErr.textContent = "Hashing unavailable."; }
+  }
+
+  function opOpen() {
+    opOverlay.classList.remove("hidden");
+    opLogin.classList.remove("hidden");
+    opPanel.classList.add("hidden");
+    opErr.textContent = "";
+    if (opPass) opPass.focus();
+  }
+
+  var opLink = document.getElementById("opLink");
+  if (opLink) opLink.addEventListener("click", function (e) { e.preventDefault(); opOpen(); });
+  if (document.getElementById("opGo")) document.getElementById("opGo").addEventListener("click", opUnlock);
+  if (opPass) opPass.addEventListener("keydown", function (e) { if (e.key === "Enter") opUnlock(); });
+  if (document.getElementById("opClose1")) document.getElementById("opClose1").addEventListener("click", function () { opOverlay.classList.add("hidden"); });
+  if (document.getElementById("opClose2")) document.getElementById("opClose2").addEventListener("click", function () { opOverlay.classList.add("hidden"); });
+  if (opOverlay) opOverlay.addEventListener("click", function (e) {
+    if (e.target === opOverlay) opOverlay.classList.add("hidden");
+  });
+  if (document.getElementById("opExport")) document.getElementById("opExport").addEventListener("click", function () {
+    copyText(JSON.stringify(fbLoad(), null, 2), this);
+  });
+  if (document.getElementById("opClear")) document.getElementById("opClear").addEventListener("click", function () {
+    if (confirm("Delete all feedback on this device?")) { fbSave([]); renderFeedback(); }
+  });
 
   updateEngine();
   try {
