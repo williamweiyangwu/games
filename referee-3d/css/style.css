@@ -269,6 +269,59 @@ body.talking #stage canvas { cursor: help; }
 .dbtn:hover { transform: translateY(-1px); border-color: #3d4c74; background: #1a2334; }
 .dbtn.primary { background: linear-gradient(135deg, var(--gold), var(--gold2)); border-color: transparent; color: #17130a; font-weight: 700; }
 
+/* ------------------------------------------------------------ decision */
+#decision {
+  position: fixed; inset: 0; z-index: 48;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 50% 45%, rgba(4, 7, 12, .55), rgba(4, 7, 12, .82));
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+  backdrop-filter: blur(3px);
+}
+#decision.on { opacity: 1; pointer-events: auto; }
+.dec-card {
+  width: min(640px, 92vw);
+  background: linear-gradient(180deg, rgba(16, 22, 34, .98), rgba(8, 12, 19, .98));
+  border: 1px solid rgba(255, 215, 94, .26);
+  border-radius: 18px; padding: 26px 28px 22px;
+  box-shadow: 0 40px 90px rgba(0, 0, 0, .65);
+  text-align: center;
+  transform: translateY(14px) scale(.98);
+  transition: transform .22s cubic-bezier(.2, .8, .3, 1);
+}
+#decision.on .dec-card { transform: none; }
+.dec-kicker { font-size: 10px; letter-spacing: 4px; color: var(--gold2); margin-bottom: 8px; }
+.dec-card h3 { margin: 0 0 10px; font-size: 27px; letter-spacing: .6px; }
+.dec-card p { margin: 0 auto; max-width: 520px; color: #b7c4dc; font-size: 14px; line-height: 1.6; }
+.dec-actions { display: flex; gap: 10px; margin-top: 22px; justify-content: center; flex-wrap: wrap; }
+.dec-btn {
+  flex: 1 1 120px; max-width: 200px;
+  display: flex; flex-direction: column; gap: 3px; align-items: center;
+  padding: 13px 14px; border-radius: 12px;
+  background: #141c2a; border: 1px solid #26314a; color: #dfe6f4;
+  transition: transform .13s, border-color .13s, background .13s, box-shadow .13s;
+}
+.dec-btn b { font-size: 14px; letter-spacing: .5px; }
+.dec-btn em { font-style: normal; font-size: 10.5px; color: #7f8ca6; letter-spacing: .3px; }
+.dec-btn:hover { transform: translateY(-2px); border-color: #46567c; background: #192234; }
+.dec-btn.ok { border-color: rgba(88, 214, 141, .45); background: rgba(38, 122, 78, .16); }
+.dec-btn.ok b { color: #7ff0b0; }
+.dec-btn.no { border-color: rgba(255, 108, 108, .45); background: rgba(122, 42, 42, .16); }
+.dec-btn.no b { color: #ff9d9d; }
+.dec-btn.yellow { border-color: rgba(255, 210, 63, .5); background: rgba(120, 95, 10, .18); }
+.dec-btn.yellow b { color: #ffd23f; }
+.dec-btn.red { border-color: rgba(255, 77, 77, .55); background: rgba(120, 20, 20, .22); }
+.dec-btn.red b { color: #ff6b6b; }
+.dec-btn.warn b { color: #ffd9a0; }
+.dec-btn.ghost { background: transparent; }
+
+/* ------------------------------------------------------ tournament extras */
+.tour-extras {
+  margin-top: 26px; padding-top: 20px; border-top: 1px solid var(--line);
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;
+}
+@media (max-width: 900px) { .tour-extras { grid-template-columns: repeat(2, 1fr); } }
+
+
 /* ---------------------------------------------------------------- book */
 #book {
   position: fixed; right: 0; top: 0; bottom: 0; width: min(420px, 92vw); z-index: 45;
@@ -399,6 +452,8 @@ body.talking #stage canvas { cursor: help; }
 }
 .btn.primary em { color: #4a3a12; }
 .btn.primary:hover { box-shadow: 0 22px 50px rgba(255, 157, 46, .35); }
+.btn.primary.wide { grid-column: 1 / -1; align-items: center; text-align: center; padding: 17px 18px; }
+.btn.primary.wide b { font-size: 17px; letter-spacing: 3px; }
 .btn.ghost { background: transparent; border-color: #3a2226; }
 .btn.ghost b { color: #ff9d9d; }
 

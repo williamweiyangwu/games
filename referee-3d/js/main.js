@@ -28,7 +28,13 @@ window.REF = window.REF || {};
         if (REF.Game.paused || !REF.Game.match || REF.Game.match.ended) return;
         /* while play is stopped the cursor stays free so you can paint */
         if (REF.Game.match.frozen) return;
-        try { d.requestPointerLock(); } catch (e) { }
+        /* a call is on the screen: the cursor belongs to the buttons */
+        if (REF.Game.match.decision) return;
+        try {
+          var req = d.requestPointerLock();
+          /* newer browsers return a promise that rejects without a gesture */
+          if (req && req.catch) req.catch(function () { });
+        } catch (e) { }
       },
 
       unlock: function () {
@@ -43,7 +49,7 @@ window.REF = window.REF || {};
         var h = document.getElementById('lockhint');
         if (!h) return;
         var on = !locked && !!REF.Game.match && !REF.Game.match.ended &&
-          !REF.Game.match.frozen &&
+          !REF.Game.match.frozen && !REF.Game.match.decision &&
           !REF.Game.paused && !REF.UI.currentScreen() && !REF.UI.isDialogueOpen();
         h.classList.toggle('on', on);
       }
@@ -96,53 +102,120 @@ window.REF = window.REF || {};
       scene.add(this.ch.group);
     },
 
-    /* in first person the whistle is the only part of you the camera sees,
-       so it is the skin: it wears whatever kit you have equipped */
+    /* in first person the whistle and the hand holding it are the only part
+       of you the camera sees, so the sleeve carries the equipped kit */
     buildView: function () {
       var camera = REF.Engine.camera;
       if (!camera || this.vm) return;
       REF.Engine.scene.add(camera);
 
       var g = new THREE.Group();
-      /* mostly matte: a fully metallic material has nothing to reflect at
-         night and renders as a black lump, so keep some diffuse and a faint
-         glow of the kit colour to lift it off the crowd */
+
+      var skinMat = new THREE.MeshStandardMaterial({ color: 0xd9a37a, roughness: 0.78, metalness: 0.02 });
+      var skinShade = new THREE.MeshStandardMaterial({ color: 0xbf8861, roughness: 0.82, metalness: 0.02 });
+      var nailMat = new THREE.MeshStandardMaterial({ color: 0xeccbb0, roughness: 0.6, metalness: 0.02 });
       var metal = new THREE.MeshStandardMaterial({
-        color: 0xd8dde8, roughness: 0.46, metalness: 0.3,
-        emissive: 0x2b2f3a, emissiveIntensity: 0.5
+        color: 0xd2d9e6, roughness: 0.28, metalness: 0.6,
+        emissive: 0x252a3a, emissiveIntensity: 0.6
       });
-      this.vmMat = metal;
+      var cuffMat = new THREE.MeshStandardMaterial({ color: 0x2b2f3a, roughness: 0.88, metalness: 0.02 });
+      this.vmMat = cuffMat;
+      this.vmMetal = metal;
 
-      var body = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.048, 0.105), metal);
-      g.add(body);
+      function block(w, h, d, m, x, y, z) {
+        var b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+        b.position.set(x, y, z);
+        return b;
+      }
+      /* a limb between two points, so the arm is never at a silly angle */
+      function limb(a, b, r, m) {
+        var av = new THREE.Vector3(a[0], a[1], a[2]);
+        var bv = new THREE.Vector3(b[0], b[1], b[2]);
+        var dir = new THREE.Vector3().subVectors(bv, av);
+        var len = dir.length();
+        var mesh = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.9, len, 9), m);
+        mesh.position.copy(av).add(bv).multiplyScalar(0.5);
+        mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+        return mesh;
+      }
 
-      var barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.07, 14), metal);
-      barrel.rotation.z = Math.PI / 2;
-      barrel.position.set(0.062, 0.004, 0.008);
-      g.add(barrel);
+      /* ---- forearm: wrist up at the hand, elbow off the bottom right ---- */
+      var wristP = [0.0, 0.0, 0.0];
+      var elbowP = [0.115, -0.34, 0.30];
+      g.add(limb(wristP, elbowP, 0.037, skinMat));
+      g.add(limb([0.028, -0.09, 0.075], elbowP, 0.046, cuffMat));
+      g.add(block(0.096, 0.03, 0.096, cuffMat, 0.036, -0.11, 0.092));
 
-      var mouth = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.02, 0.042), metal);
-      mouth.position.set(-0.058, 0.003, 0);
-      g.add(mouth);
+      /* ---- the fist ---- */
+      var hand = new THREE.Group();
+      hand.position.set(0, 0, 0);
+      g.add(hand);
 
-      var ring = new THREE.Mesh(new THREE.TorusGeometry(0.017, 0.005, 8, 16), metal);
-      ring.position.set(-0.012, 0.036, 0);
+      hand.add(block(0.088, 0.098, 0.078, skinMat, 0.012, 0.052, 0.004));
+      hand.add(block(0.078, 0.05, 0.07, skinShade, 0.024, 0.098, 0.01));
+
+      /* four fingers behind the barrel, knuckles toward the camera */
+      for (var fi = 0; fi < 4; fi++) {
+        var fx = -0.028 + fi * 0.031;
+        var seg = new THREE.Group();
+        seg.position.set(fx, 0.096, 0.03);
+        seg.rotation.x = 0.45;
+        seg.add(block(0.026, 0.062, 0.026, skinMat, 0, 0.028, 0));
+        seg.add(block(0.024, 0.024, 0.028, skinMat, 0, 0.06, 0.01));
+        seg.add(block(0.019, 0.012, 0.019, nailMat, 0, 0.068, 0.024));
+        hand.add(seg);
+      }
+
+      /* thumb coming over the near side */
+      var thumb = new THREE.Group();
+      thumb.position.set(0.062, 0.072, 0.062);
+      thumb.rotation.set(-0.3, 0, 0.55);
+      thumb.add(block(0.028, 0.062, 0.028, skinMat, 0, 0.03, 0));
+      thumb.add(block(0.025, 0.024, 0.025, nailMat, 0, 0.062, 0.004));
+      hand.add(thumb);
+
+      /* ---- the whistle: barrel along x, mouthpiece pointing left ---- */
+      var whistle = new THREE.Group();
+      whistle.position.set(-0.004, 0.104, 0.076);
+      whistle.rotation.set(0, 0, 0.04);
+      hand.add(whistle);
+
+      /* the barrel */
+      whistle.add(block(0.082, 0.036, 0.042, metal, 0.006, 0, 0));
+      /* the air slot along the top */
+      whistle.add(block(0.04, 0.006, 0.014, skinShade, -0.004, 0.019, 0));
+      /* the flat mouthpiece tube at the left */
+      whistle.add(block(0.04, 0.016, 0.028, metal, -0.056, -0.008, 0));
+      whistle.add(block(0.012, 0.011, 0.032, metal, -0.078, -0.008, 0));
+      /* the domed chamber on top — the bit that makes it a whistle */
+      var chamber = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.034, 16), metal);
+      chamber.rotation.x = Math.PI / 2;
+      chamber.position.set(0.012, 0.032, 0);
+      whistle.add(chamber);
+      var dome = new THREE.Mesh(new THREE.SphereGeometry(0.024, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), metal);
+      dome.rotation.x = Math.PI / 2;
+      dome.position.set(0.012, 0.032, 0.017);
+      whistle.add(dome);
+
+      var ring = new THREE.Mesh(new THREE.TorusGeometry(0.014, 0.0034, 8, 16), metal);
+      ring.position.set(0.056, 0.006, 0);
       ring.rotation.y = Math.PI / 2;
-      g.add(ring);
+      whistle.add(ring);
 
-      var cord = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.004, 6, 20), metal);
-      cord.position.set(-0.02, -0.02, 0.02);
-      cord.rotation.set(Math.PI / 2, 0, 0.4);
-      g.add(cord);
+      var cord = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.0028, 6, 22), metal);
+      cord.position.set(0.074, -0.004, 0.012);
+      cord.rotation.set(0.2, 1.25, 0.2);
+      whistle.add(cord);
+      this.vmWhistle = whistle;
 
-      /* a tiny lamp so the whistle reads against a night stadium */
-      var lamp = new THREE.PointLight(0xffffff, 0.85, 1.8);
-      lamp.position.set(0.1, 0.06, -0.22);
+      /* a soft lamp so the hand reads against a night stadium */
+      var lamp = new THREE.PointLight(0xfff2dd, 0.35, 2.4);
+      lamp.position.set(0.18, 0.06, 0.02);
       camera.add(lamp);
 
-      g.position.set(0.20, -0.15, -0.52);
-      g.rotation.set(0.18, -0.42, -0.16);
-      g.scale.set(0.62, 0.62, 0.62);
+      g.position.set(0.19, -0.175, -0.48);
+      g.rotation.set(0.06, -0.28, 0.06);
+      g.scale.set(0.66, 0.66, 0.66);
       g.visible = false;
       camera.add(g);
       this.vm = g;
@@ -154,10 +227,7 @@ window.REF = window.REF || {};
       var kit = D.SKINS[0];
       for (var i = 0; i < D.SKINS.length; i++) if (D.SKINS[i].id === skin) kit = D.SKINS[i];
       if (this.ch) this.ch.setKit(kit);
-      if (this.vmMat) {
-        this.vmMat.color.set(kit.shirt);
-        if (this.vmMat.emissive) this.vmMat.emissive.set(kit.shirt);
-      }
+      if (this.vmMat) this.vmMat.color.set(kit.shirt);
     },
 
     reset: function () {
@@ -283,15 +353,17 @@ window.REF = window.REF || {};
       if (this.vm) {
         this.vm.visible = !!REF.Game.cam.fp;
         var blowing = this.state === 'whistle';
-        var bob = Math.sin(this.stepPhase) * 0.006 * Math.min(1, speed / 4);
-        var tx = blowing ? 0.095 : 0.20;
-        var ty = (blowing ? -0.105 : -0.15) + bob;
-        var tz = blowing ? -0.44 : -0.52;
+        var bob = Math.sin(this.stepPhase) * 0.007 * Math.min(1, speed / 4);
+        var sway = Math.cos(this.stepPhase * 0.5) * 0.004 * Math.min(1, speed / 4);
+        var tx = (blowing ? 0.075 : 0.19) + sway;
+        var ty = (blowing ? -0.075 : -0.19) + bob;
+        var tz = blowing ? -0.40 : -0.50;
         this.vm.position.x = U.damp(this.vm.position.x, tx, 15, dt);
         this.vm.position.y = U.damp(this.vm.position.y, ty, 15, dt);
         this.vm.position.z = U.damp(this.vm.position.z, tz, 15, dt);
-        this.vm.rotation.z = U.damp(this.vm.rotation.z, blowing ? 0.1 : -0.16, 12, dt);
-        this.vm.rotation.y = U.damp(this.vm.rotation.y, blowing ? -0.16 : -0.42, 12, dt);
+        this.vm.rotation.x = U.damp(this.vm.rotation.x, blowing ? 0.02 : 0.1, 12, dt);
+        this.vm.rotation.y = U.damp(this.vm.rotation.y, blowing ? -0.18 : -0.42, 12, dt);
+        this.vm.rotation.z = U.damp(this.vm.rotation.z, blowing ? 0.02 : 0.06, 12, dt);
       }
     },
 
@@ -306,11 +378,31 @@ window.REF = window.REF || {};
 
     doWhistle: function () {
       if (REF.Game.paused || !REF.Game.match) return;
-      if (REF.Game.match.frozen) return 'busy';
+      var m = REF.Game.match;
+      if (m.decision) return 'busy';
+
       this.state = 'whistle';
       this.stateT = 0.85;
       if (this.ch) this.ch.parts.whistle.visible = true;
-      var res = REF.Game.match.whistle();
+
+      /* a dead ball: the whistle is what starts it. Everything — kick-off,
+         corner, goal kick, throw-in, free kick, penalty — waits for you. */
+      if (m.awaiting) {
+        REF.Audio.whistle();
+        m.stats.whistles++;
+        REF.Save.stat('whistles');
+        REF.Save.ach('first_whistle');
+        REF.Game.tutMark('whistle');
+        m.startRestart();
+        REF.UI.selectTool(null);
+        REF.UI.hideContinue();
+        REF.UI.setPrompt('');
+        REF.Pointer.lock();
+        return 'start';
+      }
+
+      if (m.frozen) return 'busy';
+      var res = m.whistle();
       REF.Save.ach('first_whistle');
       if (REF.Save.data.stats.whistles >= 50) REF.Save.ach('whistler');
       REF.Game.tutMark('whistle');
@@ -320,9 +412,12 @@ window.REF = window.REF || {};
          ESC would have to be pressed twice to reach the pause menu. */
       if (res !== 'busy') {
         REF.UI.selectTool(null);
+        if (res === 'offside') {
+          REF.UI.setPrompt('Offside — free kick set. Blow again to restart');
+          return res;
+        }
         REF.Pointer.unlock();
         REF.UI.showContinue();
-        if (res === 'foul') REF.UI.setPrompt('Foul — press 5 to paint the free kick, ENTER to continue');
       }
       return res;
     },
@@ -336,7 +431,6 @@ window.REF = window.REF || {};
         this.ch.parts.cardR.visible = type === 'red';
       }
       var res = REF.Game.match.showCard(player, type);
-      REF.UI.cardFX(type);
       REF.Game.tutMark('card');
       return res;
     }
@@ -377,6 +471,11 @@ window.REF = window.REF || {};
       });
       this.match.on('card', function (c) {
         REF.UI.toast('CARD', (c.type === 'red' ? 'RED — ' : 'YELLOW — ') + c.player.name, 0);
+        REF.UI.cardFX(c.type);
+      });
+      this.match.on('decision', function (d) {
+        if (d) REF.UI.showDecision(d);
+        else REF.UI.hideDecision();
       });
       this.match.on('goal', function (g) {
         REF.UI.toast('GOAL', g.scorer ? g.scorer.name : 'Goal', 0);
@@ -391,6 +490,8 @@ window.REF = window.REF || {};
       REF.Ref.reset();
       REF.UI.show(null);
       REF.UI.hideIntro();
+      REF.UI.hideDecision();
+      REF.UI.hideContinue();
       REF.UI.intro(this.match);
       REF.UI.setPrompt('');
 
@@ -425,6 +526,31 @@ window.REF = window.REF || {};
         REF.Pointer.lock();
       }
       return ok;
+    },
+
+    /* the referee answers a call: goal / no goal, foul, VAR */
+    resolve: function (id) {
+      if (!this.match) return;
+      var m = this.match;
+      var ok = m.resolve(id);
+      if (!ok) return;
+      if (!m.decision && !m.frozen && !m.awaiting && !REF.UI.currentScreen()) REF.Pointer.lock();
+    },
+
+    varReview: function () {
+      if (!this.match) return;
+      var r = this.match.varReview();
+      if (!r.ok) { REF.UI.flash(r.msg); return; }
+      REF.Audio.resume();
+    },
+
+    /* ENTER while placing a wall: put the standard one down */
+    skipWall: function () {
+      if (!this.match || !this.match.wallPlacing) return false;
+      var w = this.match.autoWall();
+      REF.UI.selectTool(null);
+      REF.UI.setPrompt(w ? 'Wall set — blow the whistle to restart' : '');
+      return !!w;
     },
 
     restart: function () {
@@ -596,13 +722,16 @@ window.REF = window.REF || {};
     /* Enter is the Continue key: it only means anything while play is stopped */
     if (k === 'enter') {
       if (document.getElementById('savebox').classList.contains('on')) return;
-      if (REF.Game.match && REF.Game.match.frozen) REF.Game.continuePlay();
+      var mm = REF.Game.match;
+      if (!mm || mm.decision) return;
+      if (mm.wallPlacing) { REF.Game.skipWall(); return; }
+      if (mm.frozen) REF.Game.continuePlay();
       return;
     }
 
-    if (REF.UI.currentScreen() || REF.Game.paused) return;
+    if (REF.UI.currentScreen() || REF.Game.paused || REF.UI.decisionOpen()) return;
 
-    if (k === ' ') { REF.Ref.jump(); }
+    if (k === 'space') { REF.Ref.jump(); }
     else if (k === 'e') {
       var open = !document.getElementById('toolbox').classList.contains('on');
       REF.UI.openToolbox(open);
@@ -614,9 +743,9 @@ window.REF = window.REF || {};
     } else if (k === '1') { REF.UI.selectTool('whistle'); REF.Ref.doWhistle(); }
     else if (k === '2') { REF.UI.selectTool('yellow'); REF.Game.tutMark('toolbox'); }
     else if (k === '3') { REF.UI.selectTool('red'); REF.Game.tutMark('toolbox'); }
-    else if (k === '4') { REF.UI.selectTool('talk'); REF.Game.tutMark('toolbox'); }
-    else if (k === '5') { REF.UI.selectTool('paint'); REF.Game.tutMark('toolbox'); }
-    else if (k === '6') { REF.UI.selectTool('book'); REF.Game.tutMark('toolbox'); }
+    else if (k === '4') { REF.UI.selectTool('paint'); REF.Game.tutMark('toolbox'); }
+    else if (k === '5') { REF.UI.selectTool('book'); REF.Game.tutMark('toolbox'); }
+    else if (k === '6') { REF.Game.varReview(); }
   }
 
   function onKeyUp(e) {
@@ -685,7 +814,7 @@ window.REF = window.REF || {};
   function onPointerDown(e) {
     if (e.target !== REF.Engine.renderer.domElement) return;
     REF.Audio.resume();
-    if (REF.UI.currentScreen() || REF.Game.paused) return;
+    if (REF.UI.currentScreen() || REF.Game.paused || REF.UI.decisionOpen()) return;
 
     var locked = REF.Pointer.isLocked();
 
@@ -698,11 +827,16 @@ window.REF = window.REF || {};
     }
     if (e.button !== 0) return;
 
-    var frozen = !!(REF.Game.match && REF.Game.match.frozen);
+    var m = REF.Game.match;
+    var frozen = !!(m && m.frozen);
+    /* a free kick waiting on the whistle is the referee's to mark: the cursor
+       has to stay free so he can spray the spot and walk the wall out */
+    var markable = !!(m && m.awaiting && m.restart && m.restart.kind === 'free-kick');
+    var painting = REF.UI.tool() === 'paint' && (frozen || markable);
 
     /* the first click just takes the mouse back — unless play is stopped,
        where the free cursor is the whole point */
-    if (!locked && !REF.Pointer.failed && !frozen) {
+    if (!locked && !REF.Pointer.failed && !painting) {
       REF.Pointer.lock();
       return;
     }
@@ -712,8 +846,10 @@ window.REF = window.REF || {};
 
     var tool = REF.UI.tool();
     if (tool === 'paint') {
-      if (!frozen) {
-        REF.UI.flash('Stop play first — blow the whistle, then paint the mark');
+      if (!m) return;
+      if (!m.frozen && !markable) {
+        REF.UI.flash(m.awaiting ? 'Nothing to mark here — the paint is for free kicks'
+          : 'Stop play first — blow the whistle, then paint the mark');
         return;
       }
       var gp = pickGround(px, py);
@@ -721,21 +857,27 @@ window.REF = window.REF || {};
         REF.UI.flash('Aim at the pitch');
         return;
       }
-      var marked = REF.Game.match.paintFreeKick(gp);
-      REF.UI.selectTool(null);
-      REF.UI.setPrompt('Mark sprayed — a wall of ' + marked.men + ' is set. ENTER to continue');
+      /* second click: the referee chooses where the wall stands */
+      if (m.wallPlacing) {
+        var w = m.placeWall(gp);
+        REF.UI.selectTool(null);
+        REF.UI.setPrompt(w ? 'Wall set — blow the whistle to restart' : 'No free kick to set a wall for');
+        REF.Audio.kick(0.3);
+        return;
+      }
+      m.paintFreeKick(gp);
+      REF.UI.setPrompt('Spot sprayed — now click where the wall should stand');
       REF.Audio.kick(0.3);
       return;
     }
 
-    if (tool === 'yellow' || tool === 'red' || tool === 'talk') {
+    if (tool === 'yellow' || tool === 'red') {
       var p = (locked && REF.Game.aimPlayer) ? REF.Game.aimPlayer : pickPlayer(px, py);
       if (!p) {
         REF.UI.flash(locked ? 'Nothing under the crosshair — line him up' : 'No player there — click directly on a player');
         return;
       }
-      if (tool === 'talk') REF.Game.talk(p);
-      else REF.Ref.doCard(p, tool);
+      REF.Ref.doCard(p, tool);
       REF.UI.selectTool(null);
       return;
     }
@@ -829,8 +971,9 @@ window.REF = window.REF || {};
     var cross = document.getElementById('crosshair');
     if (!cross) return;
     var tool = REF.UI.tool();
-    var armed = tool === 'yellow' || tool === 'red' || tool === 'talk';
-    var live = REF.Pointer.isLocked() && !!REF.Game.match && !REF.Game.paused;
+    var armed = tool === 'yellow' || tool === 'red';
+    var live = REF.Pointer.isLocked() && !!REF.Game.match && !REF.Game.paused &&
+      !REF.Game.match.decision;
     var hot = false;
     if (armed && live) {
       var p = pickPlayer(window.innerWidth / 2, window.innerHeight / 2);

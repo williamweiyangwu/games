@@ -91,6 +91,13 @@ REF.Match = (function () {
     this.frozen = false;
     this.freezeAction = null;
     this.restart = null;
+    /* a dead ball waiting for the referee's whistle */
+    this.awaiting = null;
+    /* a call the referee has to make before anything else can happen */
+    this.decision = null;
+    this.wallPlacing = false;
+    this.lastGoalCall = null;
+    this.lastFoul = null;
     this.wall = null;
     this.passTo = null;
     this.events = [];
@@ -282,13 +289,15 @@ REF.Match = (function () {
     this.clearPaint();
     this.setBall(0, BALL_R, 0);
     this.state = 'setpiece';
-    this.stateT = 1.3;
+    this.stateT = 0;
     this.restart = { kind: 'kick-off', team: team, pos: new THREE.Vector3(0, 0, 0) };
     this.taker = this.pickTaker(team, new THREE.Vector3(0, 0, 0));
     if (this.taker) {
       this.taker.pos.set(-this.teams[team].dir * 0.75, 0, 0.35);
       this.taker.ch.group.position.copy(this.taker.pos);
     }
+    /* nothing starts until the referee blows for it */
+    this.awaiting = { kind: 'kick-off', team: team };
     if (!silent) this.log('kick-off', 'Kick-off — ' + this.teamName(team));
     this.emit('state', this.state);
   };
@@ -306,10 +315,7 @@ REF.Match = (function () {
 
   Match.prototype.setPiece = function (kind, pos, team) {
     this.state = 'setpiece';
-    /* a corner needs a moment for both sides to get into the box */
-    this.stateT = kind === 'penalty' ? 1.9
-      : (kind === 'corner' ? 2.1
-        : (kind === 'goal-kick' ? 1.6 : (kind === 'free-kick' ? 1.5 : 1.1)));
+    this.stateT = 0;
     this.pendingFoul = null;
     this.pendingOffside = null;
     this.ball.vel.set(0, 0, 0);
@@ -332,7 +338,23 @@ REF.Match = (function () {
       this.taker.target.copy(this.taker.pos);
       this.taker.ch.group.position.copy(this.taker.pos);
     }
+    /* the ball sits there until the referee whistles it back into play */
+    this.awaiting = { kind: kind, team: team };
     this.emit('state', this.state);
+  };
+
+  /* the referee's whistle: the dead ball is live again */
+  Match.prototype.startRestart = function () {
+    if (!this.awaiting) return false;
+    /* a free kick with no wall placed yet gets the standard one, so the
+       restart can never be held up by an unplaced wall */
+    if (this.wallPlacing && this.restart && this.restart.kind === 'free-kick') this.autoWall();
+    this.wallPlacing = false;
+    this.awaiting = null;
+    this.state = 'play';
+    this.emit('state', this.state);
+    this.takeRestart();
+    return true;
   };
 
   Match.prototype.clearPaint = function () {
@@ -433,7 +455,7 @@ REF.Match = (function () {
     this.taker = null;
   };
 
-  /* the paint can: spray the free-kick spot and lay out the wall 9.15 m away */
+  /* the paint can, step one: spray the free-kick spot */
   Match.prototype.paintFreeKick = function (pt) {
     var f = this.pendingFoul || this.lastFoul;
     var team = f ? 1 - f.team : (this.restart ? this.restart.team : 0);
@@ -450,20 +472,64 @@ REF.Match = (function () {
     if (this.paintGroup) {
       this.paintGroup.visible = true;
       this.spraySpot.position.set(x, 0.028, z);
+      this.wallLine.visible = false;
     }
 
-    /* the wall: 9.15 m from the ball, square to the line to goal */
+    /* this spot is the free kick now; the wall is the referee's next click */
+    this.restart = { kind: 'free-kick', team: team, pos: new THREE.Vector3(x, 0, z) };
+    this.state = 'setpiece';
+    this.awaiting = { kind: 'free-kick', team: team };
+    this.wall = null;
+    this.wallPlacing = true;
+    for (var c = 0; c < this.players.length; c++) {
+      this.players[c].wallT = 0;
+      this.players[c].wallPos = null;
+    }
+
     var gx = dir * (F.L / 2);
-    var dx = gx - x, dz = 0 - z;
-    var len = Math.sqrt(dx * dx + dz * dz) || 1;
-    var ux = dx / len, uz = dz / len;
-    var wx = U.clamp(x + ux * 9.15, -F.L / 2 + 0.6, F.L / 2 - 0.6);
-    var wz = U.clamp(z + uz * 9.15, -F.W / 2 + 0.6, F.W / 2 - 0.6);
+    var ux = gx - x, uz = 0 - z;
+    var ul = Math.sqrt(ux * ux + uz * uz) || 1;
+    ux /= ul; uz /= ul;
+
+    this.taker = this.pickTaker(team, this.ball.pos);
+    if (this.taker) {
+      this.taker.pos.set(U.clamp(x - ux * 1.15, -52, 52), 0, U.clamp(z - uz * 1.15, -33, 33));
+      this.taker.vel.set(0, 0, 0);
+      this.taker.target.copy(this.taker.pos);
+      this.taker.ch.group.position.copy(this.taker.pos);
+    }
+    this.pendingFoul = null;
+    this.pendingOffside = null;
+    this.freezeAction = null;
+    this.log('free-kick', 'Free kick marked for ' + this.teamName(team) + ' — set the wall');
+    return { x: x, z: z, men: 0 };
+  };
+
+  /* step two: the referee decides where the wall stands. The distance is
+     fixed by law at 9.15 m; the angle is entirely his call. */
+  Match.prototype.placeWall = function (pt) {
+    if (!this.restart || this.restart.kind !== 'free-kick') return null;
+    var b = this.ball.pos;
+    var dx = pt.x - b.x, dz = pt.z - b.z;
+    var len = Math.sqrt(dx * dx + dz * dz);
+    var ux, uz;
+    if (len < 2.5) {
+      /* clicked almost on the ball: fall back to the line to goal */
+      var d0 = this.teams[this.restart.team].dir;
+      ux = d0; uz = 0;
+    } else {
+      ux = dx / len; uz = dz / len;
+    }
+
+    var wx = U.clamp(b.x + ux * 9.15, -F.L / 2 + 0.8, F.L / 2 - 0.8);
+    var wz = U.clamp(b.z + uz * 9.15, -F.W / 2 + 0.8, F.W / 2 - 0.8);
     var px = -uz, pz = ux;
 
-    this.wall = { x: wx, z: wz, px: px, pz: pz, team: 1 - team };
+    this.wall = { x: wx, z: wz, px: px, pz: pz, team: 1 - this.restart.team };
 
+    if (this.paintGroup) this.paintGroup.visible = true;
     if (this.wallLine) {
+      this.wallLine.visible = true;
       this.wallLine.position.set(wx, 0.03, wz);
       this.wallLine.rotation.set(-Math.PI / 2, 0, Math.atan2(-pz, px));
       this.wallLine.scale.set(5.4, 1, 1);
@@ -473,11 +539,11 @@ REF.Match = (function () {
     var defs = [];
     for (var i = 0; i < this.players.length; i++) {
       var p = this.players[i];
-      if (!p.active || p.team === team || p.role === 'GK') continue;
+      if (!p.active || p.team === this.restart.team || p.role === 'GK') continue;
       defs.push(p);
     }
     var wv = new THREE.Vector3(wx, 0, wz);
-    defs.sort(function (a, b) { return U.distXZ(a.pos, wv) - U.distXZ(b.pos, wv); });
+    defs.sort(function (a, b2) { return U.distXZ(a.pos, wv) - U.distXZ(b2.pos, wv); });
     var n = Math.min(4, defs.length);
     for (var k = 0; k < n; k++) {
       var d = defs[k];
@@ -489,22 +555,16 @@ REF.Match = (function () {
       d.vel.set(0, 0, 0);
     }
 
-    /* this spot is the free kick now; Continue puts the ball back in play */
-    this.restart = { kind: 'free-kick', team: team, pos: new THREE.Vector3(x, 0, z) };
-    this.state = 'setpiece';
-    this.stateT = 1.7;
-    this.taker = this.pickTaker(team, this.ball.pos);
-    if (this.taker) {
-      this.taker.pos.set(U.clamp(x - ux * 1.15, -52, 52), 0, U.clamp(z - uz * 1.15, -33, 33));
-      this.taker.vel.set(0, 0, 0);
-      this.taker.target.copy(this.taker.pos);
-      this.taker.ch.group.position.copy(this.taker.pos);
-    }
-    this.pendingFoul = null;
-    this.pendingOffside = null;
-    this.freezeAction = null;
-    this.log('free-kick', 'Free kick marked — a wall of ' + n + ' for ' + this.teamName(team));
-    return { x: x, z: z, wall: this.wall, men: n };
+    this.wallPlacing = false;
+    this.log('wall', 'Wall set — ' + n + ' men, 9.15 m from the ball');
+    return { x: wx, z: wz, men: n, wall: this.wall };
+  };
+
+  /* the standard wall: straight down the line to goal */
+  Match.prototype.autoWall = function () {
+    if (!this.restart) return null;
+    var d = this.teams[this.restart.team].dir;
+    return this.placeWall(new THREE.Vector3(this.ball.pos.x + d * 9.15, 0, this.ball.pos.z));
   };
 
   /* ---------------------------------------------------------------- log */
@@ -834,33 +894,38 @@ REF.Match = (function () {
     }
     p.holdT = 0;
 
-    var tx = ownGoalX + dir * 0.9;
-    var tz = U.clamp(b.z * 0.4, -3.1, 3.1);
+    var tx = ownGoalX + dir * 0.85;
+    var tz = U.clamp(b.z * 0.55, -3.2, 3.2);
+    var speed = 6.0;
 
     var towardGoal = (b.x - p.pos.x) * dir < 0;
-    if (dBall < 18 && towardGoal) {
-      tz = U.clamp(b.z * 0.85, -3.6, 3.6);
-      if (dBall < 9) tx = ownGoalX + dir * Math.min(7, 1.5 + (9 - dBall) * 0.8);
+    if (towardGoal) {
+      /* narrow the angle as the ball comes closer */
+      tz = U.clamp(b.z * 0.9, -3.5, 3.5);
+      if (dBall < 20) {
+        tx = ownGoalX + dir * (0.85 + U.clamp((20 - dBall) * 0.35, 0, 4.5));
+        speed = 8.4;
+      }
     }
-    if (dBall < 3.4 && this.owner && this.owner.team !== p.team) {
-      tx = b.x; tz = b.z;
+    if (dBall < 3.2 && this.owner && this.owner.team !== p.team) {
+      tx = b.x; tz = b.z; speed = 9.4;
     }
 
-    /* a shot on goal: work out where it crosses the line and get there */
+    /* a shot on goal: work out where it crosses the line and get across */
     var vx = this.ball.vel.x, vz = this.ball.vel.z;
-    if (vx * dir < -7 && Math.abs(vx) > 7) {
+    if (vx * dir < -8) {
       var tt = (ownGoalX - b.x) / vx;
-      if (tt > 0 && tt < 1.7) {
+      if (tt > 0 && tt < 1.6) {
         var zAt = b.z + vz * tt;
-        if (Math.abs(zAt) < 6.5) {
-          tz = U.clamp(zAt, -3.5, 3.5);
-          tx = ownGoalX + dir * 0.7;
-          p.maxSpeed = 9.6;
+        if (Math.abs(zAt) < 8) {
+          tz = U.clamp(zAt, -3.8, 3.8);
+          tx = ownGoalX + dir * 0.6;
+          speed = 10.4;
         }
       }
     }
     p.target.set(U.clamp(tx, -52, 52), 0, tz);
-    p.maxSpeed = dBall < 10 ? 8.6 : 6.0;
+    p.maxSpeed = speed;
   };
 
   Match.prototype.gkDistribute = function (p, dir) {
@@ -1096,8 +1161,9 @@ REF.Match = (function () {
     var central = Math.abs(p.pos.z) < 26;
 
     /* shoot from a real position — and never turn down the box */
-    if (distGoal < 30 && central && nd > 0.9) {
-      var sc = distGoal < 13 ? 0.9 : (distGoal < 20 ? 0.6 : 0.16);
+    if (distGoal < 34 && central && nd > 0.9) {
+      var sc = distGoal < 12 ? 0.95
+        : (distGoal < 20 ? 0.8 : (distGoal < 27 ? 0.55 : 0.3));
       if (U.chance(sc)) { this.shoot(p, gx); return; }
     }
 
@@ -1165,22 +1231,35 @@ REF.Match = (function () {
     var b = this.ball;
     var dist = Math.sqrt((gx - b.pos.x) * (gx - b.pos.x) + b.pos.z * b.pos.z);
 
-    /* pick the side the keeper is not covering */
+    /* pick a corner — the one the keeper is not standing in */
     var gk = this.keeperOf(1 - p.team);
-    var tz;
-    if (gk && Math.abs(gk.pos.z - b.z) < 2.4) tz = gk.pos.z > 0 ? -2.4 : 2.4;
-    else tz = U.rand(-2.5, 2.5);
-    /* no striker is a machine: some of these go wide */
-    var err = U.rand(-1, 1) * (0.5 + dist * 0.055);
-    tz = U.clamp(tz + err, -4.8, 4.8);
+    var aimZ;
+    if (gk) {
+      var away = gk.pos.z >= 0 ? -1 : 1;
+      aimZ = away * U.rand(2.4, 3.3);
+      if (U.chance(0.2)) aimZ = -away * U.rand(2.3, 3.0);
+    } else {
+      aimZ = U.rand(-3.1, 3.1);
+    }
+    /* no striker is a machine: the further out, the wider the spread */
+    var err = U.rand(-1, 1) * (0.5 + dist * 0.052);
+    aimZ = U.clamp(aimZ + err, -5.2, 5.2);
 
     var dx = gx - b.pos.x;
-    var dz = tz - b.pos.z;
+    var dz = aimZ - b.pos.z;
     var len = Math.sqrt(dx * dx + dz * dz) || 1;
     /* enough power to still be travelling when it reaches the goal */
-    var power = U.clamp(BALL_DRAG * len + 18, 22, 42);
-    var lift = U.clamp(0.5 + dist * 0.05, 0.9, 2.4);
-    b.vel.set((dx / len) * power, lift, (dz / len) * power);
+    var power = U.clamp(BALL_DRAG * len + 20, 24, 44);
+
+    /* time to the line with the real friction, then the lift that puts the
+       ball at a chosen height when it gets there */
+    var frac = 1 - BALL_DRAG * len / power;
+    var t = frac > 0.06 ? Math.log(1 / frac) / BALL_DRAG : 0.6;
+    t = U.clamp(t, 0.12, 1.2);
+    var wantY = U.rand(0.35, 1.95);
+    var vy = (wantY - b.pos.y + 0.5 * GRAV * t * t) / t;
+
+    b.vel.set((dx / len) * power, U.clamp(vy, -0.4, 8.4), (dz / len) * power);
     p.kickCd = 1.2;
     p.noTouch = 0.5;
     this.owner = null;
@@ -1269,6 +1348,7 @@ REF.Match = (function () {
   /* ----------------------------------------------------------------- foul */
   Match.prototype.commitFoul = function (offender, victim, severity) {
     if (victim.downT > 0) return;
+    if (this.decision || this.frozen) return;
     victim.downT = U.rand(1.8, 2.6);
     victim.state = 'down';
     victim.ch.state = 'down';
@@ -1280,19 +1360,105 @@ REF.Match = (function () {
     var b = this.ball;
     b.vel.multiplyScalar(0.12);
 
-    this.pendingFoul = {
+    var f = {
       offender: offender,
       victim: victim,
       pos: victim.pos.clone(),
       team: offender.team,
       severity: severity || 'normal',
-      t: 6.0
+      t: 6.0,
+      min: this.min
     };
+    this.pendingFoul = f;
+    this.lastFoul = f;
     this.stats.fouls++;
     REF.Save.stat('fouls');
     REF.Audio.kick(0.9);
     this.log('foul', 'Foul by ' + offender.name + ' on ' + victim.name);
-    this.emit('foul', this.pendingFoul);
+    this.askFoul(f);
+    this.emit('foul', f);
+  };
+
+  /* where the foul happened, in words the referee can act on */
+  Match.prototype.foulText = function (f) {
+    var att = 1 - f.team;
+    var dir = this.teams[att].dir;
+    var gx = dir * (F.L / 2);
+    var dg = Math.sqrt((gx - f.pos.x) * (gx - f.pos.x) + f.pos.z * f.pos.z);
+    var inBox = Math.abs(gx - f.pos.x) < 16.5 && Math.abs(f.pos.z) < 20.16;
+    var where = inBox ? 'inside the penalty area'
+      : (dg > 60 ? 'deep in his own half'
+        : (dg > 38 ? 'in midfield' : 'about ' + Math.round(dg) + ' m from goal'));
+    var side = Math.abs(f.pos.z) < 8 ? 'central' : (f.pos.z > 0 ? 'right of centre' : 'left of centre');
+    var verb = f.severity === 'hard' ? 'clatters through'
+      : (f.severity === 'soft' ? 'clips' : 'takes out');
+    var txt = f.offender.name + ' ' + verb + ' ' + f.victim.name + ' ' + where + ', ' + side + '.';
+    if (inBox) txt += ' The foul is in the box — the penalty spot is in play.';
+    return txt;
+  };
+
+  Match.prototype.askFoul = function (f) {
+    var self = this;
+    this.decision = {
+      kind: 'foul',
+      kicker: 'FOUL  ·  ' + Math.floor(this.min) + "'",
+      title: 'How do you deal with it?',
+      text: this.foulText(f),
+      options: [
+        { id: 'ignore', label: 'Play on', sub: 'No foul', tone: 'ghost' },
+        { id: 'warn', label: 'Have a word', sub: 'No card', tone: 'warn' },
+        { id: 'yellow', label: 'Yellow card', sub: 'Book him', tone: 'yellow' },
+        { id: 'red', label: 'Red card', sub: 'Send him off', tone: 'red' }
+      ],
+      apply: function (id) { self.applyFoul(f, id); }
+    };
+    this.emit('decision', this.decision);
+  };
+
+  Match.prototype.applyFoul = function (f, id) {
+    if (id === 'ignore') {
+      this.log('play-on', 'Play on — ' + f.offender.name + ' gets away with it');
+      this.pendingFoul = null;
+      this.ball.vel.set(U.rand(-3, 3), 1.2, U.rand(-3, 3));
+      this.frozen = false;
+      this.emit('resumed', null);
+      return;
+    }
+
+    if (id === 'warn') {
+      this.log('warn', f.offender.name + ' is warned — no card');
+      f.offender.anger = Math.max(0, f.offender.anger - 8);
+      f.victim.anger = Math.max(0, f.victim.anger - 18);
+    } else if (id === 'yellow') {
+      this.showCard(f.offender, 'yellow');
+    } else if (id === 'red') {
+      this.showCard(f.offender, 'red');
+    }
+
+    var att = 1 - f.team;
+    var dir = this.teams[att].dir;
+    var gx = dir * (F.L / 2);
+    var inBox = Math.abs(gx - f.pos.x) < 16.5 && Math.abs(f.pos.z) < 20.16;
+    if (inBox) {
+      this.setPiece('penalty', new THREE.Vector3(gx - dir * 11, 0, 0), att);
+      this.log('penalty', 'Penalty to ' + this.teamName(att));
+    } else {
+      this.setPiece('free-kick', f.pos.clone(), att);
+      this.log('free-kick', 'Free kick to ' + this.teamName(att) + ' — blow to restart');
+    }
+  };
+
+  /* every decision the referee makes comes back through here */
+  Match.prototype.resolve = function (id) {
+    var d = this.decision;
+    if (!d) return false;
+    var ok = false;
+    for (var i = 0; i < d.options.length; i++) if (d.options[i].id === id) ok = true;
+    if (!ok) return false;
+    this.decision = null;
+    if (d.apply) d.apply.call(this, id);
+    this.emit('decision', null);
+    return true;
   };
 
   Match.prototype.tryTackle = function (defender, attacker) {
@@ -1320,31 +1486,40 @@ REF.Match = (function () {
   };
 
   /* ---------------------------------------------------------------- goals */
-  /* a keeper gets a hand to anything he is standing in front of */
+  /* a keeper gets a hand to anything he can get across to in time */
   Match.prototype.keeperSave = function () {
     var b = this.ball;
     var sp = b.vel.length();
-    if (sp < 7) return false;
+    if (sp < 6) return false;
     var sign = b.pos.x > 0 ? 1 : -1;
-    if (Math.abs(b.pos.x) < F.L / 2 - 3.4) return false;
+    if (Math.abs(b.pos.x) < F.L / 2 - 6.5) return false;
     var defTeam = sign > 0 ? 1 : 0;
     var gk = this.keeperOf(defTeam);
     if (!gk || !gk.active || gk.downT > 0) return false;
-    if (Math.abs(b.pos.z) > F.goalW / 2 + 2.4) return false;
-    if (b.pos.y > F.goalH + 0.9) return false;
+    if (b.pos.y > F.goalH + 1.0) return false;
 
     var vx = b.vel.x;
     if (vx * sign <= 0) return false;
     var t = (sign * (F.L / 2) - b.pos.x) / vx;
-    if (t < 0) return false;
+    if (t < 0 || t > 1.2) return false;
+
     var zAt = b.pos.z + b.vel.z * t;
-    if (Math.abs(zAt - gk.pos.z) > 1.05) return false;
+    var yAt = b.pos.y + b.vel.y * t - 0.5 * GRAV * t * t;
+    if (Math.abs(zAt) > F.goalW / 2 + 0.9) return false;   /* going wide */
+    if (yAt > F.goalH + 0.35) return false;                 /* over the bar */
+
+    /* the dive: how far across can he get before it arrives? */
+    var reach = 0.95 + Math.min(1.75, t * 5.0);
+    if (yAt > 1.5) reach *= 0.82;            /* high shots are harder */
+    if (sp > 36) reach *= 0.9;
+    var gap = Math.abs(zAt - gk.pos.z);
+    if (gap > reach) return false;
 
     /* parried, not caught */
     var out = sign * (F.L / 2 - 0.55);
     b.pos.x = out;
     b.pos.z = U.clamp(zAt, -F.goalW / 2, F.goalW / 2);
-    b.pos.y = Math.max(BALL_R, b.pos.y);
+    b.pos.y = Math.max(BALL_R, Math.min(b.pos.y, 2.1));
     b.vel.set(-sign * U.rand(5, 11), U.rand(2.5, 5), U.rand(-7, 7));
     gk.ch.state = 'dive';
     gk.diveDir = b.pos.z > gk.pos.z ? -1.2 : 1.2;
@@ -1363,9 +1538,47 @@ REF.Match = (function () {
     if (Math.abs(b.z) > F.goalW / 2) return false;
     if (b.y > F.goalH) return false;
 
-    if (b.x > F.L / 2 + 0.12) { this.scoreGoal(0); return true; }
-    if (b.x < -F.L / 2 - 0.12) { this.scoreGoal(1); return true; }
-    return false;
+    var team = null;
+    if (b.x > F.L / 2 + 0.12) team = 0;
+    else if (b.x < -F.L / 2 - 0.12) team = 1;
+    if (team === null) return false;
+
+    this.askGoal(team);
+    return true;
+  };
+
+  /* the ball is in the net — but only the referee can give it */
+  Match.prototype.askGoal = function (team) {
+    var self = this;
+    var scorer = this.lastTouch && this.lastTouch.team === team ? this.lastTouch : this.ball.lastShotBy;
+    this.ball.vel.set(0, 0, 0);
+    var sc = this.score.slice();
+    sc[team]++;
+    var line = this.teamName(0) + ' ' + sc[0] + '-' + sc[1] + ' ' + this.teamName(1);
+    this.lastGoalCall = { team: team, scorer: scorer, min: this.min, confirmed: null };
+
+    this.decision = {
+      kind: 'goal',
+      kicker: 'GOAL DECISION  ·  ' + Math.floor(this.min) + "'",
+      title: 'Is it a goal?',
+      text: (scorer ? scorer.name : 'The ball') + ' puts it in for ' + this.teamName(team) +
+        '. Give it and the score reads ' + line + '.',
+      options: [
+        { id: 'goal', label: 'Goal', sub: 'Point to the centre spot', tone: 'ok' },
+        { id: 'no-goal', label: 'No goal', sub: 'Rule it out', tone: 'no' }
+      ],
+      apply: function (id) {
+        self.lastGoalCall.confirmed = id === 'goal';
+        if (id === 'goal') {
+          self.scoreGoal(team);
+        } else {
+          self.log('no-goal', 'No goal — ' + (scorer ? scorer.name : 'the goal') + ' is ruled out');
+          var gx = (team === 0 ? 1 : -1) * (F.L / 2 - 5);
+          self.setPiece('goal-kick', new THREE.Vector3(gx, 0, U.rand(-4.5, 4.5)), 1 - team);
+        }
+      }
+    };
+    this.emit('decision', this.decision);
   };
 
   Match.prototype.scoreGoal = function (team) {
@@ -1443,7 +1656,7 @@ REF.Match = (function () {
 
   /* ------------------------------------------------------- referee inputs */
   Match.prototype.whistle = function () {
-    if (this.frozen) return 'busy';
+    if (this.frozen || this.awaiting || this.decision) return 'busy';
 
     this.stats.whistles++;
     REF.Save.stat('whistles');
@@ -1460,34 +1673,25 @@ REF.Match = (function () {
       }
     }
 
+    /* the flag is up: the whistle calls the offside, and the free kick is
+       set straight away — the referee whistles again to restart */
+    if (this.pendingOffside && this.pendingOffside.t > 0) {
+      var o = this.pendingOffside;
+      this.pendingOffside = null;
+      this.stats.offsides++;
+      REF.Save.stat('offsides');
+      REF.Save.ach('offside');
+      this.log('offside-call', 'Offside called on ' + o.player.name);
+      this.setPiece('free-kick', o.pos.clone(), 1 - o.player.team);
+      this.emit('offside-called', o);
+      return 'offside';
+    }
+
     /* the whistle stops the match dead — the clock and every player wait for
        the referee to press Continue */
     this.frozen = true;
     this.freezeT = 0;
     this.freezeAction = null;
-
-    if (this.pendingFoul && this.pendingFoul.t > 0) {
-      var f = this.pendingFoul;
-      this.freezeAction = function () {
-        this.log('free-kick', 'Free kick to ' + this.teamName(1 - f.team));
-        this.setPiece('free-kick', f.pos.clone(), 1 - f.team);
-        this.lastFoul = f;
-        this.emit('free-kick', f);
-      };
-      return 'foul';
-    }
-    if (this.pendingOffside && this.pendingOffside.t > 0) {
-      var o = this.pendingOffside;
-      this.freezeAction = function () {
-        this.stats.offsides++;
-        REF.Save.stat('offsides');
-        REF.Save.ach('offside');
-        this.log('offside-call', 'Offside called on ' + o.player.name);
-        this.setPiece('free-kick', o.pos.clone(), 1 - o.player.team);
-        this.emit('offside-called', o);
-      };
-      return 'offside';
-    }
     this.emit('whistle', null);
     return 'none';
   };
@@ -1495,7 +1699,7 @@ REF.Match = (function () {
   /* Continue: hand the match back to the players. Whatever the whistle
      interrupted (a free kick, an offside) is set up first. */
   Match.prototype.continuePlay = function () {
-    if (!this.frozen) return false;
+    if (!this.frozen || this.decision || this.awaiting) return false;
     var act = this.freezeAction;
     this.freezeAction = null;
     this.frozen = false;
@@ -1506,6 +1710,52 @@ REF.Match = (function () {
   };
 
   Match.prototype.afterFreeze = function () { return this.continuePlay(); };
+
+  /* ------------------------------------------------------------------ VAR */
+  Match.prototype.varReview = function () {
+    if (this.decision) return { ok: false, msg: 'Make the call on the pitch first' };
+    var g = this.lastGoalCall;
+    if (!g || g.confirmed === null) return { ok: false, msg: 'VAR: no goal decision to review' };
+    if (this.min - g.min > 10) return { ok: false, msg: 'VAR: that was too long ago to review' };
+    var self = this;
+    this.frozen = true;
+    this.decision = {
+      kind: 'var',
+      kicker: 'VAR REVIEW  ·  ' + Math.floor(g.min) + "'",
+      title: 'Was that a goal?',
+      text: 'The monitor replays the ' + Math.floor(g.min) + "' incident. You " +
+        (g.confirmed ? 'awarded the goal' : 'ruled it out') + '. Confirm it or turn it over.',
+      options: [
+        { id: 'confirm', label: 'Confirm', sub: 'The call stands', tone: 'ok' },
+        { id: 'overturn', label: 'Overturn', sub: 'Change the decision', tone: 'no' }
+      ],
+      apply: function (id) {
+        if (id === 'confirm') {
+          self.frozen = false;
+          self.emit('resumed', null);
+          return;
+        }
+        if (g.confirmed) {
+          /* take the goal back off the board */
+          self.score[g.team] = Math.max(0, self.score[g.team] - 1);
+          self.teams[g.team].score = self.score[g.team];
+          self.stats.goals = Math.max(0, self.stats.goals - 1);
+          g.confirmed = false;
+          self.frozen = false;
+          self.log('var', 'VAR overturns it — the goal is chalked off');
+          var gx = (g.team === 0 ? 1 : -1) * (F.L / 2 - 5);
+          self.setPiece('goal-kick', new THREE.Vector3(gx, 0, U.rand(-4.5, 4.5)), 1 - g.team);
+        } else {
+          g.confirmed = true;
+          self.frozen = false;
+          self.log('var', 'VAR overturns it — the goal stands');
+          self.scoreGoal(g.team);
+        }
+      }
+    };
+    this.emit('decision', this.decision);
+    return { ok: true };
+  };
 
   Match.prototype.showCard = function (p, type) {
     if (!p || !p.active) return null;
@@ -1570,9 +1820,74 @@ REF.Match = (function () {
     return p.yellow;
   };
 
+  /* a decision is open: nobody moves, nothing happens */
+  Match.prototype.holdStill = function (dt) {
+    this.dt = dt;
+    for (var i = 0; i < this.players.length; i++) {
+      var p = this.players[i];
+      p.vel.set(0, 0, 0);
+      p.ch.animSpeed = 0;
+      if (p.downT > 0) p.ch.state = 'down';
+    }
+    this.emit('tick', null);
+  };
+
+  /* a dead ball: everyone walks to his position and waits for the whistle */
+  Match.prototype.awaitUpdate = function (dt) {
+    this.dt = dt;
+    this.decideT -= dt;
+    var decide = this.decideT <= 0;
+    if (decide) {
+      this.decideT = U.rand(0.1, 0.18);
+      this.assignMarks(0);
+      this.assignMarks(1);
+    }
+
+    for (var i = 0; i < this.players.length; i++) {
+      var p = this.players[i];
+      if (!p.active) continue;
+      if (p.downT > 0) {
+        p.downT -= dt;
+        p.ch.state = 'down';
+        p.ch.animSpeed = 0;
+        if (p.downT <= 0) { p.state = 'idle'; p.ch.state = 'idle'; }
+        continue;
+      }
+      if (p.kickCd > 0) p.kickCd -= dt;
+      if (p.tackleCd > 0) p.tackleCd -= dt;
+      if (p.lookT > 0) p.lookT -= dt;
+
+      if (p === this.taker) {
+        p.target.copy(p.pos);
+      } else if (p.role === 'GK') {
+        this.gkAI(p, dt);
+      } else if (decide) {
+        this.think(p, -1);
+      }
+      this.movePlayer(p, dt);
+    }
+
+    this.separate();
+    for (var a = 0; a < this.players.length; a++) {
+      REF.Actors.animate(this.players[a].ch, dt, this.time);
+    }
+    this.emit('tick', null);
+  };
+
   /* ----------------------------------------------------------------- tick */
   Match.prototype.update = function (dt) {
     if (this.ended) return;
+
+    /* a call has to be made before anybody moves */
+    if (this.decision) { this.holdStill(dt); return; }
+
+    /* a dead ball: the players take up their positions and wait for the
+       referee's whistle. No clock, no ball, no possession. */
+    if (this.awaiting) {
+      this.time += dt;
+      this.awaitUpdate(dt);
+      return;
+    }
 
     /* the whistle stops the match completely: no clock, no movement, no
        animation — nothing happens until Continue. The one exception is a wall
@@ -1600,14 +1915,7 @@ REF.Match = (function () {
     var ticking = this.state === 'play' || this.state === 'setpiece';
     if (ticking) this.min += dt * (1 / 1.35);
 
-    if (this.state === 'setpiece') {
-      this.stateT -= dt;
-      if (this.stateT <= 0) {
-        this.state = 'play';
-        this.emit('state', this.state);
-        this.takeRestart();
-      }
-    } else if (this.state === 'goal') {
+    if (this.state === 'goal') {
       this.stateT -= dt;
       if (this.stateT <= 0) {
         this.state = 'play';

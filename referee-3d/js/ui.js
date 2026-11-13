@@ -37,7 +37,7 @@ REF.UI = (function () {
     }
     currentScreen = name;
     $('hud').classList.toggle('on', !name || name === 'pause' || name === 'result');
-    if (name) $('continuebar').classList.remove('on');
+    if (name) { $('continuebar').classList.remove('on'); hideDecision(); }
     if (name && REF.Pointer) REF.Pointer.unlock();
     if (REF.Pointer) REF.Pointer.refresh();
   }
@@ -346,6 +346,8 @@ REF.UI = (function () {
       b.addEventListener('click', function (ev) {
         ev.stopPropagation();
         REF.Audio.click();
+        if (t.id === 'whistle') { $('toolbox').classList.remove('on'); REF.Ref.doWhistle(); return; }
+        if (t.id === 'var') { $('toolbox').classList.remove('on'); REF.Game.varReview(); return; }
         selectTool(t.id === tool ? null : t.id);
       });
       box.appendChild(b);
@@ -359,33 +361,33 @@ REF.UI = (function () {
       buttons[i].classList.toggle('sel', buttons[i].dataset.tool === id);
     }
     document.body.classList.toggle('carding', id === 'yellow' || id === 'red');
-    document.body.classList.toggle('talking', id === 'talk');
     document.body.classList.toggle('painting', id === 'paint');
     if (id === 'yellow' || id === 'red') {
       $('toolbox').classList.remove('on');
       setPrompt(id === 'yellow' ? 'Click a player to show the YELLOW card  ·  ESC to cancel' : 'Click a player to show the RED card  ·  ESC to cancel');
-    } else if (id === 'talk') {
-      $('toolbox').classList.remove('on');
-      setPrompt('Click a player to talk  ·  ESC to cancel');
     } else if (id === 'paint') {
       $('toolbox').classList.remove('on');
       if (REF.Pointer) REF.Pointer.unlock();
-      var stopped = REF.Game.match && REF.Game.match.frozen;
-      setPrompt(stopped
-        ? 'Click the pitch to spray the free-kick mark and the wall  ·  ESC to cancel'
-        : 'Paint can — blow the whistle first, then mark the free kick');
+      var m = REF.Game.match;
+      if (m && m.wallPlacing) setPrompt('Click where the wall should stand  ·  ESC to cancel');
+      else if (m && m.restart && m.restart.kind === 'free-kick') setPrompt('Click the pitch to spray the free-kick spot  ·  ESC to cancel');
+      else setPrompt('Paint can — stop play for a free kick first, then mark it');
     } else if (id === 'book') {
       openBook();
+    } else if (id === 'var') {
+      $('toolbox').classList.remove('on');
+      tool = null;
+      REF.Game.varReview();
     } else {
       updatePromptNow();
     }
-    if (REF.Pointer && (id === 'yellow' || id === 'red' || id === 'talk')) REF.Pointer.lock();
+    if (REF.Pointer && (id === 'yellow' || id === 'red')) REF.Pointer.lock();
   }
 
   function openToolbox(open) {
     $('toolbox').classList.toggle('on', open);
     if (open && REF.Pointer) REF.Pointer.unlock();
-    if (!open && (tool === 'yellow' || tool === 'red' || tool === 'talk')) selectTool(null);
+    if (!open && (tool === 'yellow' || tool === 'red')) selectTool(null);
     if (REF.Pointer) REF.Pointer.refresh();
   }
 
@@ -509,6 +511,39 @@ REF.UI = (function () {
     if (REF.Pointer) { REF.Pointer.lock(); REF.Pointer.refresh(); }
   }
 
+  /* --------------------------------------------------------- decisions */
+  function showDecision(dec) {
+    if (!dec) { hideDecision(); return; }
+    $('dec-kicker').textContent = dec.kicker || 'DECISION';
+    $('dec-title').textContent = dec.title || '';
+    $('dec-text').textContent = dec.text || '';
+    var box = $('dec-actions');
+    box.innerHTML = '';
+    dec.options.forEach(function (o) {
+      var b = h('button', 'dec-btn ' + (o.tone || ''));
+      b.type = 'button';
+      b.dataset.opt = o.id;
+      b.appendChild(h('b', null, o.label));
+      if (o.sub) b.appendChild(h('em', null, o.sub));
+      b.addEventListener('click', function () {
+        REF.Audio.click();
+        REF.Game.resolve(o.id);
+      });
+      box.appendChild(b);
+    });
+    $('decision').classList.add('on');
+    hideContinue();
+    cancelFlash();
+    if (REF.Pointer) { REF.Pointer.unlock(); REF.Pointer.refresh(); }
+    updatePromptNow();
+  }
+
+  function hideDecision() {
+    $('decision').classList.remove('on');
+  }
+
+  function decisionOpen() { return $('decision').classList.contains('on'); }
+
   /* --------------------------------------------------------- continue bar */
   function showContinue() { $('continuebar').classList.add('on'); }
   function hideContinue() { $('continuebar').classList.remove('on'); }
@@ -602,10 +637,14 @@ REF.UI = (function () {
   }
 
   var flashTimer = null;
+  function cancelFlash() {
+    if (flashTimer) { clearTimeout(flashTimer); flashTimer = null; }
+  }
   function flash(txt, ms) {
+    cancelFlash();
     setPrompt(txt);
-    if (flashTimer) clearTimeout(flashTimer);
     flashTimer = setTimeout(function () {
+      flashTimer = null;
       promptText = '';
       $('prompt').classList.remove('on');
       updatePromptNow();
@@ -613,20 +652,36 @@ REF.UI = (function () {
   }
 
   function updatePromptNow() {
+    /* a flash owns the prompt until it expires — otherwise the HUD tick
+       (which runs every frame) wipes messages like the VAR verdict */
+    if (flashTimer) return;
     var m = REF.Game.match;
     if (!m) { setPrompt(''); return; }
-    if (tool === 'yellow' || tool === 'red' || tool === 'talk') return;
-    if (m.frozen) {
-      if (tool === 'paint') { setPrompt('Click the pitch to spray the mark and the wall'); return; }
-      if (m.wall) { setPrompt('Wall set — press ENTER to continue'); return; }
-      if (m.pendingFoul || m.lastFoul) {
-        setPrompt('FREE KICK — press 5 to paint the mark and wall  ·  ENTER to continue');
+    if (tool === 'yellow' || tool === 'red') return;
+    if (m.decision) { setPrompt(''); return; }
+    if (m.wallPlacing) { setPrompt('Click where the wall should stand  ·  ENTER skips it'); return; }
+    if (m.awaiting) {
+      var k = m.awaiting.kind;
+      /* a free kick is the referee's to mark before he restarts it */
+      if (tool === 'paint' && k === 'free-kick') {
+        setPrompt('Click the pitch to spray the free-kick spot');
         return;
       }
+      var line = k === 'kick-off' ? 'Blow the whistle to start the match'
+        : k === 'penalty' ? 'Penalty — blow the whistle to take it'
+          : k === 'corner' ? 'Corner — blow the whistle to swing it in'
+            : k === 'goal-kick' ? 'Goal kick — blow the whistle to restart'
+              : k === 'throw-in' ? 'Throw-in — blow the whistle to restart'
+                : 'Free kick — blow the whistle to restart';
+      setPrompt(line + '  [LMB]');
+      return;
+    }
+    if (m.frozen) {
+      if (tool === 'paint') { setPrompt('Click the pitch to spray the free-kick spot'); return; }
+      if (m.wall) { setPrompt('Wall set — press ENTER to continue'); return; }
       setPrompt('PLAY STOPPED — press ENTER to continue');
       return;
     }
-    if (m.pendingFoul && m.pendingFoul.t > 0) { setPrompt('FOUL — blow the whistle  [LMB]'); return; }
     if (m.pendingOffside && m.pendingOffside.t > 0) { setPrompt('FLAG IS UP — blow the whistle  [LMB]'); return; }
     if (REF.Game.nearPlayer()) { setPrompt('Press T to talk to ' + REF.Game.nearPlayer().name); return; }
     setPrompt('');
@@ -644,12 +699,16 @@ REF.UI = (function () {
       sc.classList.add('pop');
     }
     $('sb-clock').textContent = U.fmtClock(match.min) + (match.half === 2 ? '  2H' : '');
-    var frozen = !!(match.frozen || match.freezeT > 0);
-    $('sb-clock').classList.toggle('frozen', frozen);
+    var stopped = !!(match.frozen || match.freezeT > 0);
+    var held = stopped || !!match.awaiting || !!match.decision;
+    $('sb-clock').classList.toggle('frozen', held);
     var ps = $('playstop');
-    if (ps) ps.classList.toggle('on', frozen);
+    if (ps) {
+      ps.classList.toggle('on', held);
+      ps.textContent = match.decision ? 'DECISION' : (match.awaiting ? 'BALL DEAD' : 'PLAY STOPPED');
+    }
     var cb = $('continuebar');
-    if (cb) cb.classList.toggle('on', frozen);
+    if (cb) cb.classList.toggle('on', stopped && !match.decision && !match.awaiting);
     $('sb-comp').textContent = match.data.comp + ' · ' + match.data.stage + ' · ' + match.data.year;
 
     $('sb-n0').textContent = match.teams[0].info.abbr;
@@ -849,6 +908,21 @@ REF.UI = (function () {
       });
     }
 
+    /* the tournament is not a dead end: the tutorial and the rest of the
+       lobby are reachable from inside it */
+    var extras = document.querySelectorAll('#scr-tour [data-act2]');
+    for (var x = 0; x < extras.length; x++) {
+      extras[x].addEventListener('click', function () {
+        REF.Audio.click();
+        var act = this.dataset.act2;
+        if (act === 'tutorial') REF.Game.startTutorial();
+        else if (act === 'hist') { buildMatchList(); show('matches'); }
+        else if (act === 'skins') { buildSkins(); show('skins'); }
+        else if (act === 'ach') { buildAch(); show('ach'); }
+        else if (act === 'backup') openSave();
+      });
+    }
+
     $('btn-continue').addEventListener('click', function () {
       REF.Audio.click();
       REF.Game.continuePlay();
@@ -925,11 +999,15 @@ REF.UI = (function () {
     flash: flash,
     showContinue: showContinue,
     hideContinue: hideContinue,
+    showDecision: showDecision,
+    hideDecision: hideDecision,
+    decisionOpen: decisionOpen,
     openSave: openSave,
     currentScreen: function () { return currentScreen; },
     tool: function () { return tool; },
     closeBook: function () {
       $('book').classList.remove('on');
+      selectTool(null);
       if (REF.Pointer) REF.Pointer.lock();
     },
     isDialogueOpen: function () { return $('dialogue').classList.contains('on'); },

@@ -306,12 +306,12 @@ REF.DATA = (function () {
   };
 
   var TOOLS = [
-    { id: 'whistle', name: 'Whistle', key: '1', glyph: '◉', hint: 'Blow to stop play (LMB)' },
+    { id: 'whistle', name: 'Whistle', key: '1', glyph: '◉', hint: 'Blow to stop play — or to start it' },
     { id: 'yellow', name: 'Yellow card', key: '2', glyph: '▮', hint: 'Click a player to book him', color: '#ffd23f' },
     { id: 'red', name: 'Red card', key: '3', glyph: '▮', hint: 'Click a player to send him off', color: '#ff4d4d' },
-    { id: 'talk', name: 'Talk', key: '4', glyph: '❝', hint: 'Click a player to have a word' },
-    { id: 'paint', name: 'Paint can', key: '5', glyph: '✚', hint: 'Click the pitch to spray the free-kick mark and the wall', color: '#e8f4ff' },
-    { id: 'book', name: 'Notebook', key: '6', glyph: '▤', hint: 'Review the match log' }
+    { id: 'paint', name: 'Paint can', key: '4', glyph: '✚', hint: 'Click the spot, then click where the wall stands', color: '#e8f4ff' },
+    { id: 'book', name: 'Notebook', key: '5', glyph: '▤', hint: 'Review the match log' },
+    { id: 'var', name: 'VAR', key: '6', glyph: '▣', hint: 'Review the last goal decision', color: '#7ad1ff' }
   ];
 
   return {
