@@ -12,6 +12,12 @@
 let WORLD = null;
 function addWorld(o) { (WORLD || scene).add(o); return o; }
 
+/* Every merged wall run of the current map, in world coordinates. The outdoor
+   dressing pass plants its trees along these, which is what keeps every trunk
+   inside the wall footprint — and therefore out of the player's reach, so no
+   tree needs a collider or a navigation exclusion. */
+const wallRuns = [];
+
 function addBox(cx, cy, cz, w, h, d, mat, opt) {
   opt = opt || {};
   const geo = new THREE.BoxGeometry(w, h, d);
@@ -27,7 +33,10 @@ function addBox(cx, cy, cz, w, h, d, mat, opt) {
     const bd = along === 'x' ? 0.07 : d;
     const bxp = along === 'x' ? cx : cx + (Math.random() < 0.5 ? 1 : -1) * (w / 2 + 0.035);
     const bzp = along === 'x' ? cz + (Math.random() < 0.5 ? 1 : -1) * (d / 2 + 0.035) : cz;
-    const bb = new THREE.Mesh(new THREE.BoxGeometry(bw, 0.14, bd), MAT.base);
+    /* the skirting board that grounds an indoor wall. Outdoors it has to be
+       the map's own stone, not pale plaster — a hedge with a white plastic
+       base was the first thing you noticed in the grove. */
+    const bb = new THREE.Mesh(new THREE.BoxGeometry(bw, 0.14, bd), opt.baseMat || MAT.base);
     bb.position.set(bxp, 0.11, bzp);
     bb.receiveShadow = true;
     addWorld(bb);
@@ -127,23 +136,102 @@ const MAP_MATS = {};
 function mapMats(id) {
   if (MAP_MATS[id]) return MAP_MATS[id];
   const p = mapDef(id).pal;
+  const style = p.style || 'plaster';
+  const gs = p.ground || 'grass';
+  const std = (map, rough, metal) => new THREE.MeshStandardMaterial({
+    map, roughness: rough, metalness: metal || 0
+  });
+
+  /* The wall is whatever encloses the arena in that biome: plaster, a hedge,
+     a rock ridge or a sandstone fin. Same collider, four very different
+     surfaces. */
+  let wallMap;
+  if (style === 'hedge') wallMap = texLeaves(p.wall, p.wall2, 1);
+  else if (style === 'rock') wallMap = texRock(p.wall, p.wall2, false, 1);
+  else if (style === 'sandstone') wallMap = texRock(p.wall, p.wall2, true, 1);
+  else wallMap = texPlaster(p.wall, p.wall2);
+
+  /* Ground and maze floor share a generator but not a repeat: the plane is
+     420 m across and the arena 59 m, and one repeat count would carpet one of
+     them. */
+  /* boxUV already scales UVs so one texture unit is 2.2 m on a box, so the
+     arena floor asks for ONE repeat and gets 2.2 m tiles. The ground plane is a
+     PlaneGeometry with 0..1 UVs and needs the repeat spelled out: 420 m at
+     2.2 m a tile. Multiplying both was how the first pass ended up with a
+     10 cm woven-fabric pattern across every floor. */
+  let groundMat, floorMat;
+  if (gs === 'grass') {
+    groundMat = MAT.ground;
+    floorMat = std(texTiles(p.floor, p.floor2, 6), p.floorRough === undefined ? 0.68 : p.floorRough, p.floorMetal);
+  } else if (gs === 'forest') {
+    groundMat = std(texForestFloor(p.ground, p.ground2, 190), 0.99);
+    floorMat = std(texForestFloor(p.floor, p.floor2, 1), 0.94);
+  } else if (gs === 'sand') {
+    groundMat = std(texSand(p.ground, p.ground2, 190), 0.99);
+    floorMat = std(texSand(p.floor, p.floor2, 1), 0.96);
+  } else {
+    groundMat = std(texPlaster(p.ground, p.ground2), 0.99);
+    floorMat = std(texTiles(p.floor, p.floor2, 6), p.floorRough === undefined ? 0.68 : p.floorRough, p.floorMetal);
+  }
+
   const set = {
-    wall: new THREE.MeshStandardMaterial({
-      map: texPlaster(p.wall, p.wall2), roughness: 0.94,
-      metalness: p.wallMetal || 0.02
-    }),
-    floor: new THREE.MeshStandardMaterial({
-      map: texTiles(p.floor, p.floor2, 6),
-      roughness: p.floorRough === undefined ? 0.68 : p.floorRough,
-      metalness: p.floorMetal || 0.05
-    }),
+    wall: std(wallMap, style === 'plaster' ? 0.94 : 0.96, p.wallMetal || 0.02),
+    floor: floorMat,
     trim: new THREE.MeshStandardMaterial({ color: p.trim, roughness: 0.4, metalness: 0.55 }),
-    ground: p.ground === 'grass' ? MAT.ground
-      : new THREE.MeshStandardMaterial({
-        map: texPlaster(p.ground, p.ground2), roughness: 0.99, metalness: 0
-      }),
+    ground: groundMat,
     accent: p.accent
   };
+
+  if (style !== 'plaster') {
+    /* the strip along the top of every wall: sunlit leaves on a hedge, moss on
+       a ridge, bleached sandstone on a fin */
+    set.cap = p.cap !== undefined
+      ? new THREE.MeshStandardMaterial({ color: p.cap, roughness: 0.95, metalness: 0 })
+      : set.trim;
+    /* the walls are no longer plaster, so the trim cannot double as stone */
+    set.trim = new THREE.MeshStandardMaterial({ color: p.trim, roughness: 0.86, metalness: 0.04 });
+  } else {
+    set.cap = set.trim;
+  }
+
+  if (p.dress) {
+    const css = n => '#' + ('000000' + (n >>> 0).toString(16)).slice(-6);
+    const leafA = css(p.leaf === undefined ? 0x4f7a35 : p.leaf);
+    const leafB = css(p.leaf2 === undefined ? 0x6a9649 : p.leaf2);
+    set.bark = std(texBark(p.bark || '#5b4632', p.bark2 || '#33261a', 1), 0.95);
+    set.leaf = new THREE.MeshStandardMaterial({
+      color: p.leaf === undefined ? 0x4f7a35 : p.leaf, roughness: 0.92, metalness: 0, flatShading: true
+    });
+    set.leaf2 = new THREE.MeshStandardMaterial({
+      color: p.leaf2 === undefined ? 0x6a9649 : p.leaf2, roughness: 0.92, metalness: 0, flatShading: true
+    });
+    set.rock = new THREE.MeshStandardMaterial({
+      color: p.rock || 0x8b9088, roughness: 0.95, metalness: 0, flatShading: true
+    });
+    /* A line of pale solid-colour boulders at every wall foot fused into a
+       continuous light grey strip in the pine and canyon shots. Two fixes:
+       the rock is cut from the SAME stone as the walls, and it is tinted down
+       so a sunlit facet cannot blow out to cream. */
+    if (style === 'rock' || style === 'sandstone') {
+      set.rock = std(texRock(p.wall, p.wall2, style === 'sandstone', 1), 0.98);
+      set.rock.color.setHex(0x9a8f84);
+    }
+    /* An undergrowth clump has to be made of leaves, not of a green
+       twenty-sided die: the flat-shaded blob read as a mossy boulder. The
+       hedge texture on a lumpy blob reads as a bush at every distance. */
+    set.shrub = std(texLeaves(leafA, leafB, 1), 0.95);
+    /* knocked back: the raw texture under a 1.0 sun came out mint */
+    set.shrub.color.setHex(0xa9b79b);
+    /* a second, darker shrub so a clump is not one flat tone */
+    set.shrub2 = std(texLeaves(leafB, leafA, 1), 0.96);
+    set.shrub2.color.setHex(0x8c9a80);
+    /* the cactus gets its own colour: a saguaro is the one saturated green in
+       the canyon, and borrowing the shrub's dry olive made it look dead */
+    const cacA = css(p.cactus === undefined ? (p.leaf === undefined ? 0x4f7a35 : p.leaf) : p.cactus);
+    const cacB = css(p.cactus2 === undefined ? (p.leaf2 === undefined ? 0x6a9649 : p.leaf2) : p.cactus2);
+    set.cactus = std(texRibs(cacA, cacB, 2), 0.88);
+  }
+
   MAP_MATS[id] = set;
   return set;
 }
@@ -217,10 +305,25 @@ function buildWorld() {
   }
   if (G.sky && G.sky.material && G.sky.material.uniforms) {
     const u = G.sky.material.uniforms;
-    u.botCol.value.setHex(preset.fog);
-    u.midCol.value.setHex(preset.fog).lerp(new THREE.Color(0x9cc4e4), 0.5);
+    /* A preset may name all three sky bands. Without that, an outdoor map got
+       the indoor blue and the horizon read as a painted backdrop: the bands
+       have to be set every time, not only when a map asks for them, or
+       switching back to an indoor map leaves the previous sky behind. */
+    const sky = preset.sky || null;
+    u.botCol.value.setHex(sky && sky.bot !== undefined ? sky.bot : preset.fog);
+    if (sky && sky.mid !== undefined) u.midCol.value.setHex(sky.mid);
+    else u.midCol.value.setHex(preset.fog).lerp(new THREE.Color(0x9cc4e4), 0.5);
+    u.topCol.value.setHex(sky && sky.top !== undefined ? sky.top : 0x2a6ba8);
   }
-  if (G.sun) G.sun.color.setHex(preset.light);
+  if (G.sun) {
+    G.sun.color.setHex(preset.light);
+    G.sun.intensity = preset.sunI === undefined ? 1.02 : preset.sunI;
+  }
+  /* An open-sky map has no ceiling bouncing light back down, so the corridors
+     went black under the canopies while the sky stayed bright. The fill has to
+     come from the hemisphere light, and it has to be reset on every build or an
+     indoor map inherits the forest's. */
+  if (G.hemi) G.hemi.intensity = preset.hemiI === undefined ? 0.34 : preset.hemiI;
 
   /* --- ground --- */
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(420, 420), W.ground);
@@ -346,6 +449,7 @@ function buildWorld() {
      gives every map a signature colour, and stops the pale walls dissolving
      into a pale floor when you look down a long corridor. --- */
   const capH = 0.09;
+  wallRuns.length = 0;
   for (let i = 1; i < N; i++) {
     let run = -1;
     for (let j = 0; j <= N; j++) {
@@ -354,9 +458,10 @@ function buildWorld() {
       if (!has && run >= 0) {
         const len = (j - run) * cs + MAP.wallT;
         addBox(g0 + i * cs, MAP.wallH / 2, g0 + (run + j) / 2 * cs,
-          MAP.wallT, MAP.wallH, len, W.wall, { name: 'maze' });
+          MAP.wallT, MAP.wallH, len, W.wall, { name: 'maze', baseMat: W.trim });
         addBox(g0 + i * cs, MAP.wallH + capH / 2, g0 + (run + j) / 2 * cs,
-          MAP.wallT + 0.05, capH, len, W.trim, { collide: false, shadow: false });
+          MAP.wallT + 0.05, capH, len, W.cap, { collide: false, shadow: false });
+        wallRuns.push({ axis: 'z', at: g0 + i * cs, a: g0 + run * cs, b: g0 + j * cs });
         run = -1;
       }
     }
@@ -369,9 +474,10 @@ function buildWorld() {
       if (!has && run >= 0) {
         const len = (i - run) * cs + MAP.wallT;
         addBox(g0 + (run + i) / 2 * cs, MAP.wallH / 2, g0 + j * cs,
-          len, MAP.wallH, MAP.wallT, W.wall, { name: 'maze' });
+          len, MAP.wallH, MAP.wallT, W.wall, { name: 'maze', baseMat: W.trim });
         addBox(g0 + (run + i) / 2 * cs, MAP.wallH + capH / 2, g0 + j * cs,
-          len, capH, MAP.wallT + 0.05, W.trim, { collide: false, shadow: false });
+          len, capH, MAP.wallT + 0.05, W.cap, { collide: false, shadow: false });
+        wallRuns.push({ axis: 'x', at: g0 + j * cs, a: g0 + run * cs, b: g0 + i * cs });
         run = -1;
       }
     }
@@ -395,8 +501,8 @@ function buildWorld() {
 
     const capY = PH - 0.16, skirtY = 0.26;
     for (const s of [-1, 1]) {
-      addBox(0, capY, s * MH, E * 2, 0.32, PT + 0.08, W.trim, { collide: false, shadow: false });
-      addBox(s * MH, capY, 0, PT + 0.08, 0.32, MH * 2, W.trim, { collide: false, shadow: false });
+      addBox(0, capY, s * MH, E * 2, 0.32, PT + 0.08, W.cap, { collide: false, shadow: false });
+      addBox(s * MH, capY, 0, PT + 0.08, 0.32, MH * 2, W.cap, { collide: false, shadow: false });
       addBox(0, skirtY, s * MH, E * 2, 0.52, PT + 0.08, W.trim, { collide: false, shadow: false });
       addBox(s * MH, skirtY, 0, PT + 0.08, 0.52, MH * 2, W.trim, { collide: false, shadow: false });
       /* a band on the floor just inside the wall, so the edge is drawn */
@@ -494,6 +600,9 @@ function buildWorld() {
   if (MAP.plinth) {
     const base = plinthBase;                   // half width of the bottom tier
     const RISE = 0.45, TIERS = 5;
+    /* outdoors the tiers are rock and the lip is moss or sunlit stone; indoors
+       it stays the pale plaster lip that makes the ziggurat read as steps */
+    const lipMat = preset.pal.style ? W.cap : W.wall;
     let topHalf = base;
     for (let k = 0; k < TIERS; k++) {
       const h = RISE * (k + 1);
@@ -504,8 +613,8 @@ function buildWorld() {
          steps and you can tell where the next one starts */
       const t = 0.18, y = h - 0.035;
       for (const s of [-1, 1]) {
-        addBox(0, y, s * (topHalf - t / 2), topHalf * 2, 0.11, t, W.wall, { collide: false, shadow: false });
-        addBox(s * (topHalf - t / 2), y, 0, t, 0.11, topHalf * 2, W.wall, { collide: false, shadow: false });
+        addBox(0, y, s * (topHalf - t / 2), topHalf * 2, 0.11, t, lipMat, { collide: false, shadow: false });
+        addBox(s * (topHalf - t / 2), y, 0, t, 0.11, topHalf * 2, lipMat, { collide: false, shadow: false });
       }
     }
     const topY = RISE * TIERS;
@@ -630,6 +739,8 @@ function buildWorld() {
   }
   G.chestSpots = final.map(s => [s.x, s.y || 0, s.z]);
 
+  dressWorld(preset);
+
   mergeStaticWorld();
   buildWaypoints();
 }
@@ -637,8 +748,201 @@ function buildWorld() {
 
 
 /* ------------------------------------------------------------
-   FACADE DETAIL (windows, plinth, cornice)
+   OUTDOOR DRESSING
+   ------------------------------------------------------------
+   The three nature maps reuse the maze topology exactly — same cells, same
+   colliders, same spawns — and change only what the walls are made of and what
+   grows on them. That is deliberate: a second level generator would need its
+   own navigation, its own spawn rules and its own balance pass, and the maze is
+   already the part that plays well.
+
+   Every prop is planted ON a wall centreline. The wall is 0.42 m thick and the
+   player's capsule is stopped 0.61 m from that centreline, so a trunk of radius
+   0.3 and a boulder of radius 0.5 are physically unreachable — nothing here
+   needs a collider, and nothing here can trap a bot or block a corridor. Props
+   are also the only thing that never touches a cell centre, which is where
+   every navigation node lives.
+
+   They are merged into the level by mergeStaticWorld, so a few hundred trees
+   cost four draw calls, not four hundred.
    ------------------------------------------------------------ */
+const DRESS = {
+  grove: { tree: 6.2, treeH: [8.5, 11.5], pine: false, bush: 3.1, fern: 3.9, rock: 8.5, cactus: 0 },
+  pine: { tree: 5.2, treeH: [9.0, 13.0], pine: true, bush: 4.4, fern: 4.6, rock: 7.0, cactus: 0 },
+  canyon: { tree: 0, treeH: [0, 0], pine: false, bush: 5.4, fern: 0, rock: 5.6, cactus: 7.2 }
+};
+
+function addProp(geo, mat, x, y, z, o) {
+  o = o || {};
+  const m = new THREE.Mesh(geo, mat);
+  m.position.set(x, y, z);
+  m.rotation.set(o.rx || 0, o.ry || 0, o.rz || 0);
+  if (o.sx !== undefined) m.scale.set(o.sx, o.sy === undefined ? o.sx : o.sy, o.sz === undefined ? o.sx : o.sz);
+  m.castShadow = o.shadow !== false;
+  m.receiveShadow = true;
+  addWorld(m);
+  return m;
+}
+
+function dressWorld(preset) {
+  const cfg = DRESS[preset.pal.dress];
+  if (!cfg) return;
+  const W = mapMats(MAP.id);
+  const rnd = mulberry32((preset.seed ^ 0x9e3779b9) >>> 0);
+  const stats = { trees: 0, bushes: 0, ferns: 0, rocks: 0, anchors: [], colsBefore: G.colliders.length, colsAfter: 0 };
+  G.decor = stats;
+
+  /* Walk every merged wall run and plant along it. A short run gets a prop
+     only some of the time, so a 1 m stub between two corners does not grow a
+     full tree. */
+  const along = (spacing, cb) => {
+    for (const r of wallRuns) {
+      const len = r.b - r.a;
+      if (len < 0.9) continue;
+      const whole = Math.floor(len / spacing);
+      const count = whole + (rnd() < (len % spacing) / spacing ? 1 : 0);
+      for (let k = 0; k < count; k++) {
+        const t = clamp((k + 0.5 + (rnd() - 0.5) * 0.7) / count, 0.04, 0.96);
+        cb(r.axis === 'z'
+          ? { x: r.at, z: r.a + len * t }
+          : { x: r.a + len * t, z: r.at }, r);
+      }
+    }
+  };
+
+  if (cfg.tree) {
+    along(cfg.tree, p => {
+      const h = cfg.treeH[0] + rnd() * (cfg.treeH[1] - cfg.treeH[0]);
+      if (cfg.pine) pineTree(p.x, p.z, h, rnd, W); else broadleaf(p.x, p.z, h, rnd, W);
+      stats.trees++; stats.anchors.push([p.x, p.z]);
+    });
+  }
+  if (cfg.cactus) {
+    along(cfg.cactus, p => {
+      cactus(p.x, p.z, 4.6 + rnd() * 2.4, rnd, W);
+      stats.trees++; stats.anchors.push([p.x, p.z]);
+    });
+  }
+  if (cfg.bush) {
+    along(cfg.bush, p => { bush(p.x, p.z, 0.42 + rnd() * 0.3, rnd, W); stats.bushes++; });
+  }
+  if (cfg.fern) {
+    along(cfg.fern, p => { fern(p.x, p.z, 0.55 + rnd() * 0.35, rnd, W); stats.ferns++; });
+  }
+  if (cfg.rock) {
+    along(cfg.rock, p => { rock(p.x, p.z, 0.28 + rnd() * 0.22, rnd, W); stats.rocks++; stats.anchors.push([p.x, p.z]); });
+  }
+
+  /* A tree is scenery, not cover: if this ever moves, every prop placement
+     above needs a collider and a navigation exclusion to go with it. */
+  stats.colsAfter = G.colliders.length;
+}
+
+/* A crown built from several small blobs rather than one big one: a single
+   icosahedron of radius 2 m is a twenty-sided crystal at head height, and the
+   first pass looked like green quartz hanging over the corridors. Six clumps
+   of ~1.3 m read as foliage and cost 120 triangles. */
+function broadleaf(x, z, h, rnd, W) {
+  const rad = 0.24 + h * 0.022;
+  const trunkH = h * 0.62;
+  addProp(new THREE.CylinderGeometry(rad * 0.62, rad, trunkH, 7, 1), W.bark,
+    x, trunkH / 2, z, { ry: rnd() * 6.28, rx: (rnd() - 0.5) * 0.05 });
+  const crownY = trunkH * 0.9;
+  const spread = h * 0.17;
+  const blobs = 5 + (rnd() * 2 | 0);
+  for (let k = 0; k < blobs; k++) {
+    const r = h * (0.1 + rnd() * 0.055);
+    const a = (k / blobs) * 6.283 + rnd() * 0.9;
+    const d = spread * (0.3 + rnd() * 0.85);
+    addProp(new THREE.IcosahedronGeometry(r, 0), k % 2 ? W.leaf2 : W.leaf,
+      x + Math.cos(a) * d, crownY + (rnd() - 0.35) * h * 0.11, z + Math.sin(a) * d,
+      { ry: rnd() * 6.28, rz: (rnd() - 0.5) * 0.3, sx: 1, sy: 0.7 + rnd() * 0.22, sz: 1 });
+  }
+}
+
+function pineTree(x, z, h, rnd, W) {
+  const rad = 0.16 + h * 0.012;
+  const trunkH = h * 0.5;
+  addProp(new THREE.CylinderGeometry(rad * 0.6, rad, trunkH, 6), W.bark,
+    x, trunkH / 2, z, { ry: rnd() * 6.28 });
+  const tiers = 5;
+  const r0 = h * 0.17 * (0.85 + rnd() * 0.3);
+  let y = h * 0.26;
+  for (let k = 0; k < tiers; k++) {
+    const t = k / (tiers - 1);
+    const r = r0 * (1 - t * 0.62);
+    const ch = h * (0.22 - t * 0.06);
+    addProp(new THREE.ConeGeometry(r, ch, 8), k % 2 ? W.leaf2 : W.leaf,
+      x, y + ch * 0.4, z, { ry: rnd() * 6.28 });
+    y += ch * 0.62;
+  }
+}
+
+/* A saguaro: a ribbed column with a domed top and two arms that turn up. The
+   first pass was a bare cylinder and read as a green pipe. */
+function cactus(x, z, h, rnd, W) {
+  const mat = W.cactus;
+  const r = 0.24 + h * 0.016;
+  const body = THREE.CapsuleGeometry
+    ? new THREE.CapsuleGeometry(r, Math.max(0.4, h - r * 2), 3, 9)
+    : new THREE.CylinderGeometry(r, r, h, 8);
+  addProp(body, mat, x, h / 2, z, { ry: rnd() * 6.28 });
+  const arms = 1 + (rnd() < 0.6 ? 1 : 0);
+  for (let k = 0; k < arms; k++) {
+    const s = k ? 1 : -1, y = h * (0.38 + rnd() * 0.16);
+    const ar = r * 0.52, out = r + 0.2;
+    /* out, then up: an arm that only sticks out sideways reads as a handle */
+    addProp(new THREE.CylinderGeometry(ar, ar, out * 2, 7), mat,
+      x + s * out, y, z, { rz: Math.PI / 2 });
+    addProp(THREE.CapsuleGeometry
+      ? new THREE.CapsuleGeometry(ar, 0.42, 2, 7)
+      : new THREE.CylinderGeometry(ar, ar, 0.42, 7), mat,
+      x + s * out * 2, y + 0.3, z, {});
+  }
+}
+
+/* A shrub is a spray, not a lump. Three overlapping spheres — however lumpy —
+   fuse into one solid object with a smooth silhouette, which is why the first
+   pass read as a mossy boulder and, once the hedge texture was applied, as a
+   green brain. What actually says "bush" is the ragged edge: a dozen small
+   clumps at different heights, with gaps you can see the wall through. */
+function bush(x, z, s, rnd, W) {
+  const n = 9 + (rnd() * 4 | 0);
+  for (let k = 0; k < n; k++) {
+    const r = s * (0.22 + rnd() * 0.2);
+    const a = rnd() * 6.283;
+    const d = s * Math.sqrt(rnd()) * 0.9;
+    /* taller in the middle, so it still has a mound shape */
+    const lift = (1 - d / s) * s * 0.55;
+    addProp(new THREE.IcosahedronGeometry(r, 1), k % 3 === 0 ? W.shrub2 : W.shrub,
+      x + Math.cos(a) * d, r * 0.42 + lift * (0.4 + rnd() * 0.7), z + Math.sin(a) * d,
+      { ry: rnd() * 6.28, rx: (rnd() - 0.5) * 0.7, rz: (rnd() - 0.5) * 0.7,
+        sx: 1.2, sy: 0.85, sz: 1.2 });
+  }
+}
+
+function fern(x, z, s, rnd, W) {
+  const n = 5 + (rnd() * 3 | 0);
+  for (let k = 0; k < n; k++) {
+    const a = (k / n) * 6.283 + rnd() * 0.5;
+    addProp(new THREE.ConeGeometry(0.085, s * (0.9 + rnd() * 0.5), 4),
+      k % 2 ? W.leaf2 : W.leaf,
+      x + Math.cos(a) * s * 0.2, s * 0.42, z + Math.sin(a) * s * 0.2,
+      { rx: Math.sin(a) * 0.55, rz: -Math.cos(a) * 0.55 });
+  }
+}
+
+/* A boulder, not a spike. A 20-face icosahedron rotated freely on all three
+   axes puts a vertex straight up and reads as a cream-coloured pyramid; real
+   stones are low and rounded, so the rotation is almost all yaw and the body
+   is squashed on Y. */
+function rock(x, z, s, rnd, W) {
+  addProp(new THREE.IcosahedronGeometry(s, 1), W.rock, x, s * 0.34, z,
+    { rx: (rnd() - 0.5) * 0.35, ry: rnd() * 6.28, rz: (rnd() - 0.5) * 0.35,
+      sx: 1.0 + rnd() * 0.2, sy: 0.5 + rnd() * 0.2, sz: 1.0 + rnd() * 0.2 });
+}
+
+
 /* ------------------------------------------------------------
    STATIC GEOMETRY MERGE
    Collapses the (large) static level into one mesh per material so the
@@ -723,6 +1027,7 @@ function disposeWorld() {
   G.ramps.length = 0;
   G.maze = null;
   G.chestSpots = [];
+  G.decor = null;
   G.spawns = { red: [], blue: [] };
   G.hq = null;
   G.plinth = null;
