@@ -61,8 +61,14 @@ function buildWaypoints() {
      west wall. Bots that pathed along it ground into that wall and stood there,
      which is exactly the "AI stuck on a wall" behaviour. W[0] is the NORTH end
      and W[last] the SOUTH end, so NW takes W[0] and SW takes W[last]. */
-  const cSE = addNode(D, D, PY), cNE = addNode(D, -D, PY), cNW = addNode(-D, -D, PY), cSW = addNode(-D, D, PY);
+  /* Only a catwalk map has corners to route around. On a flat map these four
+     nodes were still created — at (+-33, +-33), outside the arena — with no
+     links at all, so every flat map carried four orphans that nearestNode()
+     could hand to a bot as a destination. */
+  let cSE = null, cNE = null, cNW = null, cSW = null;
   if (MAP.catwalk) {
+    cSE = addNode(D, D, PY); cNE = addNode(D, -D, PY);
+    cNW = addNode(-D, -D, PY); cSW = addNode(-D, D, PY);
     link(S[S.length - 1], cSE); link(cSE, E[E.length - 1]);
     link(E[0], cNE); link(cNE, Nn[Nn.length - 1]);
     link(Nn[0], cNW); link(cNW, W[0]);
@@ -72,7 +78,7 @@ function buildWaypoints() {
   /* stairs: chain the four ramps to the floor and to the ring */
   const groundNodes = [];
   for (const row of grid) for (const n of row) if (n) groundNodes.push(n);
-  const platNodes = S.concat(Nn, E, W, [cSE, cNE, cNW, cSW]);
+  const platNodes = S.concat(Nn, E, W).concat([cSE, cNE, cNW, cSW].filter(Boolean));
   const nearestIn = (list, x, z) => {
     let best = null, bd = 1e9;
     for (const n of list) {
