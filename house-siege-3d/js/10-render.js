@@ -143,6 +143,7 @@ function initThree() {
   /* ---- lighting ---- */
   const hemi = new THREE.HemisphereLight(0xbcd7f0, 0x4b4a36, 0.34);
   scene.add(hemi);
+  G.hemi = hemi;
 
   const sun = new THREE.DirectionalLight(0xfff2da, 1.02);
   sun.position.copy(SUN_DIR).multiplyScalar(90);
@@ -287,6 +288,316 @@ function texGrass() {
       g.beginPath(); g.arc(Math.random() * s, Math.random() * s, 20 + Math.random() * 60, 0, 7); g.fill();
     }
   }, 100, 100);
+}
+
+/* ------------------------------------------------------------
+   OUTDOOR SURFACES
+   ------------------------------------------------------------
+   The three nature maps do not share one green texture: a hedge wall, a pine
+   ridge and a sandstone canyon have to be told apart at a glance from across
+   the arena, which is the same reason the indoor palettes separate walls from
+   floors.
+
+   Two rules govern everything here, and both were learned the hard way:
+
+   1. FEATURES ARE DRAWN AT WORLD SCALE. One UV unit is 2.2 m (boxUV), so a
+      texture is a 2.2 m square of ground or wall. Anything smaller than about
+      three pixels is invisible at fighting distance — an earlier pass drew
+      1 cm speckles and the result was a flat varnished slab. Bedding planes,
+      leaf clumps and pebbles are all 2-25 cm here.
+
+   2. EVERYTHING WRAPS. These textures tile every 2.2 m, and a feature cut off
+      at the canvas edge shows up as a hard line across the floor, which reads
+      as a tiled bathroom rather than as ground. Blobs are drawn up to four
+      times at the wrapped offsets so the tile has no visible seam.
+   ------------------------------------------------------------ */
+function wrapBlob(g, s, x, y, r, draw) {
+  for (let ox = -1; ox <= 1; ox++) {
+    for (let oy = -1; oy <= 1; oy++) {
+      const px = x + ox * s, py = y + oy * s;
+      if (px + r < 0 || px - r > s || py + r < 0 || py - r > s) continue;
+      draw(px, py);
+    }
+  }
+}
+
+function texLeaves(base, dark, rep) {
+  return makeTex(256, (g, s) => {
+    /* the gaps between leaves are the shadow inside the hedge */
+    g.fillStyle = dark; g.fillRect(0, 0, s, s);
+    const cols = [base, '#6f8f45', '#7f9a4a', '#5c7a3c', '#435c2c', '#8fae5c'];
+    for (let i = 0; i < 520; i++) {
+      const x = Math.random() * s, y = Math.random() * s;
+      const r = 3 + Math.random() * 9;
+      const col = cols[i % cols.length];
+      const a = 0.6 + Math.random() * 0.4;
+      const rot = Math.random() * 3.14;
+      wrapBlob(g, s, x, y, r, (px, py) => {
+        g.globalAlpha = a; g.fillStyle = col;
+        g.save();
+        g.translate(px, py); g.rotate(rot);
+        g.beginPath();
+        if (g.ellipse) g.ellipse(0, 0, r, r * 0.5, 0, 0, 7);
+        else g.arc(0, 0, r * 0.7, 0, 7);
+        g.fill();
+        g.restore();
+      });
+    }
+    g.globalAlpha = 1;
+    grain(g, s, 10, false);
+  }, rep || 2, rep || 2);
+}
+
+function texBark(base, dark, rep) {
+  return makeTex(128, (g, s) => {
+    g.fillStyle = base; g.fillRect(0, 0, s, s);
+    /* vertical plates, not brush strokes: bark reads by its edges */
+    for (let i = 0; i < 120; i++) {
+      g.strokeStyle = Math.random() < 0.55 ? dark : 'rgba(255,255,255,.13)';
+      g.lineWidth = 0.8 + Math.random() * 2.6;
+      const x = Math.random() * s;
+      g.beginPath();
+      g.moveTo(x, -2);
+      g.bezierCurveTo(x + 9, s * 0.34, x - 9, s * 0.66, x + 3, s + 2);
+      g.stroke();
+    }
+    for (let i = 0; i < 40; i++) {
+      g.fillStyle = 'rgba(0,0,0,.22)';
+      g.fillRect(Math.random() * s, Math.random() * s, 1.5 + Math.random() * 3, 6 + Math.random() * 22);
+    }
+    grain(g, s, 12, false);
+  }, rep || 1, (rep || 1) * 3);
+}
+
+/* `strata` is the difference between a grey ridge and a sandstone canyon:
+   bedding planes with a dark seam under each bed, not just noise. */
+function texRock(base, dark, strata, rep) {
+  return makeTex(256, (g, s) => {
+    g.fillStyle = base; g.fillRect(0, 0, s, s);
+    if (strata) {
+      /* Beds of 20-50 cm. Two earlier passes both failed here, in opposite
+         directions: the first drew a hard black line every 8 cm (varnished
+         planks), the second drew full-width bands plus a random vertical
+         joint inside each one — and a horizontal band with a vertical cut in
+         it is exactly a brick. Both mistakes are structural, so the fix is
+         structural too:
+
+         - no vertical joints at all. Bedding planes are continuous; the only
+           vertical marks on a cliff are cracks, and those are drawn later.
+         - the boundary between beds WAVES. A dead-straight line across the
+           whole tile is the tell of masonry, so each boundary is a low
+           sine with its own phase and amplitude.
+         - the wave closes on itself (one full period across the tile), and
+           bed heights are normalised to sum to exactly `s`, so the tile
+           still wraps in both axes. */
+      const heights = [];
+      let total = 0;
+      while (total < s) {
+        const h = 20 + Math.random() * 30;
+        heights.push(h); total += h;
+      }
+      const k = s / total;
+      let y = 0;
+      const wave = (yy, ph, amp, t) => yy + Math.sin(ph + t * 6.2832) * amp;
+      for (let i = 0; i < heights.length; i++) {
+        const h = heights[i] * k;
+        const ph = Math.random() * 6.2832;
+        const amp = 1.5 + Math.random() * 3.5;
+        const steps = 10;
+        /* fill the bed, top boundary wavy, bottom boundary wavy the other way */
+        g.beginPath();
+        g.moveTo(0, wave(y, ph, amp, 0));
+        for (let n = 1; n <= steps; n++) g.lineTo(n / steps * s, wave(y, ph, amp, n / steps));
+        for (let n = steps; n >= 0; n--) g.lineTo(n / steps * s, wave(y + h, ph + 2.1, amp, n / steps));
+        g.closePath();
+        g.globalAlpha = 0.05 + Math.random() * 0.13;
+        g.fillStyle = Math.random() < 0.5 ? dark : '#ffffff';
+        g.fill();
+        /* a thin shadow sits under the bed, not a black gap */
+        g.globalAlpha = 0.10 + Math.random() * 0.10;
+        g.strokeStyle = '#000';
+        g.lineWidth = 1.2 + Math.random() * 1.4;
+        g.beginPath();
+        g.moveTo(0, wave(y, ph, amp, 0));
+        for (let n = 1; n <= steps; n++) g.lineTo(n / steps * s, wave(y, ph, amp, n / steps));
+        g.stroke();
+        y += h;
+      }
+      /* cross-bedding: short diagonal sweeps, the one pattern sandstone has
+         that brickwork never does. Very low alpha, they only read as sheen. */
+      g.globalAlpha = 0.07;
+      g.strokeStyle = '#fff';
+      for (let i = 0; i < 26; i++) {
+        const x0 = Math.random() * s, y0 = Math.random() * s;
+        const a = -0.34 + (Math.random() - 0.5) * 0.18;
+        const l = 30 + Math.random() * 70;
+        g.lineWidth = 3 + Math.random() * 5;
+        g.beginPath();
+        g.moveTo(x0, y0);
+        g.quadraticCurveTo(x0 + l * 0.5, y0 + Math.sin(a) * l * 0.5 + 3, x0 + l, y0 + Math.sin(a) * l);
+        g.stroke();
+      }
+      g.globalAlpha = 1;
+    }
+    /* mottling. These started as sharp triangles, which at 10% alpha still
+       read as angular graffiti on a flat wall; broad soft blobs do the job
+       (breaking up the base colour) without drawing an edge the eye can
+       follow. */
+    for (let i = 0; i < 70; i++) {
+      const x = Math.random() * s, y = Math.random() * s, r = 18 + Math.random() * 46;
+      const light = Math.random() < 0.5;
+      wrapBlob(g, s, x, y, r, (px, py) => {
+        const grd = g.createRadialGradient(px, py, 0, px, py, r);
+        grd.addColorStop(0, light ? 'rgba(255,255,255,.10)' : 'rgba(0,0,0,.12)');
+        grd.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = grd;
+        g.beginPath(); g.arc(px, py, r, 0, 7); g.fill();
+      });
+    }
+    /* cracks: they run in ONE direction with a slight wander, and stay short.
+       Random walks in both axes drew star-shaped scribbles that looked like
+       graffiti, and full-height cracks turned the wall back into panels. */
+    for (let i = 0; i < 10; i++) {
+      let x = Math.random() * s, y = Math.random() * s;
+      const dir = Math.PI / 2 + (Math.random() - 0.5) * 0.5;
+      g.beginPath(); g.moveTo(x, y);
+      for (let n = 0; n < 4; n++) {
+        const a = dir + (Math.random() - 0.5) * 0.4;
+        const l = 9 + Math.random() * 14;
+        x += Math.cos(a) * l; y += Math.sin(a) * l;
+        g.lineTo(x, y);
+      }
+      g.strokeStyle = 'rgba(0,0,0,.16)'; g.lineWidth = 1.1; g.stroke();
+      g.strokeStyle = 'rgba(255,255,255,.06)'; g.lineWidth = 0.6; g.stroke();
+    }
+    grain(g, s, 13, false);
+  }, rep || 1, rep || 1);
+}
+
+/* leaf litter and bare earth under a canopy */
+function texForestFloor(base, dark, rep) {
+  return makeTex(512, (g, s) => {
+    g.fillStyle = base; g.fillRect(0, 0, s, s);
+    /* drifts of moss and bare soil, 20-50 cm across */
+    for (let i = 0; i < 46; i++) {
+      const x = Math.random() * s, y = Math.random() * s, r = 34 + Math.random() * 96;
+      const light = Math.random() < 0.45;
+      wrapBlob(g, s, x, y, r, (px, py) => {
+        const grd = g.createRadialGradient(px, py, 0, px, py, r);
+        grd.addColorStop(0, light ? 'rgba(140,160,90,.30)' : 'rgba(40,34,20,.30)');
+        grd.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = grd;
+        g.beginPath(); g.arc(px, py, r, 0, 7); g.fill();
+      });
+    }
+    /* fallen leaves */
+    for (let i = 0; i < 260; i++) {
+      const x = Math.random() * s, y = Math.random() * s, r = 3 + Math.random() * 6;
+      const col = ['#6f5730', '#5c6642', '#7a6236', '#414a2e'][i % 4];
+      const rot = Math.random() * 3.14;
+      wrapBlob(g, s, x, y, r, (px, py) => {
+        g.globalAlpha = 0.45;
+        g.fillStyle = col;
+        g.save(); g.translate(px, py); g.rotate(rot);
+        g.beginPath(); g.ellipse(0, 0, r, r * 0.45, 0, 0, 7); g.fill();
+        g.restore();
+      });
+    }
+    g.globalAlpha = 1;
+    /* twigs */
+    for (let i = 0; i < 220; i++) {
+      g.strokeStyle = ['#6b5836', '#3c452c'][i % 2];
+      g.lineWidth = 1 + Math.random();
+      const x = Math.random() * s, y = Math.random() * s;
+      const a = Math.random() * 6.28, l = 6 + Math.random() * 16;
+      g.beginPath(); g.moveTo(x, y);
+      g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l);
+      g.stroke();
+    }
+    grain(g, s, 9, false);
+  }, rep || 60, rep || 60);
+}
+
+/* wind-rippled dust */
+function texSand(base, dark, rep) {
+  return makeTex(512, (g, s) => {
+    g.fillStyle = base; g.fillRect(0, 0, s, s);
+    /* broad drifts */
+    for (let i = 0; i < 24; i++) {
+      const x = Math.random() * s, y = Math.random() * s, r = 70 + Math.random() * 130;
+      const light = Math.random() < 0.5;
+      wrapBlob(g, s, x, y, r, (px, py) => {
+        const grd = g.createRadialGradient(px, py, 0, px, py, r);
+        grd.addColorStop(0, light ? 'rgba(255,240,214,.20)' : 'rgba(96,58,32,.18)');
+        grd.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = grd;
+        g.beginPath(); g.arc(px, py, r, 0, 7); g.fill();
+      });
+    }
+    /* Ripples. Drawn as one unbroken bezier across the whole tile they read
+       as brushed wood — long parallel lines are a grain, not a ripple. Real
+       wind ripples are made of short crests with gaps between them, and the
+       crest line drifts, so each one is laid down as a run of dashes that
+       wander together. */
+    for (let i = 0; i < 26; i++) {
+      const y0 = Math.random() * s;
+      const amp = 5 + Math.random() * 9;
+      const ph = Math.random() * 6.2832;
+      const freq = 1 + Math.floor(Math.random() * 3);
+      /* kept faint on purpose: at a shallow camera angle a long ripple is a
+         grain line, and even broken into dashes these turn the floor into
+         brushed wood if they carry any contrast */
+      g.strokeStyle = Math.random() < 0.6 ? 'rgba(0,0,0,.045)' : 'rgba(255,255,255,.065)';
+      g.lineWidth = 1 + Math.random() * 1.5;
+      for (const oy of [-s, 0, s]) {
+        /* walk left to right in dash lengths, leaving gaps at random */
+        let x = Math.random() * 40;
+        while (x < s) {
+          const len = 18 + Math.random() * 32;
+          g.beginPath();
+          for (let n = 0; n <= 6; n++) {
+            const t = (x + len * n / 6) / s;
+            const yy = y0 + oy + Math.sin(ph + t * 6.2832 * freq) * amp;
+            if (n === 0) g.moveTo(x + len * n / 6, yy); else g.lineTo(x + len * n / 6, yy);
+          }
+          g.stroke();
+          x += len + 16 + Math.random() * 70;
+        }
+      }
+    }
+    /* grit. 520 specks at this contrast read as exposed aggregate — sand is a
+       texture, not a gravel path, so there are fewer of them and they are
+       closer to the base tone. */
+    for (let i = 0; i < 300; i++) {
+      const x = Math.random() * s, y = Math.random() * s, r = 0.7 + Math.random() * 2.2;
+      g.fillStyle = Math.random() < 0.5 ? 'rgba(70,44,24,.16)' : 'rgba(255,238,210,.18)';
+      g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+    }
+    grain(g, s, 9, false);
+  }, rep || 60, rep || 60);
+}
+
+/* cactus skin: the ribs are what make a green column read as a cactus */
+function texRibs(base, dark, rep) {
+  return makeTex(128, (g, s) => {
+    g.fillStyle = base; g.fillRect(0, 0, s, s);
+    const ribs = 8, w = s / ribs;
+    for (let i = 0; i < ribs; i++) {
+      const x = i * w;
+      const grd = g.createLinearGradient(x, 0, x + w, 0);
+      grd.addColorStop(0, 'rgba(0,0,0,.40)');
+      grd.addColorStop(0.3, 'rgba(255,255,255,.12)');
+      grd.addColorStop(0.72, 'rgba(0,0,0,.12)');
+      grd.addColorStop(1, 'rgba(0,0,0,.40)');
+      g.fillStyle = grd;
+      g.fillRect(x, 0, w, s);
+      for (let y = 0; y < s; y += 5) {
+        g.fillStyle = 'rgba(232,232,196,.5)';
+        g.fillRect(x + w * 0.44, y + Math.random() * 2, 1.1, 2);
+      }
+    }
+    grain(g, s, 7, false);
+  }, rep || 2, 1);
 }
 
 function texSiding() {
