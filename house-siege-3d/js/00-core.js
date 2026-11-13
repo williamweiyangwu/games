@@ -178,9 +178,61 @@ const MAPS = {
     pal: { wall: '#b9c1ae', wall2: '#8d9680', floor: '#6d7567', floor2: '#555c50',
            trim: 0x373e2e, accent: 0xffc04d, ground: 'stone', ground2: '#525a4a',
            wallMetal: 0.1, floorMetal: 0.12, floorRough: 0.72 }
+  },
+
+  /* ---------------- OUTDOORS ----------------
+     Same maze topology, no architecture at all: the walls are a hedge, a rock
+     ridge and a sandstone fin, the ceiling is sky, and the middle of the map is
+     an outcrop rather than a plinth. `pal.style` switches the wall/floor
+     textures and turns on the dressing pass in 20-world.js; `dress` picks which
+     plants grow. */
+  grove: {
+    id: 'grove', name: 'WHISPER GROVE', tag: 'OVERGROWN', time: '14 × 14',
+    blurb: 'A hedge maze gone wild. Broadleaf canopies close over the corridors, ferns crowd the wall feet, and a mossy outcrop holds the middle.',
+    seed: 550913, N: 14, wallH: 2.5, platY: 0, catwalk: false,
+    loops: 0.44, plinth: true, fog: 0xa9b894, fogNear: 58, fogFar: 185, light: 0xffeecb,
+    sky: { top: 0x3a6ea8, mid: 0xa8c0c2, bot: 0xd6dcc0 }, sunI: 1.05, hemiI: 0.62,
+    pal: { style: 'hedge', dress: 'grove',
+           wall: '#4a6334', wall2: '#33491f', cap: 0x5f7b38,
+           floor: '#5d6749', floor2: '#414a32', trim: 0x3a3a2e, accent: 0xa8e05f,
+           ground: 'forest', ground2: '#3f4a2f',
+           leaf: 0x4f7a35, leaf2: 0x6a9649, bark: '#5b4632', bark2: '#33261a',
+           rock: 0x4e5640, wallMetal: 0, floorMetal: 0, floorRough: 0.92 }
+  },
+  pine: {
+    id: 'pine', name: 'PINE RIDGE', tag: 'MISTY', time: '15 × 15',
+    blurb: 'Cold conifers over a rock ridge. Tall trunks, moss on every stone, and fog that eats the far end of the corridor.',
+    seed: 330871, N: 15, wallH: 2.7, platY: 0, catwalk: false,
+    loops: 0.30, plinth: true, fog: 0xa8b8b6, fogNear: 40, fogFar: 150, light: 0xe4eeff,
+    sky: { top: 0x2b4a63, mid: 0x8fa9b6, bot: 0xc8d4d2 }, sunI: 0.92, hemiI: 0.7,
+    pal: { style: 'rock', dress: 'pine',
+           wall: '#77806f', wall2: '#525a4c', cap: 0x6e8a5c,
+           floor: '#4b5348', floor2: '#343b33', trim: 0x2c3229, accent: 0x8fd6a8,
+           ground: 'forest', ground2: '#333c2f',
+           leaf: 0x25502f, leaf2: 0x2f6339, bark: '#4a3a2c', bark2: '#291f16',
+           rock: 0x4f5949, wallMetal: 0, floorMetal: 0, floorRough: 0.95 }
+  },
+  canyon: {
+    id: 'canyon', name: 'EMBER CANYON', tag: 'DRY HEAT', time: '13 × 13',
+    blurb: 'Sandstone fins and open sky. The floor is dust, the cover is rock, and the only green is the cactus you should not stand next to.',
+    seed: 190277, N: 13, wallH: 2.5, platY: 0, catwalk: false,
+    loops: 0.22, plinth: true, fog: 0xd6a374, fogNear: 52, fogFar: 170, light: 0xffd8a4,
+    sky: { top: 0x51759e, mid: 0xd2a37c, bot: 0xf0d2a8 }, sunI: 1.1, hemiI: 0.56,
+    pal: { style: 'sandstone', dress: 'canyon',
+           wall: '#b06a44', wall2: '#77432a', cap: 0xd9a173,
+           floor: '#b98a5e', floor2: '#8e6440', trim: 0x6b3d22, accent: 0xffb35c,
+           ground: 'sand', ground2: '#a8784e',
+           /* dry olive, not hedge green: the blurb promises the cactus is the
+              only green out here, and the first pass grew a rainforest */
+           leaf: 0x6a7043, leaf2: 0x878c56,
+           cactus: 0x3f6d35, cactus2: 0x4f7d3f,
+           bark: '#6b5334', bark2: '#3a2c1c',
+           /* dark enough that the sunlit facet of a flat-shaded boulder does
+              not blow out to cream under the 1.1 sun */
+           rock: 0x52361f, wallMetal: 0, floorMetal: 0, floorRough: 0.96 }
   }
 };
-const MAP_ORDER = ['white', 'ash', 'vault', 'sectors'];
+const MAP_ORDER = ['white', 'ash', 'vault', 'sectors', 'grove', 'pine', 'canyon'];
 function mapDef(id) { return MAPS[id] || MAPS.white; }
 
 const WEAPONS = {
