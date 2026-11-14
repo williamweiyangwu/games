@@ -1056,30 +1056,32 @@ function reportStoreState(){
 const LEVELS=[
   {n:0,name:'THE LOBBY',short:'LOBBY',style:'paper',mode:'maze',
    wall:'#a4924c',grime:'58,44,18',floor:'#6d6039',ceil:'#a9a48d',ceilTint:0x8d897a,
-   fog:0x080704,fogD:.050,amb:0x5a5038,ambI:.20,fix:.62,fixOn:.88,exposure:.92,
-   step:'carpet',monCount:3,monCap:3,
+   fog:0x050403,fogD:.058,amb:0x3f3827,ambI:.14,fix:.52,fixOn:.70,exposure:.82,
+   step:'carpet',monCount:2,monCap:2,
    weights:[['smiler',30],['hound',25],['clump',15],['wretch',20],['moth',10]],
    desc:'Saturated yellow rooms. Damp carpet. The hum never stops.'},
 
   {n:1,name:'THE BLOCK',short:'THE BLOCK',style:'paper',mode:'city',
    wall:'#a4924c',grime:'58,44,18',floor:'#6d6039',ceil:'#a9a48d',ceilTint:0x8d897a,
-   fog:0x080704,fogD:.050,amb:0x5a5038,ambI:.20,fix:.62,fixOn:.88,exposure:.92,
-   step:'carpet',monCount:3,monCap:3,
+   fog:0x050403,fogD:.058,amb:0x3f3827,ambI:.14,fix:.52,fixOn:.70,exposure:.82,
+   step:'carpet',monCount:2,monCap:2,
    city:{block:3,street:2,shave:.10,alleys:6,roomChance:.62,
-     hMin:14,hMax:26,lampGap:2,lampY:5.4,lit:.42,deck:0,fogD:.0135,
-     fogCol:0x1b2233,amb:0x46506e,ambI:.95,exposure:1.18,
-     ground:'#33373e',facade:'#4b463a',skyTop:'#0e1730',skyMid:'#3d4a72',skyLow:'#96704e',
+     hMin:14,hMax:26,lampGap:3,lampY:5.4,lit:.30,deck:0,fogD:.0155,
+     lampFix:.58,lampOn:.74,hemi:1.5,keyI:.98,
+     fogCol:0x121826,amb:0x35405e,ambI:.74,exposure:1.04,
+     ground:'#2a2d33',facade:'#403c32',skyTop:'#0a1020',skyMid:'#2a3350',skyLow:'#6b5238',
      skyline:0x0c1018},
    weights:[['smiler',30],['hound',25],['clump',15],['wretch',20],['moth',10]],
    desc:'A downtown that never got a morning. A hospital with its lights still on, a precinct with nobody in it, and doors that open.'},
 
   {n:2,name:'THE WORKS',short:'THE WORKS',style:'metal',mode:'factory',
    wall:'#4a5563',grime:'20,28,40',floor:'#2e343d',ceil:'#454d59',ceilTint:0x6a7484,
-   fog:0x04060a,fogD:.055,amb:0x33405a,ambI:.17,fix:.44,fixOn:.74,exposure:.84,
-   step:'metal',monCount:4,monCap:4,
+   fog:0x030508,fogD:.062,amb:0x25304a,ambI:.12,fix:.36,fixOn:.64,exposure:.76,
+   step:'metal',monCount:3,monCap:3,
    city:{block:2,street:4,shave:.04,alleys:3,roomChance:.30,
-     hMin:6,hMax:9,lampGap:3,lampY:6.6,lit:.22,deck:0,fogD:.024,
-     fogCol:0x10171a,amb:0x46545a,ambI:.82,exposure:1.02,
+     hMin:6,hMax:9,lampGap:4,lampY:6.6,lit:.18,deck:0,fogD:.025,
+     lampFix:.34,lampOn:.64,hemi:1.25,keyI:.86,
+     fogCol:0x0b1113,amb:0x364248,ambI:.68,exposure:.96,
      ground:'#2b3031',facade:'#424a49',skyTop:'#070b0d',skyMid:'#182226',skyLow:'#303a36',
      skyline:0x090c0d},
    weights:[['moth',26],['wretch',30],['hound',22],['clump',12],['smiler',10]],
@@ -1757,7 +1759,7 @@ const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-per
 renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));
 renderer.setSize(innerWidth,innerHeight);
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure=0.92;
+renderer.toneMappingExposure=0.78;
 $('#scene').appendChild(renderer.domElement);
 
 addEventListener('resize',()=>{
@@ -1765,10 +1767,10 @@ addEventListener('resize',()=>{
   renderer.setSize(innerWidth,innerHeight);
 });
 
-const ambientLight=new THREE.AmbientLight(0x5a5038,0.20);
+const ambientLight=new THREE.AmbientLight(0x3f3827,0.12);
 scene.add(ambientLight);
 
-const flash=new THREE.SpotLight(0xfff0cc,0,26,0.40,0.72,1.7);
+const flash=new THREE.SpotLight(0xfff0cc,0,22,0.40,0.72,1.7);
 flash.position.set(0,0,0);
 flash.target.position.set(0,0,-1);
 camera.add(flash);camera.add(flash.target);
@@ -2315,7 +2317,7 @@ function buildMaze(lv,th){
   fixtures.forEach((f,i)=>{
     m4.compose(new THREE.Vector3(f.x,f.y,f.z),new THREE.Quaternion(),sc);
     fixtureInst.setMatrixAt(i,m4);
-    fixtureInst.setColorAt(i,new THREE.Color(1,.96,.8).multiplyScalar(f.on?f.bright*.9:.05));
+    fixtureInst.setColorAt(i,new THREE.Color(1,.96,.8).multiplyScalar(f.on?f.bright*.72:.04));
   });
   fixtureInst.instanceMatrix.needsUpdate=true;
   if(fixtureInst.instanceColor)fixtureInst.instanceColor.needsUpdate=true;
@@ -2330,8 +2332,8 @@ function buildMaze(lv,th){
   }
   instBoxes(hous,false,.02);
 
-  for(let k=0;k<8;k++){
-    const l=new THREE.PointLight(0xffe7b4,0,17,1.9);
+  for(let k=0;k<6;k++){
+    const l=new THREE.PointLight(0xffe7b4,0,15,1.9);
     scene.add(l);lightPool.push({light:l,fix:null});
   }
 }
@@ -2461,7 +2463,7 @@ function furnishRooms(lv,th){
     for(let k=0;k<slots.length;k++){
       const[sx,sz,rot]=slots[k];
       if(door&&sx*door.nx+sz*door.nz>.9)continue;   // never block the way in
-      if(hash01(r.i,r.j,90+k)<.18)continue;          // some rooms were stripped
+      if(hash01(r.i,r.j,90+k)<.40)continue;          // most rooms were stripped
       const kind=thm.set[(k+Math.floor(hash01(r.i,r.j,41)*thm.set.length))%thm.set.length];
       const jx=(hash01(r.i,r.j,100+k)-.5)*.22,jz=(hash01(r.i,r.j,110+k)-.5)*.22;
       /* the spawn is already known — keep a clear ring around it */
@@ -2484,9 +2486,11 @@ function furnishRooms(lv,th){
         new THREE.MeshStandardMaterial({color:thm.col,roughness:.8}));
       aw.position.set(ex,2.42,ez);aw.rotation.y=ry;
       scene.add(aw);levelObjs.push(aw);
-      // a warm bulb just inside the doorway, so the interior reads at all
-      fixtures.push({x:r.x-d.nx*.7,z:r.z-d.nz*.7,y:2.6,on:true,
-        bright:rand(.55,.8),flick:0,flickT:rand(8,30),base:.65,room:true});
+      // only some doorways still have a working bulb
+      if(hash01(r.i,r.j,79)<.55){
+        fixtures.push({x:r.x-d.nx*.7,z:r.z-d.nz*.7,y:2.6,on:true,
+          bright:rand(.55,.8),flick:0,flickT:rand(8,30),base:.65,room:true});
+      }
     }
   }
 
@@ -2523,7 +2527,7 @@ function furnishRooms(lv,th){
 function roomLoot(){
   if(navMode==='maze'||!rooms.length)return;
   for(const r of rooms){
-    if(hash01(r.i,r.j,53)>.62)continue;
+    if(hash01(r.i,r.j,53)>.30)continue;
     let type=themeById(r.theme).loot;
     if(type==='note')type=hash01(r.i,r.j,71)<.5?'battery':'food';
     const ox=r.x+(hash01(r.i,r.j,59)-.5)*1.1;
@@ -2581,7 +2585,7 @@ function buildFactoryExtras(th){
     st.position.set(0,9.15,cz(j));scene.add(st);levelObjs.push(st);
   }
   for(let k=0;k<4;k++){
-    const l=new THREE.PointLight(0x9fc4c8,6,36,1.5);
+    const l=new THREE.PointLight(0x9fc4c8,4.5,30,1.5);
     l.position.set(cx(3+k*5),8.4,cz(3+k*4));scene.add(l);levelObjs.push(l);
   }
 
@@ -2833,7 +2837,7 @@ function buildStreetDetail(th,C){
         ax?.68:CELL,.028,ax?CELL:.68,0x4a4b4f);
     }
     // lane dashes, only where the street runs straight through
-    if(!(openX&&openZ)&&(openX||openZ)&&h<.62)
+    if(!(openX&&openZ)&&(openX||openZ)&&h<.45)
       B(x,.012,z,openX?2.1:.14,.024,openX?.14:2.1,0x8d8a72);
 
     if(!edges.length)continue;
@@ -2844,7 +2848,7 @@ function buildStreetDetail(th,C){
        collider can never seal a window the player is meant to vault */
     const farExit=!exitCell||Math.abs(i-exitCell[0])+Math.abs(j-exitCell[1])>3;
     const farSpawn=Math.hypot(x-player.pos.x,z-player.pos.z)>7;   // never box the player in
-    if(farSpawn&&farExit&&!nearRoom(i,j)&&!carNear(i,j)&&(openX||openZ)&&hash01(i,j,307)<.22){
+    if(farSpawn&&farExit&&!nearRoom(i,j)&&!carNear(i,j)&&(openX||openZ)&&hash01(i,j,307)<.12){
       const along=openX;
       const side=(hash01(i,j,311)<.5?-1:1)*1.15;
       const cxp=x+(along?0:side),czp=z+(along?side:0);
@@ -2853,17 +2857,17 @@ function buildStreetDetail(th,C){
       collidersExtra.push({x:cxp,z:czp,hx:along?2.12:.98,hz:along?.98:2.12,prop:'car'});
       continue;
     }
-    if(hash01(i,j,317)<.09){                     // hydrant
+    if(hash01(i,j,317)<.05){                     // hydrant
       D(px,.29,pz,.115,.58,0x8a2a22);
       D(px,.61,pz,.09,.10,0x6a201a);
       B(px,.44,pz,.36,.10,.13,0x8a2a22);
-    }else if(hash01(i,j,331)<.16){               // bollard
+    }else if(hash01(i,j,331)<.09){               // bollard
       D(px,.45,pz,.085,.90,0x23262a);
       D(px,.82,pz,.088,.06,0xb8b090);
-    }else if(hash01(i,j,337)<.12){               // bin bags
+    }else if(hash01(i,j,337)<.07){               // bin bags
       B(px,.23,pz,.54,.46,.48,0x14161a,rand(0,TAU));
       B(px+.42,.17,pz+.22,.38,.34,.34,0x181a1e,rand(0,TAU));
-    }else if(hash01(i,j,347)<.18){               // gully grating
+    }else if(hash01(i,j,347)<.10){               // gully grating
       B(px,.02,pz,.54,.035,.34,0x191b1d);
       for(let k=-1;k<=1;k++)B(px+k*.17,.035,pz,.05,.035,.34,0x3b3e41);
     }
@@ -3123,8 +3127,9 @@ function buildCity(lv,th,isFactory){
     /* a 6.6 m post would run straight up through a catwalk deck; the works
        gets its own fittings, hung from the roof and from the deck soffit */
     if(isFactory&&deckY&&deckY[i+j*GX]>0)continue;
-    if(Math.random()>th.fix)continue;
-    fixtures.push({x:cx(i),z:cz(j),y:C.lampY,on:Math.random()<th.fixOn,
+    if(Math.random()>(C.lampFix!=null?C.lampFix:th.fix))continue;
+    fixtures.push({x:cx(i),z:cz(j),y:C.lampY,
+      on:Math.random()<(C.lampOn!=null?C.lampOn:th.fixOn),
       bright:rand(.75,1.05),flick:0,flickT:rand(4,40),base:1});
   }
   const lampCount=fixtures.length;
@@ -3152,10 +3157,11 @@ function buildCity(lv,th,isFactory){
     instBoxes(lp,false,.02);
   }
 
-  // ---------- a bare bulb in every hollow room ----------
-  // without one the rooms are pitch black holes you cannot read as rooms
+  // ---------- a bulb in only some of the hollow rooms ----------
+  // the rest are black holes you have to find with your own torch
   const roomFrom=fixtures.length;
   for(const r of rooms){
+    if(hash01(r.i,r.j,73)>.42)continue;
     fixtures.push({x:r.x,z:r.z,y:2.72,on:true,bright:rand(.5,.8),
       flick:0,flickT:rand(5,30),base:1,room:true});
   }
@@ -3181,25 +3187,27 @@ function buildCity(lv,th,isFactory){
     const f=fixtures[i];
     m4.compose(new THREE.Vector3(f.x,f.y,f.z),new THREE.Quaternion(),new THREE.Vector3(1,1,1));
     fixtureInst.setMatrixAt(i,m4);
-    fixtureInst.setColorAt(i,new THREE.Color(1,.92,.72).multiplyScalar(f.on?f.bright*.9:.05));
+    fixtureInst.setColorAt(i,new THREE.Color(1,.92,.72).multiplyScalar(f.on?f.bright*.72:.04));
   }
   fixtureInst.instanceMatrix.needsUpdate=true;
   if(fixtureInst.instanceColor)fixtureInst.instanceColor.needsUpdate=true;
   scene.add(fixtureInst);levelObjs.push(fixtureInst);
 
   // ---------- sky bounce ----------
-  const hemi=new THREE.HemisphereLight(C.skyMid||0x2a3350,C.ground||0x1a1c1e,2.0);
+  const hemi=new THREE.HemisphereLight(C.skyMid||0x2a3350,C.ground||0x1a1c1e,
+    C.hemi!=null?C.hemi:1.15);
   scene.add(hemi);levelObjs.push(hemi);
 
   // a low key light from above, so a facade facing the sky reads lighter than
   // one facing an alley — without it every wall is the same flat black
-  const key=new THREE.DirectionalLight(C.key||0x9fb0d8,1.25);
+  const key=new THREE.DirectionalLight(C.key||0x9fb0d8,
+    C.keyI!=null?C.keyI:0.78);
   key.position.set(-70,140,55);
   scene.add(key);levelObjs.push(key);
 
   // ---------- light pool ----------
-  for(let k=0;k<12;k++){
-    const l=new THREE.PointLight(0xffe7b4,0,17,1.9);
+  for(let k=0;k<8;k++){
+    const l=new THREE.PointLight(0xffe7b4,0,15,1.9);
     scene.add(l);lightPool.push({light:l,fix:null});
   }
   if(isFactory)buildFactoryExtras(th);
@@ -5117,7 +5125,7 @@ function populate(){
     const j=randInt(0,k);[rest[k],rest[j]]=[rest[j],rest[k]];
   }
   for(const c of rest){
-    if(spots.length>=15)break;
+    if(spots.length>=12)break;
     if(spots.every(o=>Math.hypot(o.i-c.i,o.j-c.j)>4))spots.push(c);
   }
   const lootBag=['pistol','shotgun','ammo','ammo','ammo','food','food','food',
@@ -6080,7 +6088,7 @@ function applySave(sv){
   }
   // torch
   torchOn=sv.torchOn!==false;
-  flash.intensity=torchOn?26:0;
+  flash.intensity=torchOn?22:0;
   // lockers
   for(const c of sv.chests||[]){
     spawnChest(c.x,c.z,c.loot);
@@ -6445,7 +6453,7 @@ function toggleTorch(){
   torchOn=!torchOn;
   tutTorchFlips++;
   AU.click();
-  flash.intensity=torchOn?26:0;
+  flash.intensity=torchOn?22:0;
 }
 let torchOn=true;
 
@@ -7148,7 +7156,7 @@ function updatePlayer(dt){
     player.battery=Math.max(0,player.battery-dt*.52);
     if(player.battery<=0){torchOn=false;flash.intensity=0;toast('TORCH DIED');}
   }
-  flash.intensity=torchOn&&player.battery>0?26*(1+Math.sin(elapsed*7)*.02):0;
+  flash.intensity=torchOn&&player.battery>0?22*(1+Math.sin(elapsed*7)*.02):0;
   // flicker when low battery
   if(torchOn&&player.battery<18&&Math.random()<.06)flash.intensity=0;
 
@@ -7280,8 +7288,8 @@ function updateLights(dt){
       if(c){
         slot.fix=c.f;
         slot.light.position.set(c.f.x,(c.f.y||WALL_H-.35),c.f.z);
-        slot.light.distance=17;
-        slot.light.intensity=22*c.f.bright;
+        slot.light.distance=15;
+        slot.light.intensity=17*c.f.bright;
       }else{
         slot.fix=null;slot.light.intensity=0;
       }
@@ -7541,7 +7549,7 @@ function tick(){
     // monsters trickle back in, but the floor holds far fewer of them than it
     // used to: the halls are supposed to feel empty right up until they aren't
     const alive=monsters.filter(m=>!m.dead).length;
-    if(alive<(LV().monCap||3)&&Math.random()<dt*.11){
+    if(alive<(LV().monCap||2)&&Math.random()<dt*.055){
       let c=null,tries=0;
       do{c={i:randInt(0,GX-1),j:randInt(0,GZ-1)};tries++;}
       while(tries<60&&Math.hypot(cx(c.i)-player.pos.x,cz(c.j)-player.pos.z)<15);
