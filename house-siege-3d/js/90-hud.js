@@ -66,6 +66,11 @@ function endMatch() {
   /* A room votes on the next map. Alone, there is nothing to vote on: the
      card is a result, so it counts you back to the lobby. */
   $('endAuto').textContent = '';
+  /* updateLobbyReturn() caches the last string in dataset.txt to avoid
+     rewriting the DOM every frame. Clearing the card must clear that cache
+     too, or the next solo match's first countdown tick is skipped and the
+     "RETURNING TO LOBBY IN 10" line never appears. */
+  $('endAuto').dataset.txt = '';
   const voting = !!(NET.room && voteBegin(win));
   if (voting) {
     $('btnAgain').textContent = 'DEPLOY NOW';
