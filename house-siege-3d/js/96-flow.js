@@ -204,7 +204,7 @@ function beginLobbyReturn() {
 function cancelLobbyReturn() {
   LOBBY_RETURN.on = false;
   const el = $('endAuto');
-  if (el) el.textContent = '';
+  if (el) { el.textContent = ''; el.dataset.txt = ''; }
 }
 
 function updateLobbyReturn(dt) {
@@ -215,7 +215,11 @@ function updateLobbyReturn(dt) {
   if (el) {
     const n = Math.max(0, Math.ceil(LOBBY_RETURN.t));
     const txt = 'RETURNING TO LOBBY IN <b>' + n + '</b>';
-    if (el.dataset.txt !== txt) { el.innerHTML = txt; el.dataset.txt = txt; }
+    /* also guard on the live text: any other code that clears the card must
+       not be able to leave a stale cache that suppresses the whole countdown */
+    if (el.dataset.txt !== txt || !el.textContent.trim()) {
+      el.innerHTML = txt; el.dataset.txt = txt;
+    }
   }
   if (LOBBY_RETURN.t <= 0) { LOBBY_RETURN.on = false; quitToMenu(); }
 }
