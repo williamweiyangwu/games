@@ -92,13 +92,18 @@
   .cardwrap { width: 98px; text-align: center; position: relative; }
   .advbtn {
     position: absolute; top: -9px; right: -6px; z-index: 3;
-    font-family: inherit; font-size: 8px; letter-spacing: 0; line-height: 1;
-    padding: 3px 5px; border-radius: 8px; cursor: pointer;
+    font-family: inherit; font-size: 9px; letter-spacing: 0; line-height: 1;
+    padding: 4px 7px; border-radius: 9px; cursor: pointer;
     color: #121a10; background: #ffd95e; border: 2px solid #7a5a1f;
     box-shadow: 0 2px 6px rgba(0,0,0,.5);
   }
+  .advbtn:not(.off) { animation: advpulse 1.8s ease-in-out infinite; }
+  @keyframes advpulse {
+    0%, 100% { box-shadow: 0 0 4px rgba(255,217,94,.45); }
+    50% { box-shadow: 0 0 12px 3px rgba(255,217,94,.85); }
+  }
   .advbtn:hover { background: #fff1a8; }
-  .advbtn.off { opacity: .45; }
+  .advbtn.off { opacity: .5; cursor: help; }
   .card .cost.op { background: #7a5a1f; border-color: #ffd95e; }
   .card {
     width: 94px; height: 126px; margin: 0 auto;
@@ -317,7 +322,7 @@
   <div id="fit">
     <div id="stage">
       <header>
-        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v25</span></h1>
+        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v26</span></h1>
         <div id="turnbar">Player 1's Turn</div>
       </header>
 
@@ -1903,7 +1908,11 @@ function selectAttacker(uidx) {
   var pl = S.players[S.cur];
   var inst = pl.board[uidx];
   if (!inst) return;
-  if (!inst.canAttack) { log(inst.name + " has already acted this turn."); return; }
+  if (!inst.canAttack) {
+    if (inst.justPlayed && inst.line !== "front") { moveToFront(uidx); return; }
+    log(inst.name + " has already acted this turn.");
+    return;
+  }
   var op = inst.op || 1;
   if (pl.res < op) { log(inst.name + " needs " + op + " resource to attack."); return; }
   if (S.attackSel === uidx) { S.attackSel = null; }
@@ -1912,7 +1921,9 @@ function selectAttacker(uidx) {
   if (S.attackSel !== null) {
     var targets = legalTargets(pl.board[S.attackSel]);
     if (!targets.units.length && !targets.hq) {
-      log(inst.name + " has no targets. Advance to the frontline to reach the enemy.");
+      S.attackSel = null;
+      if (inst.line !== "front") { moveToFront(uidx); }
+      else { log(inst.name + " has no targets."); render(); }
       return;
     }
     var desc = targets.units.length ? targets.units.map(function (u) { return u.name; }).join(", ") : "none";
@@ -2076,14 +2087,16 @@ function boardHTML(pl, role, lineFilter, ownerP) {
     var hasskill = (inst.type !== "order" && DEFS[inst.key].fx) ? " hasskill" : "";
 
     var adv = "";
-    if (mine && canAct() && inst.line !== "front" && !inst.acted &&
-        fOwner !== other(cur) && frontCount(cur) < MAX_FRONT) {
+    if (mine && canAct() && inst.line !== "front") {
       var op = inst.op || 1;
-      var offCls = (pl.res < op || inst.justPlayed) ? " off" : "";
-      var advTip = inst.justPlayed
-        ? "Deployed this turn \\u2014 cannot advance until next turn"
-        : "Advance to the frontline (action cost " + op + ")";
-      adv = '<button class="advbtn' + offCls + '" title="' + advTip + '" onclick="moveToFront(' + i + ')">\u25b2 ' + op + '</button>';
+      var blockReason = "";
+      if (inst.justPlayed) blockReason = "Deployed this turn - cannot advance until next turn";
+      else if (inst.acted) blockReason = "Already acted this turn";
+      else if (fOwner === other(cur)) blockReason = "The enemy holds the frontline - destroy their frontline units first";
+      else if (frontCount(cur) >= MAX_FRONT) blockReason = "The frontline is full (5)";
+      else if (pl.res < op) blockReason = "Not enough resources to advance (needs " + op + ")";
+      var advTip = blockReason || ("Advance to the frontline (action cost " + op + ")");
+      adv = '<button class="advbtn' + (blockReason ? " off" : "") + '" title="' + advTip + '" onclick="moveToFront(' + i + ')">\u25b2 ' + op + '</button>';
     }
 
     html += '<div class="cardwrap"><div class="' + cls + hasskill + '"' + attm + ' title="' + DEFS[inst.key].text + '">' +
@@ -2144,7 +2157,11 @@ function render() {
   var f0 = frontCount(0), f1 = frontCount(1);
   var fOwner = f0 > 0 ? 0 : (f1 > 0 ? 1 : null);
   var fCls = fOwner === null ? "open" : (fOwner === cur ? "mine" : "foe");
-  var fTxt = fOwner === null ? "UNCONTESTED" : (fOwner === cur ? "YOURS" : "ENEMY") + "  (" + (fOwner === 0 ? f0 : f1) + "/" + MAX_FRONT + ")";
+  var fCount = fOwner === 0 ? f0 : f1;
+  var fTxt;
+  if (fOwner === null) fTxt = "UNCONTESTED - advance a support unit to seize it";
+  else if (fOwner === cur) fTxt = "YOURS  (" + fCount + "/" + MAX_FRONT + ")";
+  else fTxt = "ENEMY  (" + fCount + "/" + MAX_FRONT + ") - CLEAR THEM TO ADVANCE";
   var frontUnits = boardHTML(S.players[0], 0 === cur ? 'mine' : 'foe', 'front', 0) +
                    boardHTML(S.players[1], 1 === cur ? 'mine' : 'foe', 'front', 1);
   var midHTML = '<div class="frontbar ' + fCls + '">FRONTLINE \u00b7 ' + fTxt + '</div>' +
@@ -2195,7 +2212,7 @@ var TUT_STEPS = [
   { t: "2. RESOURCES & TURNS", h: "<ul><li>Every turn you gain <b>+1 resource</b> (up to 12), so bigger cards unlock as the game goes on.</li><li>Cards you can afford <b>glow gold</b> \u2014 click one to play it. Cards you can't pay for look dark.</li><li><b>END TURN</b> passes play \u2014 in LOCAL the other player takes the screen, in VS AI the computer acts, in ONLINE you wait for your opponent.</li></ul>" },
   { t: "3. NATIONS", h: "<p>There are <b>5 nations</b>, each with its own <b>exclusive deck</b> of cards based on its real WW2 weapons. There are <b>no national buffs</b> \u2014 a nation is defined purely by its cards. Pick yours with the <b>NATION</b> button.</p><ul><li><b>USA</b> \u2605 \u2014 industrial might: Shermans, P-51s, B-17s, Marines.</li><li><b>UK</b> \u265b \u2014 Commonwealth: Spitfires, Commandos, radar, steady Guards.</li><li><b>GERMANY</b> \u2720 \u2014 Blitzkrieg: fast Panzers, Stukas, heavy Tigers.</li><li><b>USSR</b> \u262d \u2014 endless numbers: T-34s, Katyusha rockets, human waves.</li><li><b>JAPAN</b> \u2600 \u2014 aggressive air: cheap Zeros, banzai, kamikaze.</li></ul>" },
   { t: "4. UNITS & ACTION COST", h: "<p>Units are deployed into your <b>support line</b> (max 4). The blue circle in hand is the <b>deployment cost</b>. Once on the field the circle turns amber and shows the unit's <b>action cost</b> \u2014 the extra resource you pay every time it <b>moves or attacks</b>.</p><ul><li><b>Haste</b> \u2014 can attack the turn it is played.</li><li><b>Guard</b> \u2014 enemies must fight it first; it shields your HQ and support line.</li><li><b>Air</b> \u2014 ignores Guard, ignores the frontline and can always strike the HQ.</li><li><b>Battlecries</b> \u2014 many units have an effect on play: healing your HQ, damaging the enemy HQ or their units, drawing cards, or giving your other units +1 attack.</li></ul>" },
-  { t: "5. THE FRONTLINE", h: "<p>The battlefield has three zones: <b>your support line</b>, the shared <b>frontline</b>, and the <b>enemy support line</b>. Newly deployed units always arrive in your support line.</p><ul><li>Only <b>one side can hold the frontline</b> at a time (max 5 units). To take it, destroy any enemy frontline units first.</li><li>Click the <b>\u25b2 button</b> on one of your support units to advance it. It costs that unit's <b>action cost</b> and uses its action for the turn. A unit <b>cannot advance on the turn it is deployed</b>.</li><li>While you hold the frontline, your enemy cannot advance \u2014 and your frontline units can hit their support line and HQ.</li></ul>" },
+  { t: "5. THE FRONTLINE", h: "<p>The battlefield has three zones: <b>your support line</b>, the shared <b>frontline</b>, and the <b>enemy support line</b>. Newly deployed units always arrive in your support line.</p><ul><li>Only <b>one side can hold the frontline</b> at a time (max 5 units). To take it, destroy any enemy frontline units first.</li><li>Click the <b>\u25b2 button</b> on one of your support units (or just click the unit card) to advance it. It costs that unit's <b>action cost</b> and uses its action for the turn. A unit <b>cannot advance on the turn it is deployed</b>.</li><li>While you hold the frontline, your enemy cannot advance \u2014 and your frontline units can hit their support line and HQ.</li></ul>" },
   { t: "6. ATTACKING", h: "<ul><li>Click your unit, then click an enemy unit or the enemy HQ. Every attack costs the unit's <b>action cost</b>.</li><li>Each unit acts <b>once per turn</b> (move <i>or</i> attack). When two units fight, <b>both</b> deal their attack to each other.</li><li><b>Support-line units</b> can only reach the enemy <b>frontline</b>. <b>Frontline units</b> can reach the enemy <b>support line and HQ</b>.</li><li><b>Guard</b> units must be fought first. <b>Air</b> units ignore Guard and can always hit the HQ.</li><li>A newly deployed unit cannot <b>move or attack</b> that turn. A <b>Haste</b> unit may attack, but still cannot advance until your next turn.</li></ul>" },
   { t: "7. ORDERS", h: "<p>Orders are one-shot cards \u2014 they resolve, then vanish. A played order is shown in the box on the left for <b>2 seconds</b> before its effect takes place. Orders ignore the frontline and can strike any enemy unit. Each nation has its own orders. The shared effects are:</p><ul><li><b>Damage a unit</b> \u2014 click the order, then pick an enemy unit.</li><li><b>Damage the enemy HQ</b> \u2014 a direct strike.</li><li><b>Damage all enemy units</b> \u2014 a sweeping barrage (hits the HQ if their board is empty).</li><li><b>Heal your HQ</b> \u2014 recover hit points.</li><li><b>Draw cards</b> \u2014 refill your hand.</li><li><b>Gain resource</b> \u2014 bank energy for bigger plays.</li><li><b>Rally</b> \u2014 all your units can attack again.</li></ul>" },
   { t: "8. DECK BUILDER", h: "<ul><li>Open <b>DECK</b> to customize your cards with the <b>+</b> and <b>-</b> buttons \u2014 each row shows a card's <b>deploy cost</b>, <b>action cost</b> (units) and <b>attack/HP</b>.</li><li>Each nation keeps its <b>own saved deck</b>. In LOCAL, use the <b>PLAYER 1 / PLAYER 2</b> toggle to build a deck for either player.</li><li>A deck must have <b>exactly 40 cards</b>, with at most <b>3 copies</b> of any card.</li><li><b>USE DEFAULT</b> restores the standard 40-card deck, <b>SAVE</b> keeps your changes, <b>CLOSE</b> cancels.</li></ul>" },
