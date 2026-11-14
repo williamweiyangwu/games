@@ -500,14 +500,21 @@ function buildWorld() {
     wallZ(-MH, -MH, MH, 0, PH, [], PT, W.wall);
 
     const capY = PH - 0.16, skirtY = 0.26;
+    /* A 0.52 m skirting board and a painted 1.1 m floor band are architecture:
+       indoors they make the arena read as a room. At the foot of a hedge or a
+       sandstone fin they read as a concrete kerb, so outdoor maps let the
+       ground run straight into the wall and keep only the top cap. */
+    const outdoor = !!preset.pal.style;
     for (const s of [-1, 1]) {
       addBox(0, capY, s * MH, E * 2, 0.32, PT + 0.08, W.cap, { collide: false, shadow: false });
       addBox(s * MH, capY, 0, PT + 0.08, 0.32, MH * 2, W.cap, { collide: false, shadow: false });
-      addBox(0, skirtY, s * MH, E * 2, 0.52, PT + 0.08, W.trim, { collide: false, shadow: false });
-      addBox(s * MH, skirtY, 0, PT + 0.08, 0.52, MH * 2, W.trim, { collide: false, shadow: false });
-      /* a band on the floor just inside the wall, so the edge is drawn */
-      addBox(0, 0.02, s * (MH - 0.75), MH * 2 - 1.5, 0.04, 1.1, W.trim, { collide: false, shadow: false });
-      addBox(s * (MH - 0.75), 0.02, 0, 1.1, 0.04, MH * 2 - 1.5, W.trim, { collide: false, shadow: false });
+      if (!outdoor) {
+        addBox(0, skirtY, s * MH, E * 2, 0.52, PT + 0.08, W.trim, { collide: false, shadow: false });
+        addBox(s * MH, skirtY, 0, PT + 0.08, 0.52, MH * 2, W.trim, { collide: false, shadow: false });
+        /* a band on the floor just inside the wall, so the edge is drawn */
+        addBox(0, 0.02, s * (MH - 0.75), MH * 2 - 1.5, 0.04, 1.1, W.trim, { collide: false, shadow: false });
+        addBox(s * (MH - 0.75), 0.02, 0, 1.1, 0.04, MH * 2 - 1.5, W.trim, { collide: false, shadow: false });
+      }
     }
   }
 
@@ -789,7 +796,7 @@ function dressWorld(preset) {
   if (!cfg) return;
   const W = mapMats(MAP.id);
   const rnd = mulberry32((preset.seed ^ 0x9e3779b9) >>> 0);
-  const stats = { trees: 0, bushes: 0, ferns: 0, rocks: 0, anchors: [], colsBefore: G.colliders.length, colsAfter: 0 };
+  const stats = { trees: 0, cacti: 0, bushes: 0, ferns: 0, rocks: 0, anchors: [], colsBefore: G.colliders.length, colsAfter: 0 };
   G.decor = stats;
 
   /* Walk every merged wall run and plant along it. A short run gets a prop
@@ -820,7 +827,7 @@ function dressWorld(preset) {
   if (cfg.cactus) {
     along(cfg.cactus, p => {
       cactus(p.x, p.z, 4.6 + rnd() * 2.4, rnd, W);
-      stats.trees++; stats.anchors.push([p.x, p.z]);
+      stats.cacti++; stats.anchors.push([p.x, p.z]);
     });
   }
   if (cfg.bush) {
