@@ -99,10 +99,11 @@ body.ua-active #toasts{opacity:0;transition:opacity .15s}
 
 /* ---------- first-person use animation ---------- */
 /* The supply you just used is held up in front of the camera. Three separate
-   rigs (bottle / tin / cell) animate from their own keyframes; JS only drives
-   the progress bar, the phase captions and the sound cues. */
-#useanim{position:fixed;inset:0;z-index:48;pointer-events:none;opacity:0;
-  transition:opacity .16s;overflow:hidden}
+   rigs (bottle / tin / cell). JS owns one clock for the prop's keyframes,
+   the overlay's visibility, the progress bar, the captions and the sounds. */
+/* The overlay's visibility is driven by the same JS clock as the prop, so it
+   cannot sit at opacity 0 while the progress bar is already half-way done. */
+#useanim{position:fixed;inset:0;z-index:48;pointer-events:none;opacity:0;overflow:hidden}
 #useanim.on{opacity:1}
 #useanim .ua-vig{position:absolute;inset:0;
   background:radial-gradient(ellipse at 50% 62%,transparent 26%,rgba(0,0,0,.68) 100%)}
@@ -115,7 +116,7 @@ body.ua-active #toasts{opacity:0;transition:opacity .15s}
 
 .ua-stage{position:absolute;left:50%;bottom:0;width:min(460px,86vw);height:min(72vh,560px);
   transform:translateX(-50%)}
-.ua-prop{position:absolute;left:50%;bottom:7%;width:210px;height:300px;
+.ua-prop{position:absolute;left:50%;bottom:16%;width:210px;height:300px;
   margin-left:-105px;transform-origin:50% 88%;opacity:0}
 .ua-prop svg{width:100%;height:100%;overflow:visible;
   filter:drop-shadow(0 18px 26px rgba(0,0,0,.78))}
@@ -140,7 +141,7 @@ body.ua-active #toasts{opacity:0;transition:opacity .15s}
   52%{transform:translateY(-10px) rotate(-66deg) scale(1.04)}
   55%{transform:translateY(-5px) rotate(-62deg) scale(1.04)}
   74%{transform:translateY(-16px) rotate(-68deg) scale(1.03)}
-  88%{transform:translateY(12px) rotate(-16deg) scale(1)}
+  88%{opacity:1;transform:translateY(12px) rotate(-16deg) scale(1)}
   100%{opacity:0;transform:translateY(150px) rotate(10deg) scale(.88)}}
 #useanim[data-kind="water"].on .ua-liquid{animation:ua-drain 1.65s linear both}
 @keyframes ua-drain{0%,28%{transform:scaleY(1)}40%{transform:scaleY(.84)}56%{transform:scaleY(.5)}72%{transform:scaleY(.17)}86%,100%{transform:scaleY(.05)}}
@@ -155,7 +156,7 @@ body.ua-active #toasts{opacity:0;transition:opacity .15s}
   0%{opacity:0;transform:translateY(160px) rotate(9deg) scale(.9)}
   14%{opacity:1;transform:translateY(10px) rotate(-3deg) scale(1)}
   30%,76%{transform:translateY(0) rotate(-6deg) scale(1)}
-  88%{transform:translateY(16px) rotate(-2deg) scale(1)}
+  88%{opacity:1;transform:translateY(16px) rotate(-2deg) scale(1)}
   100%{opacity:0;transform:translateY(160px) rotate(9deg) scale(.9)}}
 #useanim[data-kind="food"].on .ua-lid{animation:ua-lid 1.75s ease-out both}
 @keyframes ua-lid{0%,16%{transform:translateY(0) rotate(0) scaleY(1)}30%,100%{transform:translate(-34px,-30px) rotate(-58deg) scaleY(.5)}}
@@ -178,7 +179,7 @@ body.ua-active #toasts{opacity:0;transition:opacity .15s}
   0%{opacity:0;transform:translateY(140px) rotate(12deg) scale(.9)}
   16%{opacity:1;transform:translateY(14px) rotate(-4deg) scale(1)}
   56%{transform:translateY(0) rotate(-8deg) scale(1.02)}
-  88%{transform:translateY(12px) rotate(-2deg) scale(1)}
+  88%{opacity:1;transform:translateY(12px) rotate(-2deg) scale(1)}
   100%{opacity:0;transform:translateY(140px) rotate(12deg) scale(.9)}}
 #useanim[data-kind="battery"].on .ua-cell{animation:ua-cell 1.55s ease-in-out both}
 @keyframes ua-cell{0%,20%{transform:translateX(96px)}52%,88%{transform:translateX(0)}100%{transform:translateX(96px)}}
@@ -187,7 +188,8 @@ body.ua-active #toasts{opacity:0;transition:opacity .15s}
 #useanim[data-kind="battery"].on .ua-led{animation:ua-led 1.55s linear both}
 @keyframes ua-led{0%,54%{opacity:.12}62%,100%{opacity:1}}
 
-.ua-hud{position:absolute;left:50%;bottom:7%;transform:translateX(-50%);width:min(420px,86vw);text-align:center}
+.ua-hud{position:absolute;left:50%;bottom:1.5%;transform:translateX(-50%);width:min(420px,86vw);text-align:center;
+  padding:6px 10px;background:linear-gradient(90deg,transparent,rgba(0,0,0,.62) 18%,rgba(0,0,0,.62) 82%,transparent)}
 .ua-title{font-size:13px;letter-spacing:6px;color:#f0e2b0;text-shadow:0 0 22px rgba(216,194,124,.65)}
 .ua-bar{margin:12px auto 0;width:100%;height:3px;background:rgba(216,194,124,.16);overflow:hidden}
 .ua-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#8a6a30,#e8c47f);
@@ -5365,10 +5367,10 @@ el.inv.addEventListener('pointerdown',e=>{
 });
 /* ══════════════════════════════════════════════════════════════
    CONSUME ANIMATIONS — a first-person prop, a progress bar and a stat pop.
-   The world is held still for ~1.7s so the player can actually watch it:
+   The world is held still for ~2s so the player can actually watch it:
    previously useItem() only changed numbers behind the inventory panel.
    ══════════════════════════════════════════════════════════════ */
-const USE_DUR={water:1650,food:1750,battery:1550};
+const USE_DUR={water:2100,food:2200,battery:1950};
 const USE_META={
   water:{title:'DRINKING',sub:'WATER · STAMINA RESTORED',gain:'STAMINA FULL',col:'#8fd8e8'},
   food:{title:'EATING',sub:'CANNED FOOD · +30 HP',gain:'+30 HP',col:'#e8c47f'},
@@ -5436,6 +5438,36 @@ const USE_PROP={
 };
 const usePropSVG=kind=>USE_PROP[kind]||'';
 
+/* CSS keyframes start on the browser's rendering timeline. A heavy WebGL
+   frame, a hidden tab or the first paint of a freshly injected SVG can hold
+   that timeline still for a second, while a wall-clock timer keeps running.
+   The old code therefore removed the overlay at 100% progress with every
+   keyframe still at currentTime 0 — the player saw a toast and no animation.
+   Take the animations off the browser clock and drive them from our own
+   progress instead: visual state and lifetime are now the same clock. */
+function collectUseAnims(root){
+  const out=[];
+  if(!root||!root.getAnimations)return out;
+  for(const a of root.getAnimations({subtree:true})){
+    if(!a.animationName)continue;              // CSS transitions are not keyframes
+    let d=0;
+    try{d=Number(a.effect&&a.effect.getTiming&&a.effect.getTiming().duration);}catch(_){}
+    if(!isFinite(d)||d<=0)continue;
+    try{a.pause();a.currentTime=0;}catch(_){}
+    out.push({a,d});
+  }
+  return out;
+}
+function driveUseAnims(root,p){
+  if(!root)return;
+  root.style.opacity=String(Math.min(1,p/.05,(1-p)/.10));
+  if(!useAnim.anims.length&&root.getAnimations)useAnim.anims=collectUseAnims(root);
+  for(const {a,d} of useAnim.anims){
+    if(a.playState==='idle')continue;
+    try{a.currentTime=p*d;}catch(_){}
+  }
+}
+
 function beginUseAnim(kind){
   const m=USE_META[kind];if(!m)return;
   const root=$('#useanim');if(!root)return;
@@ -5451,8 +5483,11 @@ function beginUseAnim(kind){
   $('#ua-bar').style.width='0%';
   // force a reflow so back-to-back uses restart every CSS keyframe
   root.classList.remove('on');void root.offsetWidth;root.classList.add('on');
+  void root.offsetWidth;                 // flush styles before collecting animations
   document.body.classList.add('ua-active');
-  useAnim={kind,t0:performance.now(),dur:USE_DUR[kind],p:0,cues:{},phase:''};
+  root.style.opacity='0';
+  useAnim={kind,t0:performance.now(),dur:USE_DUR[kind],p:0,cues:{},phase:'',
+    anims:collectUseAnims(root),frames:0};
   clearInterval(useAnimTimer);
   useAnimTimer=setInterval(()=>updateUseAnim(performance.now()),40);
 }
@@ -5460,11 +5495,14 @@ function cueUse(name,at,fn){
   if(!useAnim||useAnim.p<at||useAnim.cues[name])return;
   useAnim.cues[name]=true;fn();
 }
-function updateUseAnim(nowW){
+function updateUseAnim(nowW,fromFrame){
   if(!useAnim)return;
+  if(fromFrame)useAnim.frames++;
   const p=clamp((nowW-useAnim.t0)/useAnim.dur,0,1);
   useAnim.p=p;
+  const root=$('#useanim');
   const bar=$('#ua-bar');if(bar)bar.style.width=(p*100).toFixed(1)+'%';
+  driveUseAnims(root,p);
   let phase=USE_PHASE[useAnim.kind][0][1];
   for(const[at,label]of USE_PHASE[useAnim.kind])if(p>=at)phase=label;
   if(phase!==useAnim.phase){useAnim.phase=phase;const sub=$('#ua-sub');if(sub)sub.textContent=phase;}
@@ -5484,13 +5522,21 @@ function updateUseAnim(nowW){
     cueUse('spark',.51,()=>AU.cellSpark());
     cueUse('hum',.64,()=>AU.torchUp());
   }
-  if(p>=1)endUseAnim();
+  /* If the renderer has not painted a single frame yet, holding the finished
+     pose gives the prop one last chance to appear. Never stall a hidden tab
+     for more than twice the animation length. */
+  if(p>=1){
+    if(useAnim.frames<2&&nowW-useAnim.t0<useAnim.dur*2)return;
+    endUseAnim();
+  }
 }
 function endUseAnim(silent){
+  if(!useAnim)return;
   clearInterval(useAnimTimer);useAnimTimer=0;
   document.body.classList.remove('ua-active');
   const root=$('#useanim');
-  if(root)root.classList.remove('on');
+  if(root){root.classList.remove('on');root.style.opacity='';}
+  useAnim.anims.length=0;
   useAnim=null;
   if(!silent&&state==='playing'&&!invOpen&&!opsOpen&&!pwOpen&&!noteOpen&&!touchMode)requestLock();
 }
@@ -7435,9 +7481,9 @@ function tick(){
   // the network runs even while the world is frozen, so a paused host keeps
   // answering the room instead of going silent
   NET.tick(dt);
-  // the supply animation is wall-clock driven: it plays at the same speed on
-  // a 144Hz monitor and under SwiftShader, where game dt is clamped to .08
-  updateUseAnim(performance.now());
+  // the supply animation is wall-clock driven, and that clock now also drives
+  // every CSS keyframe: a 144Hz monitor and SwiftShader show the same pose
+  updateUseAnim(performance.now(),true);
 
   if(state==='playing'){
     const nowW=performance.now();
