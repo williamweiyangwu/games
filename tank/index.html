@@ -275,7 +275,7 @@
 </div></div>
 <div id="online"><div class="panel">
   <h2>ONLINE</h2>
-  <p class="sub" id="netSub">Host a room or join a friend's code — peer-to-peer, no account needed.</p>
+  <p class="sub" id="netSub">Host a room or join a friend's code — live over a free MQTT relay, no account needed.</p>
   <div id="netEntry">
     <div class="tabs">
       <button class="tab on" data-tab="create">CREATE ROOM</button>
@@ -397,7 +397,7 @@
 <script type="importmap">
 { "imports": { "three": "./lib/three.module.min.js" } }
 </script>
-<script src="./lib/peerjs.min.js"></script>
+<!-- online transport is MQTT over WebSocket; no external library needed -->
 <script type="module">
 import * as THREE from 'three';
 /* ---- tuning constants (declared up front: makeHQ() runs below) ---- */
@@ -2123,16 +2123,67 @@ function hud(){
   if(shopEl.classList.contains('on')) refreshShop();
 }
 /* ============================================================
-   ONLINE — peer-to-peer, host-authoritative (PeerJS / WebRTC)
-=========================================================== */
+   ONLINE — host-authoritative over a free MQTT relay (WebSocket,
+   subprotocol "mqtt"). The host runs the simulation and broadcasts
+   snapshots on a room topic; guests send inputs back. The public
+   room directory is a shared MQTT topic too — no backend needed.
+============================================================ */
 const NKEY = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-const NET_HUB_ID = 'tankwar-directory-v1';   // well-known peer that lists public rooms
+const NET_RELAY = (new URLSearchParams(location.search).get('relay')) || 'wss://broker.emqx.io:8084/mqtt';
+const NET_DIR = 'tankwar/dir';
+const NET_TOPIC = code => 'tankwar/'+code;
 const netEl = el('online');
 const netBadge = el('netbadge');
 const netBulletMeshes = new Map();
+
+/* ---- minimal MQTT 3.1.1 client over WebSocket (qos 0) ---- */
+function mqttConnect(url, id, h){
+  let ws;
+  try{ ws = new WebSocket(url, 'mqtt'); }catch(e){ if(h.onerror) h.onerror(); return null; }
+  ws.binaryType = 'arraybuffer';
+  const c = { ws, connected:false, closed:false };
+  let buf = new Uint8Array(0), pid = 0;
+  const enc = s => new TextEncoder().encode(s);
+  const dec = b => new TextDecoder().decode(b);
+  const rl = n => { const o=[]; do{ let d=n%128; n=Math.floor(n/128); if(n) d|=128; o.push(d); }while(n); return o; };
+  const u16 = n => new Uint8Array([n>>8&255, n&255]);
+  const cat = (...a)=>{ let l=0; for(const x of a) l+=x.length; const o=new Uint8Array(l); let p=0; for(const x of a){ o.set(x,p); p+=x.length; } return o; };
+  ws.onopen = ()=>{
+    const cid = enc(id);
+    const vh = new Uint8Array([0,4,77,81,84,84,4,2,0,60]);   // "MQTT", level 4, clean session, keepalive 60
+    try{ ws.send(cat(new Uint8Array([0x10]), new Uint8Array(rl(vh.length+cid.length+2)), vh, u16(cid.length), cid)); }catch(e){}
+  };
+  ws.onmessage = ev=>{
+    const m = new Uint8Array(ev.data);
+    buf = cat(buf, m);
+    while(buf.length>=2){
+      let i=1, mult=1, len=0;
+      for(; i<buf.length; i++){ const b=buf[i]; len+=(b&127)*mult; mult*=128; if(!(b&128)) break; }
+      if(i>=buf.length) return;
+      const end=i+1+len;
+      if(buf.length<end) return;
+      const type=buf[0]>>4, qos=(buf[0]>>1)&3, body=buf.slice(i+1,end);
+      buf=buf.slice(end);
+      if(type===2){ c.connected=true; if(h.onconnect) h.onconnect(body[1]); }
+      else if(type===3){
+        const tl=(body[0]<<8)|body[1];
+        const topic=dec(body.slice(2,2+tl));
+        let off=2+tl; if(qos>0) off+=2;
+        if(h.onmessage) h.onmessage(topic, dec(body.slice(off)));
+      }
+    }
+  };
+  ws.onerror = ()=>{ if(h.onerror) h.onerror(); };
+  ws.onclose = ()=>{ c.connected=false; c.closed=true; if(h.onclose) h.onclose(); };
+  c.publish = (topic, str)=>{ if(ws.readyState!==1) return; const t=enc(topic), d=enc(str); const body=cat(u16(t.length), t, d); try{ ws.send(cat(new Uint8Array([0x30]), new Uint8Array(rl(body.length)), body)); }catch(e){} };
+  c.subscribe = (topic)=>{ if(ws.readyState!==1) return; pid=(pid+1)&0xffff; const t=enc(topic); const body=cat(u16(pid), u16(t.length), t, new Uint8Array([0])); try{ ws.send(cat(new Uint8Array([0x82]), new Uint8Array(rl(body.length)), body)); }catch(e){} };
+  c.close = ()=>{ try{ ws.send(new Uint8Array([0xE0,0x00])); }catch(e){} try{ ws.close(); }catch(e){} };
+  return c;
+}
+
 const NET = {
   mode:'off', role:null, state:'menu',
-  peer:null, conns:{}, hostConn:null,
+  mq:null, conns:{}, hostConn:null, clientId:'',
   code:'', name:'PLAYER', myId:'', localId:'',
   roster:[], selMode:'skirmish', selAi:'normal', selKey:'medium',
   inputs:{}, snap:null, snapT:0, seq:0, ping:0, pingT:0, inAt:0,
@@ -2140,8 +2191,8 @@ const NET = {
   events:[], nextEv:1, evSeen:0, bulletId:1,
   watchdog:null, connOpen:false,
   visibility:'public',
-  dirRooms:{}, dirBusy:false, dirError:'',
-  hubPeer:null, hubConns:{}, hubConn:null, hubRooms:{}, hubPending:null, hubClientPeer:null,
+  dirRooms:{}, dirBusy:false, dirError:'', dirSub:false,
+  lastSeen:{}, hostSeen:0,
 };
 let lastShotSfx=0;
 function escapeHtml(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -2154,122 +2205,111 @@ function netWatchdog(label){
     NET.watchdog=null;
     if(NET.state==='lobby' || NET.state==='playing' || NET.connOpen) return;
     netSetMsg('netMsg', label+' timed out. Check the room code and your internet, then try again.', '#ff7a7a');
-    try{ if(NET.peer) NET.peer.destroy(); }catch(e){}
-    NET.peer=null; NET.connOpen=false;
+    netRelayClose();
   }, 22000);
 }
-function netCancelPeer(){
+function netRelayClose(){
   netClearWatchdog();
-  try{ if(NET.peer) NET.peer.destroy(); }catch(e){}
-  NET.peer=null; NET.hostConn=null; NET.conns={}; NET.inputs={}; NET.connOpen=false;
+  if(NET.mq){ try{ NET.mq.close(); }catch(e){} }
+  NET.mq=null; NET.hostConn=null; NET.conns={}; NET.inputs={}; NET.connOpen=false; NET.dirSub=false;
 }
-/* ---- server-free room directory ---------------------------------------
-   A well-known "directory" peer keeps the list of public rooms. Public
-   hosts connect to it to register; browsers connect to it to list. If no
-   directory is reachable when browsing, this browser claims the id and
-   serves an (initially empty) list. Best effort — no backend required. */
-function netSend(conn,msg){ try{ if(conn && conn.open) conn.send(msg); }catch(e){} }
+function netCancelPeer(){ netRelayClose(); }
 function netSelf(){ return NET.roster.find(m=>m.id===NET.localId) || null; }
 function netHubInfo(){
   const self=netSelf();
   return { code:NET.code, host:self?self.name:NET.name, players:NET.roster.length,
            max:10, mode:NET.selMode, map:NET.selMap };
 }
+/* ---- transport: room topics + shared directory topic ---- */
+function netRoomTop(s){ return NET_TOPIC(NET.code)+'/'+s; }
+function netPub(topic, obj){ if(NET.mq) NET.mq.publish(topic, JSON.stringify(obj)); }
+function netBroadcast(msg){ if(NET.role==='host') netPub(netRoomTop('h2c'), msg); }
+function netSendPeer(peer, msg){ netPub(netRoomTop('h2c'), Object.assign({to:peer}, msg)); }
+function netGuestSend(msg){ netPub(netRoomTop('c2h'), Object.assign({from:NET.localId}, msg)); }
+function mkVConn(peer){ return { peer, open:true, send(m){ netSendPeer(peer,m); }, close(){ hostDrop(peer); } }; }
+function netSubscribeForRole(){
+  if(!NET.mq || !NET.mq.connected) return;
+  if(!NET.dirSub){ NET.dirSub=true; NET.mq.subscribe(NET_DIR); }
+  if(!NET.code) return;
+  if(NET.role==='host') NET.mq.subscribe(netRoomTop('c2h'));
+  else if(NET.role==='guest') NET.mq.subscribe(netRoomTop('h2c'));
+}
+function netOnMessage(topic, str){
+  let msg; try{ msg=JSON.parse(str); }catch(e){ return; }
+  if(topic===NET_DIR){ netApplyDir(msg); return; }
+  const base=NET_TOPIC(NET.code);
+  if(NET.role==='host' && topic===base+'/c2h'){
+    const from=msg.from; if(!from) return;
+    NET.lastSeen[from]=Date.now();
+    if(!NET.conns[from]) NET.conns[from]=mkVConn(from);
+    hostOnData(NET.conns[from], msg);
+  } else if(NET.role==='guest' && topic===base+'/h2c'){
+    if(msg.to && msg.to!==NET.localId) return;
+    NET.hostSeen=Date.now();
+    guestOnData(msg);
+  }
+}
+function netConnect(cb){
+  if(NET.mq && NET.mq.connected){ if(cb) cb(); return; }
+  if(NET.mq){ try{ NET.mq.close(); }catch(e){} NET.mq=null; }
+  if(!NET.clientId) NET.clientId = 'tw-'+Math.random().toString(36).slice(2,10)+Math.random().toString(36).slice(2,6);
+  NET.mq = mqttConnect(NET_RELAY, NET.clientId, {
+    onconnect(rc){
+      if(rc!==0){ NET.connOpen=false; return; }
+      NET.connOpen=true;
+      if(!NET.localId) NET.localId=NET.clientId;
+      if(NET.role==='host') NET.myId=NET.localId;
+      netSubscribeForRole();
+      if(cb) cb();
+    },
+    onmessage(topic,str){ netOnMessage(topic,str); },
+    onerror(){ NET.connOpen=false; },
+    onclose(){ netOnClose(); },
+  });
+}
+function netOnClose(){
+  NET.connOpen=false;
+  if(!NET.code || !NET.role) return;
+  if(NET.state==='lobby' || NET.state==='playing'){
+    const role=NET.role, code=NET.code;
+    setTimeout(()=>{
+      if(NET.mq && NET.mq.connected) return;
+      if(NET.role!==role || NET.code!==code) return;
+      netSetMsg('lobbyMsg','Connection lost — reconnecting…','#ff7a7a');
+      netConnect(()=>{
+        if(role==='guest'){ netGuestSend({t:'hello', name:NET.name, key:NET.selKey}); netSetMsg('lobbyMsg',''); }
+        else { netBroadcast({t:'roster', roster:NET.roster, mode:NET.selMode, ai:NET.selAi, map:NET.selMap}); netHubRegister(); netSetMsg('lobbyMsg',''); }
+      });
+    }, 1200);
+  }
+}
+/* ---- public-room directory (a shared MQTT topic) ---- */
 function netHubRegister(){
   if(NET.role!=='host' || !NET.code || NET.visibility!=='public' || NET.state!=='lobby') return;
-  netHubConnect(conn=>{ if(conn) netSend(conn,{type:'register', room:netHubInfo()}); });
+  netPub(NET_DIR, {type:'register', room:netHubInfo()});
 }
-function netHubUnregister(){
-  if(NET.code && NET.hubConn) netSend(NET.hubConn,{type:'unregister', code:NET.code});
-}
-function netHubClose(){
-  netHubUnregister();
-  if(NET.hubClientPeer){ try{ NET.hubClientPeer.destroy(); }catch(e){} }
-  NET.hubClientPeer=null; NET.hubConn=null; NET.hubPending=null;
-}
-function netHubConnect(cb){
-  const HubPeer = window.Peer;
-  if(!HubPeer){ if(cb) cb(null); return; }
-  if(NET.hubConn && NET.hubConn.open){ if(cb) cb(NET.hubConn); return; }
-  if(NET.hubPending){ NET.hubPending.push(cb); return; }
-  NET.hubPending=[cb];
-  if(NET.hubClientPeer){ try{ NET.hubClientPeer.destroy(); }catch(e){} }
-  const p = new HubPeer({ debug:0 });
-  NET.hubClientPeer=p;
-  const flush=conn=>{ const cbs=NET.hubPending||[]; NET.hubPending=null; cbs.forEach(f=>{ try{ f&&f(conn); }catch(e){} }); };
-  p.on('open', ()=>{
-    let conn;
-    try{ conn=p.connect(NET_HUB_ID,{reliable:true}); }catch(e){ flush(null); return; }
-    conn.on('open', ()=>{ NET.hubConn=conn; flush(conn); });
-    conn.on('data', msg=>{ if(msg && msg.type==='rooms') netApplyDir(msg.rooms); });
-    conn.on('close', ()=>{ if(NET.hubConn===conn) NET.hubConn=null; });
-    conn.on('error', ()=>{ if(NET.hubConn===conn) NET.hubConn=null; });
-  });
-  p.on('error', ()=>{ NET.hubConn=null; flush(null); });
-}
-function netApplyDir(rooms){
-  NET.dirRooms={};
-  (rooms||[]).forEach(r=>{ if(r && r.code && r.code!==NET.code) NET.dirRooms[r.code]=r; });
+function netHubUnregister(){ if(NET.code) netPub(NET_DIR, {type:'unregister', code:NET.code}); }
+function netHubClose(){ netHubUnregister(); }
+function netPruneDir(){ const now=Date.now(); for(const k in NET.dirRooms){ if(now-(NET.dirRooms[k]._t||0)>20000) delete NET.dirRooms[k]; } }
+function netApplyDir(msg){
+  if(!msg) return;
+  if(msg.type==='register' && msg.room && msg.room.code){
+    if(msg.room.code!==NET.code) NET.dirRooms[msg.room.code]={ ...msg.room, _t:Date.now() };
+  } else if(msg.type==='unregister' && msg.code){ delete NET.dirRooms[msg.code]; }
+  netPruneDir();
   NET.dirBusy=false; NET.dirError='';
   netRenderRoomList();
 }
-function netDirArray(){ return Object.keys(NET.hubRooms).map(k=>NET.hubRooms[k]); }
-function netHubHandle(conn){
-  conn.on('data', msg=>{
-    if(!msg) return;
-    if(msg.type==='register' && msg.room && msg.room.code){
-      NET.hubRooms[msg.room.code]=msg.room; conn.__code=msg.room.code; netHubBroadcast();
-    } else if(msg.type==='unregister'){
-      delete NET.hubRooms[msg.code||conn.__code]; netHubBroadcast();
-    } else if(msg.type==='list'){
-      netSend(conn,{type:'rooms', rooms:netDirArray()});
-    }
-  });
-  conn.on('close', ()=>{ if(conn.__code){ delete NET.hubRooms[conn.__code]; netHubBroadcast(); } });
-}
-function netHubBroadcast(){ for(const id in NET.hubConns) netSend(NET.hubConns[id],{type:'rooms', rooms:netDirArray()}); }
-function netBecomeHub(then){
-  if(NET.hubPeer){ if(then) then(); return; }
-  const HubPeer=window.Peer;
-  if(!HubPeer){ if(then) then(); return; }
-  let ok=false;
-  try{ NET.hubPeer=new HubPeer(NET_HUB_ID,{debug:0}); }
-  catch(e){ NET.hubPeer=null; if(then) then(); return; }
-  NET.hubPeer.on('connection', conn=>{
-    const id='h'+Math.random().toString(36).slice(2);
-    NET.hubConns[id]=conn;
-    conn.on('close', ()=>{ delete NET.hubConns[id]; });
-    netHubHandle(conn);
-  });
-  NET.hubPeer.on('open', ()=>{ ok=true; if(then) then(); });
-  NET.hubPeer.on('error', ()=>{ if(!ok){ try{ NET.hubPeer.destroy(); }catch(x){} NET.hubPeer=null; } if(then) then(); });
-}
-function netBrowse(tries){
-  tries = tries|0;
-  if(typeof Peer==='undefined'){ NET.dirBusy=false; NET.dirError='Networking library unavailable'; netRenderRoomList(); return; }
+function netBrowse(){
+  if(!('WebSocket' in window)){ NET.dirBusy=false; NET.dirError='WebSocket/MQTT unavailable'; netRenderRoomList(); return; }
   NET.dirBusy=true; NET.dirError=''; netRenderRoomList();
-  netHubConnect(conn=>{
-    if(conn){
-      netSend(conn,{type:'list'});
-      setTimeout(()=>{ if(NET.dirBusy){ NET.dirBusy=false; netRenderRoomList(); } },6000);
-    } else if(tries<1){
-      netBecomeHub(()=>netBrowse(tries+1));
-    } else {
-      NET.dirBusy=false; NET.dirError='Room directory unavailable — join by code.'; netRenderRoomList();
-    }
+  netConnect(()=>{
+    netPruneDir();
+    setTimeout(()=>{ netPruneDir(); if(NET.dirBusy){ NET.dirBusy=false; netRenderRoomList(); } }, 3000);
   });
-  setTimeout(()=>{
-    if(NET.dirBusy && !NET.hubConn){
-      NET.dirBusy=false;
-      NET.dirError='Room directory unavailable — join by code.';
-      netRenderRoomList();
-    }
-  },11000);
+  setTimeout(()=>{ if(NET.dirBusy){ NET.dirBusy=false; NET.dirError='Room directory unavailable — join by code.'; netRenderRoomList(); } }, 9000);
 }
-function netRefreshRoomList(){
-  if(NET.hubConn && NET.hubConn.open) netSend(NET.hubConn,{type:'list'});
-  else netBrowse();
-}
+function netRefreshRoomList(){ netBrowse(); }
 function netRenderRoomList(){
   const box=el('roomList'); if(!box) return;
   if(NET.dirBusy){ box.innerHTML='<div class="roomEmpty">Looking for rooms…</div>'; return; }
@@ -2291,7 +2331,7 @@ function r2(v){ return Math.round(v*100)/100; }
 function tankAt(team,slot){ return tanks.find(t=>t.team===team && t.slot===slot); }
 function netEvent(arr){ if(NET.mode!=='host') return; arr.unshift(NET.nextEv++); NET.events.push(arr); if(NET.events.length>60) NET.events.splice(0,NET.events.length-60); }
 function netFeed(txt,col){ addFeed(txt,col); if(NET.mode==='host') netEvent(['f', txt, col]); }
-function netBroadcast(msg){ for(const id in NET.conns){ try{ NET.conns[id].send(msg); }catch(e){} } }
+/* netBroadcast is defined in the MQTT transport block above */
 function showBadge(v){ netBadge.style.display = v?'':'none'; updateBadge(); }
 function updateBadge(){
   if(netBadge.style.display!=='none'){
@@ -2319,7 +2359,7 @@ function showView(v){
   el('netLobby').style.display = v==='lobby'?'':'none';
 }
 function netCreate(){
-  if(typeof Peer==='undefined'){ netSetMsg('netMsg','Networking library failed to load — check your connection'); return; }
+  if(!('WebSocket' in window)){ netSetMsg('netMsg','WebSocket/MQTT is not available in this browser','#ff7a7a'); return; }
   if(NET.state==='lobby' || NET.state==='playing') return;
   netCancelPeer();
   const name=(el('netNameC').value||'PLAYER').trim().slice(0,12)||'PLAYER';
@@ -2328,89 +2368,41 @@ function netCreate(){
   NET.selAi   = (document.querySelector('#netAiRow .dbtn.on')||{}).dataset?.nai || 'normal';
   NET.visibility = (document.querySelector('#netVisRow .dbtn.on')||{}).dataset?.nvis || 'public';
   NET.role='host'; NET.mode='host'; NET.code=genCode();
+  NET.lastSeen={}; NET.conns={}; NET.hostConn=null; NET.localId='';
   netSetMsg('netMsg','Opening room '+NET.code+'…');
-  let peer;
-  try{ peer = new Peer('tw'+NET.code, { debug:1 }); }
-  catch(e){ netSetMsg('netMsg','Could not start networking: '+e.message,'#ff7a7a'); return; }
-  NET.peer=peer;
   netWatchdog('Opening the room');
-  peer.on('open', id=>{
+  netConnect(()=>{
     netClearWatchdog();
-    NET.myId=id; NET.localId=id;
-    NET.roster=[{ id, name, team:0, slot:0, ready:true, host:true, key:NET.selKey }];
+    NET.roster=[{ id:NET.localId, name, team:0, slot:0, ready:true, host:true, key:NET.selKey }];
     enterLobby();
     netSetMsg('netMsg','');
+    netHubRegister();
   });
-  peer.on('connection', hostConn);
-  peer.on('error', e=>{
-    if(e.type==='unavailable-id'){
-      // extremely rare: the generated code is already taken — pick a fresh one and retry
-      netSetMsg('netMsg','Code collision — picking a new room code…');
-      try{ peer.destroy(); }catch(x){}
-      NET.peer=null;
-      setTimeout(netCreate, 500);
-      return;
-    }
-    netClearWatchdog();
-    if(e.type==='network' || e.type==='server-error' || e.type==='socket-error' || e.type==='socket-closed'){
-      netSetMsg('netMsg','Cannot reach the matchmaking server ('+e.type+'). Check your internet and try again.', '#ff7a7a');
-    } else {
-      netSetMsg('netMsg','Network error: '+e.type, '#ff7a7a');
-    }
-  });
-  peer.on('disconnected', ()=>{ try{ peer.reconnect(); }catch(e){} });
 }
 function netJoin(){
-  if(typeof Peer==='undefined'){ netSetMsg('netMsg','Networking library failed to load — check your connection'); return; }
+  if(!('WebSocket' in window)){ netSetMsg('netMsg','WebSocket/MQTT is not available in this browser','#ff7a7a'); return; }
   if(NET.state==='lobby' || NET.state==='playing') return;
   const name=(el('netNameJ').value||'PLAYER').trim().slice(0,12)||'PLAYER';
   const code=(el('netCode').value||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,5);
   if(code.length<5){ netSetMsg('netMsg','Enter the 5-character room code','#ff7a7a'); return; }
   netCancelPeer();
-  NET.name=name; NET.code=code; NET.role='guest'; NET.mode='guest';
+  NET.name=name; NET.code=code; NET.role='guest'; NET.mode='guest'; NET.localId='';
+  NET.hostSeen=Date.now();
   try{ localStorage.setItem('tw-name',name); }catch(e){}
+  NET.hostConn = { peer:null, open:true, send(m){ netGuestSend(m); } };
   netSetMsg('netMsg','Connecting to '+code+'…');
-  let peer;
-  try{ peer = new Peer({ debug:1 }); }
-  catch(e){ netSetMsg('netMsg','Could not start networking: '+e.message,'#ff7a7a'); return; }
-  NET.peer=peer;
   netWatchdog('Connecting to '+code);
-  peer.on('open', ()=>{
-    let c;
-    try{ c = peer.connect('tw'+code, { reliable:true }); }
-    catch(e){ netSetMsg('netMsg','Could not open a connection','#ff7a7a'); return; }
-    NET.hostConn=c;
-    c.on('open', ()=>{
-      NET.connOpen=true; netClearWatchdog();
-      try{ c.send({t:'hello', name, key:NET.selKey}); }catch(e){}
-      netSetMsg('netMsg',''); enterLobby();
-    });
-    c.on('data', guestOnData);
-    c.on('close', ()=>{
-      NET.connOpen=false;
-      if(NET.state==='lobby' || NET.state==='playing'){
-        netSetMsg('lobbyMsg','Host disconnected','#ff7a7a');
-        setTimeout(()=>{ netLeave(); netEl.classList.remove('on'); modeEl.classList.remove('off'); },1400);
-      } else {
-        netSetMsg('netMsg','Could not connect to room '+code+'. Check the code and try again.','#ff7a7a');
-      }
-    });
-    c.on('error', ()=>{ netClearWatchdog(); netSetMsg('netMsg','Connection error — the room may be closed.','#ff7a7a'); });
+  netConnect(()=>{
+    netClearWatchdog();
+    netGuestSend({t:'hello', name, key:NET.selKey});
+    netSetMsg('netMsg',''); enterLobby();
   });
-  peer.on('error', e=>{
-    if(e.type==='peer-unavailable'){
-      netClearWatchdog();
-      netSetMsg('netMsg','Room '+code+' not found. Check the code.','#ff7a7a');
-      try{ peer.destroy(); }catch(x){}
-      NET.peer=null;
-    } else if(e.type==='network' || e.type==='server-error' || e.type==='socket-error' || e.type==='socket-closed'){
-      netClearWatchdog();
-      netSetMsg('netMsg','Cannot reach the matchmaking server ('+e.type+'). Check your internet and try again.', '#ff7a7a');
-    } else {
-      netSetMsg('netMsg','Network error: '+e.type, '#ff7a7a');
+  setTimeout(()=>{
+    if(NET.role==='guest' && NET.state==='lobby' && NET.roster.length===0){
+      netSetMsg('lobbyMsg','Room '+code+' not found — the host may be offline','#ff7a7a');
+      setTimeout(()=>{ netLeave(); netEl.classList.remove('on'); modeEl.classList.remove('off'); },1600);
     }
-  });
-  peer.on('disconnected', ()=>{ try{ peer.reconnect(); }catch(e){} });
+  }, 9000);
 }
 function freeSlot(){
   const used=(t,s)=>NET.roster.some(m=>m.team===t&&m.slot===s);
@@ -2440,12 +2432,7 @@ function swapSide(){
     try{ NET.hostConn.send({t:'team'}); }catch(e){}
   }
 }
-function hostConn(c){
-  c.on('open', ()=>{ if(!NET.conns[c.peer]) NET.conns[c.peer]=c; });
-  c.on('data', d=>hostOnData(c,d));
-  c.on('close', ()=>hostDrop(c.peer));
-  c.on('error', ()=>hostDrop(c.peer));
-}
+/* hostConn() is gone — MQTT rooms are topic-based, not per-connection. */
 function hostDrop(id){
   const mem=NET.roster.find(m=>m.id===id);
   delete NET.conns[id]; delete NET.inputs[id];
@@ -2635,10 +2622,10 @@ function netToLobbyLocal(){
 function netLeave(){
   if(NET.role==='host') netBroadcast({t:'bye', reason:'Host closed the room'});
   netHubClose();
-  for(const id in NET.conns){ try{ NET.conns[id].close(); }catch(e){} }
   netCancelPeer();
   NET.mode='off'; NET.role=null; NET.state='menu';
   NET.roster=[]; NET.snap=null; NET.code=''; NET.myId=''; NET.localId=''; NET.ping=0;
+  NET.lastSeen={}; NET.hostSeen=0; NET.dirSub=false;
   try{ resetGame(); }catch(e){}
   player=null;
   showBadge(false);
@@ -2813,11 +2800,29 @@ document.querySelectorAll('#netVisRow .dbtn').forEach(b=> b.onclick=()=>{
     if(NET.visibility==='public') netHubRegister(); else netHubUnregister();
   }
 });
-/* directory upkeep: public hosts re-publish their room every 7s, and the
-   join tab asks for a fresh list every 8s while it is on screen. */
+/* relay upkeep: keepalive ping, guest heartbeats, liveness pruning, and
+   public hosts re-publishing their room so the directory stays fresh. */
+setInterval(()=>{
+  if(NET.mq && NET.mq.connected){ try{ NET.mq.ws.send(new Uint8Array([0xC0,0x00])); }catch(e){} }
+}, 40000);
 setInterval(()=>{
   if(NET.role==='host' && NET.state==='lobby' && NET.visibility==='public') netHubRegister();
-}, 7000);
+  if(NET.connOpen && NET.role==='host') netBroadcast({t:'hb'});
+  if(NET.connOpen && NET.role==='guest' && (NET.state==='lobby'||NET.state==='playing')) netGuestSend({t:'hb'});
+}, 3000);
+setInterval(()=>{
+  if(NET.role==='host'){
+    const now=Date.now();
+    for(const id in NET.conns){
+      if(NET.roster.some(m=>m.id===id) && now-(NET.lastSeen[id]||0)>14000) hostDrop(id);
+    }
+  } else if(NET.role==='guest' && (NET.state==='lobby'||NET.state==='playing')){
+    if(NET.hostSeen && Date.now()-NET.hostSeen>14000){
+      netSetMsg('lobbyMsg','Host disconnected','#ff7a7a');
+      setTimeout(()=>{ netLeave(); netEl.classList.remove('on'); modeEl.classList.remove('off'); },1400);
+    }
+  }
+}, 5000);
 setInterval(()=>{
   if(NET.state==='menu' && netEl.classList.contains('on') && el('tabJoin').style.display!=='none') netRefreshRoomList();
 }, 8000);
@@ -2847,6 +2852,7 @@ window.__T = { get player(){return player;}, get money(){return money;}, set mon
   damage, damageHQ, addMoney, buyFor, applySnap, applyEvent,
   netOpen, netCreate, netJoin, netStart, toggleReady, selectKey, hostSet, netLeave, showNetTab, swapSide, moveToTeam,
   netBrowse, netRefreshRoomList, netRenderRoomList, netHubRegister, netHubUnregister, netHubClose, netApplyDir,
+  mqttConnect, NET_RELAY, NET_DIR, netConnect,
   setWeather, tickWeather, gust, buildMap, MAPS, WEATHER_KEYS, WEATHER_INFO, weatherSpd, applyWeatherVisual,
   resetTutorial, tutTick, TUT_STEPS, enableTouch, touch, worldGroup, powerups, spawnPowerup, walls,
   get weather(){return weather;}, set weatherV(v){weather=v;}, get mapName(){return mapName;},
