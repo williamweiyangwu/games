@@ -122,12 +122,13 @@
   /* ---- a sailor's body: what is left of it, and what is left in it ---- */
   #vitals { margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(200,170,80,0.18); }
   .vbar { display: flex; align-items: center; gap: 7px; margin-bottom: 3px; }
-  .vbar .vk { font-size: 9px; letter-spacing: 1.4px; color: #8fa4b5; width: 32px; flex: none; }
+  .vbar .vk { font-size: 9px; letter-spacing: 1.1px; color: #8fa4b5; width: 46px; flex: none; }
   .vtrack { flex: 1; height: 7px; border-radius: 3px; background: rgba(0,0,0,0.55);
             box-shadow: inset 0 0 0 1px rgba(0,0,0,0.5); overflow: hidden; }
   .vfill { height: 100%; width: 100%; transition: width .16s linear; }
   .vfill.hp { background: linear-gradient(90deg, #7e2626, #e0604a); }
   .vfill.st { background: linear-gradient(90deg, #7a5f1c, #e8c860); }
+  .vfill.hg { background: linear-gradient(90deg, #5e3a12, #e0a03a); }
   .vbar.low .vfill { animation: pulse .9s infinite; }
   .vn { font-size: 10px; color: #b3a378; width: 22px; text-align: right; flex: none;
         font-variant-numeric: tabular-nums; }
@@ -319,6 +320,9 @@
       <div class="vbar" id="stBar"><span class="vk">WIND</span>
         <div class="vtrack"><div class="vfill st" id="stFill"></div></div>
         <span class="vn" id="stVal">100</span></div>
+      <div class="vbar" id="hgBar"><span class="vk">HUNGER</span>
+        <div class="vtrack"><div class="vfill hg" id="hgFill"></div></div>
+        <span class="vn" id="hgVal">100</span></div>
     </div>
     <div class="title-line" id="titleVal">Unknown Citizen</div>
   </div>
@@ -328,6 +332,7 @@
     <div id="gameClock">Day 1 &middot; 06:00</div>
     <div id="contractLine" class="hidden"></div>
     <div id="shiftLine" class="hidden"></div>
+    <div id="jobLine" class="hidden"></div>
   </div>
 
   <div id="minimapWrap" class="panel">
@@ -2528,9 +2533,15 @@ function updateAvatar(dt) {
     return;
   }
 
-  a.position.set(Player.x, Player.mode === 'deck' ? Player.y - 1.7 : Player.y, Player.z);
-  if (Player.mode === 'deck' && playerShip) {
-    yaw = Ship.heading + Math.PI + Player.lookYaw;
+  const onDeck = Player.mode === 'deck' || Player.mode === 'crew';
+  a.position.set(Player.x, onDeck ? Player.y - 1.7 : Player.y, Player.z);
+  if (Player.mode === 'crew' && Game.crewShip) {
+    // Her frame, not the world's: walking forward is toward HER bow, so the man
+    // must face (sin h, cos h). With the +PI that on foot needs, he walked her
+    // planks backwards -- the model's +Z is its face.
+    yaw = Game.crewShip.heading + Player.lookYaw;
+  } else if (Player.mode === 'deck' && playerShip) {
+    yaw = Ship.heading + Player.lookYaw;
   } else {
     yaw = Player.lookYaw + Math.PI;
   }
@@ -2688,6 +2699,27 @@ let lisbonGangway = null;
 let dockWork = null;            // { pickup, drop, pickupIt, dropIt }
 let dockCrateGroup = null;      // the stack, shrinking as you clear it
 const DOCK_SHIFT = { total: 8, wage: 5, bonus: 8 };
+
+// ---- the neighbours of the Rua Augusta ----
+// Twelve doors on the two block faces. `kind` decides what is behind each one:
+// an hour's work, a plate, a piece of gossip, a chair by the fire, or a bolted
+// door and a suspicious eye. `fed` is per household, per life -- nobody feeds
+// a stranger twice in one afternoon.
+const HOUSE_DEFS = [
+  { side: -1, x: -7.45, z: -54,  name: "Tobias",     trade: "caulker",     kind: "work" },
+  { side:  1, x:  7.45, z: -60,  name: "Constança",  trade: "widow",       kind: "meal" },
+  { side: -1, x: -7.45, z: -66,  name: "Simão",      trade: "barber",      kind: "gossip" },
+  { side:  1, x:  7.45, z: -88,  name: "Urraca",     trade: "seamstress",  kind: "work" },
+  { side: -1, x: -7.45, z: -84,  name: "Domingos",   trade: "carter",      kind: "locked" },
+  { side: -1, x: -7.45, z: -96,  name: "Joana",      trade: "poulterer",   kind: "meal" },
+  { side:  1, x:  7.45, z: -118, name: "Bartolomeu", trade: "notary",      kind: "gossip" },
+  { side: -1, x: -7.45, z: -115, name: "Sancha",     trade: "washerwoman", kind: "rest" },
+  { side:  1, x:  7.45, z: -150, name: "Gonçalo",    trade: "fisherman",   kind: "work" },
+  { side: -1, x: -7.45, z: -127, name: "Lianor",     trade: "midwife",     kind: "rest" },
+  { side: -1, x: -7.45, z: -158, name: "Afonso",     trade: "cooper",      kind: "locked" },
+  { side:  1, x:  7.45, z: -164, name: "Marta",      trade: "scribe",      kind: "gossip" },
+];
+let jobRing = null;             // the blue ring that marks an errand's end
 
 function buildLisbon(group, island, pointAt) {
   const OX = group.position.x, OZ = group.position.z;
@@ -3030,6 +3062,12 @@ function buildLisbon(group, island, pointAt) {
   }
   addInteractable(OX + 0, OZ + 52, Y, 3.0, "Fish from the pier", () => openDialog('fish'));
 
+  // the São Rafael lies just off the pier head, wanting hands for the bar
+  addInteractable(OX + 4.2, OZ + 54, Y, 3.6, "Ask for a berth aboard the São Rafael", () => {
+    const s = recruiterShip();
+    if (s) openDialog('sign_on', { ship: s });
+  });
+
   // ---------------------------------------------------------
   //  ROSSO - the second great square, with a fountain
   // ---------------------------------------------------------
@@ -3343,6 +3381,137 @@ function buildLisbon(group, island, pointAt) {
 
   // dockmaster at the pier root
   npc(8.2, 24, 0x5a5a4a, 0x2a2a1a, 0xffd700, "Zé Caolho, the dockmaster", () => openDialog('dockmaster'), Math.PI);
+
+  // ---------------------------------------------------------
+  //  THE COOKSHOP - a cauldron on the quay, the cheapest meal in town
+  // ---------------------------------------------------------
+  {
+    const cx = -40, cz = 12;
+    const table = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.12, 1.2), CITY_MAT.timber);
+    add(table, cx, Y + 0.9, cz);
+    coll(cx, cz, 3.2, 1.4, Y + 0.96);            // you cannot walk through her table
+    for (const lx of [-1.3, 1.3]) for (const lz of [-0.45, 0.45]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.9, 0.1), CITY_MAT.timber);
+      add(leg, cx + lx, Y + 0.45, cz + lz);
+    }
+    // the pot, and the broth in it
+    const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.42, 0.62, 12), CITY_MAT.iron);
+    add(pot, cx - 0.7, Y + 1.27, cz);
+    const broth = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.06, 12),
+      new THREE.MeshStandardMaterial({ color: 0xc9a24a, roughness: 0.55 }));
+    add(broth, cx - 0.7, Y + 1.56, cz);
+    // loaves stacked at the other end
+    for (let i = 0; i < 4; i++) {
+      const loaf = new THREE.Mesh(new THREE.SphereGeometry(0.2, 7, 5), CITY_MAT.dark);
+      loaf.scale.set(1.5, 0.7, 1);
+      add(loaf, cx + 0.6 + (i % 2) * 0.45, Y + 1.05 + Math.floor(i / 2) * 0.2, cz + (i % 2 ? 0.2 : -0.2));
+    }
+    const awning = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.08, 2.1),
+      new THREE.MeshStandardMaterial({ color: 0xc8b45a, roughness: 0.9 }));
+    awning.rotation.x = -0.12;                   // pitched, so it reads as canvas
+    add(awning, cx, Y + 2.42, cz);
+    // a valance along the front, or the awning is a line seen edge-on
+    const valance = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.34, 0.06),
+      new THREE.MeshStandardMaterial({ color: 0xa8903c, roughness: 0.92 }));
+    add(valance, cx, Y + 2.22, cz + 1.02);
+    for (const lx of [-1.7, 1.7]) {
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.45, 5), CITY_MAT.timber);
+      add(pole, cx + lx, Y + 1.22, cz + 0.9);
+      add(pole.clone(), cx + lx, Y + 1.22, cz - 0.9);
+    }
+    // two stools for the men who eat standing up anyway
+    for (const sx of [-1.0, 0.9]) {
+      const stool = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.19, 0.45, 8), CITY_MAT.timber);
+      add(stool, cx + sx, Y + 0.22, cz + 1.5);
+    }
+  }
+  npc(-40, 14.6, 0x8a5a3a, null, 0xffd700, "Aldonza, the cookshop woman", () => openDialog('cookshop'), Math.PI);
+
+  // ---------------------------------------------------------
+  //  THE ESTALAGEM - a bed and a plate on the Rua Augusta
+  // ---------------------------------------------------------
+  {
+    const ex = -7.45, ez = -150;
+    // a doorway set into the side of the block, with a sign on an iron bracket
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2.6, 1.9), CITY_MAT.stone);
+    add(frame, ex + 0.06, Y + 1.3, ez);
+    const door = new THREE.Mesh(new THREE.BoxGeometry(0.14, 2.3, 1.5), CITY_MAT.timber);
+    add(door, ex + 0.16, Y + 1.15, ez);
+    const step = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.16, 2.0), CITY_MAT.stone);
+    add(step, ex + 0.35, Y + 0.08, ez);
+    const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.07, 0.07), CITY_MAT.iron);
+    add(bracket, ex + 0.5, Y + 3.1, ez + 0.9);
+    const sign = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.7, 0.9),
+      new THREE.MeshStandardMaterial({ color: 0x7a2a3a, roughness: 0.85 }));
+    add(sign, ex + 0.9, Y + 2.7, ez + 0.9);
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6),
+      new THREE.MeshBasicMaterial({ color: 0xffd27a }));
+    add(lamp, ex + 0.42, Y + 2.9, ez - 0.95);
+  }
+  npc(-7.9, -150, 0x6a3a5a, null, 0xffd700, "Senhora Violante, the innkeeper", () => openDialog('estalagem'), Math.PI / 2);
+
+  // ---------------------------------------------------------
+  //  THE NEIGHBOURS - twelve doors along the Rua Augusta
+  // ---------------------------------------------------------
+  // The city had one house in it: yours. Now the block faces carry doors, and
+  // behind each one is a family with something to offer -- an hour's work, a
+  // plate of bread, a piece of gossip, a chair by the fire, or a bolted door.
+  const doorAt = (x, z, dir) => {
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(0.26, 2.6, 1.95), CITY_MAT.stone);
+    add(frame, x, Y + 1.3, z);
+    const leaf = new THREE.Mesh(new THREE.BoxGeometry(0.16, 2.3, 1.5), CITY_MAT.timber);
+    add(leaf, x + dir * 0.07, Y + 1.15, z);
+    const step = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.16, 2.0), CITY_MAT.stone);
+    add(step, x + dir * 0.32, Y + 0.08, z);
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6),
+      new THREE.MeshBasicMaterial({ color: 0xffd27a }));
+    add(lamp, x + dir * 0.34, Y + 2.72, z + 0.92);
+  };
+  for (const h of HOUSE_DEFS) {
+    const dir = h.side < 0 ? 1 : -1;          // the door faces the street
+    doorAt(h.x, h.z, dir);
+    h.wx = OX + h.x + dir * 0.95;
+    h.wz = OZ + h.z;
+    addInteractable(h.wx, h.wz, Y, 3.0,
+      `Knock at the house of ${h.name}`, () => openDialog('house', { house: h }));
+  }
+
+  // ---------------------------------------------------------
+  //  THE NOTICE BOARD - honest work, at the pier root
+  // ---------------------------------------------------------
+  {
+    const bx = 17, bz = 20;
+    for (const sx of [-1.0, 1.0]) {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 2.5, 6), CITY_MAT.timber);
+      add(post, bx + sx, Y + 1.25, bz);
+    }
+    const board = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.5, 0.12), CITY_MAT.timber);
+    add(board, bx, Y + 1.85, bz);
+    // a few pinned papers, so it reads as a board and not a fence
+    for (let i = 0; i < 4; i++) {
+      const paper = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.44),
+        new THREE.MeshStandardMaterial({ color: 0xe8e0c8, roughness: 0.95, side: THREE.DoubleSide }));
+      add(paper, bx - 0.75 + (i % 2) * 1.2, Y + 2.1 - Math.floor(i / 2) * 0.55, bz + 0.08);
+    }
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.1, 0.7), CITY_MAT.roof);
+    add(roof, bx, Y + 2.75, bz + 0.12);
+    coll(bx, bz, 2.6, 0.4, Y + 2.6);
+    addInteractable(OX + bx, OZ + bz + 1.4, Y, 3.0,
+      'Read the notice board', () => openDialog('jobs'));
+  }
+  // the ring that marks an errand's destination, built once and moved about
+  jobRing = new THREE.Mesh(new THREE.RingGeometry(1.5, 1.9, 30),
+    new THREE.MeshBasicMaterial({ color: 0x7ad0ff, transparent: true, opacity: 0.7,
+                                  side: THREE.DoubleSide, depthWrite: false }));
+  jobRing.rotation.x = -Math.PI / 2;
+  jobRing.visible = false;
+  // The ring is a child of the Lisbon group, which sits at (OX, 0, OZ). Any
+  // position we give it is LOCAL, while Game.job keeps WORLD coordinates for
+  // currentTarget() and groundY(). Keep the offset or the ring paints itself
+  // half a kilometre out in the Atlantic and the errand has no visible end.
+  jobRing.userData.ox = OX;
+  jobRing.userData.oz = OZ;
+  group.add(jobRing);
 
   // ---------------------------------------------------------
   //  THE SÉ - the cathedral, on the one block the grid left empty
@@ -3734,10 +3903,14 @@ const Game = {
   market: null,                 // per-port prices and stock, built on first use
   marketAt: 0,
   shift: null,                  // the dock shift you are working: { active, total, left, done, paid }
+  jobs: null,                   // the notice board: { at, offers[] }
+  job: null,                    // the errand in hand: { label, pay, x, z, r, where }
+  crewShip: null,               // the ship you have signed on to, if any
+  voyage: null,                 // the day's work aboard her: { t, leg, tasks, task, pay }
   // the ledger of a life: everything the end-of-hour screen reads aloud
   stats: { jobs: 0, voyages: 0, earned: 0, spent: 0, distance: 0,
            fish: 0, talked: 0, duels: 0, duelsWon: 0, duelsLost: 0, prayers: 0,
-           contracts: 0, hauled: 0 },
+           contracts: 0, hauled: 0, meals: 0, crewDays: 0, errands: 0 },
   cause: '',
 };
 
@@ -3753,8 +3926,9 @@ const Player = {
   bobY: 0,                      // head-bob camera offset (never touches the physics y)
   // the man inside the sailor: both 0..100, and both now decide what he can do
   health: 100, stamina: 100,
+  hunger: 100,                  // 100 fed, 0 starving: a belly of its own
   carry: 0,                     // crates shouldered on the quay
-  healthWarn: false, staminaWarn: false,
+  healthWarn: false, staminaWarn: false, hungerWarn: false,
 };
 
 const Ship = {
@@ -3785,6 +3959,14 @@ const VITALS = {
   healRest: 1.1,       // a rested, fed man knits
   drown: 7.5,          // health per second, spent and in deep water
   starveSea: 2.2, starveLand: 1.1,
+  // ---- the belly ----
+  // An hour is two and a half days, so a man eats seven or eight times in a
+  // life. Hunger is the captain's own; `Game.food` is what the crew eats.
+  hunger: 0.16,        // per second, just being alive
+  hungerWork: 0.06,    // and again while running or carrying
+  hungerStarve: 0.9,   // health per second at zero, on top of an empty hold
+  ration: 40,          // below this, a man with stores eats from them
+  rationFeed: 18,      // hunger a single provision is worth to him
 };
 
 // A wound is a number, not a sentence: small hurts only bleed your body, and
@@ -3841,16 +4023,34 @@ function tickVitals(h) {
     const regen = Player.mode === 'foot'
       ? (moving ? VITALS.regenWalk : VITALS.regenIdle)
       : VITALS.regenDeck;
-    // a hungry man does not get his wind back
-    const fed = Game.food <= 0 ? 0.3 : 1;
+    // a hungry man does not get his wind back. Empty stores are worse than an
+    // empty belly: the crew's rations are what keep the whole ship standing.
+    const fed = Game.food <= 0 ? 0.3 : (Player.hunger < 25 ? 0.7 : 1);
     Player.stamina = Math.min(VITALS.stamina, Player.stamina + regen * fed * h);
   }
   if (Player.stamina > 25) Player.staminaWarn = false;
+
+  // ---------------- the belly ----------------
+  // Work makes a man hungry, and a captain with a full hold never starves: he
+  // eats out of the stores. Hunger only becomes a real problem when the hold
+  // is empty and there is no cookshop within a mile.
+  const working = Player.carry > 0 || (keys['shift'] && moving) || Player.mode === 'crew';
+  Player.hunger = Math.max(0, Player.hunger - (VITALS.hunger + (working ? VITALS.hungerWork : 0)) * h);
+  if (Player.hunger < VITALS.ration && Game.food >= 1) {
+    Game.food -= 1;
+    Player.hunger = Math.min(100, Player.hunger + VITALS.rationFeed);
+  }
+  if (Player.hunger < 22 && !Player.hungerWarn) {
+    Player.hungerWarn = true;
+    showToast('Your belly is empty — find a cookshop, or eat from the stores', 3600);
+  }
+  if (Player.hunger > 45) Player.hungerWarn = false;
 
   // ---------------- the body ----------------
   let hurt = 0;
   if (Player.inWater && Player.stamina <= 0.5) hurt += VITALS.drown;
   if (Game.food <= 0) hurt += (Player.mode === 'foot' ? VITALS.starveLand : VITALS.starveSea);
+  if (Player.hunger <= 0) hurt += VITALS.hungerStarve;
   if (hurt > 0) {
     hurtPlayer(hurt * h, Player.inWater
       ? 'The river took you when your strength ran out.'
@@ -4066,7 +4266,9 @@ const AI_AGGRO = 270;     // a corsair notices you this far off
 const AI_GRAPPLE = 26;    // and comes alongside here
 
 const MERCHANT_NAMES = [
-  'Santa Cruz', 'São Rafael', 'Boa Esperança', 'Nossa Senhora da Guia',
+  // São Rafael is the ship fitting out at the Lisbon pier, so she cannot also
+  // be one of the moving merchantmen: two ships with one name broke hailing.
+  'Santa Cruz', 'São Tiago', 'Boa Esperança', 'Nossa Senhora da Guia',
   'Santo António', 'Pérola do Tejo', 'Santa Bárbara', 'Flor de Lisboa',
   'São Vicente', 'Estrela do Mar', 'Bom Jesus', 'Rainha dos Anjos',
 ];
@@ -4280,6 +4482,25 @@ function spawnAIFleet() {
     });
   }
 
+  // ---- the São Rafael: a merchantman fitting out at the pier, wanting hands ----
+  // She is the way a man with no ship gets to sea. `moored` keeps her out of the
+  // route logic (she has no route), and `scripted` hands her to the voyage
+  // when you sign on.
+  {
+    const berth = lisbonBerth || { x: PORTS[0].position.x, z: PORTS[0].position.z + 59 };
+    const group = buildAIShipModel('merchant');
+    scene.add(group);
+    AI_SHIPS.push({
+      kind: 'merchant', name: 'São Rafael',
+      group, x: berth.x - 15, z: berth.z + 2, heading: Math.PI * 0.86,
+      speed: 0, seed: Math.random() * 6.28, avoid: 1,
+      route: null, leg: 0, target: { x: berth.x - 15, z: berth.z + 2 },
+      cargo: { good: 'spice', qty: 0 },
+      hunt: false, paid: 0, cooldown: 0, hailedAt: -999,
+      recruiter: true, moored: true,
+    });
+  }
+
   // Put them on the water before the first frame. NOT via updateAIFleet(): it
   // reads `elapsed`, which is still in its temporal dead zone this early in
   // the script -- the whole world failed to boot on exactly that.
@@ -4321,6 +4542,16 @@ function updateAIFleet(dt) {
   for (const s of AI_SHIPS) {
     if (s.cooldown > 0) s.cooldown -= dt;
     if (s.paid > 0) s.paid = Math.max(0, s.paid - dt);
+    // A ship you are aboard is not sailing herself: `updateCrewVoyage` has the
+    // conn, and two hands on one wheel is how you end up on a sandbank. Her
+    // group is synced there too, which is the other reason to skip her here.
+    if (s.scripted) continue;
+    // a ship lying at her moorings has no route to run; she only rides the swell
+    if (s.moored) {
+      s.group.position.set(s.x, waveHeightAt(s.x, s.z, elapsed) + 0.02, s.z);
+      s.group.rotation.set(0, s.heading, 0);
+      continue;
+    }
     const spec = AI_KINDS[s.kind];
 
     // ---- what is she steering for? ----
@@ -4396,6 +4627,175 @@ function startPirateFight(s) {
   addLog(`A corsair, the ${s.name}, comes alongside with grapnels out.`, 'bad');
   showToast(`${s.name} runs out her guns — she means to board you!`, 4200);
   openDialog('sea_fight', { ship: s });
+}
+
+// ============================================================
+//  SIGNING ON - a berth in another man's ship
+// ============================================================
+// The São Rafael lies at the pier wanting hands for a run down the river to
+// the bar and back: soundings, and a chance to be paid for a day's work
+// without owning so much as a plank. You walk her deck while she sails, and
+// the mate shouts for you at three stations along it.
+const CREW_STATIONS = [
+  { lx:  0.0, lz:  3.3, where: 'the foremast',     label: 'Heave the fore halyard' },
+  { lx: -1.3, lz:  0.2, where: 'the starboard rail', label: 'Heave the lead and call the depth' },
+  { lx:  0.0, lz: -3.0, where: 'the taffrail',     label: 'Haul the main sheet aft' },
+];
+const VOYAGE = { out: 46, home: 46, need: 3, advance: 8, perTask: 14, step: 6, speed: 6.2 };
+
+function recruiterShip() {
+  for (const s of AI_SHIPS) if (s.recruiter) return s;
+  return null;
+}
+
+function startCrewVoyage(s) {
+  if (!s || Player.mode === 'crew') return;
+  Game.crewShip = s;
+  s.scripted = true;
+  s.speed = 0;
+  s.outHeading = 0.15;              // bow to the open river, which is +z
+  s.heading = s.outHeading;
+  s.homeHeading = Math.PI + 0.15;
+  Game.voyage = { t: 0, leg: 'out', tasks: 0, task: null, taskAt: 9, pay: 0 };
+  Game.gold += VOYAGE.advance;
+  Player.mode = 'crew';
+  Player.cx = 0; Player.cz = -1.2;
+  Player.vx = 0; Player.vz = 0;
+  Player.lookYaw = 0; Player.lookPitch = 0;
+  Player.onGround = true;
+  camRig.ready = false;
+  updateCrewPos();
+  addLog(`You sign on aboard the ${s.name} — ${VOYAGE.advance}g in hand, the rest when the day is done.`, 'good');
+  showToast('Signed on — the mate will call you to the deck');
+  updateHUD();
+}
+
+// Deck coordinates are ship-local: x across her beam, z along her length.
+// Everything else in the game speaks world, so this is the one conversion.
+function updateCrewPos() {
+  const s = Game.crewShip;
+  if (!s) return;
+  const h = s.heading;
+  const lx = Player.cx, lz = Player.cz;
+  Player.x = s.x + lx * Math.cos(h) + lz * Math.sin(h);
+  Player.z = s.z - lx * Math.sin(h) + lz * Math.cos(h);
+  // Player.y is EYE height while aboard, exactly as on your own deck
+  Player.y = (s.group ? s.group.position.y : 0) + 1.85 + 1.7;
+}
+
+function updateCrewWalk(dt) {
+  const s = Game.crewShip;
+  if (!s) return;
+  const { f, s: strafe } = moveInput();
+  const h = s.heading;
+  const yaw = h + Math.PI + Player.lookYaw;
+  const fx = -Math.sin(yaw), fz = -Math.cos(yaw);
+  const rx = Math.cos(yaw), rz = -Math.sin(yaw);
+
+  let wx = fx * f + rx * strafe, wz = fz * f + rz * strafe;
+  const len = Math.hypot(wx, wz);
+  if (len > 1e-4) { wx /= len; wz /= len; }
+
+  const k = Math.min(1, 9 * dt);
+  Player.vx += (wx * 2.4 - Player.vx) * k;
+  Player.vz += (wz * 2.4 - Player.vz) * k;
+
+  // step in world, then clamp in her own frame: her bulwarks keep you aboard
+  const wdx = Player.vx * dt, wdz = Player.vz * dt;
+  const ldx = wdx * Math.cos(h) - wdz * Math.sin(h);
+  const ldz = wdx * Math.sin(h) + wdz * Math.cos(h);
+  const clx = Math.max(-1.85, Math.min(1.85, Player.cx + ldx));
+  const clz = Math.max(-4.0, Math.min(4.4, Player.cz + ldz));
+  if (clx !== Player.cx + ldx) Player.vx *= -0.2;
+  if (clz !== Player.cz + ldz) Player.vz *= -0.2;
+  Player.cx = clx; Player.cz = clz;
+
+  Player.bob += dt * (len > 0.1 ? 7 : 0);
+  Player.bobY = len > 0.1 ? Math.sin(Player.bob) * 0.035 : 0;
+  updateCrewPos();
+}
+
+// The voyage: out to the bar, about, and home again. Short by design — the
+// master only wants soundings, and a life is an hour long.
+function updateCrewVoyage(dt) {
+  const s = Game.crewShip, v = Game.voyage;
+  if (!s || !v) return;
+  v.t += dt;
+
+  const want = v.leg === 'out' ? s.outHeading : s.homeHeading;
+  let d = ((want - s.heading + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+  s.heading += Math.max(-0.5 * dt, Math.min(0.5 * dt, d));
+  const target = v.leg === 'out' ? VOYAGE.speed : VOYAGE.speed * 0.9;
+  s.speed += (target - s.speed) * Math.min(1, 0.5 * dt);
+  s.x += Math.sin(s.heading) * s.speed * dt;
+  s.z += Math.cos(s.heading) * s.speed * dt;
+
+  s.group.position.set(s.x, waveHeightAt(s.x, s.z, elapsed), s.z);
+  s.group.rotation.set(Math.sin(elapsed * 0.9) * 0.02, s.heading,
+                       Math.sin(elapsed * 0.7) * 0.03);
+
+  // ---- the mate calls for you, and you have to be at the right station ----
+  if (!v.task && v.tasks < VOYAGE.need && v.t >= v.taskAt) {
+    const i = v.tasks % CREW_STATIONS.length;
+    v.task = { station: i, label: CREW_STATIONS[i].label };
+    showToast(`The mate shouts: ${CREW_STATIONS[i].label.toLowerCase()}!`, 3800);
+    addLog(`"${CREW_STATIONS[i].label}!" — go to ${CREW_STATIONS[i].where}.`);
+  }
+
+  if (v.t >= (v.leg === 'out' ? VOYAGE.out : VOYAGE.home)) {
+    if (v.leg === 'out') {
+      v.leg = 'home'; v.t = 0;
+      addLog('The lead comes up sand. She puts the helm down and stands back for Lisbon.');
+      showToast('Homeward — Lisbon is on the bow');
+    } else {
+      payOffCrew();
+    }
+  }
+  updateCrewPos();
+}
+
+function workCrewTask() {
+  const v = Game.voyage;
+  if (!v || !v.task) return;
+  if (Player.stamina < VOYAGE.step) { showToast('You have not the wind for it'); return; }
+  Player.stamina -= VOYAGE.step;
+  v.tasks++;
+  v.pay += VOYAGE.perTask;
+  v.task = null;
+  v.taskAt = v.t + 8;
+  addLog(`Task ${v.tasks} of ${VOYAGE.need} done — ${v.pay}g earned so far.`, 'good');
+  showToast(`${v.tasks}/${VOYAGE.need} — ${v.pay}g so far`);
+  updateHUD();
+}
+
+function payOffCrew() {
+  const s = Game.crewShip, v = Game.voyage;
+  if (!s || !v) return;
+  const pay = v.pay;
+  Game.gold += pay;
+  Game.stats.crewDays = (Game.stats.crewDays || 0) + 1;
+  Game.crewShip = null;
+  Game.voyage = null;
+  s.scripted = false;
+  s.speed = 0;
+  // she ties up again where she was lying
+  const berth = lisbonBerth || { x: PORTS[0].position.x, z: PORTS[0].position.z + 59 };
+  s.x = berth.x - 15; s.z = berth.z + 2;
+  s.heading = s.outHeading || 0.15;
+  s.group.position.set(s.x, waveHeightAt(s.x, s.z, elapsed), s.z);
+  s.group.rotation.set(0, s.heading, 0);
+  // and you step off onto the pier
+  Player.mode = 'foot';
+  const g = lisbonGangway || lisbonDock;
+  Player.x = g.x; Player.z = g.z;
+  Player.y = supportY(Player.x, Player.z, 10);
+  Player.vx = Player.vy = Player.vz = 0;
+  Player.lookYaw = Math.PI;
+  Player.lookPitch = 0;
+  camRig.ready = false;
+  addLog(`The ${s.name} ties up. The mate counts ${pay}g into your hand — ${v.tasks} of ${VOYAGE.need} tasks done.`, 'good');
+  showToast(`Paid off — ${pay}g`);
+  updateHUD();
 }
 
 // ---- camera (first person) ----
@@ -4731,10 +5131,49 @@ function applyEffect(e) {
     }
   }
   if (e.time) Game.gameMinutes += e.time;
+  if (e.health) Player.health = Math.min(VITALS.health, Player.health + e.health);
+  if (e.stamina) Player.stamina = Math.min(VITALS.stamina, Player.stamina + e.stamina);
+  if (e.hunger) Player.hunger = Math.min(100, Player.hunger + e.hunger);
   if (e.discover) discoverIsland(e.discover);
   updateHUD();
   updateCargoBox();
   checkQuests();
+}
+
+// ============================================================
+//  BREAD - every table in Lisbon pays out through here
+// ============================================================
+// A meal is hunger, silver, and sometimes a little health or morale. Keeping
+// the arithmetic in one place means the ledger counts every plate the same way
+// and no cookshop can sell a dinner that does not feed you.
+function eatMeal(hunger, cost, extra, line) {
+  if (cost && Game.gold < cost) return false;
+  if (cost) Game.gold -= cost;
+  Player.hunger = Math.min(100, Player.hunger + hunger);
+  Game.stats.meals = (Game.stats.meals || 0) + 1;
+  if (extra) applyEffect(extra);
+  if (line) addLog(line, 'good');
+  showToast(`You eat — hunger ${Math.round(Player.hunger)}`);
+  updateHUD();
+  return true;
+}
+
+// A bed is the other half of the same idea: health and wind come back, and the
+// clock goes on without you. Time is the one thing in this life you cannot
+// earn more of, so a night's sleep is never free.
+function sleepHours(hours, cost, healthTo) {
+  if (cost && Game.gold < cost) return false;
+  if (cost) Game.gold -= cost;
+  Game.gameMinutes += hours * 60;
+  // a straw mattress in your own house patches you up; a paid bed in the
+  // estalagem puts you right. Neither is free: the hour runs on.
+  Player.health = Math.max(Player.health, healthTo === undefined ? VITALS.health : healthTo);
+  Player.stamina = VITALS.stamina;
+  Player.hunger = Math.min(100, Player.hunger + 26);
+  Player.healthWarn = false;
+  showToast(`You sleep ${hours} hours — the bell wakes you`);
+  updateHUD();
+  return true;
 }
 
 function renderDialog(node) {
@@ -5179,8 +5618,64 @@ const DLG = {
         roll: { chance: 0.5,
           good: { effect: { gold: 10, duel: 'win', morale: 4 }, next: 'tavern', text: "He throws nothing, and the table erupts. The sailor pays with a laugh and calls you a cardsharp." },
           bad: { effect: { gold: -10, duel: 'loss', morale: -2 }, next: 'tavern', text: "He throws sixes like rain. The sailor pockets your silver amid howls of laughter." } } },
+      { label: "Sit down and eat", next: 'tavern_food',
+        hint: Player.hunger < 45 ? "You look like a man who has been eating wind" : "The pot is on the hook" },
       { label: "Heard any rumors?", next: 'tavern_rumor' },
       { label: "Nothing today." },
+    ],
+  }),
+
+  // ---------------- Lisbon: Dona Beatriz's kitchen ----------------
+  tavern_food: () => ({
+    who: "Dona Beatriz", role: "Tavern Keeper", portrait: "\u{1F372}",
+    text: "The kitchen is through the arch: a pot of caldo verde on the hook, sardines on the gridiron, and a shoulder of pork for anyone with silver enough to ask. \"Sit yourself down. A man who has been eating wind needs a table under him.\"",
+    options: [
+      { label: "A bowl of caldo verde — 3g", hint: "+26 hunger", req: { gold: 3 },
+        action: () => eatMeal(26, 3, null, "You eat a bowl of caldo verde at Dona Beatriz's table."),
+        stay: true },
+      { label: "Sardines, bread and a cup of wine — 6g", hint: "+45 hunger", req: { gold: 6 },
+        action: () => eatMeal(45, 6, { morale: 2 }, "Sardines off the gridiron, bread, and a cup of Alentejo red."),
+        stay: true },
+      { label: "The captain's table — 14g", hint: "+70 hunger, +8 morale, +6 health", req: { gold: 14 },
+        action: () => eatMeal(70, 14, { morale: 8, health: 6 },
+          "Pork, rice and a jug of wine, and the whole tavern watching you eat it."),
+        stay: true },
+      { label: "Back to the bar", next: 'tavern' },
+    ],
+  }),
+
+  // ---------------- Lisbon: the cookshop on the quay ----------------
+  cookshop: () => ({
+    who: "Aldonza", role: "Cookshop, Cais da Ribeira", portrait: "\u{1F963}",
+    text: "A cauldron of fish stew steams under a canvas awning, and a stack of pasties cools on the boards beside it. Aldonza wipes her hands. \"Two coppers for a pasty, five for the stew. Cheaper than the tavern, and I don't ask you to listen to a fiddle.\"",
+    options: [
+      { label: "A hot pasty — 2g", hint: "+20 hunger", req: { gold: 2 },
+        action: () => eatMeal(20, 2, null, "A pasty from Aldonza's oven, eaten standing up on the quay."),
+        stay: true },
+      { label: "Fish stew in a clay bowl — 5g", hint: "+38 hunger, +2 health", req: { gold: 5 },
+        action: () => eatMeal(38, 5, { health: 2 }, "Fish stew, thick enough to stand a spoon in."),
+        stay: true },
+      { label: "A loaf and a rind of cheese — 3g", hint: "+24 hunger", req: { gold: 3 },
+        action: () => eatMeal(24, 3, null, "Bread and cheese, wrapped in a cloth, eaten on the move."),
+        stay: true },
+      { label: "Nothing today." },
+    ],
+  }),
+
+  // ---------------- Lisbon: the estalagem on the Rua Augusta ----------------
+  estalagem: () => ({
+    who: "Senhora Violante", role: "The Estalagem, Rua Augusta", portrait: "\u{1F6CF}",
+    text: "A narrow stair, a smell of lavender over old stone, and a woman with a ledger and no patience. \"A bed's twelve, dinner's seven, and I want the room empty by the bell. There's a sailor in the second room snoring like a grampus, so take the third.\"",
+    options: [
+      { label: "A bed until the bell — 12g", hint: "Health and wind restored · three hours gone", req: { gold: 12 },
+        action: () => sleepHours(3, 12), stay: true },
+      { label: "A plate of stew and a jug of wine — 7g", hint: "+42 hunger, +4 morale", req: { gold: 7 },
+        action: () => eatMeal(42, 7, { morale: 4 }, "Stew and wine at the estalagem, with a fire to sit by."),
+        stay: true },
+      { label: "A cup of wine — 2g", hint: "+8 hunger, +3 morale", req: { gold: 2 },
+        action: () => eatMeal(8, 2, { morale: 3 }, "A cup of wine, and a look at the room you cannot afford."),
+        stay: true },
+      { label: "Good night." },
     ],
   }),
 
@@ -5385,6 +5880,8 @@ const DLG = {
     who: "Your House", role: "Rua dos Douradores", portrait: "\u{1F3E0}",
     text: "A chest, a straw mattress, a shelf of your mother's pottery. From here the whole city is yours to conquer — or to fail in.",
     options: [
+      { label: "Sleep until the bell — free", hint: "Health to 80, wind back · three hours gone",
+        action: () => sleepHours(3, 0, 80), stay: true },
       { label: "Save your life (open the save book)", action: () => { closeDialog(); openSavePanel('save'); } },
       { label: "Look over your chart", next: 'home_chart' },
       { label: "Step outside." },
@@ -5402,8 +5899,171 @@ const DLG = {
     };
   },
 
+  // ---------------- Lisbon: any door on the Rua Augusta ----------------
+  house: (ctx = {}) => {
+    const h = ctx.house || HOUSE_DEFS[0];
+    const opts = [];
+    const here = `the house of ${h.name}`;
+    if (h.kind === 'work') {
+      // one shift a day per household: a man can only sweep the same floor so often
+      const ready = !h.workedAt || Game.gameMinutes - h.workedAt >= 60;
+      h.pay = h.pay || (3 + ((h.z * 7 + h.name.length) & 3));
+      if (ready) {
+        opts.push({
+          label: `Give her an hour's work — ${h.pay}g`,
+          hint: 'fifteen minutes, and twelve of your wind',
+          action: () => {
+            if (Player.stamina < 12) { showToast('You have not the wind for it'); return; }
+            Player.stamina -= 12;
+            h.workedAt = Game.gameMinutes;
+            Game.gameMinutes += 15;
+            Game.gold += h.pay;
+            Game.stats.jobs++;
+            Game.stats.errands = (Game.stats.errands || 0) + 1;
+            addLog(`An hour's work at ${here} — ${h.pay}g.`, 'good');
+            showToast(`Paid ${h.pay}g`);
+            updateHUD();
+          },
+          stay: true,
+        });
+      } else {
+        opts.push({ label: 'Nothing more to do here today', hint: 'come back after the hour turns' });
+      }
+    } else if (h.kind === 'meal') {
+      if (!h.fed) {
+        opts.push({
+          label: 'Share bread and olives at her table',
+          hint: '+18 hunger, and no charge',
+          action: () => {
+            h.fed = true;
+            eatMeal(18, 0, { morale: 2 }, `${h.name} sets out bread, olives and a cup of water, and will take nothing for it.`);
+          },
+          stay: true,
+        });
+      } else {
+        opts.push({ label: 'She has nothing to spare today', hint: 'the cupboard is bare' });
+      }
+    } else if (h.kind === 'rest') {
+      opts.push({
+        label: 'Sit by the fire a while',
+        hint: 'wind restored · twenty minutes gone',
+        action: () => {
+          Player.stamina = VITALS.stamina;
+          Game.gameMinutes += 20;
+          Player.hunger = Math.min(100, Player.hunger + 4);
+          showToast('You warm yourself at her fire');
+          updateHUD();
+        },
+        stay: true,
+      });
+    } else if (h.kind === 'gossip') {
+      opts.push({
+        label: 'Ask what the quarter is saying',
+        action: () => {
+          addLog(`${h.name} the ${h.trade}: "${RUMORS[Math.floor(Math.random() * RUMORS.length)]}"`);
+          if (Math.random() < 0.35) { Game.morale = Math.min(100, Game.morale + 3); }
+          showToast('A piece of gossip, freely given');
+          updateHUD();
+        },
+        stay: true,
+      });
+    }
+    opts.push({ label: 'Knock again', stay: true });
+    opts.push({ label: 'Leave the door' });
+
+    const texts = {
+      work: `${h.name} the ${h.trade} is up to her elbows and glad of a pair of hands. "An hour's sweeping and I'll pay you honest. No sea in it, mind — that's the whole attraction."`,
+      meal: `${h.name} opens the door with a cloth in her hands and looks you up and down. "You've the look of a man who's been at sea. Come in out of the sun — there's bread, and olives, and it's no trouble."`,
+      rest: `${h.name} the ${h.trade} has a chair by the fire and a kettle on the hook. "Sit. You're no use to anyone with your eyes closing. I'll wake you when the pot's dry."`,
+      gossip: `${h.name} the ${h.trade} leans on the doorpost, delighted to see a face from outside the street. "You'll want the news, then. Everyone does, and nobody pays for it."`,
+      locked: `Nobody answers at ${here}. A shutter moves upstairs, and a dog starts barking two doors down. Whoever lives here does not open to strangers — or is not at home.`,
+    };
+    return {
+      who: h.kind === 'locked' ? 'A Bolted Door' : h.name,
+      role: `${h.trade.charAt(0).toUpperCase() + h.trade.slice(1)} · Rua Augusta`,
+      portrait: h.kind === 'locked' ? '\u{1F6AA}' : '\u{1F3E0}',
+      text: texts[h.kind] || texts.gossip,
+      rebuild: () => DLG.house({ house: h }),
+      options: opts,
+    };
+  },
+
+  // ---------------- Lisbon: the notice board ----------------
+  jobs: () => {
+    const offers = jobOffers();
+    const opts = [];
+    if (Game.job) {
+      opts.push({
+        label: `You are already on an errand — ${Game.job.label}`,
+        hint: `finish it at ${Game.job.where || 'the blue ring'} for ${Game.job.pay}g`,
+      });
+    } else {
+      for (const o of offers) {
+        opts.push({
+          label: `${o.label} — ${o.pay}g`,
+          hint: o.kind === 'instant'
+            ? `an hour of your back · ${o.stamina} wind · ${o.minutes} minutes`
+            : `walk to ${o.where}`,
+          action: () => startJob(o),
+          stay: true,
+        });
+      }
+    }
+    opts.push({ label: 'Step away from the board' });
+    return {
+      who: "The Notice Board", role: "Pier root, Cais da Ribeira", portrait: "\u{1F4CB}",
+      text: Game.job
+        ? `Pinned papers, torn papers, and one job with your name on it. The rest can wait until you have finished what you took.`
+        : `A board on two posts, plastered with papers: a customs sweep, a lighter wanting hands, a cask to be carried up to the Sé. Honest work, badly paid, and the board is re-chalked every half hour.`,
+      rebuild: () => DLG.jobs(),
+      options: opts,
+    };
+  },
+  // ---------------- Lisbon: signing on aboard the São Rafael ----------------
+  sign_on: (ctx = {}) => {
+    const s = ctx.ship || recruiterShip();
+    const atSea = Player.mode !== 'foot';
+    const opts = [];
+    if (atSea) {
+      opts.push({ label: 'You would have to leave your own ship first', hint: 'step ashore at the pier' });
+    } else if (Game.voyage) {
+      opts.push({ label: 'You are already signed on', hint: 'finish the run to the bar' });
+    } else {
+      opts.push({
+        label: `Sign on for the run to the bar — ${VOYAGE.advance}g in hand`,
+        hint: `${VOYAGE.perTask}g a task, and the mate will find you three`,
+        action: () => startCrewVoyage(s),
+      });
+    }
+    opts.push({ label: "What's the work?", next: 'sign_on_work' });
+    opts.push({ label: 'Not today.' });
+    return {
+      who: s ? s.name : 'São Rafael',
+      role: 'Merchant caravel · fitting out at the pier',
+      portrait: '\u26F5',
+      text: `She lies off the pier head with her topsails loosed and a gangway out. ` +
+            `The mate leans over the rail with a slate in his hand. "Soundings off the bar ` +
+            `and back on the ebb — a half-day's work. ${VOYAGE.advance} now, ` +
+            `${VOYAGE.perTask} a task, and I'll not ask you to hand, reef and steer all at once. ` +
+            `You'll want a full belly before we cast off."`,
+      rebuild: () => DLG.sign_on({ ship: s }),
+      options: opts,
+    };
+  },
+
+  sign_on_work: (ctx = {}) => {
+    const s = ctx.ship || recruiterShip();
+    return {
+      who: s ? s.name : 'São Rafael', role: 'The mate', portrait: '\u26F5',
+      text: `"Three stations and three jobs. Foremast: the halyard. The starboard rail: ` +
+            `heave the lead and call the depth, and mind the line does not take your fingers. ` +
+            `Taffrail: the main sheet, when she comes about. Walk to the station the mate ` +
+            `names — standing amidships looking willing does not count as work."`,
+      options: [{ label: 'Right. Where do I sign?', next: 'sign_on' }],
+    };
+  },
+
   // ---------------- Lisbon: any citizen on the street ----------------
-  // They are all opponents: talk, drink, dice, riddles — silver on the table.
   citizen: () => {
     const w = talker;
     if (!w) {
@@ -6148,7 +6808,141 @@ function takeHelm() {
   showToast('At the helm — W hoists sail, A/D steers');
 }
 
+// ============================================================
+//  HONEST WORK - the notice board at the pier root
+// ============================================================
+// Two sorts of job. An INSTANT one is an hour of your back for a few coppers:
+// you take it at the board and you are paid at the board, and it costs wind.
+// An ERRAND sends you across the city to a mark on the ground; the blue ring
+// shows where, and [E] on the ring pays out. One job at a time, so the board
+// is a decision rather than a shopping list.
+const JOB_INSTANT = [
+  { label: 'Sweep out the customs house', pay: 4, stamina: 14, minutes: 12 },
+  { label: 'Watch the fish stalls while she fetches water', pay: 5, stamina: 8, minutes: 15 },
+  { label: 'Lend a hand at the lighter', pay: 8, stamina: 22, minutes: 20 },
+  { label: 'Hold the rope for the caulker', pay: 6, stamina: 16, minutes: 14 },
+  { label: 'Roll barrels up from the quay', pay: 7, stamina: 20, minutes: 18 },
+];
+const JOB_ERRAND = [
+  { label: 'Carry a cask up to the Sé steps', pay: 9, lx: -67, lz: -104, where: 'the Sé steps' },
+  { label: 'Take the pilot his coat from the estalagem', pay: 6, lx: -7.9, lz: -150, where: 'the estalagem' },
+  { label: 'Take this fish to the cookshop', pay: 5, lx: -40, lz: 14.6, where: 'the cookshop on the quay' },
+  { label: 'Take a message to the customs table', pay: 7, lx: 26, lz: 9.7, where: 'the customs table' },
+];
+
+function jobOffers() {
+  // the board is re-chalked every half hour, like Tomé's contracts
+  const at = Game.jobs && Game.jobs.at !== undefined ? Game.jobs.at : -1e9;
+  if (!Game.jobs || Game.gameMinutes - at > 30) {
+    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    const offers = [];
+    const seen = new Set();
+    // one certain instant job, one certain errand, then a third of either
+    // sort. A board that happened to chalk three instant jobs used to leave
+    // the whole errand system (the ring, the marker, the neighbour delivery)
+    // unreachable for half an hour of game time.
+    for (let i = 0; i < 3; i++) {
+      let o = null, tries = 0;
+      while (!o && tries++ < 20) {
+        const src = i === 0 ? JOB_INSTANT
+                  : i === 1 ? JOB_ERRAND
+                  : (Math.random() < 0.5 ? JOB_INSTANT : JOB_ERRAND);
+        const cand = pick(src);
+        if (seen.has(cand.label)) continue;
+        seen.add(cand.label);
+        o = { ...cand, kind: src === JOB_INSTANT ? 'instant' : 'errand' };
+        if (o.kind === 'errand') {
+          const p0 = PORTS[0].position;
+          // a letter goes to a real door, so the errand ends somewhere in the city
+          if (Math.random() < 0.4) {
+            const h = HOUSE_DEFS[Math.floor(Math.random() * HOUSE_DEFS.length)];
+            o = { label: `Take a letter to the house of ${h.name}`, pay: 7,
+                  lx: h.x + (h.side < 0 ? 0.95 : -0.95), lz: h.z,
+                  where: `the house of ${h.name}`, kind: 'errand' };
+          }
+          o.x = p0.x + o.lx;
+          o.z = p0.z + o.lz;
+          o.r = 3.2;
+        }
+      }
+      if (o) offers.push(o);
+    }
+    Game.jobs = { at: Game.gameMinutes, offers };
+  }
+  return Game.jobs.offers;
+}
+
+function startJob(o) {
+  if (!o) return;
+  if (Game.job) { showToast('Finish the errand you already took'); return; }
+  if (o.kind === 'instant') {
+    if (Player.stamina < o.stamina) {
+      showToast(`You have not the wind for it — ${o.stamina} needed`);
+      return;
+    }
+    Player.stamina -= o.stamina;
+    Game.gameMinutes += o.minutes;
+    Game.gold += o.pay;
+    Game.stats.jobs++;
+    addLog(`${o.label} — ${o.minutes} minutes for ${o.pay}g.`, 'good');
+    showToast(`Paid ${o.pay}g`);
+    updateHUD();
+    return;
+  }
+  Game.job = { label: o.label, pay: o.pay, x: o.x, z: o.z, r: o.r || 3.2,
+               where: o.where, at: Game.gameMinutes };
+  addLog(`You take the job: ${o.label}. ${o.pay}g when it is done.`);
+  showToast(`Errand taken — ${o.where || 'follow the ring'}`);
+  updateHUD();
+}
+
+function finishJob() {
+  const j = Game.job;
+  if (!j) return;
+  Game.job = null;
+  Game.gold += j.pay;
+  Game.stats.jobs++;
+  Game.stats.errands = (Game.stats.errands || 0) + 1;
+  addLog(`Errand done: ${j.label}. ${j.pay}g in your hand.`, 'good');
+  showToast(`Paid ${j.pay}g`);
+  updateHUD();
+}
+
+// the ring sits on the ground where the errand ends, and breathes so you can
+// find it across a square full of people
+function updateJobMarker() {
+  if (!jobRing) return;
+  const j = Game.job;
+  if (!j) { jobRing.visible = false; return; }
+  jobRing.visible = true;
+  // j.x/j.z are WORLD (currentTarget compares them to Player.x/z, which are
+  // world too); the ring lives in the translated Lisbon group, so convert.
+  jobRing.position.set(j.x - (jobRing.userData.ox || 0),
+                      groundY(j.x, j.z) + 0.06,
+                      j.z - (jobRing.userData.oz || 0));
+  const s = 1 + Math.sin(elapsed * 3) * 0.08;
+  jobRing.scale.set(s, s, 1);
+  jobRing.material.opacity = 0.55 + Math.sin(elapsed * 3) * 0.18;
+}
+
 function currentTarget() {
+  // ---- a hand aboard another man's ship ----
+  if (Player.mode === 'crew') {
+    const v = Game.voyage;
+    if (v && v.task) {
+      const st = CREW_STATIONS[v.task.station];
+      if (Math.hypot(Player.cx - st.lx, Player.cz - st.lz) < 2.2) {
+        return { label: st.label, use: workCrewTask };
+      }
+      return { label: `Make your way to ${st.where}`,
+               use: () => showToast(`The mate wants you at ${st.where}`) };
+    }
+    return { label: 'Look out over the rail',
+             use: () => showToast(v && v.leg === 'home'
+               ? 'Lisbon is on the bow, and your day is nearly done'
+               : 'Water, gulls, and the bar somewhere ahead') };
+  }
+
   if (Player.mode === 'helm') {
     const near = nearestIslandWithin(70);
     if (near && Math.abs(Ship.speed) < 1.2) {
@@ -6192,6 +6986,16 @@ function currentTarget() {
     // nothing at all here, which reads as a broken game rather than a busy
     // ship. Hand the player the wheel instead of leaving a silent state.
     return { label: 'Take the helm (under way)', use: takeHelm };
+  }
+
+  // On foot: an errand's ring wins over everything. The mark is where the job
+  // ends, and it can sit on top of a door or a stall, so it has to be checked
+  // before the interactables or the errand becomes uncompletable.
+  if (Game.job) {
+    const j = Game.job;
+    if (Math.hypot(j.x - Player.x, j.z - Player.z) < (j.r || 3.2)) {
+      return { label: `Finish: ${j.label} (${j.pay}g)`, use: finishJob };
+    }
   }
 
   // On foot: the nearest interactable — or a citizen of Lisbon within
@@ -6932,6 +7736,10 @@ const SHIP_CAM = {
   helm: { back: 22, side: 7.5, lift: 11.5, aimAhead: 2.5, aimY: 4.6 },
   deck: { back: 9.0, side: 6.0, lift: 6.0, aimAhead: 0.0, aimY: 1.2 },
 };
+// (A berth in another man's ship uses a rail camera, not these: her stern
+// cabin stands exactly where a ship-relative lens would want to be.)
+// Her courses hang on these two ship-local z planes -- see buildAIShipModel.
+const CREW_SAIL_Z = [2.5, -2.3];
 
 function boomClearance(fromX, fromY, fromZ, dirX, dirY, dirZ, len, minLen) {
   const STEPS = 10, floor = minLen === undefined ? 1.0 : minLen;
@@ -6957,10 +7765,12 @@ function updateCameraRig(dt) {
   let aim = null;                 // aboard, the lens is aimed at the ship
   let nearCut = false;            // the boom is jammed: hide your own back
 
+  const crewShip = Player.mode === 'crew' ? Game.crewShip : null;
   if ((Player.mode === 'helm' || Player.mode === 'deck') && playerShip && Game.ship) {
     // ---- aboard: the lens stands off her starboard quarter, so you see the
     // whole ship and the water past her bow. Dead astern, the mainsail sat in
     // the middle of the screen and hid exactly what you were steering into.
+    const hull = playerShip;
     const sc = SHIP_CLASSES[Game.ship.cls].scale;
     const helm = Player.mode === 'helm';
     const h = Ship.heading + Player.lookYaw;
@@ -6974,8 +7784,8 @@ function updateCameraRig(dt) {
     pitch = Player.lookPitch;
     const ax = -Math.sin(h), az = -Math.cos(h);      // astern
     const rx = Math.cos(h), rz = -Math.sin(h);       // starboard
-    const ox = playerShip.position.x, oz = playerShip.position.z;
-    const oy = playerShip.position.y + lift;
+    const ox = hull.position.x, oz = hull.position.z;
+    const oy = hull.position.y + lift;
     const dx = ax * back + rx * side;
     const dz = az * back + rz * side;
     const dy = -Math.sin(pitch) * back * 0.5;        // look up, sink the lens
@@ -6986,9 +7796,35 @@ function updateCameraRig(dt) {
     pz = oz + (dz / bl) * clear;
     // aim at the foredeck when steering, at your own back when walking her
     aim = helm
-      ? { x: ox + Math.sin(h) * bc.aimAhead * sc, y: playerShip.position.y + bc.aimY * sc,
+      ? { x: ox + Math.sin(h) * bc.aimAhead * sc, y: hull.position.y + bc.aimY * sc,
           z: oz + Math.cos(h) * bc.aimAhead * sc }
       : { x: Player.x, y: Player.y - 1.7 + bc.aimY, z: Player.z };
+  } else if (crewShip) {
+    // ---- a berth in another man's ship. A ship-relative boom is wrong here:
+    // her canvas hangs on two planes across her beam and her stern cabin stands
+    // exactly where a deck cam would want to be, so from astern the lens looks
+    // at a sail instead of at the man. It goes out over her rail instead -- a
+    // rear three-quarter across the planks, which is how you would watch a hand
+    // work anyway. Coordinates are HERS: +z is her bow, +x her starboard beam.
+    const hd = crewShip.heading;
+    const lx = 4.4;
+    // the mouse swings the lens fore and aft along the rail, but never past her
+    // masts: between the two sail planes nothing can come between you and him
+    let lz = Player.cz - 2.3 + 4.2 * Math.sin(Player.lookYaw * 0.9);
+    // Keep the lens on HIS side of the canvas. Her courses hang on two planes
+    // at local z 2.5 and -2.3; if the line of sight crosses either one, a grey
+    // wall of sail hides the man completely. (Learned on the foredeck.)
+    for (const zs of CREW_SAIL_Z) {
+      if (Player.cz > zs + 0.15) lz = Math.max(lz, zs + 0.35);
+      else if (Player.cz < zs - 0.15) lz = Math.min(lz, zs - 0.35);
+    }
+    lz = Math.max(-6.0, Math.min(6.0, lz));
+    px = crewShip.x + lx * Math.cos(hd) + lz * Math.sin(hd);
+    pz = crewShip.z - lx * Math.sin(hd) + lz * Math.cos(hd);
+    py = Player.y + 0.55;
+    yaw = hd;
+    pitch = Player.lookPitch;
+    aim = { x: Player.x, y: Player.y - 0.40, z: Player.z };
   } else {
     // ---- on foot: over the shoulder
     yaw = Player.lookYaw;
@@ -7168,14 +8004,32 @@ function updateHUD() {
   // ---- the body ----
   const hp = Math.max(0, Math.min(100, Player.health));
   const st = Math.max(0, Math.min(100, Player.stamina));
+  const hg = Math.max(0, Math.min(100, Player.hunger === undefined ? 100 : Player.hunger));
   const hpFill = document.getElementById('hpFill');
   if (hpFill) {
     hpFill.style.width = hp + '%';
     document.getElementById('stFill').style.width = st + '%';
+    document.getElementById('hgFill').style.width = hg + '%';
     document.getElementById('hpVal').textContent = Math.round(hp);
     document.getElementById('stVal').textContent = Math.round(st);
+    document.getElementById('hgVal').textContent = Math.round(hg);
     document.getElementById('hpBar').classList.toggle('low', hp < 30);
     document.getElementById('stBar').classList.toggle('low', st < 20);
+    document.getElementById('hgBar').classList.toggle('low', hg < 22);
+  }
+
+  // ---- the errand in hand ----
+  const jl = document.getElementById('jobLine');
+  if (jl) {
+    const j = Game.job;
+    if (j) {
+      const d = Math.round(Math.hypot(j.x - Player.x, j.z - Player.z));
+      const txt = `Errand · ${j.where || j.label} · ${d} m · ${j.pay}g`;
+      if (jl.dataset.txt !== txt) { jl.dataset.txt = txt; jl.textContent = txt; }
+      jl.classList.remove('hidden');
+    } else {
+      jl.classList.add('hidden');
+    }
   }
 
   // ---- the dock shift, if you are working one ----
@@ -7195,24 +8049,35 @@ function updateHUD() {
   }
 
   const atSea = Player.mode !== 'foot';
+  const crewShip = Player.mode === 'crew' ? Game.crewShip : null;
   document.getElementById('speedo').classList.toggle('hidden', !atSea);
   if (atSea) {
-    const pct = Math.min(100, Math.abs(Ship.speed) / (Game.ship ? shipMaxSpeed() : 12) * 100);
+    // aboard another man's ship the gauge reads HER way, not your own
+    const spd = crewShip ? crewShip.speed : Ship.speed;
+    const top = crewShip ? 12 : (Game.ship ? shipMaxSpeed() : 12);
+    const pct = Math.min(100, Math.abs(spd) / top * 100);
     document.getElementById('speedFill').style.height = pct + '%';
-    document.getElementById('speedVal').textContent = (Math.abs(Ship.speed) * 2.2).toFixed(1) + ' kn';
+    document.getElementById('speedVal').textContent = (Math.abs(spd) * 2.2).toFixed(1) + ' kn';
 
-    // where the yards are against where the wind wants them
+    // where the yards are against where the wind wants them. Her yards are not
+    // yours to brace, so the needle sits square and the label says so.
     const want = optimalTrim();
     const zone = document.getElementById('trimZone');
     const zl = Math.max(0, Math.min(80, ((want + 1) / 2) * 100 - 10));
     zone.style.left = zl + '%';
     zone.style.width = '20%';
-    document.getElementById('trimNeedle').style.left = ((Ship.trim + 1) / 2) * 100 + '%';
+    const trim = crewShip ? 0 : Ship.trim;
+    document.getElementById('trimNeedle').style.left = ((trim + 1) / 2) * 100 + '%';
 
     const wl = document.getElementById('windLbl');
     const off = Math.abs(windRelative());
-    wl.textContent = off > 2.45 ? 'in irons!' : `wind ${windPhrase()}`;
-    wl.classList.toggle('bad', off > 2.45);
+    if (crewShip) {
+      wl.textContent = Game.voyage && Game.voyage.leg === 'home' ? 'homeward' : 'out to the bar';
+      wl.classList.remove('bad');
+    } else {
+      wl.textContent = off > 2.45 ? 'in irons!' : `wind ${windPhrase()}`;
+      wl.classList.toggle('bad', off > 2.45);
+    }
   }
   checkVictory();
 }
@@ -7357,7 +8222,10 @@ function endStats() {
     row('Charts reported to the Crown', reported) +
     row('Leagues sailed', Math.floor(s.distance || 0)) +
     row('Landfalls abroad', s.voyages || 0) +
+    row('Berths worked in another man\'s ship', s.crewDays || 0) +
     row('Days worked the docks', (s.jobs || 0) + (s.hauled ? ` · ${s.hauled} crates` : '')) +
+    row('Errands run for your neighbours', s.errands || 0) +
+    row('Meals taken', s.meals || 0) +
     row('Fish caught', s.fish || 0) +
     row('Citizens you came to know', s.talked || 0) +
     row('Dice and riddles', (s.duelsWon || 0) + ' won / ' + (s.duelsLost || 0) + ' lost') +
@@ -7437,7 +8305,8 @@ function saveGame(slot) {
     market: Game.market ? JSON.parse(JSON.stringify(Game.market)) : null,
     marketAt: Game.marketAt,
     player: { mode: Player.mode, x: Player.x, y: Player.y, z: Player.z, lookYaw: Player.lookYaw,
-              health: Player.health, stamina: Player.stamina },
+              health: Player.health, stamina: Player.stamina, hunger: Player.hunger },
+    job: Game.job ? { ...Game.job } : null,
     dockedAt: dockedAt ? dockedAt.def.name : null,
     island: Player.island ? Player.island.def.name : null,
   };
@@ -7500,10 +8369,24 @@ function loadGame(slot) {
   // a life saved before the body existed comes back whole
   Player.health = typeof s.player.health === 'number' ? s.player.health : VITALS.health;
   Player.stamina = typeof s.player.stamina === 'number' ? s.player.stamina : VITALS.stamina;
-  Player.healthWarn = false; Player.staminaWarn = false;
+  // a life saved before hunger existed loads with a full belly, not an empty one
+  Player.hunger = typeof s.player.hunger === 'number' ? s.player.hunger : 100;
+  Game.job = s.job || null;
+  Player.healthWarn = false; Player.staminaWarn = false; Player.hungerWarn = false;
   Player.carry = 0;
   Game.shift = null;            // a shift is not a thing you can save
   syncDockWork();
+  // A day's work aboard another man's ship is not a thing you can save: you
+  // come home on the tide, and the life resumes on the pier.
+  Game.crewShip = null;
+  Game.voyage = null;
+  if (Player.mode === 'crew') {
+    Player.mode = 'foot';
+    Player.island = PORTS[0];
+    const g = lisbonGangway || lisbonDock;
+    Player.x = g.x; Player.z = g.z;
+    Player.lookYaw = Math.PI;
+  }
   if ((Player.mode === 'helm' || Player.mode === 'deck') && !playerShip) {
     Player.mode = 'foot';
     Player.island = PORTS[0];
@@ -7611,9 +8494,11 @@ function resetLife() {
     ship: null, commissions: [], gameMinutes: 360, lifeLeft: LIFE_SECONDS,
     quests: {}, stats: { jobs: 0, voyages: 0, earned: 0, spent: 0, distance: 0,
                          fish: 0, talked: 0, duels: 0, duelsWon: 0, duelsLost: 0,
-                         prayers: 0, contracts: 0, hauled: 0 },
+                         prayers: 0, contracts: 0, hauled: 0, meals: 0, crewDays: 0,
+                         errands: 0 },
     hull: 100, upgrades: { hold: 0, sheathing: 0, oak: 0 },
     contracts: [], board: null, market: null, marketAt: 0, shift: null,
+    jobs: null, job: null, crewShip: null, voyage: null,
     cause: '', won: false,
   });
   goldLedgerPause = false;
@@ -7628,8 +8513,9 @@ function resetLife() {
   // a new life in a new body
   Player.health = VITALS.health;
   Player.stamina = VITALS.stamina;
+  Player.hunger = 100;
   Player.carry = 0;
-  Player.healthWarn = false; Player.staminaWarn = false;
+  Player.healthWarn = false; Player.staminaWarn = false; Player.hungerWarn = false;
   Ship.trim = 0;
   syncDockWork();
 
@@ -7712,6 +8598,10 @@ function stepPhysics(h) {
   if (Player.mode === 'foot') {
     updateFoot(h);
     wakeGroup.visible = false;
+  } else if (Player.mode === 'crew') {
+    // a hand in another man's ship: her deck, her helm, her voyage
+    updateCrewWalk(h);
+    updateCrewVoyage(h);
   } else if (Player.mode === 'deck') {
     updateDeckWalk(h);
     if (Game.ship) updateShipPhysics(h);
@@ -7837,6 +8727,7 @@ function animate() {
     updateAvatar(dt);
     updateCameraRig(dt);
     updateDayNight();
+    updateJobMarker();
     updatePrompt();
     updateHUD();
     if (mmFrame-- <= 0) { drawMinimap(); mmFrame = 6; }
@@ -7893,10 +8784,16 @@ window.__voyage = {
   get dlgTalkLeft() { return dlgTalkLeft; },
   get dlgIdle() { return dlgIdle; },
   cargoUnits, cargoCapacity, cargoRoom, drawMinimap, updateDayNight, updateCameraRig,
-  SHIP_CAM,
+  SHIP_CAM, CREW_SAIL_Z,
   updateAvatar, boomClearance, camRig, get avatar() { return avatar; },
   updateHUD, updateCargoBox, applyEffect, cargoValue, fmtClock, stepPhysics,
-  updatePrompt,
+  updatePrompt, eatMeal, sleepHours,
+  // the town: doors, errands, and the board that offers them
+  HOUSE_DEFS, jobOffers, startJob, finishJob, updateJobMarker,
+  get jobRing() { return jobRing; },
+  // a berth in another man's ship
+  CREW_STATIONS, VOYAGE, recruiterShip, startCrewVoyage, updateCrewWalk,
+  updateCrewVoyage, workCrewTask, payOffCrew, updateCrewPos,
   // the merchant's game: markets, contracts, and the state of her hull
   GOODS, PORT_WANTS, UPGRADES, TRADE_GOODS,
   initMarket, marketOf, marketBuyPrice, marketSellPrice, marketWants,
