@@ -47,9 +47,6 @@
   #shopBtn { position:fixed; z-index:55; right:10px; top:10px; width:44px; height:34px;
     font-weight:bold; font-size:12px; letter-spacing:1px; cursor:pointer; background:#0a1120cc;
     border:2px solid #3b6a2b; color:#b6ff8a; border-radius:4px; display:none; touch-action:manipulation; }
-  #boostBtn { position:fixed; z-index:55; left:10px; top:78px; width:64px; height:36px;
-    font-weight:bold; font-size:12px; letter-spacing:1px; cursor:pointer; background:#0a1120cc;
-    border:2px solid #8fd0ff; color:#8fd0ff; border-radius:4px; display:none; touch-action:manipulation; }
   #touch { position:fixed; left:0; right:0; bottom:0; height:52%; z-index:54; display:none; touch-action:none; }
   #touch.on { display:block; }
   .joy { position:fixed; left:0; top:0; width:116px; height:116px; margin:-58px 0 0 -58px;
@@ -217,7 +214,6 @@
 <div class="hud" id="cash">$0</div>
 <button id="mute" title="toggle sound">🔊</button>
 <button id="shopBtn" title="open armory">SHOP</button>
-<button id="boostBtn" title="hold to boost">BOOST</button>
 <div class="hud" id="netbadge" style="display:none"></div>
 <div class="hud" id="weather" style="display:none"></div>
 <div id="toast"></div>
@@ -324,14 +320,8 @@
       <span class="slothp" id="netPing" style="width:auto;color:#d9b8ff">— ms</span>
     </div>
     <div id="lobbyStatus" style="text-align:center;font-size:11px;letter-spacing:2px;color:#9fc0e8;margin:2px 0 12px"></div>
-    <div class="nfield"><label>YOUR TANK (free pick for online)</label>
-      <div class="row" id="netKeyRow">
-        <button class="dbtn" data-nkey="scout">SCOUT</button>
-        <button class="dbtn on" data-nkey="medium">MEDIUM</button>
-        <button class="dbtn" data-nkey="heavy">HEAVY</button>
-        <button class="dbtn" data-nkey="arty">ARTY</button>
-        <button class="dbtn" data-nkey="sniper">SNIPER</button>
-      </div></div>
+    <div class="nfield"><label>YOUR TANK</label>
+      <div style="font-size:11px;letter-spacing:1px;color:#8fd0ff;padding:4px 0">RANDOM — a new tank is rolled for every match</div></div>
     <div id="hostOpts" style="display:none">
       <div class="nfield"><label>HOST — MODE</label>
         <div class="row" id="hostModeRow">
@@ -792,7 +782,6 @@ class Tank {
     this.setClass(key);
     this.cd=0; this.alive=true; this.respawnT=0;
     this.bodyAng=0; this.turAng=0; this.aim=0; this.wheel=0;
-    this.boostT=0; this.boostCd=0; this.wantBoost=false;
     this.shieldT=0; this.speedT=0; this.slipX=0; this.slipZ=0;
     this.target=null; this.retarget=0; this.strafe=Math.random()<.5?1:-1;
     this.spawnPos = TEAMS[team].spawn[slot];
@@ -845,12 +834,12 @@ function setup(mode, roster, localId){
   MODE = mode; tanks.length = 0;
   resetHQS();
   if(roster){
-    // online: humans occupy roster seats (with a free class pick); the rest are bots
+    // online: humans occupy roster seats; every player gets a random tank each match
     const botKey = (t,s)=>BOT_LOADOUT[(s+t*2)%BOT_LOADOUT.length];
     for(let t=0;t<2;t++) for(let s=0;s<5;s++){
       const m = roster.find(x=>x.team===t && x.slot===s);
       const isP = !!(m && m.id===localId);
-      const key = m ? (m.key||'medium') : botKey(t,s);
+      const key = m ? (m.key || ORDER[(Math.random()*ORDER.length)|0]) : botKey(t,s);
       const tk = new Tank(t,s,key,isP);
       if(m){ tk.name=(m.name||'PLAYER').slice(0,10); tk.isHuman=true; tk.isRemote=!isP; tk.netId=m.id; tk.money=0; }
       tanks.push(tk);
@@ -860,7 +849,7 @@ function setup(mode, roster, localId){
     const ps = (Math.random()*5)|0;                    // random slot
     for(let t=0;t<2;t++) for(let s=0;s<5;s++){
       const isP = (t===pt && s===ps);
-      const key  = isP ? ORDER[(Math.random()*ORDER.length)|0] : BOT_LOADOUT[s];
+      const key  = isP ? 'scout' : BOT_LOADOUT[s];
       tanks.push(new Tank(t,s,key,isP));
     }
   } else if(mode==='tdm'){
@@ -869,7 +858,7 @@ function setup(mode, roster, localId){
   } else if(mode==='tutorial'){
     aiLevel='easy';
     for(let t=0;t<2;t++) for(let s=0;s<5;s++)
-      tanks.push(new Tank(t,s, t===0&&s===0?'medium':BOT_LOADOUT[(s+t*2)%BOT_LOADOUT.length], t===0&&s===0));
+      tanks.push(new Tank(t,s, t===0&&s===0?'scout':BOT_LOADOUT[(s+t*2)%BOT_LOADOUT.length], t===0&&s===0));
   } else {
     for(let t=0;t<2;t++) for(let s=0;s<5;s++)
       tanks.push(new Tank(t,s, t===0&&s===0?'scout':BOT_LOADOUT[(s+t*2)%BOT_LOADOUT.length], t===0&&s===0));
@@ -1019,17 +1008,16 @@ document.getElementById('mAch').onclick = openTrophies;
    TUTORIAL  —  a guided first match (offline)
 ============================================================ */
 let tutorial=false;
-let tut={ step:0, moved:0, fired:false, boosted:false, shopped:false, px:null, pz:null };
+let tut={ step:0, moved:0, fired:false, shopped:false, px:null, pz:null };
 const TUT_STEPS = [
   { txt:'MOVE — <b>WASD / ARROWS</b> or the <b>LEFT stick</b>', tt:'MOVE — drag the <b>LEFT stick</b> around', chk:()=> tut.moved>12 },
   { txt:'AIM &amp; FIRE — <b>MOUSE + CLICK</b> or the <b>RIGHT stick</b>', tt:'AIM &amp; FIRE — drag the <b>RIGHT stick</b> to aim, release to stop firing', chk:()=> tut.fired },
-  { txt:'BOOST — <b>SHIFT / Q</b> or the <b>BOOST</b> button', tt:'BOOST — hold the <b>BOOST</b> button', chk:()=> tut.boosted },
   { txt:'UPGRADE — press <b>B</b> or the <b>SHOP</b> button and buy a tank', tt:'UPGRADE — tap <b>SHOP</b>, pick a tank, then tap outside the panel to close it', chk:()=> tut.shopped },
   { txt:'NOW <b>DESTROY THE RED HQ</b> to win — good luck!', tt:'NOW <b>DESTROY THE RED HQ</b> to win — good luck!', chk:()=> false },
 ];
 function resetTutorial(){
   tutorial=true;
-  tut={ step:0, moved:0, fired:false, boosted:false, shopped:false, px:null, pz:null };
+  tut={ step:0, moved:0, fired:false, shopped:false, px:null, pz:null };
   el('tut').style.display='block';
 }
 function endTutorial(){ tutorial=false; el('tut').style.display='none'; }
@@ -1040,7 +1028,6 @@ function tutTick(dt){
   if(player){
     if(tut.px!==null) tut.moved += Math.hypot(player.x-tut.px, player.z-tut.pz);
     tut.px=player.x; tut.pz=player.z;
-    if(player.boostT>0) tut.boosted=true;
   }
   let guard=0;
   while(TUT_STEPS[tut.step] && TUT_STEPS[tut.step].chk() && guard++<8) tut.step++;
@@ -1569,8 +1556,6 @@ function aiUpdate(t, dt){
   t.moveX=st.mx; t.moveZ=st.mz;
   const clear = !blocked(t.x,t.z,g.x,g.z,0.4);
   if(clear && dist<t.c.range && Math.abs(wrap(t.turAng - t.aim))<AI().aimTol) t.wantFire=true;
-  // bots use their boost to close distance or chase (not when shelling an HQ)
-  if(clear && dist > range*1.35 && !g.gun && Math.random()<0.02) t.wantBoost=true;
 }
 function wrap(a){ while(a>Math.PI) a-=Math.PI*2; while(a<-Math.PI) a+=Math.PI*2; return a; }
 function angLerp(a,b,t){ return a + wrap(b-a)*Math.min(1,t); }
@@ -1596,7 +1581,7 @@ addEventListener('mousedown', e=>{ if(e.button===0 && e.target===renderer.domEle
 addEventListener('mouseup',   e=>{ if(e.button===0){ firing=false; if(player) player.wantFire=false; } });
 renderer.domElement.addEventListener('contextmenu', e=>e.preventDefault());
 /* ---- touch controls (twin stick) ---- */
-const touch = { active:false, left:{x:0,z:0}, right:{x:0,z:0}, boost:false };
+const touch = { active:false, left:{x:0,z:0}, right:{x:0,z:0} };
 let touchReady=false;
 const touchLayer = document.getElementById('touch');
 const joyL = document.getElementById('joyL'), joyR = document.getElementById('joyR');
@@ -1615,7 +1600,7 @@ function place(e, side){
 }
 document.addEventListener('pointerdown', e=>{
   if(!touch.active) return;
-  if(e.target && e.target.closest && (e.target.closest('#boostBtn')||e.target.closest('#shopBtn')||e.target.closest('#shop')||e.target.closest('.panel')||e.target.closest('.card'))) return;
+  if(e.target && e.target.closest && (e.target.closest('#shopBtn')||e.target.closest('#shop')||e.target.closest('.panel')||e.target.closest('.card'))) return;
   const side = e.clientX < window.innerWidth/2 ? 'L' : 'R';
   (side==='L'?joyL:joyR).style.transform = `translate(${e.clientX}px,${e.clientY}px)`;
   sticks[e.pointerId] = { side, ox:e.clientX, oy:e.clientY };
@@ -1631,11 +1616,6 @@ const releaseTouch = e=>{
 };
 document.addEventListener('pointerup', releaseTouch);
 document.addEventListener('pointercancel', releaseTouch);
-const bb = document.getElementById('boostBtn');
-bb.addEventListener('pointerdown', e=>{ e.preventDefault(); touch.boost = true; });
-bb.addEventListener('pointerup', ()=> touch.boost = false);
-bb.addEventListener('pointercancel', ()=> touch.boost = false);
-bb.addEventListener('pointerleave', ()=> touch.boost = false);
 function enableTouch(){
   if(touchReady) return; touchReady=true;
   touch.active = true;
@@ -1644,7 +1624,6 @@ function enableTouch(){
   const sb = document.getElementById('shopBtn');
   sb.style.display = 'block';
   sb.onclick = ()=>toggleShop();
-  bb.style.display = 'block';
 }
 // Show twin-stick controls when the primary pointer is coarse OR on the first real
 // touch event. Detection alone is unreliable (some devices report a "fine" primary
@@ -1775,10 +1754,9 @@ function readLocalInput(){
   const tl = Math.hypot(touch.left.x, touch.left.z), tr = Math.hypot(touch.right.x, touch.right.z);
   // twin-stick takes over whenever a stick is engaged (so keyboard/mouse still work
   // on hybrid devices until you actually touch the screen)
-  if(touch.active && (tl>0.06 || tr>0.06 || touch.boost)){
+  if(touch.active && (tl>0.06 || tr>0.06)){
     player.moveX = touch.left.x; player.moveZ = touch.left.z;
     if(tr > 0.3){ player.aim = Math.atan2(touch.right.x, touch.right.z); player.wantFire = true; }
-    player.wantBoost = !!touch.boost;
     return;
   }
   let ax=0, az=0;
@@ -1790,7 +1768,6 @@ function readLocalInput(){
   if(p){ player.aim = Math.atan2(p.x-player.x, p.z-player.z); }
   const l=Math.hypot(ax,az);
   player.moveX = l? ax/l : 0; player.moveZ = l? az/l : 0;
-  player.wantBoost = !!(keys['shift']||keys['q']);
   if(firing) player.wantFire = true;
 }
 function fxParticles(dt){
@@ -1861,19 +1838,12 @@ function update(dt){
     }
     if(t.isRemote){
       const inp=NET.inputs[t.netId];
-      if(inp){ t.moveX=inp.mx; t.moveZ=inp.mz; t.aim=inp.aim; if(inp.fire) t.wantFire=true; if(inp.boost) t.wantBoost=true; }
+      if(inp){ t.moveX=inp.mx; t.moveZ=inp.mz; t.aim=inp.aim; if(inp.fire) t.wantFire=true; }
       else { t.moveX=0; t.moveZ=0; }
     } else if(!t.isPlayer) aiUpdate(t, dt);
     t.cd-=dt; t.hitFlash=Math.max(0,(t.hitFlash||0)-dt);
-    t.boostCd-=dt; t.boostT-=dt;
     t.shieldT=Math.max(0,(t.shieldT||0)-dt); t.speedT=Math.max(0,(t.speedT||0)-dt);
-    // trigger a speed burst on demand (Shift / Q / BOOST), then cooldown
-    if(t.wantBoost && t.boostCd<=0 && t.boostT<=0){
-      t.boostT=1.1; t.boostCd=4.5;
-      if(t.isPlayer) SFX.buy();
-    }
-    t.wantBoost=false;
-    const spdMul = (t.boostT>0 ? 1.6 : 1) * (t.speedT>0 ? 1.5 : 1);
+    const spdMul = (t.speedT>0 ? 1.5 : 1);
     t.turAng = angLerp(t.turAng, t.aim, Math.min(1, dt*t.c.turn));
     if(Math.hypot(t.moveX,t.moveZ)>0.05){
       const want=Math.atan2(t.moveX,t.moveZ);
@@ -2021,7 +1991,7 @@ function startGame(mode){
   setup(mode);
   money = 0;
   el('hint').innerHTML = touch.active
-    ? 'AI — <b style="color:#8fd0ff">'+AI().label+'</b><br>LEFT STICK — move<br>RIGHT STICK — aim &amp; fire<br>SHOP — upgrade tank<br>BOOST — speed boost'
+    ? 'AI — <b style="color:#8fd0ff">'+AI().label+'</b><br>LEFT STICK — move<br>RIGHT STICK — aim &amp; fire<br>SHOP — upgrade tank'
     : 'AI — <b style="color:#8fd0ff">'+AI().label+'</b><br>'
       + 'WASD / ARROWS — move<br>MOUSE — aim &nbsp;|&nbsp; CLICK / SPACE — fire<br>B — shop &nbsp;|&nbsp; 1-6 — quick buy';
 }
@@ -2185,7 +2155,7 @@ const NET = {
   mode:'off', role:null, state:'menu',
   mq:null, conns:{}, hostConn:null, clientId:'',
   code:'', name:'PLAYER', myId:'', localId:'',
-  roster:[], selMode:'skirmish', selAi:'normal', selKey:'medium',
+  roster:[], selMode:'skirmish', selAi:'normal',
   inputs:{}, snap:null, snapT:0, seq:0, ping:0, pingT:0, inAt:0,
   selMap:'classic',
   events:[], nextEv:1, evSeen:0, bulletId:1,
@@ -2277,7 +2247,7 @@ function netOnClose(){
       if(NET.role!==role || NET.code!==code) return;
       netSetMsg('lobbyMsg','Connection lost — reconnecting…','#ff7a7a');
       netConnect(()=>{
-        if(role==='guest'){ netGuestSend({t:'hello', name:NET.name, key:NET.selKey}); netSetMsg('lobbyMsg',''); }
+        if(role==='guest'){ netGuestSend({t:'hello', name:NET.name}); netSetMsg('lobbyMsg',''); }
         else { netBroadcast({t:'roster', roster:NET.roster, mode:NET.selMode, ai:NET.selAi, map:NET.selMap}); netHubRegister(); netSetMsg('lobbyMsg',''); }
       });
     }, 1200);
@@ -2373,7 +2343,7 @@ function netCreate(){
   netWatchdog('Opening the room');
   netConnect(()=>{
     netClearWatchdog();
-    NET.roster=[{ id:NET.localId, name, team:0, slot:0, ready:true, host:true, key:NET.selKey }];
+    NET.roster=[{ id:NET.localId, name, team:0, slot:0, ready:true, host:true }];
     enterLobby();
     netSetMsg('netMsg','');
     netHubRegister();
@@ -2394,7 +2364,7 @@ function netJoin(){
   netWatchdog('Connecting to '+code);
   netConnect(()=>{
     netClearWatchdog();
-    netGuestSend({t:'hello', name, key:NET.selKey});
+    netGuestSend({t:'hello', name});
     netSetMsg('netMsg',''); enterLobby();
   });
   setTimeout(()=>{
@@ -2450,21 +2420,18 @@ function hostOnData(c,m){
     if(NET.state!=='lobby'){ try{ c.send({t:'bye', reason:'Game in progress'}); }catch(e){} setTimeout(()=>{ try{c.close();}catch(e){} },300); return; }
     if(NET.roster.length>=10){ try{ c.send({t:'bye', reason:'Room full'}); }catch(e){} setTimeout(()=>{ try{c.close();}catch(e){} },300); return; }
     const s=freeSlot();
-    NET.roster.push({ id:c.peer, name:(m.name||'PLAYER').slice(0,12), team:s.team, slot:s.slot, ready:false, host:false, key:(m.key||'medium') });
+    NET.roster.push({ id:c.peer, name:(m.name||'PLAYER').slice(0,12), team:s.team, slot:s.slot, ready:false, host:false });
     try{ c.send({t:'welcome', id:c.peer, roster:NET.roster, mode:NET.selMode, ai:NET.selAi, map:NET.selMap}); }catch(e){}
     netBroadcast({t:'roster', roster:NET.roster, mode:NET.selMode, ai:NET.selAi, map:NET.selMap});
     netRenderSeats();
   } else if(m.t==='ready'){
     const mem=NET.roster.find(x=>x.id===c.peer); if(!mem) return;
     mem.ready=!!m.v; netBroadcast({t:'roster', roster:NET.roster, mode:NET.selMode, ai:NET.selAi, map:NET.selMap}); netRenderSeats();
-  } else if(m.t==='key'){
-    const mem=NET.roster.find(x=>x.id===c.peer); if(!mem) return;
-    if(ORDER.includes(m.key)){ mem.key=m.key; netBroadcast({t:'roster', roster:NET.roster, mode:NET.selMode, ai:NET.selAi, map:NET.selMap}); netRenderSeats(); }
   } else if(m.t==='team'){
     const mem=NET.roster.find(x=>x.id===c.peer); if(!mem) return;
     moveToTeam(mem, mem.team^1);
   } else if(m.t==='in'){
-    NET.inputs[c.peer]={ mx:m.mx||0, mz:m.mz||0, aim:m.aim||0, fire:m.fire?1:0, boost:m.boost?1:0 };
+    NET.inputs[c.peer]={ mx:m.mx||0, mz:m.mz||0, aim:m.aim||0, fire:m.fire?1:0 };
   } else if(m.t==='buy'){
     const mem=NET.roster.find(x=>x.id===c.peer); if(!mem) return;
     const t=tankAt(mem.team,mem.slot); if(t) buyFor(t, m.key);
@@ -2507,7 +2474,7 @@ function netRenderSeats(){
     const m=NET.roster.find(x=>x.team===t&&x.slot===s);
     if(m){
       html.push(`<div class="seat ${t===0?'b':'r'}"><span class="dot" style="background:${t===0?'#3b82f6':'#ef4444'}"></span>`+
-        `<span class="nm">${escapeHtml(m.name)}${m.host?' *':''} · ${(CLASSES[m.key]||CLASSES.medium).name}</span>`+
+        `<span class="nm">${escapeHtml(m.name)}${m.host?' *':''}</span>`+
         `<span class="rdy" style="color:${m.ready?'#b6ff8a':'#7d90ad'}">${m.ready?'READY':'—'}</span></div>`);
     } else {
       html.push(`<div class="seat ${t===0?'b':'r'} empty"><span class="dot" style="background:#27456f"></span>`+
@@ -2537,7 +2504,6 @@ function netRenderSeats(){
   document.querySelectorAll('#hostModeRow .dbtn').forEach(b=> b.classList.toggle('on', b.dataset.nmode===NET.selMode));
   document.querySelectorAll('#hostAiRow .dbtn').forEach(b=> b.classList.toggle('on', b.dataset.nai===NET.selAi));
   document.querySelectorAll('#hostMapRow .dbtn').forEach(b=> b.classList.toggle('on', b.dataset.map===NET.selMap));
-  if(me) document.querySelectorAll('#netKeyRow .dbtn').forEach(b=> b.classList.toggle('on', b.dataset.nkey===me.key));
   el('netPing').textContent = NET.ping? NET.ping+' ms':'— ms';
   if(NET.role==='host') netHubRegister();   // keep the public-room listing current
 }
@@ -2547,15 +2513,6 @@ function toggleReady(){
   me.ready=!me.ready;
   if(NET.hostConn) try{ NET.hostConn.send({t:'ready', v:me.ready}); }catch(e){}
   netRenderSeats();
-}
-function selectKey(k){
-  NET.selKey=k;
-  document.querySelectorAll('#netKeyRow .dbtn').forEach(b=> b.classList.toggle('on', b.dataset.nkey===k));
-  if(NET.role==='host'){
-    const me=NET.roster.find(m=>m.host); if(me) me.key=k;
-    netBroadcast({t:'roster', roster:NET.roster, mode:NET.selMode, ai:NET.selAi, map:NET.selMap});
-    netRenderSeats();
-  } else if(NET.hostConn) try{ NET.hostConn.send({t:'key', key:k}); }catch(e){}
 }
 function hostSet(mode,ai,map){
   if(NET.role!=='host') return;
@@ -2574,6 +2531,7 @@ function copyLink(){
 function netStart(){
   if(NET.role!=='host' || NET.state!=='lobby') return;
   if(!NET.roster.every(m=>m.ready)){ netSetMsg('lobbyMsg','All players must be READY','#ff7a7a'); return; }
+  for(const m of NET.roster) m.key = ORDER[(Math.random()*ORDER.length)|0];
   netBroadcast({t:'start', mode:NET.selMode, ai:NET.selAi, map:NET.selMap, roster:NET.roster});
   netBeginPlay(NET.selMode, NET.roster, NET.myId);
 }
@@ -2600,7 +2558,7 @@ function netBeginPlay(mode, roster, localId){
   money=0;
   el('hint').innerHTML = 'AI — <b style="color:#8fd0ff">'+AI().label+'</b> · ROOM '+NET.code+'<br>'
     + (touch.active
-      ? 'LEFT STICK — move<br>RIGHT STICK — aim &amp; fire<br>SHOP — upgrade &nbsp;|&nbsp; BOOST — boost'
+      ? 'LEFT STICK — move<br>RIGHT STICK — aim &amp; fire<br>SHOP — upgrade'
       : 'WASD / ARROWS — move<br>MOUSE — aim &nbsp;|&nbsp; CLICK / SPACE — fire<br>B — shop &nbsp;|&nbsp; 1-6 — quick buy');
   showBadge(true);
   netSetMsg('lobbyMsg','');
@@ -2719,10 +2677,8 @@ function netGuestUpdate(dt){
   if(player){
     readLocalInput();
     if(player.alive){
-      player.boostCd-=dt; player.boostT-=dt;
       player.shieldT=Math.max(0,(player.shieldT||0)-dt); player.speedT=Math.max(0,(player.speedT||0)-dt);
-      if(player.wantBoost && player.boostCd<=0 && player.boostT<=0){ player.boostT=1.1; player.boostCd=4.5; }
-      const spdMul = (player.boostT>0 ? 1.6 : 1) * (player.speedT>0 ? 1.5 : 1);
+      const spdMul = (player.speedT>0 ? 1.5 : 1);
       let imx=player.moveX, imz=player.moveZ;
       if(WEATHER_INFO[weather].slip){
         const k=Math.min(1, dt*2.4);
@@ -2763,7 +2719,7 @@ function netGuestUpdate(dt){
   NET.inAt-=dt;
   if(NET.inAt<=0 && NET.hostConn && NET.state==='playing'){
     NET.inAt=1/30;
-    try{ NET.hostConn.send({t:'in', mx:player?player.moveX:0, mz:player?player.moveZ:0, aim:player?player.aim:0, fire:(player&&player.wantFire)?1:0, boost:(player&&player.wantBoost)?1:0}); }catch(e){}
+    try{ NET.hostConn.send({t:'in', mx:player?player.moveX:0, mz:player?player.moveZ:0, aim:player?player.aim:0, fire:(player&&player.wantFire)?1:0}); }catch(e){}
   }
   NET.pingT-=dt;
   if(NET.pingT<=0 && NET.hostConn){ NET.pingT=1.5; try{ NET.hostConn.send({t:'ping', ts:performance.now()}); }catch(e){} }
@@ -2783,7 +2739,6 @@ document.querySelectorAll('#hostAiRow .dbtn').forEach(b=> b.onclick=()=>{
 document.querySelectorAll('#hostMapRow .dbtn').forEach(b=> b.onclick=()=>{
   el('hostMapRow').querySelectorAll('.dbtn').forEach(x=>x.classList.toggle('on',x===b)); hostSet(null,null,b.dataset.map);
 });
-document.querySelectorAll('#netKeyRow .dbtn').forEach(b=> b.onclick=()=>selectKey(b.dataset.nkey));
 el('netCreate').onclick = netCreate;
 el('netJoin').onclick = netJoin;
 el('netReady').onclick = toggleReady;
@@ -2850,7 +2805,7 @@ window.__T = { get player(){return player;}, get money(){return money;}, set mon
   NET, DIFFS, CLASSES, ORDER, HQS, tanks, bullets, setup, update, netGuestUpdate, buildSnap, applySnap,
   netBeginPlay, netRenderSeats, resetGame, readLocalInput, netEvent, fire, netFeed, startGame, aiLevel:()=>aiLevel,
   damage, damageHQ, addMoney, buyFor, applySnap, applyEvent,
-  netOpen, netCreate, netJoin, netStart, toggleReady, selectKey, hostSet, netLeave, showNetTab, swapSide, moveToTeam,
+  netOpen, netCreate, netJoin, netStart, toggleReady, hostSet, netLeave, showNetTab, swapSide, moveToTeam,
   netBrowse, netRefreshRoomList, netRenderRoomList, netHubRegister, netHubUnregister, netHubClose, netApplyDir,
   mqttConnect, NET_RELAY, NET_DIR, netConnect,
   setWeather, tickWeather, gust, buildMap, MAPS, WEATHER_KEYS, WEATHER_INFO, weatherSpd, applyWeatherVisual,
