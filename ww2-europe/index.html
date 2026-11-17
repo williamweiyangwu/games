@@ -123,7 +123,7 @@
   .map-counter { text-align: center; color: var(--muted); font-size: 0.8rem; margin-bottom: 10px; }
   .map-stats { text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 8px; }
   .map-svg-wrap { position: relative; }
-  #europeMap path { transition: fill .5s ease; cursor: pointer; }
+  #europeMap path { cursor: pointer; }
   #europeMap path:hover { stroke: #fff; stroke-width: 1.2; stroke-opacity: 1; }
   #europeMap text { pointer-events: none; user-select: none; }
   #europeMap .battle { cursor: pointer; animation: pulse 1.5s ease-in-out infinite; }
@@ -252,6 +252,37 @@
   .game-card .score { color: var(--gold); font-size: 1.15rem; font-weight: 700; }
   .game-card .game-tip { font-size: 0.78rem; margin-top: 12px; opacity: .8; }
   .game-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .hangar-btn {
+    position: absolute; z-index: 4; top: 32px; right: 14px;
+    padding: 5px 11px; font-size: 0.76rem; font-weight: 700;
+    color: #d8e9f7; background: rgba(8,15,26,.72); border: 1px solid rgba(255,255,255,.24);
+    border-radius: 7px; cursor: pointer; letter-spacing: .4px;
+  }
+  .hangar-btn:hover { border-color: var(--gold); color: var(--gold); }
+  .game-card.hangar { max-width: 780px; }
+  .hangar-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+  .hangar-cash { color: var(--gold); font-weight: 800; font-size: 1.05rem; }
+  .hangar-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0; }
+  .plane-card {
+    text-align: left; background: var(--panel2); border: 2px solid var(--border); border-radius: 10px;
+    padding: 10px; color: var(--text); cursor: pointer; transition: border-color .15s, transform .15s;
+  }
+  .plane-card:hover { transform: translateY(-2px); border-color: #4f617f; }
+  .plane-card.selected { border-color: var(--gold); box-shadow: 0 0 0 1px rgba(212,167,44,.35) inset; }
+  .plane-card.locked { opacity: .82; }
+  .plane-card .pc-name { font-weight: 800; font-size: 0.9rem; display: flex; justify-content: space-between; gap: 6px; }
+  .plane-card .pc-desc { color: var(--muted); font-size: 0.72rem; margin: 5px 0 7px; line-height: 1.35; }
+  .plane-card .pc-stats { font-size: 0.68rem; color: #b8c7da; display: grid; gap: 2px; }
+  .plane-card .pc-buy { margin-top: 8px; font-size: 0.72rem; font-weight: 800; color: var(--gold); }
+  .plane-card .pc-buy.owned { color: #6fd48b; }
+  .plane-card .pc-buy.cant { color: #e5867f; }
+  .pc-swatch { display: flex; gap: 5px; margin-top: 8px; }
+  .pc-swatch button { width: 22px; height: 14px; border-radius: 3px; border: 1px solid rgba(255,255,255,.4); cursor: pointer; padding: 0; }
+  .pc-swatch button.active { outline: 2px solid var(--gold); outline-offset: 1px; }
+  .leaderboard { margin: 10px 0 2px; text-align: left; display: grid; gap: 3px; font-size: 0.8rem; color: var(--muted); }
+  .leaderboard div { display: flex; justify-content: space-between; border-bottom: 1px dashed #273248; padding: 2px 0; }
+  .leaderboard b { color: var(--gold); }
+  .hangar-note { font-size: 0.72rem; color: var(--muted); margin-top: 8px; }
 
   .ad-overlay {
     position: absolute; inset: 0; display: none; align-items: flex-start; justify-content: center;
@@ -275,6 +306,8 @@
   @media (max-width: 560px) {
     .game-hud { font-size: 0.7rem; gap: 7px; left: 9px; right: 9px; }
     .game-hud span:nth-child(4), .game-hud span:nth-child(5) { display: none; }
+    .hangar-btn { top: 30px; right: 9px; font-size: 0.68rem; padding: 4px 8px; }
+    .hangar-grid { grid-template-columns: 1fr 1fr; }
     .weapons { grid-template-columns: 1fr 1fr; gap: 10px; }
     .wbody { padding: 11px 12px 12px; }
     .weapon .wdesc { display: none; }
@@ -360,18 +393,19 @@
   </section>
 
   <section id="fighter">
-    <h2 data-i18n="fighterTitle">Fly a WWII Fighter</h2>
-    <p class="sub" data-i18n="fighterSub">Take the controls of a Spitfire in a third-person 3D dogfight. Start locks the mouse for smooth steering; WASD / arrow keys also work, guns fire automatically, and Esc pauses.</p>
+    <h2 data-i18n="fighterTitle">Plane Wars: Fly a WWII Fighter</h2>
+    <p class="sub" data-i18n="fighterSub">Click or tap to lock the camera, move to steer and hold to fire. Shoot down enemy planes, fly through the cash they drop, and spend it in the hangar on faster, tougher aircraft and paint jobs. Hitting a hill respawns you — Esc pauses.</p>
     <div class="game-wrap" id="gameWrap">
       <canvas id="fighterCanvas" width="900" height="560"></canvas>
       <div class="reticle" aria-hidden="true"></div>
       <div class="game-hud">
-        <span>Score <b id="gScore">0</b></span>
-        <span>Wave <b id="gWave">1</b></span>
+        <span>$ <b id="gCash">0</b></span>
         <span>Hull <b id="gHealth">100</b></span>
+        <span>Wave <b id="gWave">1</b></span>
         <span>Speed <b id="gSpeed">0</b></span>
         <span>Alt <b id="gAlt">0</b></span>
       </div>
+      <button class="hangar-btn" id="hangarBtn" type="button">Hangar</button>
       <div class="hit-flash" aria-hidden="true"></div>
       <div class="game-overlay" id="gameOverlay"></div>
       <div class="ad-overlay" id="adOverlay">
@@ -438,8 +472,8 @@ const I18N = {
     timelineTitle: "Timeline of Events", figuresTitle: "Key Figures", autoPlay: "Autoplay",
     weaponsTitle: "Weapons of World War II",
     weaponsSub: "The machines and guns that shaped the battlefield, from the Blitzkrieg to the V-2.",
-    fighterTitle: "Fly a WWII Fighter",
-    fighterSub: "Take the controls of a Spitfire in a third-person 3D dogfight. Start locks the mouse for smooth steering; WASD / arrow keys also work, guns fire automatically, and Esc pauses.",
+    fighterTitle: "Plane Wars: Fly a WWII Fighter",
+    fighterSub: "Click or tap to lock the camera, move to steer and hold to fire. Shoot down enemy planes, fly through the cash they drop, and spend it in the hangar on faster, tougher aircraft and paint jobs. Hitting a hill respawns you — Esc pauses.",
     footer: "Data compiled from public historical sources for educational purposes; some figures are estimates.",
     statDuration: "Duration", statCountries: "Belligerent nations",
     statDeaths: "Fatalities (worldwide)", statCamps: "Major camps",
@@ -901,9 +935,21 @@ function clearCountryWipes() {
 }
 
 // Reveal a country's new allegiance with a colour wipe that spreads across its shape.
-function animateCountryWipe(svg, path, code, newColor, delay) {
+// Fill a country from the edge nearest `opts.from`, so an advance looks like a
+// front moving across the map instead of a colour snapping on.
+function animateCountryWipe(svg, path, code, newColor, opts) {
+  opts = opts || {};
   const bb = path.getBBox();
   if (bb.width <= 0 || bb.height <= 0) { path.setAttribute("fill", newColor); return; }
+  const from = opts.from || { x: bb.x - 40, y: bb.y + bb.height / 2 };
+  const dur = Math.max(120, opts.duration || 620);
+  const delay = Math.max(0, opts.delay || 0);
+  const cx = bb.x + bb.width / 2, cy = bb.y + bb.height / 2;
+  const dx = cx - from.x, dy = cy - from.y;
+  const horizontal = Math.abs(dx) >= Math.abs(dy);
+  const reverse = horizontal ? dx < 0 : dy < 0;
+  const axisLen = horizontal ? bb.width : bb.height;
+
   const NS = "http://www.w3.org/2000/svg";
   const clipId = "wipe-" + code + "-" + (Math.random() * 1e6 | 0);
   const clip = document.createElementNS(NS, "clipPath");
@@ -911,11 +957,18 @@ function animateCountryWipe(svg, path, code, newColor, delay) {
   clip.setAttribute("clipPathUnits", "userSpaceOnUse");
   clip.classList.add("wipe-clip");
   const rect = document.createElementNS(NS, "rect");
-  rect.setAttribute("x", bb.x);
-  rect.setAttribute("y", bb.y - 1);
-  rect.setAttribute("width", 0);
-  rect.setAttribute("height", bb.height + 2);
   rect.setAttribute("fill", "#fff");
+  if (horizontal) {
+    rect.setAttribute("x", reverse ? bb.x + bb.width : bb.x);
+    rect.setAttribute("y", bb.y - 1);
+    rect.setAttribute("width", 0);
+    rect.setAttribute("height", bb.height + 2);
+  } else {
+    rect.setAttribute("x", bb.x - 1);
+    rect.setAttribute("y", reverse ? bb.y + bb.height : bb.y);
+    rect.setAttribute("width", bb.width + 2);
+    rect.setAttribute("height", 0);
+  }
   clip.appendChild(rect);
   svg.appendChild(clip);
 
@@ -928,7 +981,6 @@ function animateCountryWipe(svg, path, code, newColor, delay) {
   svg.appendChild(overlay);
 
   const start = performance.now() + delay;
-  const dur = 620;
   let finished = false;
   function finish() {
     if (finished) return;
@@ -939,7 +991,14 @@ function animateCountryWipe(svg, path, code, newColor, delay) {
   }
   function step(now) {
     const t = Math.max(0, Math.min(1, (now - start) / dur));
-    rect.setAttribute("width", (bb.width * t).toFixed(2));
+    const len = (axisLen * t).toFixed(2);
+    if (horizontal) {
+      rect.setAttribute("width", len);
+      if (reverse) rect.setAttribute("x", (bb.x + bb.width - axisLen * t).toFixed(2));
+    } else {
+      rect.setAttribute("height", len);
+      if (reverse) rect.setAttribute("y", (bb.y + bb.height - axisLen * t).toFixed(2));
+    }
     if (t < 1) {
       wipeRafs.push(requestAnimationFrame(step));
     } else {
@@ -949,6 +1008,64 @@ function animateCountryWipe(svg, path, code, newColor, delay) {
   wipeRafs.push(requestAnimationFrame(step));
   // Fallback for background tabs / reduced-motion, where rAF can be throttled.
   setTimeout(finish, delay + dur + 200);
+}
+
+// Nearest Allied jumping-off point for a liberated country: the Atlantic in the
+// west, the Soviet Union in the east, or the Mediterranean in the south.
+function alliedSourceFor(cx, cy) {
+  const sources = [
+    { x: -60, y: 470 },  // Atlantic / Britain
+    { x: 860, y: 420 },  // Soviet Union
+    { x: 470, y: 830 }   // Mediterranean
+  ];
+  let best = sources[0], bestDist = Infinity;
+  for (const s of sources) {
+    const d = (s.x - cx) * (s.x - cx) + (s.y - cy) * (s.y - cy);
+    if (d < bestDist) { bestDist = d; best = s; }
+  }
+  return best;
+}
+
+// Plan a single wave across every country that changed side this stage. Axis
+// gains flow outward from Germany; Allied gains flow inward from the nearest
+// Allied front. The wave speed follows the autoplay speed setting.
+function planCountryWipes(countryNodes) {
+  const de = countryNodes.find(n => n.code === "DE" && !n.changed) ||
+             countryNodes.find(n => n.code === "DE");
+  let germany = { x: 520, y: 350 };
+  if (de) {
+    const b = de.path.getBBox();
+    if (b.width > 0 && b.height > 0) germany = { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+  }
+  const plans = [];
+  let maxTravel = 1;
+  countryNodes.forEach(n => {
+    if (!n.changed) return;
+    const bb = n.path.getBBox();
+    if (bb.width <= 0 || bb.height <= 0) return;
+    const cx = bb.x + bb.width / 2, cy = bb.y + bb.height / 2;
+    const wasAxis = n.oldState === "axis" || n.oldState === "occupied";
+    const isAxis = n.state === "axis" || n.state === "occupied";
+    const from = (isAxis && !wasAxis) ? germany : alliedSourceFor(cx, cy);
+    const horizontal = Math.abs(cx - from.x) >= Math.abs(cy - from.y);
+    const extent = horizontal ? bb.width : bb.height;
+    const gap = horizontal
+      ? Math.max(0, Math.abs(cx - from.x) - bb.width / 2)
+      : Math.max(0, Math.abs(cy - from.y) - bb.height / 2);
+    const travel = gap + extent;
+    maxTravel = Math.max(maxTravel, travel);
+    plans.push({ n, from, extent, gap });
+  });
+  // During autoplay the whole advance should finish inside the stage, slightly
+  // before the next period begins. Manual stepping gets a brisker sweep.
+  const budget = mapPlaying ? Math.max(900, mapSpeed * 0.78) : 1500;
+  const msPerUnit = Math.min(14, budget / maxTravel);
+  return plans.map(p => ({
+    node: p.n,
+    from: p.from,
+    delay: p.gap * msPerUnit,
+    duration: Math.max(150, p.extent * msPerUnit)
+  }));
 }
 
 function renderMap() {
@@ -992,14 +1109,11 @@ function renderMap() {
     const path = add("path", { d:EUROPE_GEO[code], fill:changed?oldColor:color, stroke:"#dfe6ee", "stroke-width":0.5, "stroke-opacity":0.45 });
     if (g) bindTip(path, () => `<b>${tt(g.name)}</b><br>${t("state"+capitalize(state))}`);
     svg.appendChild(path);
-    countryNodes.push({ path, code, color, changed });
+    countryNodes.push({ path, code, color, changed, state, oldState });
   });
-  // Spread the new colour across every country that changed side
-  countryNodes.forEach(n => {
-    if (!n.changed) return;
-    const bb = n.path.getBBox();
-    const delay = Math.max(0, Math.min(450, (bb.x / 800) * 450));
-    animateCountryWipe(svg, n.path, n.code, n.color, delay);
+  // Roll the new colour across every country that changed side as one moving front
+  planCountryWipes(countryNodes).forEach(p => {
+    animateCountryWipe(svg, p.node.path, p.node.code, p.node.color, p);
   });
   // Bloc labels
   groups.forEach(g => {
@@ -1209,7 +1323,7 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
   const overlay = document.getElementById("gameOverlay");
   const adOverlay = document.getElementById("adOverlay");
   const els = {
-    score: document.getElementById("gScore"),
+    cash: document.getElementById("gCash"),
     wave: document.getElementById("gWave"),
     health: document.getElementById("gHealth"),
     speed: document.getElementById("gSpeed"),
@@ -1222,12 +1336,53 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
   const AD_MS = 10000;
   const rand = (a, b) => a + Math.random() * (b - a);
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const store = {
+    get(key, fallback) {
+      try {
+        const raw = localStorage.getItem("planeWarsWW2." + key);
+        return raw === null ? fallback : JSON.parse(raw);
+      } catch (e) { return fallback; }
+    },
+    set(key, value) {
+      try { localStorage.setItem("planeWarsWW2." + key, JSON.stringify(value)); } catch (e) {}
+    }
+  };
+
+  // Hangar catalogue: each aircraft changes hull, speed, firepower and livery.
+  const PLANES = [
+    { id:"spitfire", name:"Spitfire Mk V", cost:0, health:100, speed:1, damage:1, rate:0.115,
+      desc:"The balanced RAF classic. Free to fly.",
+      paints:[{ name:"RAF green", body:0x627554, wing:0x87957d, cost:0 }, { name:"Desert tan", body:0x9a8458, wing:0xc0ab7d, cost:250 }] },
+    { id:"mustang", name:"P-51 Mustang", cost:800, health:125, speed:1.12, damage:1.12, rate:0.105,
+      desc:"Faster and tougher, with a longer burst.",
+      paints:[{ name:"Bare metal", body:0x9aa4ad, wing:0xc9d1d8, cost:0 }, { name:"Blue nose", body:0x46618f, wing:0xaebbd0, cost:300 }] },
+    { id:"lightning", name:"P-38 Lightning", cost:1800, health:155, speed:1.2, damage:1.28, rate:0.095,
+      desc:"Twin-engine heavy fighter. Heavy hitter.",
+      paints:[{ name:"Olive drab", body:0x6f7a5e, wing:0x9aa386, cost:0 }, { name:"Night fighter", body:0x30363f, wing:0x555d69, cost:400 }] },
+    { id:"me262", name:"Me 262", cost:3400, health:135, speed:1.36, damage:1.45, rate:0.08,
+      desc:"Jet-powered. The fastest plane in the hangar.",
+      paints:[{ name:"Luftwaffe grey", body:0x5b6470, wing:0x8a95a1, cost:0 }, { name:"Night owl", body:0x2c313a, wing:0x4b5260, cost:500 }] }
+  ];
+  const planeById = id => PLANES.find(p => p.id === id) || PLANES[0];
+
+  let cash = store.get("cash", 0);
+  let best = store.get("best", 0);
+  let leaderboard = store.get("leaderboard", []);
+  let unlocked = store.get("unlocked", ["spitfire"]);
+  let selectedId = store.get("selected", "spitfire");
+  if (!unlocked.includes("spitfire")) unlocked.push("spitfire");
+  if (!unlocked.includes(selectedId)) selectedId = "spitfire";
+  let paintSel = store.get("paint", {});
+  let paintUnlocked = store.get("paintUnlocked", {});
+  let plane = planeById(selectedId);
+  let paintIndex = Math.min(paintSel[selectedId] || 0, plane.paints.length - 1);
 
   let state = "idle";
-  let score = 0, wave = 1;
+  let score = 0, wave = 1, firing = false;
   let adTimerId = null, adEnds = 0;
   let visible = true;
   let cameraSnap = true;
+  let respawnFlash = 0;
   const keys = Object.create(null);
 
   if (!window.THREE) {
@@ -1283,57 +1438,88 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
   scene.add(sun);
   scene.add(new THREE.AmbientLight(0xffffff, 0.18));
 
-  // ---- Ocean ----
-  function makeOceanTexture() {
+  // ---- Ground and low-poly hills (Plane Wars-style terrain) ----
+  function makeGroundTexture() {
     const c = document.createElement("canvas");
-    c.width = c.height = 256;
+    c.width = c.height = 512;
     const g = c.getContext("2d");
-    const grd = g.createLinearGradient(0, 0, 0, 256);
-    grd.addColorStop(0, "#25617f");
-    grd.addColorStop(1, "#174760");
-    g.fillStyle = grd;
-    g.fillRect(0, 0, 256, 256);
-    for (let i = 0; i < 220; i++) {
-      const y = Math.random() * 256, x = Math.random() * 256, w = 16 + Math.random() * 80;
-      g.strokeStyle = "rgba(190,228,242," + (0.035 + Math.random() * 0.11).toFixed(3) + ")";
-      g.lineWidth = Math.random() < 0.82 ? 1 : 2;
+    g.fillStyle = "#6f8a52";
+    g.fillRect(0, 0, 512, 512);
+    // Patchwork fields
+    for (let i = 0; i < 90; i++) {
+      const w = rand(24, 96), h = rand(18, 70);
+      const x = rand(0, 512), y = rand(0, 512);
+      const tones = ["#7e9a5e", "#68804a", "#8aa268", "#5f7743", "#93a86e", "#7b8f56"];
+      g.fillStyle = tones[(Math.random() * tones.length) | 0];
+      g.globalAlpha = 0.55;
+      g.fillRect(x, y, w, h);
+      g.globalAlpha = 1;
+    }
+    // Hedgerows / tracks
+    g.strokeStyle = "rgba(58,74,42,0.5)";
+    for (let i = 0; i < 46; i++) {
+      const y = rand(0, 512);
+      g.lineWidth = Math.random() < 0.7 ? 2 : 4;
       g.beginPath();
-      g.moveTo(x, y);
-      g.bezierCurveTo(x + w * 0.3, y - 2, x + w * 0.7, y + 2, x + w, y);
+      g.moveTo(rand(-40, 200), y);
+      g.bezierCurveTo(180, y + rand(-8, 8), 330, y + rand(-8, 8), 560, y + rand(-20, 20));
       g.stroke();
     }
     const t = new THREE.CanvasTexture(c);
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
-    t.repeat.set(90, 90);
+    t.repeat.set(16, 16);
     t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
     if ("colorSpace" in t) t.colorSpace = THREE.SRGBColorSpace;
     return t;
   }
-  const oceanTex = makeOceanTexture();
-  const ocean = new THREE.Mesh(
-    new THREE.PlaneGeometry(3400, 3400),
-    new THREE.MeshStandardMaterial({ map: oceanTex, color: 0x9fc6d8, roughness: 0.9, metalness: 0.06 })
+  const groundTex = makeGroundTexture();
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(3600, 3600),
+    new THREE.MeshStandardMaterial({ map: groundTex, color: 0x9fb583, roughness: 1, metalness: 0 })
   );
-  ocean.rotation.x = -Math.PI / 2;
-  scene.add(ocean);
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -0.3;
+  scene.add(ground);
 
-  // ---- Islands for a sense of speed ----
-  const islandMat = new THREE.MeshStandardMaterial({ color: 0x4b6b45, roughness: 0.95, flatShading: true });
-  const sandMat = new THREE.MeshStandardMaterial({ color: 0x9b8b64, roughness: 1, flatShading: true });
-  const islands = [];
-  for (let i = 0; i < 15; i++) {
+  const hillMat = new THREE.MeshStandardMaterial({ color: 0x5c7a48, roughness: 0.97, flatShading: true });
+  const hillMat2 = new THREE.MeshStandardMaterial({ color: 0x6d8a52, roughness: 0.97, flatShading: true });
+  const rockMat = new THREE.MeshStandardMaterial({ color: 0x6f6a5c, roughness: 1, flatShading: true });
+  const snowMat = new THREE.MeshStandardMaterial({ color: 0xe9eef3, roughness: 0.9, flatShading: true });
+  const terrain = [];
+  let hillCount = 0;
+  function addHill(x, z, radius, height, mountain) {
     const g = new THREE.Group();
-    const land = new THREE.Mesh(new THREE.CylinderGeometry(1, 1.18, 1.6, 7), islandMat);
-    land.scale.set(rand(18, 52), rand(1.6, 5), rand(12, 34));
-    land.position.y = rand(0.2, 0.9);
-    g.add(land);
-    const beach = new THREE.Mesh(new THREE.CylinderGeometry(1, 1.1, 0.42, 8), sandMat);
-    beach.scale.set(land.scale.x * 1.16, 1, land.scale.z * 1.16);
-    beach.position.y = 0.18;
-    g.add(beach);
-    g.position.set(rand(-380, 380), 0, rand(-1050, 120));
+    const mat = mountain ? new THREE.MeshStandardMaterial({
+      color: new THREE.Color().setHSL(rand(0.07, 0.12), rand(0.08, 0.2), rand(0.28, 0.42)),
+      roughness: 1, flatShading: true
+    }) : (Math.random() < 0.5 ? hillMat : hillMat2);
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.06, radius, height, mountain ? 7 : 8), mat);
+    body.position.y = height / 2;
+    g.add(body);
+    if (mountain) {
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.008, radius * 0.2, height * 0.26, 7), snowMat);
+      cap.position.y = height * 0.87;
+      g.add(cap);
+    } else if (Math.random() < 0.5) {
+      const shoulder = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.1, radius * 0.62, height * 0.62, 7), mat);
+      shoulder.position.set(radius * 0.4, height * 0.31, radius * 0.18);
+      g.add(shoulder);
+    }
+    g.position.set(x, 0, z);
     scene.add(g);
-    islands.push(g);
+    terrain.push({ group: g, x, z, radius, height });
+    hillCount++;
+  }
+  // Central low hills and distant mountains
+  for (let i = 0; i < 26; i++) {
+    addHill(rand(-330, 330), rand(-1100, 100), rand(20, 54), rand(6, 22), false);
+  }
+  for (let i = 0; i < 14; i++) {
+    addHill(rand(-420, 420), rand(-1250, -120), rand(52, 120), rand(34, 68), true);
+  }
+  // A few hills close to the flight lane for dodging
+  for (let i = 0; i < 7; i++) {
+    addHill(rand(-70, 70), rand(-700, -180), rand(16, 30), rand(9, 20), false);
   }
 
   // ---- Clouds ----
@@ -1450,6 +1636,24 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     prop.position.z = -6.45;
     g.add(prop);
 
+    // Optional twin-engine nacelles (P-38 / Me 262)
+    const twin = new THREE.Group();
+    [-1, 1].forEach(sign => {
+      const nacelle = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.72, 3.4, 12), camoLightMat);
+      nacelle.rotation.x = Math.PI / 2;
+      nacelle.position.set(sign * 3.1, -0.15, -0.6);
+      twin.add(nacelle);
+      const intake = new THREE.Mesh(new THREE.CircleGeometry(0.52, 12), darkMat);
+      intake.position.set(sign * 3.1, -0.15, -2.31);
+      twin.add(intake);
+      const disc = new THREE.Mesh(new THREE.CircleGeometry(0.95, 16), propMat);
+      disc.position.set(sign * 3.1, -0.15, -2.42);
+      twin.add(disc);
+    });
+    twin.visible = false;
+    g.add(twin);
+    g.userData.twin = twin;
+
     g.userData.prop = prop;
     return g;
   }
@@ -1512,6 +1716,61 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
   scene.add(player);
   const enemyTemplates = { fighter: buildEnemyPlane("fighter"), bomber: buildEnemyPlane("bomber") };
 
+  function applyPlaneVisuals() {
+    plane = planeById(selectedId);
+    paintIndex = Math.min(paintSel[selectedId] || 0, plane.paints.length - 1);
+    const paint = plane.paints[paintIndex] || plane.paints[0];
+    camoMat.color.setHex(paint.body);
+    camoLightMat.color.setHex(paint.wing);
+    player.userData.prop.visible = plane.id !== "me262";
+    player.userData.twin.visible = plane.id === "lightning" || plane.id === "me262";
+    player.scale.setScalar(plane.id === "lightning" ? 1.12 : plane.id === "me262" ? 1.05 : 1);
+  }
+
+  // ---- Cash pickups dropped by destroyed aircraft ----
+  function makeCashTexture() {
+    const c = document.createElement("canvas");
+    c.width = c.height = 128;
+    const g = c.getContext("2d");
+    g.fillStyle = "rgba(0,0,0,0)";
+    g.fillRect(0, 0, 128, 128);
+    g.save();
+    g.translate(64, 64);
+    g.rotate(-0.1);
+    g.fillStyle = "#1f6b3a";
+    g.strokeStyle = "#a9e7b8";
+    g.lineWidth = 4;
+    g.beginPath();
+    g.roundRect(-46, -28, 92, 56, 8);
+    g.fill(); g.stroke();
+    g.fillStyle = "#d6f5dc";
+    g.font = "bold 46px Arial";
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.fillText("$", 0, 2);
+    g.restore();
+    const t = new THREE.CanvasTexture(c);
+    if ("colorSpace" in t) t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }
+  const cashTex = makeCashTexture();
+  const cashMat = new THREE.SpriteMaterial({ map: cashTex, transparent: true, depthWrite: false });
+  let bundles = [];
+
+  function spawnBundle(pos, value) {
+    const s = new THREE.Sprite(cashMat.clone());
+    s.position.copy(pos);
+    const sc = 4.2 + Math.min(2.2, value / 40);
+    s.scale.set(sc, sc, 1);
+    s.userData = {
+      value,
+      vx: rand(-7, 7), vy: rand(-2, 8), vz: rand(3, 12),
+      life: 16, max: 16
+    };
+    scene.add(s);
+    bundles.push(s);
+  }
+
   // ---- Bullets, effects ----
   const playerBulletGeo = new THREE.BoxGeometry(0.22, 0.22, 5.6);
   const playerBulletMat = new THREE.MeshBasicMaterial({ color: 0xffe08a, toneMapped: false });
@@ -1544,9 +1803,12 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
   const playerPos = new THREE.Vector3(0, 30, 0);
   let targetX = 0, targetY = 30;
   let roll = 0, pitch = 0;
-  let health = 100;
+  let health = 100, healthMax = 100;
+  let runCash = 0, runRecorded = false;
   let spawnT = 0, fireT = 0, waveT = 0, invuln = 0;
-  let shake = 0, hitFlash = 0, idleT = 0, hudT = 0;
+  let shake = 0, hitFlash = 0, idleT = 0, hudT = 0, saveT = 0;
+  let hangarMsg = "";
+  let hangarReturn = "idle";
 
   function explode(pos, count, scale) {
     const lifeBase = 0.55;
@@ -1583,16 +1845,138 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     bullets = [];
     enemyBullets.forEach(b => scene.remove(b));
     enemyBullets = [];
+    bundles.forEach(b => { scene.remove(b); b.material.dispose(); });
+    bundles = [];
     fx.forEach(removeFx);
     fx = [];
   }
 
   function updateHud() {
-    els.score.textContent = score;
+    els.cash.textContent = cash;
     els.wave.textContent = wave;
     els.health.textContent = Math.max(0, Math.ceil(health));
-    els.speed.textContent = Math.round(300 + wave * 14) + " km/h";
+    els.speed.textContent = Math.round((290 + wave * 12) * plane.speed) + " km/h";
     els.alt.textContent = Math.round(player.position.y * 30) + " m";
+  }
+
+  function saveProgress() {
+    store.set("cash", cash);
+    store.set("best", best);
+    store.set("leaderboard", leaderboard);
+    store.set("unlocked", unlocked);
+    store.set("selected", selectedId);
+    store.set("paint", paintSel);
+    store.set("paintUnlocked", paintUnlocked);
+  }
+
+  function recordRun() {
+    if (runRecorded) return;
+    runRecorded = true;
+    if (runCash > best) best = runCash;
+    leaderboard = leaderboard.concat([{ cash: runCash, wave: wave }])
+      .sort((a, b) => (b.cash || 0) - (a.cash || 0)).slice(0, 5);
+    saveProgress();
+  }
+
+  function leaderboardHtml() {
+    const rows = leaderboard.slice(0, 5);
+    return `<div class="leaderboard">
+      <div><span>Personal best (single run)</span><b>$${best}</b></div>
+      ${rows.length ? rows.map((r, i) => `<div><span>#${i + 1} · Wave ${r.wave || 1}</span><b>$${r.cash || 0}</b></div>`).join("") : `<div><span>No runs logged yet</span><b>—</b></div>`}
+    </div>`;
+  }
+
+  function planeStatsHtml(p) {
+    return `<div class="pc-stats"><span>Hull ${p.health}</span><span>Speed ${p.speed.toFixed(2)}×</span><span>Guns ${p.damage.toFixed(2)}×</span></div>`;
+  }
+
+  function hangarCardsHtml() {
+    return PLANES.map(p => {
+      const owned = unlocked.includes(p.id);
+      const selected = p.id === selectedId;
+      const canBuy = cash >= p.cost;
+      const label = owned
+        ? (selected ? "In service" : "Tap to select")
+        : (canBuy ? "Buy for $" + p.cost : "Need $" + (p.cost - cash) + " more");
+      const swatches = p.paints.map((pt, i) => {
+        const paintOwned = i === 0 || !!paintUnlocked[p.id + ":" + i];
+        const active = selected && i === paintIndex;
+        return `<button type="button" data-plane-paint="${p.id}" data-paint="${i}" class="${active ? "active" : ""}" title="${pt.name}${paintOwned ? "" : " · $" + pt.cost}" style="background:#${pt.body.toString(16).padStart(6, "0")}"></button>`;
+      }).join("");
+      return `<div class="plane-card${selected ? " selected" : ""}${owned ? "" : " locked"}" data-plane="${p.id}">
+        <div class="pc-name"><span>${p.name}</span><span>${owned ? "OWNED" : "$" + p.cost}</span></div>
+        <div class="pc-desc">${p.desc}</div>
+        ${planeStatsHtml(p)}
+        <div class="pc-swatch">${swatches}</div>
+        <div class="pc-buy ${owned ? "owned" : canBuy ? "" : "cant"}">${label}</div>
+      </div>`;
+    }).join("");
+  }
+
+  function tryBuyPlane(id) {
+    const p = planeById(id);
+    hangarMsg = "";
+    if (!unlocked.includes(id)) {
+      if (cash < p.cost) {
+        hangarMsg = "Not enough cash for the " + p.name + " — you need $" + (p.cost - cash) + " more.";
+        showOverlay("hangar");
+        return;
+      }
+      cash -= p.cost;
+      unlocked.push(id);
+    }
+    selectedId = id;
+    applyPlaneVisuals();
+    healthMax = plane.health;
+    saveProgress();
+    showOverlay("hangar");
+  }
+
+  function tryPaint(id, idx) {
+    const p = planeById(id);
+    const pt = p.paints[idx];
+    if (!pt) return;
+    hangarMsg = "";
+    const key = id + ":" + idx;
+    if (idx > 0 && !paintUnlocked[key]) {
+      if (cash < pt.cost) {
+        hangarMsg = "That paint job costs $" + pt.cost + " — you need $" + (pt.cost - cash) + " more.";
+        showOverlay("hangar");
+        return;
+      }
+      cash -= pt.cost;
+      paintUnlocked[key] = true;
+    }
+    paintSel[id] = idx;
+    selectedId = id;
+    applyPlaneVisuals();
+    saveProgress();
+    showOverlay("hangar");
+  }
+
+  function openHangar() {
+    releasePointer();
+    firing = false;
+    if (state === "playing") hangarReturn = "paused";
+    else if (state === "dead") hangarReturn = "dead";
+    else if (state === "paused") hangarReturn = "paused";
+    else hangarReturn = "idle";
+    state = "hangar";
+    showOverlay("hangar");
+  }
+
+  function closeHangar() {
+    hangarMsg = "";
+    if (hangarReturn === "paused") {
+      state = "paused";
+      showOverlay("paused");
+    } else if (hangarReturn === "dead") {
+      state = "dead";
+      showOverlay("dead");
+    } else {
+      state = "idle";
+      showOverlay("idle");
+    }
   }
 
   function showOverlay(kind) {
@@ -1600,39 +1984,87 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     if (kind === "idle") {
       overlay.innerHTML = `
         <div class="game-card">
-          <h3>Scramble!</h3>
-          <p>Climb into a Spitfire and fight through waves of Luftwaffe fighters and bombers in a third-person 3D dogfight over occupied Europe.</p>
-          <div class="game-btns"><button class="btn primary" id="gameStart">Start mission</button></div>
-          <p class="game-tip">Click Start to lock the mouse, then steer by moving it. WASD / arrow keys also work · guns fire automatically · Esc pauses</p>
+          <h3>Plane Wars: WWII</h3>
+          <p>Take off, hunt enemy fighters and bombers, and fly through the cash bundles they drop. Spend your money in the hangar on faster, tougher aircraft and new paint jobs.</p>
+          <p class="score">Cash $${cash} · Best run $${best} · Flying the ${plane.name}</p>
+          <div class="game-btns">
+            <button class="btn primary" id="gameStart">Take off</button>
+            <button class="btn" id="gameHangar">Hangar</button>
+          </div>
+          <p class="game-tip">Click or tap to lock the camera · move to steer · hold to fire · Space fires too · Esc pauses · hitting a hill costs hull and respawns you</p>
+          ${leaderboardHtml()}
         </div>`;
       document.getElementById("gameStart").onclick = startGame;
+      document.getElementById("gameHangar").onclick = openHangar;
     } else if (kind === "paused") {
       overlay.innerHTML = `
         <div class="game-card">
           <h3>Paused</h3>
-          <p>Your mission is on hold over occupied Europe.</p>
+          <p>Mission on hold over occupied Europe. Cash you have picked up is safely banked.</p>
+          <p class="score">Cash $${cash} · Wave ${wave} · Hull ${Math.max(0, Math.ceil(health))}</p>
           <div class="game-btns">
             <button class="btn primary" id="gameResume">Resume</button>
+            <button class="btn" id="gameHangarPause">Hangar</button>
             <button class="btn" id="gameQuit">Restart</button>
           </div>
-          <p class="game-tip">Resume locks the mouse again · move to steer · Esc pauses</p>
+          <p class="game-tip">Resume locks the mouse again · move to steer · hold to fire · Esc pauses</p>
         </div>`;
       document.getElementById("gameResume").onclick = resumeGame;
+      document.getElementById("gameHangarPause").onclick = openHangar;
       document.getElementById("gameQuit").onclick = startGame;
     } else if (kind === "dead") {
       overlay.innerHTML = `
         <div class="game-card">
           <h3>Shot down</h3>
-          <p>Your Spitfire went down over Europe.</p>
-          <p class="score">Score: ${score} · Wave ${wave}</p>
+          <p>Your ${plane.name} went down over Europe.</p>
+          <p class="score">Run earnings $${runCash} · Wave ${wave} · Bank $${cash}</p>
+          ${leaderboardHtml()}
           <div class="game-btns">
             <button class="btn primary" id="gameRestart">Restart</button>
+            <button class="btn" id="gameHangarDead">Hangar</button>
             <button class="btn" id="gameContinue">Continue · watch 10s ad</button>
           </div>
-          <p class="game-tip">Continue keeps your score and restores your hull.</p>
+          <p class="game-tip">Continue keeps your run and restores your hull.</p>
         </div>`;
       document.getElementById("gameRestart").onclick = startGame;
+      document.getElementById("gameHangarDead").onclick = openHangar;
       document.getElementById("gameContinue").onclick = beginAd;
+    } else if (kind === "hangar") {
+      overlay.innerHTML = `
+        <div class="game-card hangar">
+          <div class="hangar-top"><h3>Hangar</h3><span class="hangar-cash">$${cash}</span></div>
+          <p>Shoot down aircraft and collect the cash they drop, then buy a better plane. Every aircraft flies differently — pick the one that suits you.</p>
+          <div class="hangar-grid">${hangarCardsHtml()}</div>
+          ${hangarMsg ? `<p class="game-tip" style="color:#e5867f">${hangarMsg}</p>` : ""}
+          <div class="game-btns">
+            <button class="btn primary" id="hangarFly">${hangarReturn === "paused" ? "Back to mission" : "Take off"}</button>
+            <button class="btn" id="hangarClose">Back</button>
+          </div>
+          <p class="hangar-note">Tap a plane to buy or select it. Tap a paint swatch to change livery — the second paint for each plane must be bought once.</p>
+        </div>`;
+      overlay.querySelectorAll("[data-plane]").forEach(el => {
+        el.addEventListener("click", () => tryBuyPlane(el.dataset.plane));
+      });
+      overlay.querySelectorAll("[data-plane-paint]").forEach(el => {
+        el.addEventListener("click", ev => {
+          ev.stopPropagation();
+          tryPaint(el.dataset.planePaint, +el.dataset.paint);
+        });
+      });
+      const fly = document.getElementById("hangarFly");
+      fly.onclick = () => {
+        hangarMsg = "";
+        if (hangarReturn === "paused") {
+          health = healthMax;
+          hideOverlay();
+          state = "playing";
+          cameraSnap = true;
+          lockPointer();
+        } else {
+          startGame();
+        }
+      };
+      document.getElementById("hangarClose").onclick = closeHangar;
     }
   }
 
@@ -1652,25 +2084,32 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
   function pauseGame() {
     if (state !== "playing") return;
     state = "paused";
+    firing = false;
     showOverlay("paused");
   }
   function resumeGame() {
     hideOverlay();
     state = "playing";
+    firing = false;
     lockPointer();
   }
 
   function resetWorld() {
     clearWorldObjects();
     score = 0;
+    runCash = 0;
+    runRecorded = false;
     wave = 1;
-    health = 100;
+    healthMax = plane.health;
+    health = healthMax;
+    firing = false;
     spawnT = 1.0;
     fireT = 0;
     waveT = 0;
     invuln = 0;
     shake = 0;
     hitFlash = 0;
+    respawnFlash = 0;
     roll = 0;
     pitch = 0;
     targetX = 0;
@@ -1685,6 +2124,8 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
 
   function startGame() {
     closeAd(false);
+    hangarMsg = "";
+    applyPlaneVisuals();
     resetWorld();
     hideOverlay();
     state = "playing";
@@ -1694,7 +2135,9 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
 
   function die() {
     state = "dead";
+    firing = false;
     releasePointer();
+    recordRun();
     explode(player.position, 30, 1.7);
     player.visible = false;
     hitFlash = 0;
@@ -1718,8 +2161,30 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     updateHud();
   }
 
+  function crashRespawn() {
+    if (state !== "playing" || invuln > 0) return;
+    explode(player.position, 22, 1.25);
+    health -= Math.max(10, Math.round(healthMax * 0.22));
+    shake = 0.9;
+    hitFlash = 0.35;
+    respawnFlash = 0.8;
+    player.position.set(0, 44, 0);
+    targetX = 0;
+    targetY = 44;
+    playerPos.set(0, 44, 0);
+    roll = 0;
+    pitch = 0;
+    invuln = 1.9;
+    // Clear enemies that were about to overrun the respawn point.
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      if (enemies[i].position.z > -110) { scene.remove(enemies[i]); enemies.splice(i, 1); }
+    }
+    if (health <= 0) { health = 0; updateHud(); die(); return; }
+    updateHud();
+  }
+
   function resumeAfterAd() {
-    health = 100;
+    health = healthMax;
     targetX = 0;
     targetY = 30;
     player.position.set(0, 30, 0);
@@ -1776,6 +2241,7 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
       const b = new THREE.Mesh(playerBulletGeo, playerBulletMat);
       b.position.set(player.position.x + dx, player.position.y + dy, -6.1);
       b.userData.prevZ = -6.1;
+      b.userData.damage = plane.damage;
       scene.add(b);
       bullets.push(b);
     }
@@ -1877,13 +2343,13 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
         const dy = b.position.y - e.position.y;
         const r = ud.type === "bomber" ? 8.6 : 5.3;
         if (dx * dx + dy * dy > r * r) continue;
-        ud.hp--;
+        ud.hp -= (b.userData.damage || 1);
         explode(b.position, 3, 0.55);
         if (ud.hp <= 0) {
-          score += ud.type === "bomber" ? 45 : 15;
+          const bounty = ud.type === "bomber" ? rand(48, 82) : rand(16, 34);
           explode(e.position, ud.type === "bomber" ? 26 : 16, ud.type === "bomber" ? 1.7 : 1.1);
+          spawnBundle(e.position.clone(), Math.round(bounty));
           removeEnemyAt(j);
-          updateHud();
         }
         hit = true;
         break;
@@ -1891,6 +2357,45 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
       if (hit) {
         scene.remove(b);
         bullets.splice(i, 1);
+      }
+    }
+  }
+
+  function updateBundles(dt, worldSpeed) {
+    for (let i = bundles.length - 1; i >= 0; i--) {
+      const b = bundles[i];
+      const ud = b.userData;
+      ud.life -= dt;
+      b.position.z += (worldSpeed * 0.28 + ud.vz) * dt;
+      b.position.x += ud.vx * dt;
+      b.position.y += ud.vy * dt;
+      ud.vx *= Math.max(0, 1 - 0.9 * dt);
+      ud.vy *= Math.max(0, 1 - 0.9 * dt);
+      ud.vz *= Math.max(0, 1 - 0.9 * dt);
+      const dx = player.position.x - b.position.x;
+      const dy = player.position.y - b.position.y;
+      const dz = -b.position.z;
+      const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+      if (dist < 150) {
+        const pull = (1 - dist / 150) * 90;
+        b.position.x += (dx / dist) * pull * dt;
+        b.position.y += (dy / dist) * pull * dt;
+        b.position.z += (dz / dist) * pull * dt;
+      }
+      if (dist < 7.5) {
+        cash += ud.value;
+        runCash += ud.value;
+        score = runCash;
+        scene.remove(b);
+        b.material.dispose();
+        bundles.splice(i, 1);
+        updateHud();
+        continue;
+      }
+      if (ud.life <= 0 || b.position.z > 45) {
+        scene.remove(b);
+        b.material.dispose();
+        bundles.splice(i, 1);
       }
     }
   }
@@ -1949,14 +2454,19 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
         c.position.y = rand(26, 138);
       }
     });
-    islands.forEach(island => {
-      island.position.z += speed * dt * 1.12;
-      if (island.position.z > 170) {
-        island.position.z -= 1220;
-        island.position.x = rand(-380, 380);
+    terrain.forEach(h => {
+      h.group.position.z += speed * dt * 1.12;
+      if (h.group.position.z > 155) {
+        h.group.position.z -= 1320;
+        h.group.position.x = rand(-380, 380);
+        h.x = h.group.position.x;
+        h.z = h.group.position.z;
+      } else {
+        h.z = h.group.position.z;
+        h.x = h.group.position.x;
       }
     });
-    oceanTex.offset.y += speed * dt * 0.001;
+    groundTex.offset.y += speed * dt * 0.0025;
   }
 
   function updateCamera(dt) {
@@ -1975,7 +2485,7 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
 
   function update(dt) {
     idleT += dt;
-    const worldSpeed = 58 + wave * 3.5;
+    const worldSpeed = (54 + wave * 3.2) * plane.speed;
 
     let ax = 0, ay = 0;
     if (keys.ArrowLeft || keys.KeyA) ax -= 1;
@@ -2004,16 +2514,31 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     player.visible = !(invuln > 0 && Math.floor(performance.now() / 85) % 2 === 0);
     player.userData.prop.rotation.z += dt * 48;
 
+    // Terrain collision: clipping a hill costs hull and respawns you high.
+    for (let i = 0; i < terrain.length; i++) {
+      const h = terrain[i];
+      if (Math.abs(h.z) < h.radius * 0.92 &&
+          Math.abs(player.position.x - h.x) < h.radius * 0.72 &&
+          player.position.y < h.height + 2) {
+        crashRespawn();
+        break;
+      }
+    }
+    if (state !== "playing") return;
+
     hudT += dt;
     if (hudT >= 0.1) { hudT = 0; updateHud(); }
+    saveT += dt;
+    if (saveT >= 4) { saveT = 0; saveProgress(); }
 
     if (invuln > 0) invuln -= dt;
     if (shake > 0) shake = Math.max(0, shake - dt * 7);
     if (hitFlash > 0) hitFlash -= dt;
-    wrap.classList.toggle("hit", hitFlash > 0);
+    if (respawnFlash > 0) respawnFlash -= dt;
+    wrap.classList.toggle("hit", hitFlash > 0 || respawnFlash > 0);
 
     fireT -= dt;
-    if (fireT <= 0) { fire(); fireT = 0.115; }
+    if ((firing || keys.Space) && fireT <= 0) { fire(); fireT = plane.rate; }
 
     spawnT -= dt;
     waveT += dt;
@@ -2028,6 +2553,7 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     updateBullets(dt);
     updateEnemyBullets(dt);
     if (state !== "playing") return;
+    updateBundles(dt, worldSpeed);
     updateFx(dt);
     moveScenery(dt, worldSpeed);
     updateCamera(dt);
@@ -2094,7 +2620,9 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
   canvas.addEventListener("pointerdown", ev => {
     if (state === "idle") { startGame(); return; }
     if (state === "paused") { resumeGame(); return; }
-    if (state !== "playing" || locked) return;
+    if (state !== "playing") return;
+    firing = true;
+    if (locked) return;
     if (ev.pointerType === "mouse") return;
     dragState = { id: ev.pointerId, x: ev.clientX, y: ev.clientY, tx: targetX, ty: targetY };
     try { canvas.setPointerCapture(ev.pointerId); } catch (e) {}
@@ -2118,9 +2646,12 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
 
   function endDrag(ev) {
     if (dragState && ev.pointerId === dragState.id) dragState = null;
+    firing = false;
   }
   canvas.addEventListener("pointerup", endDrag);
   canvas.addEventListener("pointercancel", endDrag);
+  window.addEventListener("pointerup", () => { firing = false; });
+  window.addEventListener("blur", () => { firing = false; });
 
   document.addEventListener("visibilitychange", () => {
     if (document.hidden && state === "playing") {
@@ -2146,6 +2677,9 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
 
   resetWorld();
   state = "idle";
+  applyPlaneVisuals();
+  healthMax = plane.health;
+  health = healthMax;
   camera.position.set(0, 36.4, 24);
   updateHud();
   showOverlay("idle");
@@ -2153,10 +2687,27 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
   renderer.render(scene, camera);
   requestAnimationFrame(loop);
 
+  document.getElementById("hangarBtn").addEventListener("click", openHangar);
+
   // Hook used by automated checks and for debugging.
   window.fighterGame = {
     start: startGame,
     hit: (n = 100) => damage(n),
+    cash: (n = 100) => { cash += n; runCash += n; updateHud(); saveProgress(); },
+    teleport: (x, y, z = 0) => {
+      player.position.set(x, y, z);
+      playerPos.copy(player.position);
+      targetX = x; targetY = y;
+    },
+    dropCash: (value = 50) => {
+      spawnBundle(new THREE.Vector3(player.position.x, player.position.y, -16), value);
+    },
+    hills: () => terrain.map(h => ({
+      x: Math.round(h.group.position.x), z: Math.round(h.group.position.z),
+      r: Math.round(h.radius), h: Math.round(h.height)
+    })),
+    buy: (id) => { tryBuyPlane(id); return selectedId; },
+    paint: (id, idx) => { tryPaint(id, idx); return paintSel[id]; },
     tick: (dt = 1 / 60, n = 1) => {
       for (let i = 0; i < n; i++) {
         if (state === "playing") update(dt);
@@ -2166,16 +2717,23 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     },
     status: () => ({
       state,
-      score,
+      score: runCash,
+      cash,
+      best,
       wave,
+      plane: plane.id,
+      unlocked: unlocked.slice(),
       x: Math.round(player.position.x * 10) / 10,
       y: Math.round(player.position.y * 10) / 10,
       targetX: Math.round(targetX * 10) / 10,
       targetY: Math.round(targetY * 10) / 10,
       health: Math.round(health),
+      healthMax,
       enemies: enemies.length,
       bullets: bullets.length,
       enemyBullets: enemyBullets.length,
+      bundles: bundles.length,
+      hills: terrain.length,
       adOpen: adOverlay.classList.contains("open"),
       webgl: !!renderer.getContext(),
       triangles: renderer.info.render.triangles
@@ -2240,5 +2798,6 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") { closeFigur
 
 applyI18n();
 </script>
+<script src="ww2-extra.js"></script>
 </body>
 </html>

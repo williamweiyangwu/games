@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>World War I in Europe</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --panel2: #1c2230;
+    --border: #2a3242;
+    --text: #e6edf3;
+    --muted: #8b96a5;
+    --axis: #e5534b;
+    --axis-occupied: #7a2e2a;
+    --allies: #3b82f6;
+    --neutral: #4a5568;
+    --gold: #d4a72c;
+    --sea: #0e1b2b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 24px;
+    background: rgba(13,17,23,0.9);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+  }
+  .topbar .brand { font-weight: 700; letter-spacing: 1px; }
+
+  header {
+    padding: 56px 20px 40px;
+    text-align: center;
+    background: radial-gradient(1200px 400px at 50% -10%, rgba(229,83,75,0.15), transparent);
+    border-bottom: 1px solid var(--border);
+  }
+  header h1 { font-size: 2.4rem; letter-spacing: 2px; margin-bottom: 10px; }
+  header p { color: var(--muted); font-size: 1.05rem; }
+
+  .stats {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 16px; max-width: 900px; margin: 28px auto 0;
+  }
+  .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  .stat .num { font-size: 1.6rem; font-weight: 700; color: var(--gold); }
+  .stat .label { color: var(--muted); font-size: 0.85rem; }
+
+  .container { max-width: 1000px; margin: 0 auto; padding: 40px 20px; }
+  section { margin-bottom: 56px; }
+  section > h2 { font-size: 1.5rem; margin-bottom: 6px; padding-left: 14px; border-left: 4px solid var(--axis); }
+  .sub { color: var(--muted); margin: 0 0 20px 14px; font-size: 0.95rem; }
+
+  .btn {
+    background: var(--panel); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 14px; cursor: pointer; font-size: 0.9rem; transition: all .2s;
+  }
+  .btn:hover { border-color: var(--muted); }
+  .btn.primary { background: var(--axis); border-color: var(--axis); color: #fff; }
+  .btn.primary:hover { background: #d44a43; }
+
+  .filters { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 24px; }
+  .filters button {
+    background: var(--panel); color: var(--text);
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 8px 16px; cursor: pointer; font-size: 0.9rem; transition: all .2s;
+  }
+  .filters button:hover { border-color: var(--muted); }
+  .filters button.active { background: var(--axis); border-color: var(--axis); color: #fff; }
+
+  .timeline { position: relative; padding-left: 40px; }
+  .timeline::before {
+    content: ""; position: absolute; left: 14px; top: 0; bottom: 0; width: 3px;
+    background: linear-gradient(var(--axis), var(--allies)); border-radius: 2px;
+  }
+  .event {
+    position: relative; margin-bottom: 28px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px 20px; cursor: pointer;
+    transition: transform .2s, border-color .2s, box-shadow .2s;
+    animation: fadeIn .5s ease both;
+  }
+  .event:hover { transform: translateX(6px); border-color: var(--muted); }
+  .event.playing { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(212,167,44,.4); }
+  .event::before {
+    content: ""; position: absolute; left: -33px; top: 24px; width: 14px; height: 14px;
+    border-radius: 50%; background: var(--bg); border: 3px solid var(--axis);
+  }
+  .event.allies::before { border-color: var(--allies); }
+  .event.neutral::before { border-color: var(--neutral); }
+  .event .date { color: var(--gold); font-weight: 700; font-size: 0.9rem; letter-spacing: 1px; }
+  .event h3 { font-size: 1.15rem; margin: 6px 0; }
+  .event .phase-tag {
+    display: inline-block; font-size: 0.7rem; padding: 2px 8px; border-radius: 4px;
+    margin-bottom: 8px; background: var(--panel2); border: 1px solid var(--border);
+  }
+  .event .desc { color: var(--muted); font-size: 0.93rem; }
+  .event .detail { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 0.92rem; }
+  .event.open .detail { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+  .chart-wrap { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; position: relative; }
+  .legend { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; margin-top: 10px; color: var(--muted); font-size: 0.85rem; }
+  .legend span { display: flex; align-items: center; gap: 6px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+  /* Map */
+  .map-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .map-year { text-align: center; font-size: 1.5rem; font-weight: 700; color: var(--gold); margin-bottom: 2px; }
+  .map-phase { text-align: center; font-size: 1rem; font-weight: 600; margin-bottom: 4px; }
+  .map-desc { color: var(--text); font-size: 0.95rem; line-height: 1.7; text-align: center; max-width: 780px; margin: 0 auto 12px; min-height: 2.4em; }
+  .map-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; margin-bottom: 6px; }
+  .map-counter { text-align: center; color: var(--muted); font-size: 0.8rem; margin-bottom: 10px; }
+  .map-stats { text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 8px; }
+  .map-svg-wrap { position: relative; }
+  #europeMap path { cursor: pointer; }
+  #europeMap path:hover { stroke: #fff; stroke-width: 1.2; stroke-opacity: 1; }
+  #europeMap text { pointer-events: none; user-select: none; }
+  #europeMap .battle { cursor: pointer; animation: pulse 1.5s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+  #mapSpeed { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 0.85rem; cursor: pointer; }
+  .tooltip {
+    position: absolute; background: #000; border: 1px solid var(--border);
+    padding: 8px 12px; border-radius: 8px; font-size: 0.85rem;
+    pointer-events: none; white-space: nowrap; display: none; z-index: 10;
+  }
+
+  .figures { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 18px; }
+  .figure {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+    padding: 20px; text-align: center; transition: transform .2s, border-color .2s;
+  }
+  .figure:hover { transform: translateY(-4px); border-color: var(--muted); }
+  .avatar {
+    width: 84px; height: 84px; border-radius: 50%; margin: 0 auto 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2rem; font-weight: 700; color: #fff; border: 3px solid var(--border);
+  }
+  .avatar.axis { background: linear-gradient(135deg, #3a2523, #171011); border-color: #8a4a42; }
+  .avatar.allies { background: linear-gradient(135deg, #1d3049, #101826); border-color: #35507a; }
+  .figure .name { font-size: 1.15rem; font-weight: 700; }
+  .figure .role { color: var(--gold); font-size: 0.85rem; margin-bottom: 8px; }
+  .figure .fact { color: var(--muted); font-size: 0.85rem; text-align: left; }
+  .figure .hint { color: var(--gold); font-size: 0.75rem; margin-top: 8px; opacity: 0.8; }
+
+  /* Figure detail modal */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.65);
+    display: none; align-items: center; justify-content: center;
+    z-index: 100; padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 16px;
+    max-width: 640px; width: 100%; max-height: 86vh; overflow-y: auto;
+    padding: 30px; position: relative; animation: modalIn .25s ease;
+  }
+  @keyframes modalIn { from { opacity: 0; transform: translateY(20px) scale(.98); } to { opacity: 1; transform: none; } }
+  .modal-close { position: absolute; top: 12px; right: 16px; background: none; border: none; color: var(--muted); font-size: 30px; cursor: pointer; line-height: 1; }
+  .modal-close:hover { color: #fff; }
+  .modal-head { display: flex; align-items: center; gap: 18px; margin-bottom: 18px; }
+  .modal-avatar { width: 76px; height: 76px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.9rem; font-weight: 700; color: #fff; border: 3px solid var(--border); flex-shrink: 0; }
+  .modal-avatar.axis { background: linear-gradient(135deg, #3a2523, #171011); border-color: #8a4a42; }
+  .modal-avatar.allies { background: linear-gradient(135deg, #1d3049, #101826); border-color: #35507a; }
+  .modal-name { font-size: 1.5rem; font-weight: 700; }
+  .modal-role { color: var(--gold); }
+  .modal-life { color: var(--muted); font-size: 0.85rem; }
+  .modal-detail { color: var(--text); line-height: 1.7; margin-bottom: 16px; }
+  .modal-events h4 { color: var(--text); margin-bottom: 8px; font-size: 0.95rem; }
+  .modal-events ul { list-style: none; }
+  .modal-events li { padding: 8px 0; border-bottom: 1px solid var(--border); color: var(--muted); font-size: 0.92rem; display: flex; gap: 12px; align-items: baseline; }
+  .modal-events li:last-child { border-bottom: none; }
+  .modal-events .yr { color: var(--gold); font-weight: 700; min-width: 58px; flex-shrink: 0; }
+
+  /* Figure portrait photos */
+  .avatar, .modal-avatar { position: relative; overflow: hidden; }
+  .avatar > span, .modal-avatar > span { position: relative; z-index: 1; }
+  .portrait {
+    position: absolute; inset: 0; z-index: 2;
+    width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
+    opacity: 0; transition: opacity .3s ease;
+  }
+  .portrait.loaded { opacity: 1; }
+  .avatar.has-photo > span, .modal-avatar.has-photo > span { opacity: 0; }
+
+  /* Weapons */
+  .weapons { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 18px; }
+  .weapon {
+    display: flex; flex-direction: column; text-align: left; padding: 0; overflow: hidden;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+    color: var(--text); font: inherit; cursor: pointer;
+    transition: transform .2s, border-color .2s, box-shadow .2s;
+  }
+  .weapon:hover, .weapon:focus-visible {
+    transform: translateY(-4px); border-color: var(--gold);
+    box-shadow: 0 12px 28px rgba(0,0,0,.38); outline: none;
+  }
+  .wphoto { position: relative; aspect-ratio: 16 / 10; overflow: hidden; background: #0b0f16; }
+  .wphoto img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .35s ease; }
+  .weapon:hover .wphoto img { transform: scale(1.06); }
+  .wphoto::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, transparent 55%, rgba(8,11,16,.55)); }
+  .wbody { padding: 15px 16px 16px; display: flex; flex-direction: column; flex: 1; }
+  .weapon .wname { font-size: 1.05rem; font-weight: 700; }
+  .weapon .wmeta { color: var(--gold); font-size: 0.76rem; letter-spacing: .3px; margin-bottom: 8px; }
+  .weapon .wdesc { color: var(--muted); font-size: 0.85rem; }
+  .weapon .wspec { margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--border); font-size: 0.76rem; color: #b9c4d2; }
+  .weapon .whint { margin-top: 9px; color: var(--gold); font-size: 0.72rem; opacity: .75; }
+  .photo-credit { color: var(--muted); font-size: 0.74rem; margin-top: 14px; opacity: .75; }
+  .weapon-modal { max-width: 700px; }
+  .weapon-hero { margin-bottom: 16px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); background: #0b0f16; }
+  .weapon-hero img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; display: block; }
+  .weapon-modal .wspec { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.85rem; }
+
+  /* Fighter mini-game (Three.js third-person) */
+  .game-wrap { position: relative; aspect-ratio: 900 / 560; background: #060b14; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  #fighterCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
+  .game-hud {
+    position: absolute; top: 10px; left: 14px; right: 14px; z-index: 2;
+    display: flex; gap: 14px; justify-content: space-between;
+    pointer-events: none; font-size: 0.88rem; color: #cfe0f0; text-shadow: 0 1px 4px #000;
+  }
+  .game-hud span { white-space: nowrap; }
+  .game-hud b { color: var(--gold); }
+  .reticle { position: absolute; left: 50%; top: 46%; width: 28px; height: 28px; margin: -14px 0 0 -14px; z-index: 1; pointer-events: none; opacity: .55; }
+  .reticle::before, .reticle::after { content: ""; position: absolute; background: rgba(255,235,170,.9); box-shadow: 0 0 6px rgba(0,0,0,.85); }
+  .reticle::before { left: 50%; top: 0; bottom: 0; width: 2px; margin-left: -1px; }
+  .reticle::after { top: 50%; left: 0; right: 0; height: 2px; margin-top: -1px; }
+  .hit-flash {
+    position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0;
+    background: radial-gradient(circle at 50% 55%, transparent 30%, rgba(215,30,30,.7));
+    transition: opacity .16s ease;
+  }
+  .game-wrap.hit .hit-flash { opacity: 1; }
+  .game-overlay {
+    position: absolute; inset: 0; z-index: 5; display: none; align-items: flex-start; justify-content: center;
+    background: rgba(3,7,15,.8); padding: 20px; text-align: center; overflow-y: auto;
+  }
+  .game-overlay.open { display: flex; }
+  .game-card { max-width: 470px; margin: auto; }
+  .game-card h3 { font-size: 1.7rem; margin-bottom: 8px; }
+  .game-card p { color: var(--muted); font-size: 0.93rem; margin-bottom: 14px; }
+  .game-card .score { color: var(--gold); font-size: 1.15rem; font-weight: 700; }
+  .game-card .game-tip { font-size: 0.78rem; margin-top: 12px; opacity: .8; }
+  .game-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .hangar-btn {
+    position: absolute; z-index: 4; top: 32px; right: 14px;
+    padding: 5px 11px; font-size: 0.76rem; font-weight: 700;
+    color: #d8e9f7; background: rgba(8,15,26,.72); border: 1px solid rgba(255,255,255,.24);
+    border-radius: 7px; cursor: pointer; letter-spacing: .4px;
+  }
+  .hangar-btn:hover { border-color: var(--gold); color: var(--gold); }
+  .game-card.hangar { max-width: 780px; }
+  .hangar-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+  .hangar-cash { color: var(--gold); font-weight: 800; font-size: 1.05rem; }
+  .hangar-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0; }
+  .plane-card {
+    text-align: left; background: var(--panel2); border: 2px solid var(--border); border-radius: 10px;
+    padding: 10px; color: var(--text); cursor: pointer; transition: border-color .15s, transform .15s;
+  }
+  .plane-card:hover { transform: translateY(-2px); border-color: #4f617f; }
+  .plane-card.selected { border-color: var(--gold); box-shadow: 0 0 0 1px rgba(212,167,44,.35) inset; }
+  .plane-card.locked { opacity: .82; }
+  .plane-card .pc-name { font-weight: 800; font-size: 0.9rem; display: flex; justify-content: space-between; gap: 6px; }
+  .plane-card .pc-desc { color: var(--muted); font-size: 0.72rem; margin: 5px 0 7px; line-height: 1.35; }
+  .plane-card .pc-stats { font-size: 0.68rem; color: #b8c7da; display: grid; gap: 2px; }
+  .plane-card .pc-buy { margin-top: 8px; font-size: 0.72rem; font-weight: 800; color: var(--gold); }
+  .plane-card .pc-buy.owned { color: #6fd48b; }
+  .plane-card .pc-buy.cant { color: #e5867f; }
+  .pc-swatch { display: flex; gap: 5px; margin-top: 8px; }
+  .pc-swatch button { width: 22px; height: 14px; border-radius: 3px; border: 1px solid rgba(255,255,255,.4); cursor: pointer; padding: 0; }
+  .pc-swatch button.active { outline: 2px solid var(--gold); outline-offset: 1px; }
+  .leaderboard { margin: 10px 0 2px; text-align: left; display: grid; gap: 3px; font-size: 0.8rem; color: var(--muted); }
+  .leaderboard div { display: flex; justify-content: space-between; border-bottom: 1px dashed #273248; padding: 2px 0; }
+  .leaderboard b { color: var(--gold); }
+  .hangar-note { font-size: 0.72rem; color: var(--muted); margin-top: 8px; }
+
+  .ad-overlay {
+    position: absolute; inset: 0; display: none; align-items: flex-start; justify-content: center;
+    background: rgba(2,5,12,.92); padding: 18px; z-index: 7; overflow-y: auto;
+  }
+  .ad-overlay.open { display: flex; }
+  .ad-card { background: var(--panel); border: 1px solid var(--gold); border-radius: 14px; padding: 20px; max-width: 520px; width: 100%; text-align: center; margin: auto; }
+  .ad-kicker { color: var(--gold); font-size: 0.72rem; letter-spacing: 2px; text-transform: uppercase; }
+  .ad-card h4 { font-size: 1.2rem; margin: 4px 0 10px; }
+  .ad-progress { height: 6px; background: #0d1117; border-radius: 4px; overflow: hidden; margin: 12px 0; }
+  .ad-progress > div { height: 100%; width: 0; background: var(--gold); }
+  .ad-sponsors { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0 16px; }
+  .ad-sponsor {
+    display: block; padding: 9px 10px; border: 1px solid var(--border); border-radius: 9px;
+    background: var(--panel2); color: var(--text); text-decoration: none; font-size: 0.8rem; transition: border-color .2s, transform .2s;
+  }
+  .ad-sponsor:hover { border-color: var(--gold); transform: translateY(-2px); }
+  .ad-sponsor b { display: block; color: var(--gold); font-size: 0.86rem; }
+  .ad-timer { color: var(--gold); font-weight: 700; font-size: 0.9rem; margin-bottom: 0; }
+
+  @media (max-width: 560px) {
+    .game-hud { font-size: 0.7rem; gap: 7px; left: 9px; right: 9px; }
+    .game-hud span:nth-child(4), .game-hud span:nth-child(5) { display: none; }
+    .hangar-btn { top: 30px; right: 9px; font-size: 0.68rem; padding: 4px 8px; }
+    .hangar-grid { grid-template-columns: 1fr 1fr; }
+    .weapons { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .wbody { padding: 11px 12px 12px; }
+    .weapon .wdesc { display: none; }
+    .weapon .wspec { margin-top: 8px; padding-top: 7px; font-size: 0.7rem; }
+    .game-wrap { aspect-ratio: auto; height: 440px; }
+    .game-card h3 { font-size: 1.35rem; }
+  }
+
+  footer { text-align: center; color: var(--muted); padding: 40px 20px; font-size: 0.85rem; border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand" data-i18n="brand">WWI in Europe</div>
+</div>
+
+<header>
+  <h1 data-i18n="title">World War I in Europe</h1>
+  <p data-i18n="subtitle">1914 — 1918 · From Sarajevo to the Armistice</p>
+  <div class="stats" id="stats"></div>
+</header>
+
+<div class="container">
+
+  <section id="map">
+    <h2 data-i18n="mapTitle">Territorial Control of Europe</h2>
+    <p class="sub" data-i18n="mapSub">Drag or play through 1914–1918 to see how the Central Powers and Entente lines, plus key battles, moved.</p>
+    <div class="map-panel">
+      <div class="map-year" id="mapYear">1914.07</div>
+      <div class="map-phase" id="mapPhase"></div>
+      <div class="map-desc" id="mapDesc"></div>
+      <div class="map-toolbar">
+        <button class="btn primary" id="mapPlay">&#9654;</button>
+        <button class="btn" id="mapPrev">&#9664;</button>
+        <button class="btn" id="mapNext">&#9658;</button>
+        <input type="range" id="mapSlider" min="0" max="13" value="0" style="flex:1;min-width:160px;">
+        <select id="mapSpeed">
+          <option value="3500">0.5x</option>
+          <option value="2500" selected>1x</option>
+          <option value="1500">2x</option>
+        </select>
+      </div>
+      <div class="map-counter" id="mapCounter"></div>
+      <div class="map-svg-wrap">
+        <svg id="europeMap" width="100%" viewBox="0 0 800 766" preserveAspectRatio="xMidYMid meet"></svg>
+        <div class="tooltip" id="mapTip"></div>
+      </div>
+      <div class="map-stats" id="mapStats"></div>
+    </div>
+    <div class="legend" id="mapLegend"></div>
+  </section>
+
+  <section id="chart">
+    <h2 data-i18n="chartTitle">Central Powers Control of Europe Over Time</h2>
+    <p class="sub" data-i18n="chartSub">Estimated share of European territory held by the Central Powers (Germany, Austria-Hungary, the Ottoman Empire and Bulgaria), from the July Crisis to the armistice.</p>
+    <div class="chart-wrap">
+      <svg id="controlChart" width="100%" height="340" viewBox="0 0 900 340" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="tooltip" id="chartTip"></div>
+    </div>
+    <div class="legend" id="chartLegend"></div>
+  </section>
+
+  <section id="timeline">
+    <h2 data-i18n="timelineTitle">Timeline of Events</h2>
+    <div class="filters" id="filters"></div>
+    <div style="margin-bottom:18px;">
+      <button class="btn primary" id="timelinePlay">&#9654; <span data-i18n="autoPlay">Autoplay</span></button>
+    </div>
+    <div class="timeline" id="timelineList"></div>
+  </section>
+
+  <section id="figures">
+    <h2 data-i18n="figuresTitle">Key Figures</h2>
+    <div class="figures" id="figuresList"></div>
+  </section>
+
+  <section id="weapons">
+    <h2 data-i18n="weaponsTitle">Weapons of World War I</h2>
+    <p class="sub" data-i18n="weaponsSub">The guns, tanks, aircraft and submarines that defined the first industrial war.</p>
+    <div class="weapons" id="weaponsList"></div>
+    <p class="photo-credit">Photos via Wikimedia Commons, shown for educational illustration.</p>
+  </section>
+
+
+</div>
+
+<div class="modal-overlay" id="figureModal">
+  <div class="modal">
+    <button class="modal-close" id="modalClose">&times;</button>
+    <div class="modal-head">
+      <div class="modal-avatar" id="modalAvatar">H</div>
+      <div>
+        <div class="modal-name" id="modalName"></div>
+        <div class="modal-role" id="modalRole"></div>
+        <div class="modal-life" id="modalLife"></div>
+      </div>
+    </div>
+    <div class="modal-detail" id="modalDetail"></div>
+    <div class="modal-events" id="modalEvents"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="weaponModal">
+  <div class="modal weapon-modal">
+    <button class="modal-close" id="weaponModalClose">&times;</button>
+    <div class="weapon-hero"><img id="weaponModalImg" alt=""></div>
+    <div class="modal-name" id="weaponModalName"></div>
+    <div class="modal-role" id="weaponModalMeta"></div>
+    <div class="modal-detail" id="weaponModalDetail"></div>
+    <div class="wspec" id="weaponModalSpec"></div>
+  </div>
+</div>
+
+<footer data-i18n="footer">Data compiled from public historical sources for educational purposes; some figures are estimates.</footer>
+
+<script src="europe-geo.js"></script>
+<script src="ww1-photos.js"></script>
+<script>
+// ================= Language =================
+const I18N = {
+  en: {
+    brand: "WWI in Europe", title: "World War I in Europe",
+    subtitle: "1914 — 1918 · From Sarajevo to the Armistice",
+    chartTitle: "Central Powers Control of Europe Over Time",
+    chartSub: "Estimated share of European territory held by the Central Powers (Germany, Austria-Hungary, the Ottoman Empire and Bulgaria), from the July Crisis to the armistice.",
+    mapTitle: "Territorial Control of Europe",
+    mapSub: "Drag or play through 1914–1918 to see how the Central Powers and Entente lines, plus key battles, moved.",
+    timelineTitle: "Timeline of Events", figuresTitle: "Key Figures", autoPlay: "Autoplay",
+    weaponsTitle: "Weapons of World War I",
+    weaponsSub: "The guns, tanks, aircraft and submarines that defined the first industrial war.",
+    footer: "Data compiled from public historical sources for educational purposes; some figures are estimates.",
+    statDuration: "Duration", statCountries: "Belligerent nations",
+    statDeaths: "Fatalities (worldwide)", statFronts: "Major fronts",
+    legendAxis: "Central Powers", legendAllies: "Entente", legendNeutral: "Neutral", legendOccupied: "Central Powers–occupied",
+    legendBattle: "Battle", legendCity: "Major city",
+    legendCurve: "Central Powers–controlled share", legendCounter: "Allied counteroffensive (1918)", legendNode: "Key battle node",
+    stateAxis: "Central Powers", stateOccupied: "Central Powers–occupied", stateAllies: "Entente", stateNeutral: "Neutral", stateDefeated: "Defeated / armistice",
+    axisCount: "Central Powers–controlled nations: {n}", stage: "Stage {i} / {n}",
+    all: "All", pause: "Pause", resume: "Resume",
+    keyEvents: "Key events", life: "Life", viewDetail: "Click for details"
+  }
+};
+function t(key) { return I18N.en[key]; }
+function tt(obj) { return obj.en; }
+
+// ================= Phases =================
+const PHASES = {
+  outbreak:  {  en: "Outbreak", color: "#d4a72c" },
+  stalemate: {  en: "Stalemate", color: "#e5534b" },
+  attrition: {  en: "War of Attrition", color: "#a83232" },
+  crisis:    {  en: "Crisis", color: "#8b5cf6" },
+  endgame:   {  en: "Endgame", color: "#3b82f6" },
+  armistice: {  en: "Armistice", color: "#22c55e" },
+};
+
+// ================= Events =================
+const events = [
+  { date:{en:"28 Jun 1914"}, phase:"outbreak", side:"neutral",
+    title:{en:"Assassination at Sarajevo"},
+    desc:{en:"Archduke Franz Ferdinand, heir to the Austro-Hungarian throne, is shot dead by Gavrilo Princip."},
+    detail:{en:"The heir to the Habsburg throne was assassinated in Sarajevo by a Bosnian Serb nationalist. Austria-Hungary blamed Serbia, and the resulting ultimatum drew the great powers into the July Crisis."} },
+  { date:{en:"28 Jul 1914"}, phase:"outbreak", side:"axis",
+    title:{en:"Austria-Hungary declares war on Serbia"},
+    desc:{en:"The July Crisis ends in war; Russia mobilizes in support of Serbia."},
+    detail:{en:"Austria-Hungary rejected Serbia's conciliatory reply and declared war. Russia's mobilization led Germany to declare war on Russia and France, and the alliance system pulled Europe into a general war."} },
+  { date:{en:"3–4 Aug 1914"}, phase:"outbreak", side:"axis",
+    title:{en:"Germany invades Belgium"},
+    desc:{en:"The Schlieffen Plan sends German armies through neutral Belgium; Britain declares war."},
+    detail:{en:"Germany attacked Belgium to outflank the French army and sweep toward Paris. Britain, bound by the 1839 Treaty of London, declared war on Germany on 4 August. The hoped-for quick victory never came."} },
+  { date:{en:"6–10 Sep 1914"}, phase:"stalemate", side:"allies",
+    title:{en:"First Battle of the Marne"},
+    desc:{en:"The German advance on Paris is halted and both sides begin to dig in."},
+    detail:{en:"A Franco-British counterattack split the German right wing and forced a retreat. The 'miracle of the Marne' ended the war of movement in the West and opened the era of trench warfare."} },
+  { date:{en:"29 Oct 1914"}, phase:"stalemate", side:"axis",
+    title:{en:"Ottoman Empire joins the Central Powers"},
+    desc:{en:"The Ottomans enter the war, opening fronts in the Caucasus, Mesopotamia and the Dardanelles."},
+    detail:{en:"The Ottoman Empire sided with Germany after the seizure of two warships being built in Britain. Its entry closed the straits to Allied shipping and stretched the war across the Middle East."} },
+  { date:{en:"22 Apr 1915"}, phase:"stalemate", side:"axis",
+    title:{en:"Second Battle of Ypres: poison gas"},
+    desc:{en:"Germany releases chlorine gas on a large scale for the first time on the Western Front."},
+    detail:{en:"Gas tore a gap in the Allied line near Ypres, but the Germans failed to exploit it. Both sides soon developed gas warfare, adding a new horror to the trenches."} },
+  { date:{en:"25 Apr 1915"}, phase:"stalemate", side:"allies",
+    title:{en:"Gallipoli landings"},
+    desc:{en:"Allied troops land on the Gallipoli peninsula in an attempt to knock the Ottomans out of the war."},
+    detail:{en:"The campaign sought to open a sea route to Russia, but determined Ottoman defence and costly failed attacks pinned the Allies to the beaches. The evacuation was completed in January 1916."} },
+  { date:{en:"7 May 1915"}, phase:"stalemate", side:"neutral",
+    title:{en:"Lusitania sunk"},
+    desc:{en:"A German U-boat sinks the liner Lusitania, killing 1,198 people including 128 Americans."},
+    detail:{en:"The sinking caused outrage in the United States and briefly forced Germany to restrict submarine warfare. It became a symbol of the U-boat threat and helped move American opinion toward the Allies."} },
+  { date:{en:"23 May 1915"}, phase:"stalemate", side:"allies",
+    title:{en:"Italy enters the war"},
+    desc:{en:"Italy abandons the Triple Alliance and joins the Entente, opening the Alpine front."},
+    detail:{en:"Italy had been a nominal member of the Triple Alliance but declared neutrality in 1914. Promises of territory brought it into the war on the Allied side, where fighting along the Isonzo became a brutal stalemate."} },
+  { date:{en:"Oct 1915"}, phase:"stalemate", side:"axis",
+    title:{en:"Serbia overrun"},
+    desc:{en:"Bulgaria joins the Central Powers and, with Germany and Austria-Hungary, overruns Serbia."},
+    detail:{en:"A combined offensive from north and east crushed the Serbian army, which retreated through the Albanian mountains in winter. Bulgaria's entry gave the Central Powers a direct road to the Ottoman Empire."} },
+  { date:{en:"21 Feb 1916"}, phase:"attrition", side:"axis",
+    title:{en:"Battle of Verdun"},
+    desc:{en:"Germany attacks the fortress city of Verdun, determined to 'bleed France white'."},
+    detail:{en:"The battle raged for ten months and cost roughly 700,000 casualties on both sides. France held Verdun, but the fighting became the defining symbol of futile attrition."} },
+  { date:{en:"1 Jul 1916"}, phase:"attrition", side:"allies",
+    title:{en:"Battle of the Somme"},
+    desc:{en:"A massive British and French offensive on the Somme grinds on for over four months."},
+    detail:{en:"The first day was the bloodiest in British military history, with nearly 60,000 casualties. Tanks were used in combat for the first time in September; total casualties exceeded one million."} },
+  { date:{en:"4 Jun 1916"}, phase:"attrition", side:"allies",
+    title:{en:"Brusilov Offensive"},
+    desc:{en:"Russia's best-planned offensive shatters Austro-Hungarian lines in Galicia."},
+    detail:{en:"General Brusilov's short, intense artillery preparation and broad attacks broke the Austro-Hungarian army and drew German reserves east, relieving pressure at Verdun. Russian losses were also enormous."} },
+  { date:{en:"27 Aug 1916"}, phase:"attrition", side:"allies",
+    title:{en:"Romania enters the war"},
+    desc:{en:"Romania joins the Entente, hoping to gain Transylvania from Austria-Hungary."},
+    detail:{en:"Romanian forces advanced into Transylvania but were soon pushed back by a Central Powers counteroffensive. Bucharest fell in December and Romania's oil and grain passed into German hands."} },
+  { date:{en:"1 Feb 1917"}, phase:"crisis", side:"axis",
+    title:{en:"Unrestricted submarine warfare"},
+    desc:{en:"Germany resumes unrestricted U-boat attacks, gambling that Britain can be starved out before the US can intervene."},
+    detail:{en:"U-boats sank ships without warning, including neutral vessels. The campaign came close to strangling Britain but also removed the last restraint on American entry into the war."} },
+  { date:{en:"6 Apr 1917"}, phase:"crisis", side:"allies",
+    title:{en:"United States declares war"},
+    desc:{en:"After repeated sinkings and the Zimmermann Telegram, the US enters the war on the Allied side."},
+    detail:{en:"American industry, finance and eventually two million soldiers tipped the balance decisively toward the Entente. It took months to raise and ship the army, but its arrival made German victory impossible."} },
+  { date:{en:"31 Jul 1917"}, phase:"crisis", side:"allies",
+    title:{en:"Passchendaele"},
+    desc:{en:"British forces attack in Flanders, fighting through mud and shell craters for a few kilometres of ground."},
+    detail:{en:"Heavy artillery destroyed the drainage of the low-lying polder, turning the battlefield into a swamp. The offensive captured Passchendaele in November at a cost of some 500,000 casualties."} },
+  { date:{en:"24 Oct 1917"}, phase:"crisis", side:"axis",
+    title:{en:"Caporetto"},
+    desc:{en:"An Austro-German offensive breaks the Italian army at Caporetto, which retreats in disorder."},
+    detail:{en:"Gas, stormtrooper tactics and a collapsing front sent the Italians back to the Piave River. The disaster led to a new Italian commander and a more united war effort."} },
+  { date:{en:"7 Nov 1917"}, phase:"crisis", side:"axis",
+    title:{en:"October Revolution in Russia"},
+    desc:{en:"The Bolsheviks seize power and promise peace, leading to an armistice in December."},
+    detail:{en:"Lenin's government opened peace talks with the Central Powers and took Russia out of the war. Germany could now shift divisions from east to west for a final offensive."} },
+  { date:{en:"3 Mar 1918"}, phase:"crisis", side:"axis",
+    title:{en:"Treaty of Brest-Litovsk"},
+    desc:{en:"Russia signs a separate peace, ceding vast territories to Germany."},
+    detail:{en:"Russia gave up Poland, the Baltic provinces, Finland and Ukraine, and Germany briefly controlled a huge eastern empire. The gains tied down occupation troops that were badly needed in the west."} },
+  { date:{en:"21 Mar 1918"}, phase:"endgame", side:"axis",
+    title:{en:"German spring offensives"},
+    desc:{en:"Operation Michael and follow-up attacks drive deep into France, but fail to break the Allied line."},
+    detail:{en:"Reinforced by divisions from the east, Germany attacked along the Somme and in Flanders. The gains were spectacular but unsustainable, and the exhausted army left its supply lines far behind."} },
+  { date:{en:"8 Aug 1918"}, phase:"endgame", side:"allies",
+    title:{en:"Hundred Days Offensive"},
+    desc:{en:"The Allies counterattack at Amiens in what Ludendorff called 'the black day of the German Army'."},
+    detail:{en:"Combined arms — tanks, aircraft, artillery and fresh troops — broke the German line. The advance continued without pause until the armistice, rolling the Central Powers back across France and Belgium."} },
+  { date:{en:"29 Sep 1918"}, phase:"endgame", side:"allies",
+    title:{en:"Bulgaria signs an armistice"},
+    desc:{en:"After the breakthrough at Dobro Pole, Bulgaria becomes the first Central Power to leave the war."},
+    detail:{en:"The collapse of the Salonika front cut the direct link between Germany and the Ottoman Empire. Bulgaria's surrender exposed the Ottoman capital and Austria-Hungary to Allied attack."} },
+  { date:{en:"30 Oct 1918"}, phase:"endgame", side:"allies",
+    title:{en:"Ottoman armistice at Mudros"},
+    desc:{en:"The Ottoman Empire capitulates, ending the war in the Middle East."},
+    detail:{en:"British and Arab forces had taken Damascus and were advancing into Anatolia. The armistice opened the straits and left the Ottoman government at the mercy of the Allies."} },
+  { date:{en:"4 Nov 1918"}, phase:"endgame", side:"allies",
+    title:{en:"Austria-Hungary capitulates"},
+    desc:{en:"The Habsburg army signs an armistice at Padua as the empire breaks apart."},
+    detail:{en:"The Vittorio Veneto offensive shattered the Austrian army, and nationalist movements declared independence in Prague, Budapest and Zagreb. The centuries-old Habsburg monarchy dissolved within days."} },
+  { date:{en:"11 Nov 1918"}, phase:"armistice", side:"allies",
+    title:{en:"Armistice at Compiègne"},
+    desc:{en:"Fighting on the Western Front stops at 11 a.m. as Germany signs an armistice."},
+    detail:{en:"The armistice was signed in a railway carriage in the Forest of Compiègne. Germany accepted Allied occupation of the Rhineland, surrendered its fleet and heavy weapons, and the war ended — though the peace settlement still had to be negotiated."} },
+];
+
+// ================= Map countries (real geographic borders from europe-geo.js) =================
+// Each "bloc" is a political entity of WWI; codes are the ISO codes used in europe-geo.js.
+const groups = [
+  { id:"uk", name:{en:"United Kingdom"}, codes:["GB"], label:[185,530], abbr:"UK" },
+  { id:"ireland", name:{en:"Ireland"}, codes:["IE"], label:[156,533], abbr:"IRL" },
+  { id:"norway", name:{en:"Norway"}, codes:["NO"], label:[330,373], abbr:"NOR" },
+  { id:"sweden", name:{en:"Sweden"}, codes:["SE"], label:[330,410], abbr:"SWE" },
+  { id:"finland", name:{en:"Finland"}, codes:["FI"], label:[386,372], abbr:"FIN" },
+  { id:"denmark", name:{en:"Denmark"}, codes:["DK"], label:[289,501], abbr:"DEN" },
+  { id:"france", name:{en:"France"}, codes:["FR"], label:[225,600], abbr:"FRA" },
+  { id:"netherlands", name:{en:"Netherlands"}, codes:["NL"], label:[246,548], abbr:"NED" },
+  { id:"belgium", name:{en:"Belgium"}, codes:["BE"], label:[241,565], abbr:"BEL" },
+  { id:"luxembourg", name:{en:"Luxembourg"}, codes:["LU"], label:[252,572], abbr:"LUX", skipLabel:true },
+  { id:"germany", name:{en:"Germany"}, codes:["DE"], label:[285,560], abbr:"GER" },
+  { id:"switzerland", name:{en:"Switzerland"}, codes:["CH"], label:[266,603], abbr:"SUI" },
+  { id:"austria", name:{en:"Austria-Hungary"}, codes:["AT"], label:[301,594], abbr:"AUT" },
+  { id:"czechoslovakia", name:{en:"Bohemia & Slovakia"}, codes:["CZ","SK"], label:[325,575], abbr:"CZE" },
+  { id:"poland", name:{en:"Poland"}, codes:["PL"], label:[340,548], abbr:"POL" },
+  { id:"estonia", name:{en:"Estonia"}, codes:["EE"], label:[379,471], abbr:"EST" },
+  { id:"latvia", name:{en:"Latvia"}, codes:["LV"], label:[376,492], abbr:"LVA" },
+  { id:"lithuania", name:{en:"Lithuania"}, codes:["LT"], label:[371,513], abbr:"LTU" },
+  { id:"russia", name:{en:"Russian Empire"}, codes:["RU","UA","BY","MD","GE","AM","AZ","KZ"], label:[475,450], abbr:"RUS" },
+  { id:"portugal", name:{en:"Portugal"}, codes:["PT"], label:[120,678], abbr:"POR" },
+  { id:"spain", name:{en:"Spain"}, codes:["ES"], label:[160,688], abbr:"ESP" },
+  { id:"italy", name:{en:"Italy"}, codes:["IT"], label:[290,655], abbr:"ITA" },
+  { id:"hungary", name:{en:"Hungary"}, codes:["HU"], label:[342,599], abbr:"HUN" },
+  { id:"romania", name:{en:"Romania"}, codes:["RO"], label:[379,610], abbr:"ROM" },
+  { id:"yugoslavia", name:{en:"Serbia & Montenegro"}, codes:["RS","HR","BA","ME","MK","SI","KV"], label:[332,625], abbr:"SER" },
+  { id:"bulgaria", name:{en:"Bulgaria"}, codes:["BG"], label:[382,641], abbr:"BUL" },
+  { id:"albania", name:{en:"Albania"}, codes:["AL"], label:[347,655], abbr:"ALB" },
+  { id:"greece", name:{en:"Greece"}, codes:["GR"], label:[372,680], abbr:"GRE" },
+  { id:"turkey", name:{en:"Ottoman Empire"}, codes:["TR"], label:[448,674], abbr:"OTT" },
+  { id:"iceland", name:{en:"Iceland"}, codes:["IS"], label:[83,379], abbr:"ISL" },
+];
+
+const codeToGroup = {};
+groups.forEach(g => g.codes.forEach(code => codeToGroup[code] = g));
+
+const STATE_COLORS = { axis:"#e5534b", occupied:"#7a2e2a", allies:"#3b82f6", neutral:"#4a5568", defeated:"#8b5cf6" };
+
+// ================= Map periods (base state + incremental changes) =================
+const baseControl = {
+  uk:"allies", ireland:"allies", norway:"neutral", sweden:"neutral", finland:"allies", denmark:"neutral",
+  france:"allies", netherlands:"neutral", belgium:"neutral", luxembourg:"neutral", germany:"axis", switzerland:"neutral",
+  austria:"axis", hungary:"axis", czechoslovakia:"occupied", poland:"occupied",
+  estonia:"allies", latvia:"allies", lithuania:"allies", russia:"allies", portugal:"neutral", spain:"neutral", italy:"neutral",
+  romania:"neutral", yugoslavia:"allies", bulgaria:"neutral", albania:"neutral", greece:"neutral", turkey:"neutral",
+  iceland:"neutral"
+};
+
+const periodDefs = [
+  { t:"1914.07", label:{en:"Assassination at Sarajevo"},
+    desc:{en:"Archduke Franz Ferdinand was shot in Sarajevo on 28 June 1914. The July Crisis drew the alliance blocs toward a general European war."}, changes:{} },
+  { t:"1914.08", label:{en:"Invasion of Belgium"},
+    desc:{en:"Germany invaded neutral Belgium to outflank France, and Britain declared war on 4 August. The Schlieffen Plan failed at the Marne, and both sides dug in."}, changes:{ belgium:"occupied", luxembourg:"occupied" } },
+  { t:"1914.11", label:{en:"Ottoman Empire joins the Central Powers"},
+    desc:{en:"The Ottoman Empire entered the war on Germany's side, opening new fronts in the Caucasus, Mesopotamia and at the Dardanelles."}, changes:{ turkey:"axis" } },
+  { t:"1915.05", label:{en:"Italy joins the Entente"},
+    desc:{en:"Italy abandoned its nominal alliance with Germany and Austria-Hungary and joined the Entente, opening the Alpine front along the Isonzo."}, changes:{ italy:"allies" } },
+  { t:"1915.10", label:{en:"Serbia overrun"},
+    desc:{en:"Bulgaria joined the Central Powers and, with Germany and Austria-Hungary, overran Serbia and Montenegro. The Serbian army retreated through Albania."}, changes:{ bulgaria:"axis", yugoslavia:"occupied", albania:"occupied" } },
+  { t:"1916.02", label:{en:"Verdun: the war of attrition"},
+    desc:{en:"Germany attacked Verdun in an attempt to bleed France white. The battle raged for ten months and became the symbol of futile attrition on the Western Front."}, changes:{} },
+  { t:"1916.08", label:{en:"Romania enters the war"},
+    desc:{en:"Romania joined the Entente and invaded Transylvania, hoping to gain Austro-Hungarian territory. German and Bulgarian counterattacks soon pushed it back."}, changes:{ romania:"allies" } },
+  { t:"1916.12", label:{en:"Romania overrun"},
+    desc:{en:"The Central Powers captured Bucharest and most of Romania, securing its oilfields and grain. The Romanian government retreated to Moldavia."}, changes:{ romania:"occupied" } },
+  { t:"1917.04", label:{en:"The United States enters the war"},
+    desc:{en:"Unrestricted submarine warfare and the Zimmermann Telegram brought the United States into the war on the Allied side. Portugal and Greece had also joined the Entente."}, changes:{ portugal:"allies", greece:"allies" } },
+  { t:"1918.03", label:{en:"Treaty of Brest-Litovsk"},
+    desc:{en:"Bolshevik Russia left the war and ceded Poland, the Baltic provinces, Finland and Ukraine to Germany. The Central Powers reached their greatest extent."}, changes:{ russia:"defeated", finland:"neutral", estonia:"occupied", latvia:"occupied", lithuania:"occupied" } },
+  { t:"1918.06", label:{en:"German high-water mark"},
+    desc:{en:"The spring offensives drove deep into France, but the German army was exhausted and its supply lines stretched. American troops were arriving in ever greater numbers."}, changes:{} },
+  { t:"1918.09", label:{en:"Bulgaria breaks"},
+    desc:{en:"The Allied breakthrough at Dobro Pole forced Bulgaria to sign an armistice on 29 September — the first Central Power to leave the war."}, changes:{ bulgaria:"defeated" } },
+  { t:"1918.10", label:{en:"The Ottoman armistice"},
+    desc:{en:"British and Arab forces took Damascus, and the Ottoman Empire signed an armistice at Mudros on 30 October. Austria-Hungary capitulated days later."}, changes:{ turkey:"defeated" } },
+  { t:"1918.11", label:{en:"Armistice at Compiègne"},
+    desc:{en:"Germany signed an armistice on 11 November and fighting stopped at 11 a.m. Austria-Hungary and Germany collapsed, and the occupied nations were liberated."}, changes:{ germany:"defeated", austria:"defeated", hungary:"defeated", belgium:"allies", luxembourg:"allies", yugoslavia:"allies", albania:"allies", romania:"allies", poland:"allies", czechoslovakia:"neutral", estonia:"neutral", latvia:"neutral", lithuania:"neutral" } },
+];
+
+const periods = [];
+periodDefs.forEach((p, i) => {
+  const prev = i === 0 ? baseControl : periods[i-1].control;
+  periods.push({ year:p.t, label:p.label, desc:p.desc, control:Object.assign({}, prev, p.changes) });
+});
+
+// ================= City and battle markers =================
+const cities = [
+  { name:{en:"London"}, x:195, y:545 },
+  { name:{en:"Paris"}, x:222, y:588 },
+  { name:{en:"Berlin"}, x:295, y:540 },
+  { name:{en:"Vienna"}, x:308, y:590 },
+  { name:{en:"Petrograd"}, x:388, y:435 },
+  { name:{en:"Rome"}, x:300, y:662 },
+  { name:{en:"Belgrade"}, x:338, y:618 },
+  { name:{en:"Constantinople"}, x:466, y:692 },
+];
+const battles = [
+  { name:{en:"Sarajevo"}, date:{en:"Jun 1914"}, x:322, y:630, at:0 },
+  { name:{en:"First Marne"}, date:{en:"Sep 1914"}, x:235, y:586, at:1 },
+  { name:{en:"Gallipoli"}, date:{en:"Apr 1915"}, x:420, y:674, at:3 },
+  { name:{en:"Gorlice–Tarnów"}, date:{en:"May 1915"}, x:352, y:548, at:3 },
+  { name:{en:"Verdun"}, date:{en:"Feb 1916"}, x:270, y:576, at:5 },
+  { name:{en:"Jutland"}, date:{en:"May 1916"}, x:272, y:508, at:5 },
+  { name:{en:"Somme"}, date:{en:"Jul 1916"}, x:248, y:566, at:6 },
+  { name:{en:"Brusilov Offensive"}, date:{en:"Jun 1916"}, x:398, y:540, at:6 },
+  { name:{en:"Passchendaele"}, date:{en:"Jul 1917"}, x:243, y:556, at:8 },
+  { name:{en:"Caporetto"}, date:{en:"Oct 1917"}, x:314, y:641, at:8 },
+  { name:{en:"Spring Offensive"}, date:{en:"Mar 1918"}, x:247, y:572, at:10 },
+  { name:{en:"Amiens"}, date:{en:"Aug 1918"}, x:234, y:566, at:11 },
+  { name:{en:"Meuse–Argonne"}, date:{en:"Sep 1918"}, x:266, y:580, at:11 },
+  { name:{en:"Vittorio Veneto"}, date:{en:"Oct 1918"}, x:310, y:646, at:12 },
+  { name:{en:"Armistice"}, date:{en:"Nov 1918"}, x:255, y:578, at:13 },
+];
+const seaLabels = [
+  {  en:"Atlantic Ocean", x:75, y:470 },
+  {  en:"North Sea", x:235, y:478 },
+  {  en:"Baltic Sea", x:345, y:452 },
+  {  en:"Mediterranean", x:300, y:708 },
+  {  en:"Black Sea", x:455, y:640 },
+];
+
+// ================= Figures =================
+const figures = [
+  { name:{en:"Wilhelm II"}, role:{en:"German Emperor and King of Prussia"}, side:"axis", initial:"W",
+    born:{en:"27 Jan 1859"}, died:{en:"4 Jun 1941"},
+    fact:{en:"Kaiser until 1918; his naval and colonial rivalry helped turn a Balkan crisis into a world war."},
+    detail:{en:"Wilhelm II became Kaiser in 1888 and pursued an aggressive 'Weltpolitik', building a navy that challenged British sea power. He gave Austria-Hungary a free hand in the July Crisis, but as the war turned against Germany he lost the support of the army and abdicated in November 1918, fleeing to the Netherlands."},
+    events:[{y:{en:"1888"},t:{en:"Became German Emperor"}},{y:{en:"1898"},t:{en:"Launched the naval arms race with Britain"}},{y:{en:"1914"},t:{en:"Backed Austria-Hungary in the July Crisis"}},{y:{en:"1918"},t:{en:"Abdicated and fled to the Netherlands"}}] },
+  { name:{en:"Franz Joseph I"}, role:{en:"Emperor of Austria-Hungary"}, side:"axis", initial:"F",
+    born:{en:"18 Aug 1830"}, died:{en:"21 Nov 1916"},
+    fact:{en:"Ruled the Habsburg lands from 1848; his ultimatum to Serbia in 1914 opened the war."},
+    detail:{en:"Franz Joseph had occupied the Habsburg throne since 1848, ruling an empire of many nationalities. After his heir was assassinated at Sarajevo, his government issued an ultimatum designed to be rejected by Serbia. He died in November 1916, before the empire he had held together began to break apart."},
+    events:[{y:{en:"1848"},t:{en:"Became Emperor of Austria"}},{y:{en:"1867"},t:{en:"Created the Dual Monarchy of Austria-Hungary"}},{y:{en:"1908"},t:{en:"Annexed Bosnia and Herzegovina"}},{y:{en:"1914"},t:{en:"Declared war on Serbia"}},{y:{en:"1916"},t:{en:"Died at Schönbrunn"}}] },
+  { name:{en:"Paul von Hindenburg"}, role:{en:"German field marshal"}, side:"axis", initial:"H",
+    born:{en:"2 Oct 1847"}, died:{en:"2 Aug 1934"},
+    fact:{en:"Won Tannenberg in 1914 and later directed Germany's war effort with Ludendorff."},
+    detail:{en:"Recalled from retirement in 1914, Hindenburg and his chief of staff Erich Ludendorff won a crushing victory at Tannenberg. Promoted to Chief of the General Staff in 1916, he presided over the Hindenburg Programme of war production and, with Ludendorff, effectively ran Germany as a military dictatorship. He later became President of the Weimar Republic."},
+    events:[{y:{en:"1914"},t:{en:"Won the Battle of Tannenberg"}},{y:{en:"1915"},t:{en:"Led offensives on the Eastern Front"}},{y:{en:"1916"},t:{en:"Became Chief of the German General Staff"}},{y:{en:"1925"},t:{en:"Elected President of Germany"}}] },
+  { name:{en:"Nicholas II"}, role:{en:"Emperor of Russia"}, side:"allies", initial:"N",
+    born:{en:"18 May 1868"}, died:{en:"17 Jul 1918"},
+    fact:{en:"Russia's last tsar; military losses and the collapse of the home front led to revolution."},
+    detail:{en:"Nicholas II ruled a vast but fragile empire. He took personal command of the army in 1915, leaving the government in disarray and tying the monarchy to every defeat. The February Revolution forced his abdication in March 1917, and he and his family were executed by the Bolsheviks in July 1918."},
+    events:[{y:{en:"1894"},t:{en:"Crowned Tsar of Russia"}},{y:{en:"1905"},t:{en:"Faced the Bloody Sunday revolution"}},{y:{en:"1914"},t:{en:"Entered the war against Germany"}},{y:{en:"1917"},t:{en:"Abdicated in the February Revolution"}},{y:{en:"1918"},t:{en:"Executed with his family at Yekaterinburg"}}] },
+  { name:{en:"Georges Clemenceau"}, role:{en:"Prime Minister of France"}, side:"allies", initial:"C",
+    born:{en:"28 Sep 1841"}, died:{en:"24 Nov 1929"},
+    fact:{en:"France's wartime premier, nicknamed 'the Tiger', drove the country to victory and shaped the peace."},
+    detail:{en:"Clemenceau became Prime Minister in November 1917 at a moment of crisis, when the French army was recovering from mutinies. He promised 'I wage war' and worked to unite the Allied command under Foch. At the Paris Peace Conference he pressed for harsh terms against Germany, earning the nickname 'the Tiger'."},
+    events:[{y:{en:"1906"},t:{en:"First served as Prime Minister"}},{y:{en:"1917"},t:{en:"Returned as Prime Minister"}},{y:{en:"1918"},t:{en:"Backed the unified Allied command"}},{y:{en:"1919"},t:{en:"Negotiated the Treaty of Versailles"}}] },
+  { name:{en:"Ferdinand Foch"}, role:{en:"Allied Supreme Commander"}, side:"allies", initial:"F",
+    born:{en:"2 Oct 1851"}, died:{en:"20 Mar 1929"},
+    fact:{en:"Stopped the German advance at the Marne and accepted the German armistice in 1918."},
+    detail:{en:"Foch commanded a French army at the First Marne and later directed the Northern Army Group. Appointed Allied Supreme Commander in 1918, he coordinated the counteroffensive that drove Germany back. He received the German delegates in the railway carriage at Compiègne and insisted on terms that would prevent Germany from renewing the war."},
+    events:[{y:{en:"1914"},t:{en:"Helped win the First Battle of the Marne"}},{y:{en:"1916"},t:{en:"Commanded French forces at the Somme"}},{y:{en:"1918"},t:{en:"Appointed Allied Supreme Commander"}},{y:{en:"1918"},t:{en:"Accepted the German armistice"}}] },
+  { name:{en:"Douglas Haig"}, role:{en:"Commander of the British Expeditionary Force"}, side:"allies", initial:"H",
+    born:{en:"19 Jun 1861"}, died:{en:"29 Jan 1928"},
+    fact:{en:"Commanded the British army in France through the Somme, Passchendaele and the Hundred Days."},
+    detail:{en:"Haig took command of the British Expeditionary Force in 1915 and directed its largest offensives: the Somme in 1916 and Passchendaele in 1917, both enormously costly. In 1918 his forces absorbed the German spring attacks and then led the Hundred Days Offensive that ended the war. His reputation remains contested."},
+    events:[{y:{en:"1915"},t:{en:"Took command of the British Expeditionary Force"}},{y:{en:"1916"},t:{en:"Directed the Somme offensive"}},{y:{en:"1917"},t:{en:"Directed the Passchendaele offensive"}},{y:{en:"1918"},t:{en:"Led the Hundred Days Offensive"}}] },
+  { name:{en:"Woodrow Wilson"}, role:{en:"President of the United States"}, side:"allies", initial:"W",
+    born:{en:"28 Dec 1856"}, died:{en:"3 Feb 1924"},
+    fact:{en:"Kept the US neutral until 1917, then supplied men and money, and proposed the Fourteen Points."},
+    detail:{en:"Wilson won re-election in 1916 promising to keep America out of the war, but unrestricted submarine warfare and the Zimmermann Telegram changed his course. In April 1917 he asked Congress to declare war, and in January 1918 set out the Fourteen Points as a basis for peace. He helped create the League of Nations, though the US Senate refused to join."},
+    events:[{y:{en:"1913"},t:{en:"Became US President"}},{y:{en:"1915"},t:{en:"Protested the sinking of the Lusitania"}},{y:{en:"1917"},t:{en:"Asked Congress to declare war"}},{y:{en:"1918"},t:{en:"Announced the Fourteen Points"}},{y:{en:"1919"},t:{en:"Championed the League of Nations"}}] },
+];
+function portraitUrl(src, size) { return src; }
+
+// ================= Chart data =================
+const controlData = [
+  { label:{en:"Jul 1914 · War begins"}, v:12 },
+  { label:{en:"Aug 1914 · Belgium invaded"}, v:16 },
+  { label:{en:"Nov 1914 · Ottoman entry"}, v:22 },
+  { label:{en:"May 1915 · Italy joins Entente"}, v:26 },
+  { label:{en:"Oct 1915 · Serbia overrun"}, v:32 },
+  { label:{en:"Feb 1916 · Verdun"}, v:34 },
+  { label:{en:"Aug 1916 · Romania enters"}, v:36 },
+  { label:{en:"Dec 1916 · Romania overrun"}, v:40 },
+  { label:{en:"Apr 1917 · US enters"}, v:41 },
+  { label:{en:"Mar 1918 · Brest-Litovsk"}, v:46 },
+  { label:{en:"Jun 1918 · Spring offensives"}, v:44 },
+  { label:{en:"Sep 1918 · Bulgaria breaks"}, v:36 },
+  { label:{en:"Oct 1918 · Ottoman armistice"}, v:28 },
+  { label:{en:"Nov 1918 · Armistice"}, v:6 },
+];
+
+// ================= Stats =================
+const stats = [
+  { numEn:"4 yrs", label:"statDuration" },
+  { numEn:"~30", label:"statCountries" },
+  { numEn:"~20M", label:"statDeaths" },
+  { numEn:"4", label:"statFronts" },
+];
+
+// ================= Render: stats =================
+function renderStats() {
+  const el = document.getElementById("stats");
+  el.innerHTML = stats.map(s =>
+    `<div class="stat"><div class="num">${s.numEn}</div><div class="label">${t(s.label)}</div></div>`
+  ).join("");
+}
+
+// ================= Render: timeline =================
+let timelineFilter = "all";
+function renderTimeline(filter) {
+  if (filter !== undefined) timelineFilter = filter;
+  const listEl = document.getElementById("timelineList");
+  listEl.innerHTML = "";
+  events.forEach((e, i) => {
+    if (timelineFilter !== "all" && e.phase !== timelineFilter) return;
+    const ph = PHASES[e.phase];
+    const el = document.createElement("div");
+    el.className = "event " + e.side;
+    el.dataset.idx = i;
+    el.style.animationDelay = (i * 0.03) + "s";
+    el.innerHTML = `
+      <div class="date">${tt(e.date)}</div>
+      <span class="phase-tag" style="border-color:${ph.color};color:${ph.color};">${tt(ph)}</span>
+      <h3>${tt(e.title)}</h3>
+      <div class="desc">${tt(e.desc)}</div>
+      <div class="detail">${tt(e.detail)}</div>`;
+    el.addEventListener("click", () => el.classList.toggle("open"));
+    listEl.appendChild(el);
+  });
+}
+
+function renderFilters() {
+  const el = document.getElementById("filters");
+  const btn = (id, label, active) =>
+    `<button data-phase="${id}" class="${active?'active':''}">${label}</button>`;
+  el.innerHTML = btn("all", t("all"), timelineFilter==="all") +
+    Object.keys(PHASES).map(id => btn(id, tt(PHASES[id]), timelineFilter===id)).join("");
+  el.querySelectorAll("button").forEach(b => {
+    b.addEventListener("click", () => {
+      el.querySelectorAll("button").forEach(x => x.classList.remove("active"));
+      b.classList.add("active");
+      timelineFilter = b.dataset.phase;
+      renderTimeline();
+    });
+  });
+}
+
+// ================= Render: chart =================
+function renderChart() {
+  const svg = document.getElementById("controlChart");
+  svg.innerHTML = "";
+  const NS = "http://www.w3.org/2000/svg";
+  const W = 900, H = 340, padL = 60, padR = 30, padT = 30, padB = 60;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const x = i => padL + plotW * i / (controlData.length - 1);
+  const y = v => padT + plotH - plotH * v / 60;
+  const add = (tag, attrs) => { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); return n; };
+
+  for (let g = 0; g <= 60; g += 20) {
+    svg.appendChild(add("line", { x1:padL, y1:y(g), x2:W-padR, y2:y(g), stroke:"#2a3242", "stroke-width":1 }));
+    const tx = add("text", { x:padL-10, y:y(g)+4, "text-anchor":"end", fill:"#8b96a5", "font-size":11 });
+    tx.textContent = g + "%"; svg.appendChild(tx);
+  }
+  [0,2,4,6,8,10,12,13].forEach(i => {
+    const tx = add("text", { x:x(i), y:H-padB+24, "text-anchor":"middle", fill:"#8b96a5", "font-size":11 });
+    tx.textContent = tt(controlData[i].label).split(/[.\s]/)[0]; svg.appendChild(tx);
+  });
+
+  const grad = add("linearGradient", { id:"areaGrad", x1:0, y1:0, x2:0, y2:1 });
+  grad.appendChild(add("stop", { offset:"0%", "stop-color":"#e5534b", "stop-opacity":0.5 }));
+  grad.appendChild(add("stop", { offset:"100%", "stop-color":"#e5534b", "stop-opacity":0 }));
+  svg.appendChild(grad);
+
+  let areaPath = `M ${x(0)} ${y(controlData[0].v)}`;
+  controlData.forEach((d,i) => areaPath += ` L ${x(i)} ${y(d.v)}`);
+  areaPath += ` L ${x(controlData.length-1)} ${y(0)} L ${x(0)} ${y(0)} Z`;
+  svg.appendChild(add("path", { d:areaPath, fill:"url(#areaGrad)" }));
+
+  let linePath = `M ${x(0)} ${y(controlData[0].v)}`;
+  controlData.forEach((d,i) => linePath += ` L ${x(i)} ${y(d.v)}`);
+  svg.appendChild(add("path", { d:linePath, fill:"none", stroke:"#e5534b", "stroke-width":3, "stroke-linejoin":"round" }));
+
+  const tip = document.getElementById("chartTip");
+  controlData.forEach((d,i) => {
+    const c = add("circle", { cx:x(i), cy:y(d.v), r:6, fill:"#d4a72c", stroke:"#0d1117", "stroke-width":2, cursor:"pointer" });
+    c.addEventListener("mouseenter", () => { tip.style.display="block"; tip.innerHTML = `<b>${tt(d.label)}</b><br>${"Central Powers control ~"} ${d.v}% ${"of Europe"}`; });
+    c.addEventListener("mousemove", ev => { tip.style.left = ev.clientX+14+"px"; tip.style.top = ev.clientY-30+"px"; });
+    c.addEventListener("mouseleave", () => tip.style.display="none");
+    svg.appendChild(c);
+  });
+
+  const peak = controlData.reduce((a,b) => a.v>b.v?a:b);
+  const pk = add("text", { x:x(controlData.indexOf(peak)), y:y(peak.v)-14, "text-anchor":"middle", fill:"#e5534b", "font-size":12, "font-weight":700 });
+  pk.textContent = ("Peak") + " " + peak.v + "%";
+  svg.appendChild(pk);
+
+  document.getElementById("chartLegend").innerHTML = `
+    <span><span class="dot" style="background:#e5534b"></span>${t("legendCurve")}</span>
+    <span><span class="dot" style="background:#3b82f6"></span>${t("legendCounter")}</span>
+    <span><span class="dot" style="background:#d4a72c"></span>${t("legendNode")}</span>`;
+}
+
+// ================= Render: map =================
+let mapPeriod = 0;
+let mapPlaying = false, mapTimer = null, mapSpeed = 2500;
+let lastMapControl = null;
+let wipeRafs = [];
+
+function bindTip(el, htmlFn) {
+  const tip = document.getElementById("mapTip");
+  el.addEventListener("mouseenter", () => { tip.style.display="block"; tip.innerHTML = htmlFn(); });
+  el.addEventListener("mousemove", ev => { tip.style.left = ev.clientX+14+"px"; tip.style.top = ev.clientY-30+"px"; });
+  el.addEventListener("mouseleave", () => tip.style.display="none");
+}
+
+function clearCountryWipes() {
+  wipeRafs.forEach(id => cancelAnimationFrame(id));
+  wipeRafs = [];
+  document.querySelectorAll("#europeMap .wipe-overlay, #europeMap .wipe-clip").forEach(n => n.remove());
+}
+
+// Reveal a country's new allegiance with a colour wipe that spreads across its shape.
+// Fill a country from the edge nearest `opts.from`, so an advance looks like a
+// front moving across the map instead of a colour snapping on.
+function animateCountryWipe(svg, path, code, newColor, opts) {
+  opts = opts || {};
+  const bb = path.getBBox();
+  if (bb.width <= 0 || bb.height <= 0) { path.setAttribute("fill", newColor); return; }
+  const from = opts.from || { x: bb.x - 40, y: bb.y + bb.height / 2 };
+  const dur = Math.max(120, opts.duration || 620);
+  const delay = Math.max(0, opts.delay || 0);
+  const cx = bb.x + bb.width / 2, cy = bb.y + bb.height / 2;
+  const dx = cx - from.x, dy = cy - from.y;
+  const horizontal = Math.abs(dx) >= Math.abs(dy);
+  const reverse = horizontal ? dx < 0 : dy < 0;
+  const axisLen = horizontal ? bb.width : bb.height;
+
+  const NS = "http://www.w3.org/2000/svg";
+  const clipId = "wipe-" + code + "-" + (Math.random() * 1e6 | 0);
+  const clip = document.createElementNS(NS, "clipPath");
+  clip.setAttribute("id", clipId);
+  clip.setAttribute("clipPathUnits", "userSpaceOnUse");
+  clip.classList.add("wipe-clip");
+  const rect = document.createElementNS(NS, "rect");
+  rect.setAttribute("fill", "#fff");
+  if (horizontal) {
+    rect.setAttribute("x", reverse ? bb.x + bb.width : bb.x);
+    rect.setAttribute("y", bb.y - 1);
+    rect.setAttribute("width", 0);
+    rect.setAttribute("height", bb.height + 2);
+  } else {
+    rect.setAttribute("x", bb.x - 1);
+    rect.setAttribute("y", reverse ? bb.y + bb.height : bb.y);
+    rect.setAttribute("width", bb.width + 2);
+    rect.setAttribute("height", 0);
+  }
+  clip.appendChild(rect);
+  svg.appendChild(clip);
+
+  const overlay = document.createElementNS(NS, "path");
+  overlay.setAttribute("d", path.getAttribute("d"));
+  overlay.setAttribute("fill", newColor);
+  overlay.setAttribute("clip-path", "url(#" + clipId + ")");
+  overlay.setAttribute("pointer-events", "none");
+  overlay.classList.add("wipe-overlay");
+  svg.appendChild(overlay);
+
+  const start = performance.now() + delay;
+  let finished = false;
+  function finish() {
+    if (finished) return;
+    finished = true;
+    path.setAttribute("fill", newColor);
+    overlay.remove();
+    clip.remove();
+  }
+  function step(now) {
+    const t = Math.max(0, Math.min(1, (now - start) / dur));
+    const len = (axisLen * t).toFixed(2);
+    if (horizontal) {
+      rect.setAttribute("width", len);
+      if (reverse) rect.setAttribute("x", (bb.x + bb.width - axisLen * t).toFixed(2));
+    } else {
+      rect.setAttribute("height", len);
+      if (reverse) rect.setAttribute("y", (bb.y + bb.height - axisLen * t).toFixed(2));
+    }
+    if (t < 1) {
+      wipeRafs.push(requestAnimationFrame(step));
+    } else {
+      finish();
+    }
+  }
+  wipeRafs.push(requestAnimationFrame(step));
+  // Fallback for background tabs / reduced-motion, where rAF can be throttled.
+  setTimeout(finish, delay + dur + 200);
+}
+
+// Nearest Entente jumping-off point for a liberated country: the Atlantic in the
+// west, the Russian front in the east, or the Mediterranean in the south.
+function alliedSourceFor(cx, cy) {
+  const sources = [
+    { x: -60, y: 500 },  // Atlantic / Britain and France
+    { x: 860, y: 430 },  // Russian front
+    { x: 470, y: 830 }   // Mediterranean / Italian front
+  ];
+  let best = sources[0], bestDist = Infinity;
+  for (const s of sources) {
+    const d = (s.x - cx) * (s.x - cx) + (s.y - cy) * (s.y - cy);
+    if (d < bestDist) { bestDist = d; best = s; }
+  }
+  return best;
+}
+
+// Central Powers advances radiate from Germany, Austria-Hungary or the Ottoman
+// Empire, whichever core is closest to the country being occupied.
+function centralSourceFor(cx, cy) {
+  const sources = [
+    { x: 300, y: 555 },  // Germany
+    { x: 315, y: 605 },  // Austria-Hungary
+    { x: 470, y: 690 }   // Ottoman Empire
+  ];
+  let best = sources[0], bestDist = Infinity;
+  for (const s of sources) {
+    const d = (s.x - cx) * (s.x - cx) + (s.y - cy) * (s.y - cy);
+    if (d < bestDist) { bestDist = d; best = s; }
+  }
+  return best;
+}
+
+// Plan a single wave across every country that changed side this stage. Central
+// Powers gains flow outward from Germany, Austria-Hungary or the Ottomans;
+// Entente gains flow inward from the nearest Allied front. The wave speed
+// follows the autoplay speed setting.
+function planCountryWipes(countryNodes) {
+  const plans = [];
+  let maxTravel = 1;
+  countryNodes.forEach(n => {
+    if (!n.changed) return;
+    const bb = n.path.getBBox();
+    if (bb.width <= 0 || bb.height <= 0) return;
+    const cx = bb.x + bb.width / 2, cy = bb.y + bb.height / 2;
+    const wasAxis = n.oldState === "axis" || n.oldState === "occupied";
+    const isAxis = n.state === "axis" || n.state === "occupied";
+    const from = (isAxis && !wasAxis) ? centralSourceFor(cx, cy) : alliedSourceFor(cx, cy);
+    const horizontal = Math.abs(cx - from.x) >= Math.abs(cy - from.y);
+    const extent = horizontal ? bb.width : bb.height;
+    const gap = horizontal
+      ? Math.max(0, Math.abs(cx - from.x) - bb.width / 2)
+      : Math.max(0, Math.abs(cy - from.y) - bb.height / 2);
+    const travel = gap + extent;
+    maxTravel = Math.max(maxTravel, travel);
+    plans.push({ n, from, extent, gap });
+  });
+  // During autoplay the whole advance should finish inside the stage, slightly
+  // before the next period begins. Manual stepping gets a brisker sweep.
+  const budget = mapPlaying ? Math.max(900, mapSpeed * 0.78) : 1500;
+  const msPerUnit = Math.min(14, budget / maxTravel);
+  return plans.map(p => ({
+    node: p.n,
+    from: p.from,
+    delay: p.gap * msPerUnit,
+    duration: Math.max(150, p.extent * msPerUnit)
+  }));
+}
+
+function renderMap() {
+  clearCountryWipes();
+  const svg = document.getElementById("europeMap");
+  svg.innerHTML = "";
+  const NS = "http://www.w3.org/2000/svg";
+  const p = periods[mapPeriod];
+  const add = (tag, attrs) => { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); return n; };
+
+  document.getElementById("mapYear").textContent = p.year;
+  document.getElementById("mapPhase").textContent = tt(p.label);
+  document.getElementById("mapDesc").textContent = tt(p.desc);
+  document.getElementById("mapCounter").textContent = t("stage").replace("{i}", mapPeriod+1).replace("{n}", periods.length);
+  document.getElementById("mapSlider").max = periods.length - 1;
+  document.getElementById("mapSlider").value = mapPeriod;
+
+  // Ocean background
+  svg.appendChild(add("rect", { x:0, y:0, width:800, height:766, fill:"#0e1b2b" }));
+  // Sea labels
+  seaLabels.forEach(s => {
+    const tx = add("text", { x:s.x, y:s.y, "text-anchor":"middle", fill:"#4a6b8a", "font-size":10, "font-style":"italic", opacity:0.75 });
+    tx.textContent = tt(s); svg.appendChild(tx);
+  });
+
+  // Countries (real geographic borders)
+  let axisCount = 0;
+  groups.forEach(g => {
+    const state = p.control[g.id];
+    if (state === "axis" || state === "occupied") axisCount++;
+  });
+  const animateOn = !!lastMapControl;
+  const countryNodes = [];
+  Object.keys(EUROPE_GEO).forEach(code => {
+    const g = codeToGroup[code];
+    const state = g ? p.control[g.id] : "neutral";
+    const oldState = (animateOn && g) ? lastMapControl[g.id] : state;
+    const color = STATE_COLORS[state];
+    const oldColor = STATE_COLORS[oldState] || color;
+    const changed = oldState !== state;
+    const path = add("path", { d:EUROPE_GEO[code], fill:changed?oldColor:color, stroke:"#dfe6ee", "stroke-width":0.5, "stroke-opacity":0.45 });
+    if (g) bindTip(path, () => `<b>${tt(g.name)}</b><br>${t("state"+capitalize(state))}`);
+    svg.appendChild(path);
+    countryNodes.push({ path, code, color, changed, state, oldState });
+  });
+  // Roll the new colour across every country that changed side as one moving front
+  planCountryWipes(countryNodes).forEach(p => {
+    animateCountryWipe(svg, p.node.path, p.node.code, p.node.color, p);
+  });
+  // Bloc labels
+  groups.forEach(g => {
+    if (g.skipLabel) return;
+    const lbl = add("text", { x:g.label[0], y:g.label[1], "text-anchor":"middle", fill:"#0d1117", "font-size":10, "font-weight":700 });
+    lbl.textContent = g.abbr; svg.appendChild(lbl);
+  });
+
+  // Cities
+  cities.forEach(ct => {
+    svg.appendChild(add("circle", { cx:ct.x, cy:ct.y, r:3.5, fill:"#e6edf3", stroke:"#0d1117", "stroke-width":1 }));
+    const lbl = add("text", { x:ct.x+7, y:ct.y-5, fill:"#dbe4ee", "font-size":10, "font-weight":600 });
+    lbl.textContent = tt(ct.name); svg.appendChild(lbl);
+  });
+
+  // Battles (shown within the time window)
+  battles.forEach(b => {
+    if (mapPeriod < b.at || mapPeriod > b.at + 2) return;
+    const star = add("text", { x:b.x, y:b.y, "text-anchor":"middle", fill:"#f5c518", "font-size":16, "font-weight":700, class:"battle" });
+    star.textContent = "★";
+    bindTip(star, () => `<b>${tt(b.name)}</b><br>${tt(b.date)}`);
+    svg.appendChild(star);
+  });
+
+  document.getElementById("mapStats").textContent = t("axisCount").replace("{n}", axisCount);
+
+  document.getElementById("mapLegend").innerHTML = `
+    <span><span class="dot" style="background:${STATE_COLORS.axis}"></span>${t("stateAxis")}</span>
+    <span><span class="dot" style="background:${STATE_COLORS.occupied}"></span>${t("stateOccupied")}</span>
+    <span><span class="dot" style="background:${STATE_COLORS.defeated}"></span>${t("stateDefeated")}</span>
+    <span><span class="dot" style="background:${STATE_COLORS.allies}"></span>${t("stateAllies")}</span>
+    <span><span class="dot" style="background:${STATE_COLORS.neutral}"></span>${t("stateNeutral")}</span>
+    <span><span style="color:#f5c518;font-size:14px;line-height:1;">★</span>${t("legendBattle")}</span>
+    <span><span class="dot" style="background:#e6edf3"></span>${t("legendCity")}</span>`;
+
+  lastMapControl = Object.assign({}, p.control);
+}
+function capitalize(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+
+function setMapPeriod(i, keepPlaying) {
+  mapPeriod = Math.max(0, Math.min(periods.length-1, i));
+  renderMap();
+  if (mapPlaying && mapPeriod >= periods.length-1) stopMapPlay();
+  if (!keepPlaying) document.getElementById("mapPlay").innerHTML = "&#9654;";
+}
+
+function startMapTimer() {
+  clearInterval(mapTimer);
+  mapTimer = setInterval(() => {
+    if (mapPeriod >= periods.length-1) { stopMapPlay(); return; }
+    setMapPeriod(mapPeriod+1, true);
+  }, mapSpeed);
+}
+function startMapPlay() {
+  mapPlaying = true;
+  mapPeriod = 0;
+  renderMap();
+  document.getElementById("mapPlay").innerHTML = "&#10074;&#10074;";
+  startMapTimer();
+}
+function stopMapPlay() {
+  mapPlaying = false;
+  clearInterval(mapTimer);
+  document.getElementById("mapPlay").innerHTML = "&#9654;";
+}
+
+// ================= Render: figures =================
+function renderFigures() {
+  document.getElementById("figuresList").innerHTML = figures.map((f, i) => `
+    <div class="figure" data-idx="${i}" style="cursor:pointer;">
+      <div class="avatar ${f.side}"><span>${f.initial}</span><img class="portrait" src="${portraitUrl(FIGURE_PHOTOS[i], 200)}" alt="${tt(f.name)}" onload="this.classList.add('loaded');this.parentElement.classList.add('has-photo')" onerror="this.classList.remove('loaded')"></div>
+      <div class="name">${tt(f.name)}</div>
+      <div class="role">${tt(f.role)}</div>
+      <div class="fact">${tt(f.fact)}</div>
+      <div class="hint">${t("viewDetail")} ›</div>
+    </div>`).join("");
+  document.querySelectorAll("#figuresList .figure").forEach(el => {
+    el.addEventListener("click", () => openFigure(+el.dataset.idx));
+  });
+}
+
+function openFigure(i) {
+  const f = figures[i];
+  const av = document.getElementById("modalAvatar");
+  av.className = "modal-avatar " + f.side;
+  av.innerHTML = `<span>${f.initial}</span><img class="portrait" src="${portraitUrl(FIGURE_PHOTOS[i], 500)}" alt="" onload="this.classList.add('loaded');this.parentElement.classList.add('has-photo')" onerror="this.classList.remove('loaded')">`;
+  document.getElementById("modalName").textContent = tt(f.name);
+  document.getElementById("modalRole").textContent = tt(f.role);
+  document.getElementById("modalLife").textContent = t("life") + (": ") + tt(f.born) + " – " + tt(f.died);
+  document.getElementById("modalDetail").textContent = tt(f.detail);
+  document.getElementById("modalEvents").innerHTML =
+    "<h4>" + t("keyEvents") + "</h4><ul>" +
+    f.events.map(ev => `<li><span class="yr">${tt(ev.y)}</span><span>${tt(ev.t)}</span></li>`).join("") +
+    "</ul>";
+  document.getElementById("figureModal").classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+function closeFigure() {
+  document.getElementById("figureModal").classList.remove("open");
+  document.body.style.overflow = "";
+}
+
+// ================= Weapons =================
+const weapons = [
+  { name:"Mark I tank", type:"tank", meta:"United Kingdom · Heavy tank · 1916",
+    desc:"The first tank to see combat, designed to crush wire and cross trenches.",
+    spec:"~28 t · 6-pounder guns · ~6 km/h",
+    detail:"First used at Flers–Courcelette on the Somme in September 1916, the rhomboid Mark I was built to cross trenches and flatten barbed wire. Slow, hot and mechanically unreliable, it nevertheless pointed the way to a new kind of warfare." },
+  { name:"Canon de 75", type:"gun", meta:"France · Field gun · 1897",
+    desc:"The famous 'soixante-quinze', a rapid-firing field gun that defined French artillery.",
+    spec:"75 mm · ~15 rounds/min · ~8.5 km range",
+    detail:"The Canon de 75 modèle 1897 used a revolutionary recoil system that allowed rapid, accurate fire without re-aiming. It became the backbone of French artillery and a symbol of the Republic's military doctrine." },
+  { name:"Paris Gun", type:"gun", meta:"Germany · Railway gun · 1918",
+    desc:"A colossal long-range gun that shelled Paris from about 120 km away.",
+    spec:"211 mm · ~130 km range",
+    detail:"Built by Krupp and fired from the forest of Crépy, the Paris Gun threw shells into Paris in 1918. Its long range came at the cost of accuracy and barrel life, and it was more a terror weapon than a decisive one." },
+  { name:"MG 08", type:"gun", meta:"Germany · Machine gun · 1908",
+    desc:"The German army's heavy Maxim-pattern machine gun, a fixture of trench defence.",
+    spec:"7.92 mm · ~450 rounds/min · water-cooled",
+    detail:"The Maschinengewehr 08 was a licence-built Maxim gun on a heavy sled mount. Water-cooled and extremely durable, it could fire for hours and made frontal attacks across no man's land murderous." },
+  { name:"Vickers machine gun", type:"gun", meta:"United Kingdom · Machine gun · 1912",
+    desc:"The British Army's reliable water-cooled heavy machine gun.",
+    spec:"7.7 mm · ~450 rounds/min",
+    detail:"The Vickers gun was lighter than the Maxim it replaced and famously reliable. In expert hands it could fire indirectly for hours, and it remained in British service long after 1918." },
+  { name:"Lee-Enfield SMLE", type:"gun", meta:"United Kingdom · Bolt-action rifle · 1907",
+    desc:"The Short Magazine Lee-Enfield: fast, rugged and the British soldier's constant companion.",
+    spec:".303 in · 10-round magazine · ~700 m",
+    detail:"The SMLE's short action and smooth bolt allowed a trained soldier to fire 15–20 aimed rounds a minute. It served the British Empire on every front and remained in use for decades." },
+  { name:"Gewehr 98", type:"gun", meta:"Germany · Bolt-action rifle · 1898",
+    desc:"Germany's standard infantry rifle, accurate and powerful.",
+    spec:"7.92 mm · 5-round magazine",
+    detail:"The Gewehr 98 was a strong, accurate Mauser design whose bolt action influenced rifles worldwide. Its powerful cartridge and sturdy receiver made it a formidable weapon in the trenches." },
+  { name:"Fokker Dr.I", type:"plane", meta:"Germany · Triplane fighter · 1917",
+    desc:"The nimble triplane flown by the Red Baron and other German aces.",
+    spec:"110 hp rotary · 2 machine guns · ~185 km/h",
+    detail:"The Fokker Dr.I's three wings gave it exceptional climb and turning ability, but it was slow and suffered structural failures early on. Manfred von Richthofen scored his last victories in one before his death in April 1918." },
+  { name:"Sopwith Camel", type:"plane", meta:"United Kingdom · Fighter · 1917",
+    desc:"A highly manoeuvrable British fighter that dominated the air over the Western Front.",
+    spec:"130 hp rotary · 2 machine guns · ~185 km/h",
+    detail:"The Camel's rotary engine created a powerful torque that made it tricky to fly but devastatingly agile in a turn. It accounted for more enemy aircraft than any other Allied fighter of the war." },
+  { name:"SM U-35", type:"ship", meta:"Germany · Submarine · 1914",
+    desc:"The most successful U-boat of the war, a symbol of Germany's submarine campaign.",
+    spec:"~80 m long · 2 deck guns · torpedoes",
+    detail:"SM U-35 sank more than 200 ships during the war, mostly with its deck gun after surfacing. Unrestricted submarine warfare by boats like her brought the United States into the conflict in 1917." }
+];
+
+function renderWeapons() {
+  document.getElementById("weaponsList").innerHTML = weapons.map((w, i) => `
+    <article class="weapon" role="button" tabindex="0" data-index="${i}" aria-label="${w.name} — click for details">
+      <div class="wphoto"><img src="${WEAPON_PHOTOS[i]}" alt="${w.name}"></div>
+      <div class="wbody">
+        <div class="wname">${w.name}</div>
+        <div class="wmeta">${w.meta}</div>
+        <div class="wdesc">${w.desc}</div>
+        <div class="wspec">${w.spec}</div>
+        <div class="whint">Click for details</div>
+      </div>
+    </article>`).join("");
+}
+
+const weaponModal = document.getElementById("weaponModal");
+function openWeapon(index) {
+  const w = weapons[index];
+  if (!w) return;
+  document.getElementById("weaponModalImg").src = WEAPON_PHOTOS[index];
+  document.getElementById("weaponModalImg").alt = w.name;
+  document.getElementById("weaponModalName").textContent = w.name;
+  document.getElementById("weaponModalMeta").textContent = w.meta;
+  document.getElementById("weaponModalDetail").textContent = w.detail;
+  document.getElementById("weaponModalSpec").textContent = w.spec;
+  weaponModal.classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+function closeWeapon() {
+  weaponModal.classList.remove("open");
+  document.body.style.overflow = "";
+}
+document.getElementById("weaponsList").addEventListener("click", ev => {
+  const card = ev.target.closest(".weapon");
+  if (card) openWeapon(Number(card.dataset.index));
+});
+document.getElementById("weaponsList").addEventListener("keydown", ev => {
+  if (ev.key !== "Enter" && ev.key !== " ") return;
+  const card = ev.target.closest(".weapon");
+  if (card) { ev.preventDefault(); openWeapon(Number(card.dataset.index)); }
+});
+document.getElementById("weaponModalClose").addEventListener("click", closeWeapon);
+weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) closeWeapon(); });
+
+// ================= Timeline autoplay =================
+let tlPlaying = false, tlTimer = null, tlIdx = 0;
+function timelinePlayToggle() {
+  const btn = document.getElementById("timelinePlay");
+  if (tlPlaying) {
+    tlPlaying = false; clearInterval(tlTimer);
+    document.querySelectorAll(".event.playing").forEach(e => e.classList.remove("playing"));
+    btn.innerHTML = "&#9654; <span>" + t("autoPlay") + "</span>";
+    return;
+  }
+  tlPlaying = true; tlIdx = 0;
+  btn.innerHTML = "&#10074;&#10074; <span>" + t("pause") + "</span>";
+  const els = Array.from(document.querySelectorAll("#timelineList .event"));
+  if (els.length === 0) { tlPlaying = false; return; }
+  tlTimer = setInterval(() => {
+    if (tlIdx >= els.length) { timelinePlayToggle(); return; }
+    els.forEach(e => e.classList.remove("playing"));
+    const el = els[tlIdx];
+    el.classList.add("playing");
+    el.scrollIntoView({ behavior:"smooth", block:"center" });
+    tlIdx++;
+  }, 2800);
+}
+
+// ================= Apply language =================
+function applyI18n() {
+  document.querySelectorAll("[data-i18n]").forEach(el => el.textContent = t(el.dataset.i18n));
+  closeFigure();
+  renderStats();
+  renderTimeline();
+  renderFilters();
+  renderChart();
+  renderMap();
+  renderFigures();
+  renderWeapons();
+  if (tlPlaying) { timelinePlayToggle(); }
+}
+
+// ================= Initialisation =================
+
+document.getElementById("mapPlay").addEventListener("click", () => mapPlaying ? stopMapPlay() : startMapPlay());
+document.getElementById("mapPrev").addEventListener("click", () => setMapPeriod(mapPeriod-1));
+document.getElementById("mapNext").addEventListener("click", () => setMapPeriod(mapPeriod+1));
+document.getElementById("mapSlider").addEventListener("input", e => setMapPeriod(+e.target.value));
+document.getElementById("mapSpeed").addEventListener("change", e => {
+  mapSpeed = +e.target.value;
+  if (mapPlaying) startMapTimer();
+});
+document.getElementById("timelinePlay").addEventListener("click", timelinePlayToggle);
+
+  // Figure detail modal
+document.getElementById("modalClose").addEventListener("click", closeFigure);
+document.getElementById("figureModal").addEventListener("click", e => { if (e.target === e.currentTarget) closeFigure(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") { closeFigure(); closeWeapon(); } });
+
+applyI18n();
+</script>
+</body>
+</html>
