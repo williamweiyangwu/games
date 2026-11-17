@@ -68,6 +68,9 @@
     .slotname { width:60px; } .slothp { width:46px; }
     #minimap { width:116px; height:116px; }
     #feed { bottom:134px; }
+    #countryrow { flex-wrap:wrap; }
+    #countryrow .dlab { width:100%; text-align:center; margin:0 0 3px; }
+    #countryrow .crow { width:100%; }
   }
   #weather { position:fixed; z-index:52; left:50%; top:106px; transform:translateX(-50%);
     background:#0a1120cc; border:2px solid #2b4a7a; padding:3px 10px; border-radius:4px;
@@ -94,6 +97,15 @@
   .card .c { font-size:13px; color:#b6ff8a; margin:3px 0 5px; }
   .card .s { font-size:10.5px; line-height:1.55; color:#9fc0e8; }
   .card .own { font-size:10px; margin-top:6px; color:#ffd76a; }
+  .crow { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; max-width:760px; }
+  .cbtn { font-size:11px; padding:6px 10px; letter-spacing:1px; }
+  .cbtn .cc { display:inline-block; min-width:22px; font-size:10px; letter-spacing:1px; color:#7d90ad; }
+  .cbtn.on .cc { color:#dceaff; }
+  #countryPreview { text-align:center; font-size:10.5px; letter-spacing:.5px; line-height:1.7;
+    color:#9fc0e8; max-width:760px; margin:0 auto 16px; }
+  #countryPreview b { color:#8fd0ff; font-weight:600; }
+  #nation { right:112px; top:46px; background:#0a1120cc; border:2px solid #2b4a7a;
+    padding:4px 10px; border-radius:4px; font-size:11px; letter-spacing:1px; }
   .close { margin-top:12px; font-size:11px; color:#7d90ad; text-align:center; }
   #over { position:fixed; inset:0; z-index:80; display:none; align-items:center; justify-content:center;
     background:#02040ae6; }
@@ -107,8 +119,8 @@
   #respawn .n { font-size:56px; font-weight:bold; color:#ff5a5a; text-shadow:0 0 20px #f00a; }
   #respawn .l { font-size:13px; letter-spacing:3px; color:#ffb0b0; }
   #mode { position:fixed; inset:0; z-index:90; display:flex; align-items:flex-start; justify-content:center;
-    background:#02040af2; overflow-y:auto; padding:16px 0; }
-  #mode > div { margin:auto; }
+    background:#02040af2; overflow-y:auto; padding:16px 10px; }
+  #mode > div { margin:auto; width:100%; max-width:820px; }
   #mode.off { display:none; }
   .mcard { width:250px; background:#0b1424; border:3px solid #2b4a7a; border-radius:6px; padding:18px;
     text-align:center; cursor:pointer; transition:.12s; }
@@ -212,6 +224,7 @@
   B — shop &nbsp;|&nbsp; 1-6 — quick buy
 </div>
 <div class="hud" id="cash">$0</div>
+<div class="hud" id="nation"></div>
 <button id="mute" title="toggle sound">🔊</button>
 <button id="shopBtn" title="open armory">SHOP</button>
 <div class="hud" id="netbadge" style="display:none"></div>
@@ -232,6 +245,11 @@
     <div style="font-size:34px;letter-spacing:8px;color:#8fd0ff;font-weight:bold">TANK WAR</div>
     <div style="font-size:11px;color:#7d90ad;letter-spacing:2px">2D-RENDER 3D ARENA</div>
   </div>
+  <div class="diffrow" id="countryrow" style="margin-bottom:8px">
+    <span class="dlab">COUNTRY</span>
+    <div class="crow" id="countryBtns"></div>
+  </div>
+  <div id="countryPreview"></div>
   <div class="diffrow" id="diffrow">
     <span class="dlab">AI LEVEL</span>
     <button class="dbtn" data-diff="easy">EASY</button>
@@ -354,7 +372,7 @@
   </div>
 </div></div>
 <div id="shop"><div class="panel">
-  <h2>ARMORY</h2>
+  <h2>ARMORY <span id="shopNation" style="font-size:12px;letter-spacing:2px;color:#7d90ad"></span></h2>
   <p class="sub">Spend credits to field a stronger tank. Instantly replaces your current tank.</p>
   <div class="cards" id="cards"></div>
   <div class="close">press <b>B</b> / <b>ESC</b> or tap outside to close</div>
@@ -727,6 +745,43 @@ const CLASSES = {
   sniper:  { name:'SNIPER',   cost:1600, hp:130, speed:11.0, dmg:80, rate:1.25, range:125,radius:1.6, turn:4,  bs:190, splash:0 },
 };
 const ORDER = ['scout','medium','flame','heavy','arty','sniper'];
+/* ============================================================
+   WW2 COUNTRIES — the same six roles, named as each nation's armour.
+   Stats, costs and balance are untouched: only the names change.
+============================================================ */
+const COUNTRIES = [
+  { id:'germany', code:'DE', name:'GERMANY', col:'#d6c37a', tanks:{
+      scout:'Panzer II', medium:'Panzer IV', flame:'Flammpanzer III',
+      heavy:'Tiger I', arty:'Sturmpanzer IV', sniper:'Jagdpanther' } },
+  { id:'ussr', code:'SU', name:'SOVIET UNION', col:'#ff8a7a', tanks:{
+      scout:'BT-7', medium:'T-34', flame:'OT-34',
+      heavy:'IS-2', arty:'SU-152', sniper:'SU-100' } },
+  { id:'usa', code:'US', name:'UNITED STATES', col:'#8fd48a', tanks:{
+      scout:'M3 Stuart', medium:'M4 Sherman', flame:'M4A3R3 Zippo',
+      heavy:'M26 Pershing', arty:'M12 GMC', sniper:'M36 Jackson' } },
+  { id:'uk', code:'UK', name:'UNITED KINGDOM', col:'#8fb8ff', tanks:{
+      scout:'Daimler AC', medium:'Cromwell', flame:'Churchill Crocodile',
+      heavy:'Churchill VII', arty:'Bishop', sniper:'Achilles' } },
+  { id:'france', code:'FR', name:'FRANCE', col:'#a3b4ff', tanks:{
+      scout:'AMR 35', medium:'Somua S35', flame:'B2 Flamm',
+      heavy:'Char B1 bis', arty:'Lorraine 39L', sniper:'ARL 44' } },
+  { id:'italy', code:'IT', name:'ITALY', col:'#c3d48a', tanks:{
+      scout:'L6/40', medium:'M13/40', flame:'L3 Lf',
+      heavy:'P26/40', arty:'Semovente 75/18', sniper:'Semovente 90/53' } },
+  { id:'japan', code:'JP', name:'JAPAN', col:'#ff9a9a', tanks:{
+      scout:'Type 95 Ha-Go', medium:'Type 97 Chi-Ha', flame:'Soko Sagyo Ki',
+      heavy:'Type 3 Chi-Nu', arty:'Type 1 Ho-Ni III', sniper:'Type 5 Ho-Ri' } },
+];
+const COUNTRY_BY_ID = Object.fromEntries(COUNTRIES.map(c=>[c.id,c]));
+function curCountry(){ return COUNTRY_BY_ID[SAVE.country] || COUNTRIES[0]; }
+function tankName(key, country){
+  let c;
+  if(country && typeof country==='object') c = country;
+  else if(country && COUNTRY_BY_ID[country]) c = COUNTRY_BY_ID[country];
+  else c = curCountry();
+  return (c.tanks && c.tanks[key]) || CLASSES[key].name;
+}
+function botCountry(team, slot){ return COUNTRIES[(team*5 + slot*2 + 3) % COUNTRIES.length].id; }
 const TEAMS = [
   { color:0x3b82f6, trim:0x9fd4ff, names:['YOU','B-2','B-3','B-4','B-5'], spawn:[[-15,-36],[-8,-39],[0,-36],[8,-39],[15,-36]] },
   { color:0xef4444, trim:0xffb0a0, names:['R-1','R-2','R-3','R-4','R-5'], spawn:[[15,36],[8,39],[0,36],[-8,39],[-15,36]] },
@@ -779,6 +834,7 @@ class Tank {
     this.team=team; this.slot=slot; this.isPlayer=isPlayer;
     this.isHuman=isPlayer; this.isRemote=false; this.money=0; this.netId=null;
     this.name = TEAMS[team].names[slot];
+    this.country = isPlayer ? SAVE.country : botCountry(team, slot);
     this.setClass(key);
     this.cd=0; this.alive=true; this.respawnT=0;
     this.bodyAng=0; this.turAng=0; this.aim=0; this.wheel=0;
@@ -841,7 +897,8 @@ function setup(mode, roster, localId){
       const isP = !!(m && m.id===localId);
       const key = m ? (m.key || ORDER[(Math.random()*ORDER.length)|0]) : botKey(t,s);
       const tk = new Tank(t,s,key,isP);
-      if(m){ tk.name=(m.name||'PLAYER').slice(0,10); tk.isHuman=true; tk.isRemote=!isP; tk.netId=m.id; tk.money=0; }
+      if(m){ if(COUNTRY_BY_ID[m.country]) tk.country=m.country;
+        tk.name=(m.name||'PLAYER').slice(0,10); tk.isHuman=true; tk.isRemote=!isP; tk.netId=m.id; tk.money=0; }
       tanks.push(tk);
     }
   } else if(mode==='siege'){
@@ -933,9 +990,10 @@ const SKINS = [
   { id:'toxic',   name:'TOXIC',    accent:0x7aff4a,  glow:0x46e020,  hint:'Earn $20,000 in total',             unlock:s=>s.credits>=20000 },
   { id:'ice',     name:'ICE',      accent:0x9fd4ff,  glow:0x4abfff,  hint:'Destroy 50 enemies',                unlock:s=>s.kills>=50 },
 ];
-function defaultSave(){ return { skin:'default', skins:['default'], bought:[], ach:{}, kills:0, wins:0, games:0, credits:0, survivor:false, hq:false }; }
+function defaultSave(){ return { country:'germany', skin:'default', skins:['default'], bought:[], ach:{}, kills:0, wins:0, games:0, credits:0, survivor:false, hq:false }; }
 function normalizeSave(o){
   return {
+    country: COUNTRY_BY_ID[o.country] ? o.country : 'germany',
     skin: (o.skin && SKINS.some(s=>s.id===o.skin)) ? o.skin : 'default',
     skins: Array.isArray(o.skins) && o.skins.length ? o.skins.filter(id=>SKINS.some(s=>s.id===id)) : ['default'],
     bought: Array.isArray(o.bought) ? o.bought.filter(k=>ORDER.includes(k)) : [],
@@ -951,6 +1009,29 @@ function normalizeSave(o){
 let SAVE = (()=>{ try{ const raw=localStorage.getItem(SAVE_KEY); if(raw) return normalizeSave(JSON.parse(raw)); }catch(e){} return defaultSave(); })();
 function saveGame(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(SAVE)); }catch(e){} }
 function equippedSkin(){ return SKINS.find(s=>s.id===SAVE.skin) || SKINS[0]; }
+
+function buildCountries(){
+  const row=el('countryBtns'); if(!row) return;
+  row.innerHTML = COUNTRIES.map(c=>
+    `<button class="dbtn cbtn" data-country="${c.id}"><span class="cc" style="color:${c.col}">${c.code}</span>${c.name}</button>`).join('');
+  row.querySelectorAll('.cbtn').forEach(b=>{ b.onclick=()=>setCountry(b.dataset.country); });
+  paintCountry();
+}
+function setCountry(id){
+  if(!COUNTRY_BY_ID[id]) return;
+  SAVE.country=id; saveGame(); paintCountry(); buildShop();
+}
+function paintCountry(){
+  const c=curCountry();
+  const row=el('countryBtns');
+  if(row) row.querySelectorAll('.cbtn').forEach(b=> b.classList.toggle('on', b.dataset.country===c.id));
+  const p=el('countryPreview');
+  if(p) p.innerHTML = `<b>${c.name}</b> ARMOUR — ` + ORDER.map(k=>
+    `<span style="color:#7d90ad">${CLASSES[k].name}</span> <b>${tankName(k,c)}</b>`).join(' · ')
+    + `<br><span style="color:#5f7fa8">Historical names only — roles, stats and prices are identical for every nation.</span>`;
+  const bd=el('nation'); if(bd){ bd.textContent = c.code+' · '+c.name; bd.style.color=c.col; bd.style.borderColor=c.col; }
+  const sn=el('shopNation'); if(sn) sn.textContent = c.name;
+}
 
 function toast(title, sub){
   const t=document.getElementById('toast'); if(!t) return;
@@ -1654,7 +1735,7 @@ function buildShop(){
     const c=CLASSES[key];
     const el=document.createElement('div');
     el.className='card';
-    el.innerHTML=`<div class="k">PRESS ${i+1}</div><div class="n">${c.name}</div>
+    el.innerHTML=`<div class="k">PRESS ${i+1} · ${c.name}</div><div class="n">${tankName(key)}</div>
       <div class="c">$${c.cost}</div>
       <div class="s">HP ${c.hp}<br>DMG ${c.dmg}<br>RATE ${(1/c.rate).toFixed(1)}/s<br>RANGE ${c.range}${c.splash?'<br>SPLASH':''}</div>
       <div class="own" id="own${i}"></div>`;
@@ -1690,7 +1771,7 @@ function buyFor(t,key){
   t.key=key; t.hp=0; t.setClass(key); t.alive=false;
   t.respawnT=0.9;
   t.mesh.group.position.set(t.spawnPos[0],0,t.spawnPos[1]);
-  if(t.isPlayer){ addFeed(`Equipped ${c.name}`, '#8fd0ff'); refreshShop(); }
+  if(t.isPlayer){ addFeed(`Equipped ${tankName(key, t.country)}`, '#8fd0ff'); refreshShop(); }
 }
 function toggleShop(){
   if(gameOver) return;
@@ -1985,6 +2066,7 @@ function buildHUD(){
    MODE SELECT
 ============================================================ */
 const modeEl=el('mode');
+buildCountries();
 function startGame(mode){
   modeEl.classList.add('off');
   resetGame();
@@ -2079,7 +2161,7 @@ function hud(){
     } else {
       const r=Math.max(0,t.hp/t.maxHp);
       f.style.transform='scaleX('+r+')';
-      n.textContent = t.name + ' ' + t.c.name;
+      n.textContent = t.name + ' ' + tankName(t.key, t.country);
       hpNode.textContent = Math.ceil(Math.max(0,t.hp)) + '/' + t.maxHp;
       hpNode.classList.toggle('low', r<=0.3);
     }
@@ -2247,7 +2329,7 @@ function netOnClose(){
       if(NET.role!==role || NET.code!==code) return;
       netSetMsg('lobbyMsg','Connection lost — reconnecting…','#ff7a7a');
       netConnect(()=>{
-        if(role==='guest'){ netGuestSend({t:'hello', name:NET.name}); netSetMsg('lobbyMsg',''); }
+        if(role==='guest'){ netGuestSend({t:'hello', name:NET.name, country:SAVE.country}); netSetMsg('lobbyMsg',''); }
         else { netBroadcast({t:'roster', roster:NET.roster, mode:NET.selMode, ai:NET.selAi, map:NET.selMap}); netHubRegister(); netSetMsg('lobbyMsg',''); }
       });
     }, 1200);
@@ -2343,7 +2425,7 @@ function netCreate(){
   netWatchdog('Opening the room');
   netConnect(()=>{
     netClearWatchdog();
-    NET.roster=[{ id:NET.localId, name, team:0, slot:0, ready:true, host:true }];
+    NET.roster=[{ id:NET.localId, name, team:0, slot:0, ready:true, host:true, country:SAVE.country }];
     enterLobby();
     netSetMsg('netMsg','');
     netHubRegister();
@@ -2364,7 +2446,7 @@ function netJoin(){
   netWatchdog('Connecting to '+code);
   netConnect(()=>{
     netClearWatchdog();
-    netGuestSend({t:'hello', name});
+    netGuestSend({t:'hello', name, country:SAVE.country});
     netSetMsg('netMsg',''); enterLobby();
   });
   setTimeout(()=>{
@@ -2420,7 +2502,8 @@ function hostOnData(c,m){
     if(NET.state!=='lobby'){ try{ c.send({t:'bye', reason:'Game in progress'}); }catch(e){} setTimeout(()=>{ try{c.close();}catch(e){} },300); return; }
     if(NET.roster.length>=10){ try{ c.send({t:'bye', reason:'Room full'}); }catch(e){} setTimeout(()=>{ try{c.close();}catch(e){} },300); return; }
     const s=freeSlot();
-    NET.roster.push({ id:c.peer, name:(m.name||'PLAYER').slice(0,12), team:s.team, slot:s.slot, ready:false, host:false });
+    NET.roster.push({ id:c.peer, name:(m.name||'PLAYER').slice(0,12), team:s.team, slot:s.slot, ready:false, host:false,
+      country: COUNTRY_BY_ID[m.country] ? m.country : curCountry().id });
     try{ c.send({t:'welcome', id:c.peer, roster:NET.roster, mode:NET.selMode, ai:NET.selAi, map:NET.selMap}); }catch(e){}
     netBroadcast({t:'roster', roster:NET.roster, mode:NET.selMode, ai:NET.selAi, map:NET.selMap});
     netRenderSeats();
@@ -2473,8 +2556,10 @@ function netRenderSeats(){
   for(let t=0;t<2;t++) for(let s=0;s<5;s++){
     const m=NET.roster.find(x=>x.team===t&&x.slot===s);
     if(m){
+      const mc=COUNTRY_BY_ID[m.country] || curCountry();
       html.push(`<div class="seat ${t===0?'b':'r'}"><span class="dot" style="background:${t===0?'#3b82f6':'#ef4444'}"></span>`+
         `<span class="nm">${escapeHtml(m.name)}${m.host?' *':''}</span>`+
+        `<span class="rdy" style="color:${mc.col}">${mc.code}</span>`+
         `<span class="rdy" style="color:${m.ready?'#b6ff8a':'#7d90ad'}">${m.ready?'READY':'—'}</span></div>`);
     } else {
       html.push(`<div class="seat ${t===0?'b':'r'} empty"><span class="dot" style="background:#27456f"></span>`+
@@ -2821,6 +2906,8 @@ window.__T = { get player(){return player;}, get money(){return money;}, set mon
   get shopCloseBtn(){return document.getElementById('shopClose');},
   finish, startGame,
   ACHIEVEMENTS, SKINS, get SAVE(){return SAVE;}, set SAVE(v){SAVE=v;},
+  COUNTRIES, COUNTRY_BY_ID, curCountry, tankName, botCountry, buildCountries, setCountry,
+  get country(){return SAVE.country;},
   checkAchievements, equippedSkin, saveGame, buildGarage, buildAchievements, openGarage, openTrophies,
   get gfx(){return { q:Q, dpr:renderer.getPixelRatio(),
     rt:rt? [rt.width,rt.height]:null, tone:renderer.toneMapping, shadow:renderer.shadowMap.type,
