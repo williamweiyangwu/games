@@ -94,6 +94,7 @@ window.__wh = {
   get Ach() { return Ach; },
   get NET() { return NET; },
   netConnect, netHost, netJoin, netLeave, netRenderLobby, netTick, netSendState,
+  netSetReady, netRoomLive,
   remoteActors, Ach_wipe() { Ach.wipe(); },
   /* modes, maps and the end-of-match vote */
   get MODES() { return MODES; },
