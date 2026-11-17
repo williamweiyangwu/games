@@ -57,6 +57,9 @@ function voteBegin(win) {
      them. */
   VOTE.cands = [];
   if (NET.isHost) {
+    /* the match is over: a player joining now waits in the ready lobby, not
+       in the round we are all about to vote on */
+    netRoomLive(false);
     VOTE.cands = votePickMaps();
     netPublishVoteDef(VOTE.cands);
   }
