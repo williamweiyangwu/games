@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Arcade — William's Games</title>
-<meta name="description" content="Ten browser games in one place: a 3D referee simulator, WWII card battles, grand-strategy conquest, a voxel sandbox, a tank arena, 3D racing, survival horror, a 5v5 FPS, a sailing adventure and an interactive WWII Europe timeline.">
+<meta name="description" content="Eleven browser games in one place: a 3D referee simulator, WWII card battles, grand-strategy conquest, a voxel sandbox, a tank arena, 3D racing, survival horror, a 5v5 FPS, a sailing adventure and interactive WWI and WWII Europe timelines.">
 <meta name="theme-color" content="#0a0d14">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Arcade">
 <meta property="og:title" content="Arcade — William's Games">
-<meta property="og:description" content="Ten browser games in one place. Jump right in and start playing.">
+<meta property="og:description" content="Eleven browser games in one place. Jump right in and start playing.">
 <meta property="og:url" content="https://williamweiyangwu.github.io/games/">
 <meta name="twitter:card" content="summary">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
@@ -82,6 +82,7 @@
   .c7{background:linear-gradient(135deg,#3a3520,#0d0c06)} .c7 span{color:#e8dc9a}
   .c8{background:linear-gradient(135deg,#333c1e,#161a0b)} .c8 span{color:#c3e08a}
   .c9{background:linear-gradient(135deg,#40260f,#1c0f05)} .c9 span{color:#ffb26b}
+  .c10{background:linear-gradient(135deg,#293446,#141a25)} .c10 span{color:#9fc4ee}
   .card h2{margin:0;font-size:20px;letter-spacing:1px}
   .card p{margin:8px 0 0;color:var(--dim);font-size:13.5px;min-height:38px}
   .card .meta{
@@ -234,8 +235,12 @@
   .btn-ghost:hover{border-color:#3d4c74}
   .btn-ghost.danger{color:#ff9d9d;border-color:#4a2530}
   .op-err{font-size:12.5px;color:#ff9d9d;min-height:16px}
-  .op-login,.op-panel{display:flex;flex-direction:column;flex:1;min-height:0}
-  .op-login.hidden,.op-panel.hidden{display:none}
+  #fbView,.op-login,.op-panel{display:flex;flex-direction:column;flex:1;min-height:0}
+  #fbView.hidden,.op-login.hidden,.op-panel.hidden{display:none}
+  .fb-switch{margin-top:14px;padding-top:14px;border-top:1px solid var(--line);text-align:center;font-size:12.5px;color:var(--dim)}
+  .fb-switch a,.fb-back{color:#ffd75e;text-decoration:none;cursor:pointer;font-size:12.5px}
+  .fb-switch a:hover,.fb-back:hover{text-decoration:underline}
+  .fb-back{margin-right:auto}
   .op-list{display:flex;flex-direction:column;gap:10px}
   .op-item{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
   .op-item .t{font-size:14px;line-height:1.45;white-space:pre-wrap;word-wrap:break-word}
@@ -247,7 +252,7 @@
 <div class="wrap">
   <header>
     <div class="logo"><i></i>ARCADE</div>
-    <p>Ten games — jump right in and start playing.</p>
+    <p>Eleven games — jump right in and start playing.</p>
   </header>
   <div class="grid">
     <a class="card" href="referee-3d/">
@@ -327,7 +332,15 @@
       <div class="thumb c6"><span class="glyph">&#9203;</span></div>
       <span class="tag">HISTORY</span>
       <h2>WWII EUROPE</h2>
-      <p>The complete story of WWII in Europe — interactive timeline, animated 1939–1945 map and key figures.</p>
+      <p>The complete story of WWII in Europe — interactive timeline, animated 1939–1945 map, key figures, weapons and a fighter game.</p>
+      <div class="meta">Interactive history <span class="arrow">&#8594;</span></div>
+    </a>
+
+    <a class="card" href="ww1-europe/">
+      <div class="thumb c10"><span class="glyph">&#9876;</span></div>
+      <span class="tag">HISTORY</span>
+      <h2>WWI EUROPE</h2>
+      <p>The story of the First World War — interactive timeline, animated 1914–1918 map, key figures and weapons of the Great War.</p>
       <div class="meta">Interactive history <span class="arrow">&#8594;</span></div>
     </a>
   </div>
@@ -369,34 +382,32 @@
 
 <div id="fbOverlay" class="overlay hidden">
   <div class="dialog">
-    <div class="dialog-head">
-      <b>Send feedback</b>
-      <button id="fbClose" class="dialog-x" aria-label="Close">&#215;</button>
-    </div>
-    <div class="dialog-body">
-      <label class="fb-label" for="fbName">Your name (optional)</label>
-      <input id="fbName" type="text" placeholder="Anonymous" autocomplete="off">
-      <label class="fb-label">How was your visit?</label>
-      <div id="fbStars" class="fb-stars" aria-label="Rating">
-        <button type="button" data-v="1">&#9733;</button>
-        <button type="button" data-v="2">&#9733;</button>
-        <button type="button" data-v="3">&#9733;</button>
-        <button type="button" data-v="4">&#9733;</button>
-        <button type="button" data-v="5">&#9733;</button>
+    <div id="fbView">
+      <div class="dialog-head">
+        <b>Send feedback</b>
+        <button id="fbClose" class="dialog-x" aria-label="Close">&#215;</button>
       </div>
-      <label class="fb-label" for="fbText">Your message</label>
-      <textarea id="fbText" rows="4" placeholder="Tell William what you think…"></textarea>
-      <div class="fb-actions">
-        <span id="fbOk" class="fb-ok"></span>
-        <button id="fbSend" type="button" class="btn-primary">Send</button>
+      <div class="dialog-body">
+        <label class="fb-label" for="fbName">Your name (optional)</label>
+        <input id="fbName" type="text" placeholder="Anonymous" autocomplete="off">
+        <label class="fb-label">How was your visit?</label>
+        <div id="fbStars" class="fb-stars" aria-label="Rating">
+          <button type="button" data-v="1">&#9733;</button>
+          <button type="button" data-v="2">&#9733;</button>
+          <button type="button" data-v="3">&#9733;</button>
+          <button type="button" data-v="4">&#9733;</button>
+          <button type="button" data-v="5">&#9733;</button>
+        </div>
+        <label class="fb-label" for="fbText">Your message</label>
+        <textarea id="fbText" rows="4" placeholder="Tell William what you think…"></textarea>
+        <div class="fb-actions">
+          <span id="fbOk" class="fb-ok"></span>
+          <button id="fbSend" type="button" class="btn-primary">Send</button>
+        </div>
+        <div class="fb-switch">Are you the owner? <a href="#" id="opLinkBox">Operator access</a></div>
       </div>
     </div>
-  </div>
-</div>
-
-<div id="opOverlay" class="overlay hidden">
-  <div class="dialog">
-    <div id="opLogin" class="op-login">
+    <div id="opLogin" class="op-login hidden">
       <div class="dialog-head">
         <b>Operator access</b>
         <button id="opClose1" class="dialog-x" aria-label="Close">&#215;</button>
@@ -406,6 +417,7 @@
         <input id="opPass" type="password" placeholder="Enter password" autocomplete="off">
         <div id="opErr" class="op-err"></div>
         <div class="fb-actions">
+          <a href="#" id="opBack1" class="fb-back">&#8592; Back to feedback</a>
           <button id="opGo" type="button" class="btn-primary">Unlock</button>
         </div>
       </div>
@@ -418,6 +430,7 @@
       <div class="dialog-body">
         <div id="opList" class="op-list"></div>
         <div class="fb-actions">
+          <a href="#" id="opBack2" class="fb-back">&#8592; Back to feedback</a>
           <button id="opExport" type="button" class="btn-ghost">Copy JSON</button>
           <button id="opClear" type="button" class="btn-ghost danger">Delete all</button>
         </div>
@@ -1281,6 +1294,7 @@
 
   var fbBtn = document.getElementById("fbBtn");
   var fbOverlay = document.getElementById("fbOverlay");
+  var fbView = document.getElementById("fbView");
   var fbText = document.getElementById("fbText");
   var fbName = document.getElementById("fbName");
   var fbStars = document.getElementById("fbStars");
@@ -1299,7 +1313,7 @@
   }
 
   if (fbBtn) fbBtn.addEventListener("click", function () {
-    fbOverlay.classList.remove("hidden");
+    fbShow();
     fbOk.textContent = "";
     if (fbText) fbText.focus();
   });
@@ -1335,7 +1349,6 @@
 
   var OP_HASH = "e83f7eda58c0f1930259f4e567b005bc24e57bdd32014d2b133ab497d13ac5bc";
 
-  var opOverlay = document.getElementById("opOverlay");
   var opLogin = document.getElementById("opLogin");
   var opPanel = document.getElementById("opPanel");
   var opPass = document.getElementById("opPass");
@@ -1391,21 +1404,35 @@
   }
 
   function opOpen() {
-    opOverlay.classList.remove("hidden");
+    fbOverlay.classList.remove("hidden");
+    if (fbView) fbView.classList.add("hidden");
     opLogin.classList.remove("hidden");
     opPanel.classList.add("hidden");
     opErr.textContent = "";
     if (opPass) opPass.focus();
   }
 
+  function fbShow() {
+    fbOverlay.classList.remove("hidden");
+    if (fbView) fbView.classList.remove("hidden");
+    opLogin.classList.add("hidden");
+    opPanel.classList.add("hidden");
+  }
+
   var opLink = document.getElementById("opLink");
   if (opLink) opLink.addEventListener("click", function (e) { e.preventDefault(); opOpen(); });
+  var opLinkBox = document.getElementById("opLinkBox");
+  if (opLinkBox) opLinkBox.addEventListener("click", function (e) { e.preventDefault(); opOpen(); });
+  var opBack1 = document.getElementById("opBack1");
+  if (opBack1) opBack1.addEventListener("click", function (e) { e.preventDefault(); fbShow(); });
+  var opBack2 = document.getElementById("opBack2");
+  if (opBack2) opBack2.addEventListener("click", function (e) { e.preventDefault(); fbShow(); });
   if (document.getElementById("opGo")) document.getElementById("opGo").addEventListener("click", opUnlock);
   if (opPass) opPass.addEventListener("keydown", function (e) { if (e.key === "Enter") opUnlock(); });
-  if (document.getElementById("opClose1")) document.getElementById("opClose1").addEventListener("click", function () { opOverlay.classList.add("hidden"); });
-  if (document.getElementById("opClose2")) document.getElementById("opClose2").addEventListener("click", function () { opOverlay.classList.add("hidden"); });
-  if (opOverlay) opOverlay.addEventListener("click", function (e) {
-    if (e.target === opOverlay) opOverlay.classList.add("hidden");
+  if (document.getElementById("opClose1")) document.getElementById("opClose1").addEventListener("click", function () { fbOverlay.classList.add("hidden"); });
+  if (document.getElementById("opClose2")) document.getElementById("opClose2").addEventListener("click", function () { fbOverlay.classList.add("hidden"); });
+  if (fbOverlay) fbOverlay.addEventListener("click", function (e) {
+    if (e.target === fbOverlay) fbOverlay.classList.add("hidden");
   });
   if (document.getElementById("opExport")) document.getElementById("opExport").addEventListener("click", function () {
     copyText(JSON.stringify(fbLoad(), null, 2), this);
