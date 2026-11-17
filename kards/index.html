@@ -165,7 +165,7 @@
   .cardback::after { content: "★"; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); color: #c9b458; font-size: 18px; }
 
   #menu { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 8px 0 2px; }
-  #menu .mgroup { display: flex; gap: 8px; }
+  #menu .mgroup { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
   .btn.mmode { padding: 6px 18px; font-size: 12px; }
   .btn.mmode.active { background: rgba(201,180,88,.35); color: #fff; border-color: #ffd95e; }
   #onlinePanel { display: none; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center; }
@@ -425,6 +425,41 @@
   #packMsg { min-height: 20px; text-align: center; font-size: 11px; color: #a6e06a; margin: 6px 0 2px; }
   .pempty { font-size: 11px; color: #8a917c; text-align: center; line-height: 1.6; }
 
+  /* collection */
+  #collection { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.78); align-items: center; justify-content: center; z-index: 67; }
+  #collection.show { display: flex; }
+  #collection .tclose {
+    position: absolute; top: 8px; right: 12px; width: 28px; height: 28px; line-height: 26px;
+    text-align: center; font-size: 15px; color: #c9b458; cursor: pointer;
+    border: 2px solid #6f6040; border-radius: 50%; background: rgba(0,0,0,.35);
+  }
+  #collection .tclose:hover { background: rgba(201,180,88,.3); color: #fff; }
+  .colfilters { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin-bottom: 8px; }
+  .colfilters .btn { padding: 3px 9px; font-size: 10px; letter-spacing: 1px; }
+  .colfilters .btn.active { background: rgba(201,180,88,.35); color: #fff; border-color: #ffd95e; }
+  .colsummary { text-align: center; font-size: 11px; color: #8a917c; margin-bottom: 8px; }
+  .colsummary b { color: #9fd4ff; }
+  .colgrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 7px; max-height: 50vh; overflow: auto; padding: 4px 2px 8px; }
+  .cocell {
+    position: relative; min-height: 92px; padding: 17px 4px 18px;
+    border: 2px solid #4a5033; border-radius: 8px; background: rgba(0,0,0,.3);
+    text-align: center; overflow: hidden;
+  }
+  .cocell.premium { border-color: #4d7fb8; }
+  .cocell.locked { opacity: .42; border-style: dashed; }
+  .cocell .cocost {
+    position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; line-height: 13px;
+    border-radius: 50%; background: #24407a; border: 1px solid #fff; color: #fff; font-size: 10px;
+  }
+  .cocell .coflag { position: absolute; top: 4px; right: 5px; font-size: 10px; color: #c9b458; }
+  .cocell .coart { font-size: 22px; line-height: 25px; color: #d9d0b0; }
+  .cocell .coname { font-size: 9px; color: #f0e6c8; line-height: 1.1; height: 20px; overflow: hidden; }
+  .cocell .costat { font-size: 8px; color: #8a917c; line-height: 1.2; }
+  .cocell .coown { position: absolute; bottom: 2px; right: 4px; font-size: 11px; font-weight: bold; color: #ffd95e; }
+  .cocell .colock { position: absolute; bottom: 2px; left: 4px; font-size: 8px; letter-spacing: 1px; color: #e08a8a; }
+  .cocell .copre { position: absolute; bottom: 2px; left: 4px; font-size: 8px; letter-spacing: 1px; color: #9fd4ff; }
+  .btn#colToggle.active { background: rgba(77,127,184,.35); color: #cfeaff; border-color: #9fd4ff; }
+
   /* effects */
   #fit.shake { animation: k6shake .25s; }
   @keyframes k6shake {
@@ -444,7 +479,7 @@
   <div id="fit">
     <div id="stage">
       <header>
-        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v28</span></h1>
+        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v29</span></h1>
         <div id="turnbar">Player 1's Turn</div>
       </header>
 
@@ -460,6 +495,7 @@
         <div class="mgroup">
           <button class="btn mmode" onclick="openFactionPick()">NATION</button>
           <button class="btn mmode" onclick="openDeckEdit()">DECK</button>
+          <button class="btn mmode" onclick="openCollection()">COLLECTION</button>
           <button class="btn mmode" id="missionBtn" onclick="openMissions()">MISSIONS</button>
           <button class="btn mmode" id="packBtn" onclick="openPacks()">PACKS</button>
           <button class="btn mmode" onclick="openStore()">STORE</button>
@@ -555,6 +591,7 @@
       <div id="deckRows"></div>
       <div class="dbtns">
         <button class="btn" onclick="deckUseDefault()">USE DEFAULT</button>
+        <button class="btn" onclick="openCollection()">COLLECTION</button>
         <button class="btn" onclick="openStore()">UNLOCK CARDS \u25c6</button>
         <button class="btn" onclick="deckSave()">SAVE DECK</button>
         <button class="btn" onclick="closeDeckEdit()">CLOSE</button>
@@ -605,6 +642,21 @@
       <div id="packStage"></div>
       <div id="packMsg"></div>
       <div class="dbtns" id="packBtns"></div>
+    </div>
+  </div>
+
+  <div id="collection">
+    <div class="abox">
+      <div class="tclose" onclick="closeCollection()">✕</div>
+      <h2>COLLECTION</h2>
+      <div id="colFilters" class="colfilters"></div>
+      <div id="colSummary" class="colsummary"></div>
+      <div id="colGrid" class="colgrid"></div>
+      <div class="dbtns">
+        <button class="btn" id="colToggle" onclick="toggleUnpossessed()">SHOW UNPOSSESSED</button>
+        <button class="btn" onclick="closeCollection();openDeckEdit()">EDIT DECK</button>
+        <button class="btn" onclick="closeCollection()">CLOSE</button>
+      </div>
     </div>
   </div>
 
@@ -998,6 +1050,7 @@ function renderPacks() {
   if (u > 0) btns += '<button class="btn" onclick="openOnePack()">' + (PACK_RESULT ? "OPEN ANOTHER" : "OPEN PACK") + '</button>';
   btns += '<button class="btn" onclick="closePacks();openStore()">BUY PACKS</button>';
   if (PACK_RESULT) btns += '<button class="btn" onclick="PACK_RESULT=null;renderPacks()">DONE</button>';
+  if (PACK_RESULT) btns += '<button class="btn" onclick="closePacks();openCollection()">VIEW COLLECTION</button>';
   btns += '<button class="btn" onclick="closePacks()">CLOSE</button>';
   document.getElementById("packBtns").innerHTML = btns;
 }
@@ -1018,6 +1071,58 @@ function openOnePack() {
   }
   saveProfile(); refreshMetaUI(); renderPacks();
   sfx("play");
+}
+
+// ---------------- Collection (all owned cards) ----------------
+var COL_FAC = "all";
+var COL_SHOW_UNPOSSESSED = false;
+
+function openCollection() { renderCollection(); document.getElementById("collection").classList.add("show"); }
+function closeCollection() { document.getElementById("collection").classList.remove("show"); }
+function colSetFaction(f) { COL_FAC = f; renderCollection(); }
+function toggleUnpossessed() { COL_SHOW_UNPOSSESSED = !COL_SHOW_UNPOSSESSED; renderCollection(); }
+
+function renderCollection() {
+  var filters = ['<button class="btn' + (COL_FAC === "all" ? " active" : "") + '" onclick="colSetFaction(\'all\')">ALL NATIONS</button>'];
+  FACTION_KEYS.forEach(function (f) {
+    filters.push('<button class="btn' + (COL_FAC === f ? " active" : "") + '" onclick="colSetFaction(\'' + f + '\')">' + FACTIONS[f].flag + ' ' + FACTIONS[f].name + '</button>');
+  });
+  document.getElementById("colFilters").innerHTML = filters.join("");
+
+  var allKeys = Object.keys(DEFS), ownedTotal = 0, premiumOwned = 0;
+  allKeys.forEach(function (k) {
+    if (cardOwned(k) > 0) { ownedTotal++; if (isPremium(k)) premiumOwned++; }
+  });
+  document.getElementById("colSummary").innerHTML =
+    'OWNED <b>' + ownedTotal + '</b> / ' + allKeys.length + ' DISTINCT CARDS \u00b7 PREMIUM <b>' + premiumOwned + '</b> / ' + PREMIUM_KEYS.length;
+
+  var keys = allKeys.filter(function (k) {
+    if (COL_FAC !== "all" && DEFS[k].f !== COL_FAC) return false;
+    return cardOwned(k) > 0 || COL_SHOW_UNPOSSESSED;
+  });
+  keys.sort(function (a, b) {
+    var fa = FACTION_KEYS.indexOf(DEFS[a].f), fb = FACTION_KEYS.indexOf(DEFS[b].f);
+    if (fa !== fb) return fa - fb;
+    return deckRowSort(a, b);
+  });
+  var html = "";
+  keys.forEach(function (k) {
+    var d = DEFS[k], owned = cardOwned(k), locked = owned === 0;
+    var stat = (d.type === "order") ? ("ORDER " + d.cost + "c") : (d.cost + "c \u00b7 " + opOf(d) + "op \u00b7 " + d.atk + "/" + d.hp);
+    var tip = FACTIONS[d.f].name + " \u2014 " + d.name + " \u2014 " + d.text;
+    html += '<div class="cocell' + (isPremium(k) ? " premium" : "") + (locked ? " locked" : "") + '" title="' + tip + '">' +
+      '<div class="cocost">' + d.cost + '</div><div class="coflag">' + FACTIONS[d.f].flag + '</div>' +
+      '<div class="coart">' + d.art + '</div><div class="coname">' + d.name + '</div>' +
+      '<div class="costat">' + stat + '</div>' +
+      '<div class="coown">' + (locked ? "\u2014" : "x" + owned) + '</div>' +
+      (locked ? '<div class="colock">UNPOSSESSED</div>' : (isPremium(k) ? '<div class="copre">PREMIUM</div>' : '')) +
+      '</div>';
+  });
+  if (!html) html = '<div class="pempty">No unpossessed cards to show for this nation.</div>';
+  document.getElementById("colGrid").innerHTML = html;
+  var t = document.getElementById("colToggle");
+  t.textContent = COL_SHOW_UNPOSSESSED ? "HIDE UNPOSSESSED" : "SHOW UNPOSSESSED";
+  t.classList.toggle("active", COL_SHOW_UNPOSSESSED);
 }
 
 var FACTION = PROFILE.fact1, FACTION2 = PROFILE.fact2;
@@ -2622,7 +2727,7 @@ var TUT_STEPS = [
   { t: "6. ATTACKING", h: "<ul><li>Click your unit, then click an enemy unit or the enemy HQ. Every attack costs the unit's <b>action cost</b>.</li><li>Each unit acts <b>once per turn</b> (move <i>or</i> attack). When two units fight, <b>both</b> deal their attack to each other.</li><li><b>Support-line units</b> can only reach the enemy <b>frontline</b>. <b>Frontline units</b> can reach the enemy <b>support line and HQ</b>.</li><li><b>Guard</b> units must be fought first. <b>Air</b> units ignore Guard and can always hit the HQ.</li><li>A newly deployed unit cannot <b>attack</b> that turn unless it has <b>Blitz</b> \u2014 but any unit may <b>advance to the frontline</b> immediately (that uses its action for the turn).</li></ul>" },
   { t: "7. ORDERS", h: "<p>Orders are one-shot cards \u2014 they resolve, then vanish. A played order is shown in the box on the left for <b>2 seconds</b> before its effect takes place. Orders ignore the frontline and can strike any enemy unit. Each nation has its own orders. The shared effects are:</p><ul><li><b>Damage a unit</b> \u2014 click the order, then pick an enemy unit.</li><li><b>Damage the enemy HQ</b> \u2014 a direct strike.</li><li><b>Damage all enemy units</b> \u2014 a sweeping barrage (hits the HQ if their board is empty).</li><li><b>Heal your HQ</b> \u2014 recover hit points.</li><li><b>Draw cards</b> \u2014 refill your hand.</li><li><b>Gain resource</b> \u2014 bank energy for bigger plays.</li><li><b>Rally</b> \u2014 all your units can attack again.</li></ul>" },
   { t: "8. YOUR COLLECTION", h: "<ul><li>Open <b>DECK</b> to build your deck right from the <b>card collection</b> \u2014 click a card (or its <b>+</b>) to add a copy, right-click (or <b>-</b>) to remove one. A <b>gold border</b> means it's in your deck.</li><li>Each card tile shows <b>deploy cost</b>, <b>action cost</b> and <b>attack/HP</b>. Each nation keeps its <b>own saved deck</b>; in LOCAL use the <b>PLAYER 1 / PLAYER 2</b> toggle.</li><li>A deck needs <b>exactly 40 cards</b>, at most <b>3 copies</b> each. <b>USE DEFAULT</b> restores the starter deck, <b>SAVE</b> keeps changes.</li><li>Cards marked <b>\u25c6 PREMIUM</b> are locked until you unlock them in the <b>STORE</b> with diamonds.</li></ul>" },
-  { t: "9. PLAY & MENU", h: "<ul><li><b>LOCAL</b> \u2014 two players share one screen (hot-seat); choose <b>both</b> players' nations.</li><li><b>VS AI</b> \u2014 battle the computer; use <b>AI: EASY/NORMAL/HARD</b> to set its skill.</li><li><b>ONLINE</b> \u2014 HOST gives you a room code to share, or press <b>ROOMS</b> to join a waiting game.</li><li><b>NATION</b> \u2014 choose your nation. <b>DECK</b> \u2014 build your deck from your collection.</li><li><b>MISSIONS</b> \u2014 complete daily goals (win battles, deploy units, attack, advance, play orders) to earn <b>diamonds \u25c6</b>. <b>STORE</b> \u2014 spend diamonds on card packs or premium cards. <b>PACKS</b> \u2014 open your sealed packs to reveal the cards inside.</li><li><b>STATS</b> \u2014 track wins, losses and records. Use <b>EXPORT SAVE</b> to back up your progress before clearing browser data.</li><li><b>TUTORIAL</b> reopens this guide, <b>SOUND</b> toggles audio.</li></ul><p>Good luck, Commander!</p>" }
+  { t: "9. PLAY & MENU", h: "<ul><li><b>LOCAL</b> \u2014 two players share one screen (hot-seat); choose <b>both</b> players' nations.</li><li><b>VS AI</b> \u2014 battle the computer; use <b>AI: EASY/NORMAL/HARD</b> to set its skill.</li><li><b>ONLINE</b> \u2014 HOST gives you a room code to share, or press <b>ROOMS</b> to join a waiting game.</li><li><b>NATION</b> \u2014 choose your nation. <b>DECK</b> \u2014 build your deck from your collection.</li><li><b>MISSIONS</b> \u2014 complete daily goals (win battles, deploy units, attack, advance, play orders) to earn <b>diamonds \u25c6</b>. <b>STORE</b> \u2014 spend diamonds on card packs or premium cards. <b>PACKS</b> \u2014 open your sealed packs to reveal the cards inside. <b>COLLECTION</b> \u2014 see every card you own; use <b>SHOW UNPOSSESSED</b> to reveal the ones you have not unlocked yet.</li><li><b>STATS</b> \u2014 track wins, losses and records. Use <b>EXPORT SAVE</b> to back up your progress before clearing browser data.</li><li><b>TUTORIAL</b> reopens this guide, <b>SOUND</b> toggles audio.</li></ul><p>Good luck, Commander!</p>" }
 ];
 var TUT_PAGE = 0;
 
