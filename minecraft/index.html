@@ -2975,7 +2975,8 @@ function stepGen() {
   if (!genQueue.length) {
     genQueue = null;
     loadEl.style.display = 'none';
-    if (keepPos) keepPos = false; else spawnPlayer();
+    if (keepPos) keepPos = false;
+    else { spawnPlayer(); updateChunks(true); spawnAnimals(); }
     if (!started) { updateMenu(); menu.classList.remove('hide'); }
   }
 }
