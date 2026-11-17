@@ -303,6 +303,81 @@
   .shead { font-size: 12px; letter-spacing: 2px; color: #c9b458; margin: 12px 0 6px; }
   .snote { font-size: 10px; line-height: 1.45; color: #8a917c; margin-top: 12px; text-align: center; }
 
+  /* missions, diamonds, store and collection */
+  #gemHud {
+    align-self: center; padding: 4px 10px; border-radius: 12px;
+    border: 2px solid #4d7fb8; background: rgba(20,40,70,.65);
+    color: #9fd4ff; font-size: 12px; letter-spacing: 1px; white-space: nowrap;
+  }
+  .btn.mmode.hot { border-color: #9fd4ff; color: #fff; animation: gemglow 1.5s ease-in-out infinite; }
+  @keyframes gemglow {
+    0%, 100% { box-shadow: 0 0 3px rgba(130,190,255,.4); }
+    50% { box-shadow: 0 0 12px 3px rgba(130,190,255,.8); }
+  }
+  #missions, #store { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75); align-items: center; justify-content: center; z-index: 65; }
+  #missions.show, #store.show { display: flex; }
+  #missions .tclose, #store .tclose {
+    position: absolute; top: 8px; right: 12px; width: 28px; height: 28px; line-height: 26px;
+    text-align: center; font-size: 15px; color: #c9b458; cursor: pointer;
+    border: 2px solid #6f6040; border-radius: 50%; background: rgba(0,0,0,.35);
+  }
+  #missions .tclose:hover, #store .tclose:hover { background: rgba(201,180,88,.3); color: #fff; }
+  .mhead {
+    font-size: 12px; letter-spacing: 2px; color: #8a917c; text-align: center;
+    padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid #3a4030;
+  }
+  .mhead b { color: #9fd4ff; font-size: 14px; }
+  .mrow { padding: 9px 2px; border-bottom: 1px solid #2c3322; }
+  .mtop { display: flex; justify-content: space-between; align-items: center; }
+  .mtitle { font-size: 13px; color: #f0e6c8; letter-spacing: 1px; }
+  .mreward { font-size: 12px; color: #9fd4ff; font-weight: bold; }
+  .mdesc { font-size: 11px; color: #8a917c; margin: 2px 0 6px; }
+  .mbar { height: 7px; border-radius: 5px; background: rgba(0,0,0,.55); border: 1px solid #000; overflow: hidden; }
+  .mfill { height: 100%; background: linear-gradient(90deg, #356a9c, #7fc4ff); transition: width .25s; }
+  .mfill.full { background: linear-gradient(90deg, #5d9b45, #a6e06a); }
+  .mfoot { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+  .mprog { font-size: 11px; color: #b9c4a8; }
+  .mclaim { padding: 3px 12px; font-size: 11px; border-color: #9fd4ff; color: #cfeaff; }
+  .mclaimed { font-size: 10px; letter-spacing: 1px; color: #7d865f; }
+  .mlock { font-size: 11px; color: #6f7a63; }
+  .sitem {
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    padding: 9px 2px; border-bottom: 1px solid #2c3322;
+  }
+  .sinfo { display: flex; flex-direction: column; gap: 2px; }
+  .sinfo b { font-size: 13px; color: #f0e6c8; letter-spacing: 1px; }
+  .sinfo span { font-size: 10px; color: #8a917c; }
+  .sinfo .sown { color: #c9b458; }
+  .sbuy { padding: 5px 11px; font-size: 11px; border-color: #4d7fb8; color: #9fd4ff; white-space: nowrap; }
+  .sbuy:hover { background: rgba(77,127,184,.3); }
+  .storesmg { min-height: 18px; text-align: center; font-size: 11px; color: #a6e06a; margin-top: 10px; }
+  .dgrid {
+    display: grid; grid-template-columns: repeat(6, 1fr); gap: 7px;
+    max-height: 52vh; overflow: auto; padding: 4px 2px 8px;
+  }
+  .dcell {
+    position: relative; min-height: 90px; padding: 6px 3px 5px;
+    border: 2px solid #4a5033; border-radius: 8px; background: rgba(0,0,0,.3);
+    text-align: center; cursor: pointer; overflow: hidden;
+  }
+  .dcell:hover { border-color: #c9b458; background: rgba(201,180,88,.12); }
+  .dcell.in { border-color: #ffd95e; background: rgba(201,180,88,.2); }
+  .dcell.locked { opacity: .5; cursor: help; }
+  .dcell .dcost {
+    position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; line-height: 13px;
+    border-radius: 50%; background: #24407a; border: 1px solid #fff; color: #fff; font-size: 10px;
+  }
+  .dcell .dart { font-size: 21px; line-height: 24px; margin-top: 6px; color: #d9d0b0; }
+  .dcell .dn2 { font-size: 9px; color: #f0e6c8; line-height: 1.1; height: 20px; overflow: hidden; }
+  .dcell .dst2 { font-size: 8px; color: #8a917c; }
+  .dcell .dcount {
+    position: absolute; bottom: 2px; right: 3px; font-size: 11px; font-weight: bold; color: #ffd95e;
+  }
+  .dcell .dmini { position: absolute; bottom: 2px; left: 3px; display: flex; gap: 2px; }
+  .dcell .dmini button { padding: 0 4px; font-size: 10px; line-height: 13px; border: 1px solid #6f6040; border-radius: 4px; background: #22260f; color: #f0e6c8; cursor: pointer; }
+  .dcell .dmini button:hover { border-color: #ffd95e; }
+  .dlegend { text-align: center; font-size: 10px; color: #8a917c; margin-bottom: 8px; }
+
   /* effects */
   #fit.shake { animation: k6shake .25s; }
   @keyframes k6shake {
@@ -322,7 +397,7 @@
   <div id="fit">
     <div id="stage">
       <header>
-        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v26</span></h1>
+        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v27</span></h1>
         <div id="turnbar">Player 1's Turn</div>
       </header>
 
@@ -338,7 +413,10 @@
         <div class="mgroup">
           <button class="btn mmode" onclick="openFactionPick()">NATION</button>
           <button class="btn mmode" onclick="openDeckEdit()">DECK</button>
+          <button class="btn mmode" id="missionBtn" onclick="openMissions()">MISSIONS</button>
+          <button class="btn mmode" onclick="openStore()">STORE</button>
           <button class="btn mmode" onclick="openStats()">STATS</button>
+          <span id="gemHud" title="Diamonds \u2014 earn them from missions, spend them in the store">\u25c6 120</span>
         </div>
         <div id="onlinePanel">
           <input id="nameIn" maxlength="12" value="Player#1" onfocus="if(this.value==='Player#1'){this.value='';}" onblur="if(this.value===''){this.value='Player#1';}">
@@ -429,6 +507,7 @@
       <div id="deckRows"></div>
       <div class="dbtns">
         <button class="btn" onclick="deckUseDefault()">USE DEFAULT</button>
+        <button class="btn" onclick="openStore()">UNLOCK CARDS \u25c6</button>
         <button class="btn" onclick="deckSave()">SAVE DECK</button>
         <button class="btn" onclick="closeDeckEdit()">CLOSE</button>
       </div>
@@ -447,6 +526,26 @@
       </div>
       <input id="importFile" type="file" accept=".json,application/json" style="display:none" onchange="importProfileFile(this)">
       <div class="dbtns"><button class="btn" onclick="closeStats()">CLOSE</button></div>
+    </div>
+  </div>
+
+  <div id="missions">
+    <div class="abox">
+      <div class="tclose" onclick="closeMissions()">✕</div>
+      <h2>MISSIONS</h2>
+      <div id="missionRows"></div>
+      <div class="snote">Missions reset every day. Claim rewards to spend diamonds in the STORE \u2014 unlocked cards appear in your collection.</div>
+      <div class="dbtns"><button class="btn" onclick="openStore()">GO TO STORE</button><button class="btn" onclick="closeMissions()">CLOSE</button></div>
+    </div>
+  </div>
+
+  <div id="store">
+    <div class="abox">
+      <div class="tclose" onclick="closeStore()">✕</div>
+      <h2>DIAMOND STORE</h2>
+      <div id="storeRows"></div>
+      <div id="storeMsg" class="storesmg"></div>
+      <div class="dbtns"><button class="btn" onclick="openMissions()">EARN DIAMONDS</button><button class="btn" onclick="closeStore()">CLOSE</button></div>
     </div>
   </div>
 
@@ -541,8 +640,16 @@ var DEFS = {
   jp_divebomb:    { f: "japan", name: "Dive Bombing", cost: 3, type: "order", art: "◉", fx: { k: "hq", n: 3 }, text: "Deal 3 damage to the enemy HQ." },
   jp_mobilize:    { f: "japan", name: "Mobilize",     cost: 0, type: "order", art: "◆", fx: { k: "res", n: 1 }, text: "Gain 1 resource." },
   jp_recon:       { f: "japan", name: "Recon",        cost: 2, type: "order", art: "✎", fx: { k: "draw", n: 2 }, text: "Draw 2 cards." },
-  jp_airstrike:   { f: "japan", name: "Air Raid",     cost: 4, type: "order", art: "☄", fx: { k: "aoe", n: 3 }, text: "3 damage to all enemy units." }
+  jp_airstrike:   { f: "japan", name: "Air Raid",     cost: 4, type: "order", art: "☄", fx: { k: "aoe", n: 3 }, text: "3 damage to all enemy units." },
+
+  // ---- Premium cards: unlock with diamonds in the STORE ----
+  usa_b29:       { f: "usa", name: "B-29 Superfortress", cost: 7, atk: 5, hp: 6, art: "≫", air: true, fx: { k: "hq", n: 3 }, premium: true, text: "Air. Deployment: Deal 3 damage to the enemy HQ." },
+  uk_meteor:     { f: "uk", name: "Gloster Meteor",  cost: 6, atk: 6, hp: 4, art: "✈", air: true, fx: { k: "haste" }, premium: true, text: "Air. Haste." },
+  de_kingtiger:  { f: "germany", name: "King Tiger",  cost: 8, atk: 8, hp: 8, art: "▥", guard: true, premium: true, text: "Guard. An unstoppable heavy tank." },
+  su_is3:        { f: "ussr", name: "IS-3",          cost: 7, atk: 7, hp: 7, art: "▤", guard: true, premium: true, text: "Guard. Reinforced steel." },
+  jp_shinden:    { f: "japan", name: "Shinden",       cost: 6, atk: 5, hp: 5, art: "✦", air: true, fx: { k: "haste" }, premium: true, text: "Air. Haste." }
 };
+var PREMIUM_KEYS = ["usa_b29", "uk_meteor", "de_kingtiger", "su_is3", "jp_shinden"];
 
 var FACTIONS = {
   usa:     { key: "usa",     name: "USA",     flag: "★", color: "#2a4d8c",
@@ -566,6 +673,10 @@ function defaultProfile() {
   return {
     fact1: "usa", fact2: "germany",
     decks: {},
+    gems: 120,
+    cards: {},
+    missions: null,
+    packs: 0,
     stats: { games: 0, wins: 0, losses: 0, aiWins: 0, localWins: 0, onlineWins: 0, byFaction: {}, flawlessWins: 0, blitzWins: 0, closeWins: 0, heals: 0, fullBoards: 0, bigUnits: 0, decksSaved: 0, tutDone: 0 },
     sfx: true, tut: false, aiLevel: "normal"
   };
@@ -600,6 +711,10 @@ function loadProfile() {
   p.decks = p.decks || {};
   p.stats = p.stats || {};
   p.stats.byFaction = p.stats.byFaction || {};
+  if (typeof p.gems !== "number" || p.gems < 0) p.gems = 120;
+  p.cards = p.cards || {};
+  p.packs = p.packs || 0;
+  if (!p.missions || typeof p.missions !== "object") p.missions = null;
   if (typeof p.sfx !== "boolean") p.sfx = true;
   if (typeof p.tut !== "boolean") p.tut = false;
   if (["easy", "normal", "hard"].indexOf(p.aiLevel) === -1) p.aiLevel = "normal";
@@ -615,6 +730,185 @@ function saveProfile() {
 }
 
 PROFILE = loadProfile();
+
+// ---------------- Missions, diamonds and store ----------------
+var MISSION_DEFS = [
+  { id: "win",     title: "Victory",         desc: "Win a battle",                    target: 1,  reward: 60, kind: "win" },
+  { id: "unit",    title: "Deploy troops",   desc: "Play 12 units",                   target: 12, reward: 40, kind: "unit" },
+  { id: "attack",  title: "On the offensive", desc: "Attack 10 times",                target: 10, reward: 40, kind: "attack" },
+  { id: "advance", title: "Seize the line",  desc: "Advance 5 units to the frontline", target: 5,  reward: 35, kind: "advance" },
+  { id: "order",   title: "Tactical support", desc: "Play 8 orders",                  target: 8,  reward: 35, kind: "order" }
+];
+var PACK_COST = 100, CHEST_COST = 250, PREMIUM_COST = 180, DUST_REFUND = 60;
+
+function todayKey() { return new Date().toISOString().slice(0, 10); }
+
+function ensureMissions() {
+  var day = todayKey();
+  if (!PROFILE.missions || PROFILE.missions.date !== day) {
+    PROFILE.missions = { date: day, list: MISSION_DEFS.map(function (m) {
+      return { id: m.id, prog: 0, claimed: false };
+    }) };
+    saveProfile();
+  }
+  var have = {};
+  PROFILE.missions.list.forEach(function (s) { have[s.id] = true; });
+  MISSION_DEFS.forEach(function (m) {
+    if (!have[m.id]) PROFILE.missions.list.push({ id: m.id, prog: 0, claimed: false });
+  });
+  return PROFILE.missions;
+}
+
+function missionDef(id) {
+  for (var i = 0; i < MISSION_DEFS.length; i++) if (MISSION_DEFS[i].id === id) return MISSION_DEFS[i];
+  return null;
+}
+function missionState(id, ms) {
+  var list = (ms || ensureMissions()).list;
+  for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+  return null;
+}
+
+function missionEvent(kind, n) {
+  if (!PROFILE) return;
+  var ms = ensureMissions(), changed = false;
+  MISSION_DEFS.forEach(function (m) {
+    if (m.kind !== kind) return;
+    var st = missionState(m.id, ms);
+    if (!st || st.claimed || st.prog >= m.target) return;
+    st.prog = Math.min(m.target, st.prog + (n || 1));
+    changed = true;
+  });
+  if (changed) { saveProfile(); refreshMetaUI(); }
+}
+
+function claimableCount() {
+  if (!PROFILE) return 0;
+  var ms = PROFILE.missions, n = 0;
+  if (!ms || ms.date !== todayKey()) return 0;
+  MISSION_DEFS.forEach(function (m) {
+    var st = missionState(m.id, ms);
+    if (st && !st.claimed && st.prog >= m.target) n++;
+  });
+  return n;
+}
+
+function missionClaim(id) {
+  var ms = ensureMissions(), def = missionDef(id), st = missionState(id, ms);
+  if (!def || !st || st.claimed || st.prog < def.target) return;
+  st.claimed = true;
+  PROFILE.gems = (PROFILE.gems || 0) + def.reward;
+  saveProfile();
+  refreshMetaUI();
+  renderMissions();
+  log("+" + def.reward + " diamonds earned from " + def.title + "!");
+  sfx("play");
+}
+
+function refreshMetaUI() {
+  var g = document.getElementById("gemHud");
+  if (g) g.textContent = "\u25c6 " + (PROFILE.gems || 0);
+  var b = document.getElementById("missionBtn");
+  if (b) {
+    var n = claimableCount();
+    b.textContent = n > 0 ? "MISSIONS (" + n + ")" : "MISSIONS";
+    b.classList.toggle("hot", n > 0);
+  }
+}
+
+function openMissions() { ensureMissions(); renderMissions(); document.getElementById("missions").classList.add("show"); }
+function closeMissions() { document.getElementById("missions").classList.remove("show"); }
+
+function renderMissions() {
+  var ms = ensureMissions();
+  var html = '<div class="mhead">DIAMONDS <b>\u25c6 ' + (PROFILE.gems || 0) + '</b> \u00b7 NEW MISSIONS EVERY DAY</div>';
+  MISSION_DEFS.forEach(function (m) {
+    var st = missionState(m.id, ms);
+    var pct = Math.round(st.prog / m.target * 100);
+    var done = st.prog >= m.target;
+    var btn = st.claimed
+      ? '<span class="mclaimed">CLAIMED</span>'
+      : (done
+        ? '<button class="btn mclaim" onclick="missionClaim(\'' + m.id + '\')">CLAIM \u25c6' + m.reward + '</button>'
+        : '<span class="mlock">\u25c6' + m.reward + '</span>');
+    html += '<div class="mrow">' +
+      '<div class="mtop"><span class="mtitle">' + m.title + '</span><span class="mreward">\u25c6 ' + m.reward + '</span></div>' +
+      '<div class="mdesc">' + m.desc + '</div>' +
+      '<div class="mbar"><div class="mfill' + (done ? ' full' : '') + '" style="width:' + pct + '%"></div></div>' +
+      '<div class="mfoot"><span class="mprog">' + st.prog + ' / ' + m.target + '</span>' + btn + '</div>' +
+      '</div>';
+  });
+  document.getElementById("missionRows").innerHTML = html;
+}
+
+function cardOwned(k) {
+  if (!DEFS[k]) return 0;
+  if (!DEFS[k].premium) return MAX_COPIES;
+  return Math.max(0, Math.min(MAX_COPIES, (PROFILE.cards || {})[k] || 0));
+}
+function isPremium(k) { return !!(DEFS[k] || {}).premium; }
+
+function openStore() { renderStore(); document.getElementById("store").classList.add("show"); }
+function closeStore() { document.getElementById("store").classList.remove("show"); }
+function storeMsg(msg) { var e = document.getElementById("storeMsg"); if (e) e.textContent = msg || ""; }
+
+function renderStore() {
+  var msg = document.getElementById("storeMsg");
+  var keep = msg ? msg.textContent : "";
+  var html = '<div class="mhead">YOUR DIAMONDS <b>\u25c6 ' + (PROFILE.gems || 0) + '</b></div>';
+  html += '<div class="shead">CARD PACKS</div>';
+  html += '<div class="sitem"><div class="sinfo"><b>Recruit Pack</b><span>Unlock 1 random premium card (up to 3 copies).</span></div>' +
+          '<button class="btn sbuy" onclick="buyPack(1)">\u25c6 ' + PACK_COST + '</button></div>';
+  html += '<div class="sitem"><div class="sinfo"><b>War Chest</b><span>Unlock 2 random premium cards at once.</span></div>' +
+          '<button class="btn sbuy" onclick="buyPack(2)">\u25c6 ' + CHEST_COST + '</button></div>';
+  html += '<div class="shead">PREMIUM CARDS</div>';
+  PREMIUM_KEYS.forEach(function (k) {
+    var d = DEFS[k], owned = cardOwned(k);
+    var b = owned >= MAX_COPIES
+      ? '<span class="mclaimed">MAX ' + owned + '/3</span>'
+      : '<button class="btn sbuy" onclick="buyCard(\'' + k + '\')">\u25c6 ' + PREMIUM_COST + '</button>';
+    html += '<div class="sitem"><div class="sinfo"><b>' + FACTIONS[d.f].flag + ' ' + d.name + '</b>' +
+      '<span>' + d.cost + 'c \u00b7 ' + d.atk + '/' + d.hp + ' ' + (d.air ? '\u00b7 AIR ' : '') + (d.guard ? '\u00b7 GUARD' : '') + '</span>' +
+      '<span class="sown">OWNED ' + owned + '/3</span></div>' + b + '</div>';
+  });
+  html += '<div class="snote">Duplicate cards from packs refund \u25c6' + DUST_REFUND + '. Earn diamonds by completing MISSIONS.</div>';
+  document.getElementById("storeRows").innerHTML = html;
+  if (msg) msg.textContent = keep;
+}
+
+function buyCard(k) {
+  if (!isPremium(k)) return;
+  var owned = cardOwned(k);
+  if (owned >= MAX_COPIES) { storeMsg("You already own 3 copies of " + DEFS[k].name + "."); return; }
+  if ((PROFILE.gems || 0) < PREMIUM_COST) { storeMsg("Not enough diamonds. Complete missions to earn more."); return; }
+  PROFILE.gems -= PREMIUM_COST;
+  PROFILE.cards[k] = owned + 1;
+  saveProfile(); refreshMetaUI(); renderStore();
+  storeMsg("Unlocked " + DEFS[k].name + " (" + (owned + 1) + "/3). Find it in your collection!");
+  sfx("play");
+}
+
+function buyPack(count) {
+  var cost = count === 2 ? CHEST_COST : PACK_COST;
+  if ((PROFILE.gems || 0) < cost) { storeMsg("Not enough diamonds. Complete missions to earn more."); return; }
+  PROFILE.gems -= cost;
+  PROFILE.packs = (PROFILE.packs || 0) + count;
+  var got = [], dust = 0;
+  for (var i = 0; i < count; i++) {
+    var pool = PREMIUM_KEYS.filter(function (k) { return cardOwned(k) < MAX_COPIES; });
+    if (!pool.length) { dust += DUST_REFUND; continue; }
+    var k = pool[Math.floor(Math.random() * pool.length)];
+    var owned = cardOwned(k);
+    PROFILE.cards[k] = owned + 1;
+    got.push(DEFS[k].name + " " + (owned + 1) + "/3");
+  }
+  if (dust) PROFILE.gems += dust;
+  saveProfile(); refreshMetaUI(); renderStore();
+  storeMsg(got.length
+    ? "Opened: " + got.join(", ") + (dust ? "  +" + dust + " diamonds for duplicates." : "")
+    : "Collection maxed — refunded " + dust + " diamonds.");
+  sfx("play");
+}
 
 var FACTION = PROFILE.fact1, FACTION2 = PROFILE.fact2;
 if (FACTION_KEYS.indexOf(FACTION) === -1) FACTION = "usa";
@@ -674,6 +968,7 @@ function validCustomDeck(faction) {
   for (var i = 0; i < keys.length; i++) {
     var n = d[keys[i]] || 0;
     if (n < 0 || n > MAX_COPIES) return false;
+    if (n > cardOwned(keys[i])) return false;
     total += n;
   }
   var all = Object.keys(d);
@@ -890,6 +1185,7 @@ function play(hidx) {
   pl.res -= inst.cost;
   pl.hand.splice(hidx, 1);
   if (inst.type === "order") {
+    if (isHuman(S.cur)) missionEvent("order", 1);
     runOrderFx(inst, S.cur, function () { resolveOrder(inst, S.cur); });
     return;
   }
@@ -902,6 +1198,7 @@ function play(hidx) {
   resolveBattlecry(inst, S.cur);
   recomputeAura(pl);
   if (hasBigUnit(pl)) track("bigUnits");
+  if (isHuman(S.cur)) missionEvent("unit", 1);
   syncPub(S.cur);
   render();
   if (MODE === "online") publish();
@@ -929,6 +1226,7 @@ function moveToFront(idx) {
   u.canAttack = false;
   S.attackSel = null;
   say("Your " + u.name + " advances to the frontline.");
+  if (isHuman(p)) missionEvent("advance", 1);
   sfx("move");
   recomputeAura(pl);
   syncPub(p);
@@ -949,6 +1247,7 @@ function resolveOrderTarget(tidx) {
   pl.res -= inst.cost;
   pl.hand.splice(S.readyOrder.hidx, 1);
   S.readyOrder = null;
+  if (isHuman(S.cur)) missionEvent("order", 1);
   runOrderFx(inst, S.cur, function () {
     def.hp -= n;
     say(inst.name + " hits " + def.name + " for " + n + "!");
@@ -1971,6 +2270,7 @@ function doAttack(uidx, kind, tidx) {
     sfx("hit"); flashFX();
   }
 
+  if (isHuman(S.cur)) missionEvent("attack", 1);
   S.attackSel = null;
   syncPub(S.cur);
   render();
@@ -2215,8 +2515,8 @@ var TUT_STEPS = [
   { t: "5. THE FRONTLINE", h: "<p>The battlefield has three zones: <b>your support line</b>, the shared <b>frontline</b>, and the <b>enemy support line</b>. Newly deployed units always arrive in your support line.</p><ul><li>Only <b>one side can hold the frontline</b> at a time (max 5 units). To take it, destroy any enemy frontline units first.</li><li>Click the <b>\u25b2 button</b> on one of your support units (or just click the unit card) to advance it. It costs that unit's <b>action cost</b> and uses its action for the turn. A unit <b>cannot advance on the turn it is deployed</b>.</li><li>While you hold the frontline, your enemy cannot advance \u2014 and your frontline units can hit their support line and HQ.</li></ul>" },
   { t: "6. ATTACKING", h: "<ul><li>Click your unit, then click an enemy unit or the enemy HQ. Every attack costs the unit's <b>action cost</b>.</li><li>Each unit acts <b>once per turn</b> (move <i>or</i> attack). When two units fight, <b>both</b> deal their attack to each other.</li><li><b>Support-line units</b> can only reach the enemy <b>frontline</b>. <b>Frontline units</b> can reach the enemy <b>support line and HQ</b>.</li><li><b>Guard</b> units must be fought first. <b>Air</b> units ignore Guard and can always hit the HQ.</li><li>A newly deployed unit cannot <b>move or attack</b> that turn. A <b>Haste</b> unit may attack, but still cannot advance until your next turn.</li></ul>" },
   { t: "7. ORDERS", h: "<p>Orders are one-shot cards \u2014 they resolve, then vanish. A played order is shown in the box on the left for <b>2 seconds</b> before its effect takes place. Orders ignore the frontline and can strike any enemy unit. Each nation has its own orders. The shared effects are:</p><ul><li><b>Damage a unit</b> \u2014 click the order, then pick an enemy unit.</li><li><b>Damage the enemy HQ</b> \u2014 a direct strike.</li><li><b>Damage all enemy units</b> \u2014 a sweeping barrage (hits the HQ if their board is empty).</li><li><b>Heal your HQ</b> \u2014 recover hit points.</li><li><b>Draw cards</b> \u2014 refill your hand.</li><li><b>Gain resource</b> \u2014 bank energy for bigger plays.</li><li><b>Rally</b> \u2014 all your units can attack again.</li></ul>" },
-  { t: "8. DECK BUILDER", h: "<ul><li>Open <b>DECK</b> to customize your cards with the <b>+</b> and <b>-</b> buttons \u2014 each row shows a card's <b>deploy cost</b>, <b>action cost</b> (units) and <b>attack/HP</b>.</li><li>Each nation keeps its <b>own saved deck</b>. In LOCAL, use the <b>PLAYER 1 / PLAYER 2</b> toggle to build a deck for either player.</li><li>A deck must have <b>exactly 40 cards</b>, with at most <b>3 copies</b> of any card.</li><li><b>USE DEFAULT</b> restores the standard 40-card deck, <b>SAVE</b> keeps your changes, <b>CLOSE</b> cancels.</li></ul>" },
-  { t: "9. PLAY & MENU", h: "<ul><li><b>LOCAL</b> \u2014 two players share one screen (hot-seat); choose <b>both</b> players' nations.</li><li><b>VS AI</b> \u2014 battle the computer; use <b>AI: EASY/NORMAL/HARD</b> to set its skill.</li><li><b>ONLINE</b> \u2014 HOST gives you a room code to share, or press <b>ROOMS</b> to join a waiting game.</li><li><b>NATION</b> \u2014 choose your nation. <b>DECK</b> \u2014 build your deck.</li><li><b>STATS</b> \u2014 track wins, losses and records. Use <b>EXPORT SAVE</b> to back up your progress before clearing browser data.</li><li><b>TUTORIAL</b> reopens this guide, <b>SOUND</b> toggles audio.</li></ul><p>Good luck, Commander!</p>" }
+  { t: "8. YOUR COLLECTION", h: "<ul><li>Open <b>DECK</b> to build your deck right from the <b>card collection</b> \u2014 click a card (or its <b>+</b>) to add a copy, right-click (or <b>-</b>) to remove one. A <b>gold border</b> means it's in your deck.</li><li>Each card tile shows <b>deploy cost</b>, <b>action cost</b> and <b>attack/HP</b>. Each nation keeps its <b>own saved deck</b>; in LOCAL use the <b>PLAYER 1 / PLAYER 2</b> toggle.</li><li>A deck needs <b>exactly 40 cards</b>, at most <b>3 copies</b> each. <b>USE DEFAULT</b> restores the starter deck, <b>SAVE</b> keeps changes.</li><li>Cards marked <b>\u25c6 PREMIUM</b> are locked until you unlock them in the <b>STORE</b> with diamonds.</li></ul>" },
+  { t: "9. PLAY & MENU", h: "<ul><li><b>LOCAL</b> \u2014 two players share one screen (hot-seat); choose <b>both</b> players' nations.</li><li><b>VS AI</b> \u2014 battle the computer; use <b>AI: EASY/NORMAL/HARD</b> to set its skill.</li><li><b>ONLINE</b> \u2014 HOST gives you a room code to share, or press <b>ROOMS</b> to join a waiting game.</li><li><b>NATION</b> \u2014 choose your nation. <b>DECK</b> \u2014 build your deck from your collection.</li><li><b>MISSIONS</b> \u2014 complete daily goals (win battles, deploy units, attack, advance, play orders) to earn <b>diamonds \u25c6</b>. <b>STORE</b> \u2014 spend diamonds on card packs or premium cards.</li><li><b>STATS</b> \u2014 track wins, losses and records. Use <b>EXPORT SAVE</b> to back up your progress before clearing browser data.</li><li><b>TUTORIAL</b> reopens this guide, <b>SOUND</b> toggles audio.</li></ul><p>Good luck, Commander!</p>" }
 ];
 var TUT_PAGE = 0;
 
@@ -2320,8 +2620,16 @@ function openDeckEdit(which) {
 
 function closeDeckEdit() { DECK_WORK = null; document.getElementById("deckedit").classList.remove("show"); }
 
-function deckInc(k) { if (!DECK_WORK) return; if ((DECK_WORK[k] || 0) >= MAX_COPIES) return; DECK_WORK[k] = (DECK_WORK[k] || 0) + 1; renderDeckRows(); }
+function deckInc(k) {
+  if (!DECK_WORK) return;
+  var cap = Math.min(MAX_COPIES, cardOwned(k));
+  if (cap <= 0) { log(DEFS[k].name + " is locked \u2014 unlock it in the STORE with diamonds."); return; }
+  if ((DECK_WORK[k] || 0) >= cap) return;
+  DECK_WORK[k] = (DECK_WORK[k] || 0) + 1;
+  renderDeckRows();
+}
 function deckDec(k) { if (!DECK_WORK) return; if ((DECK_WORK[k] || 0) > 0) DECK_WORK[k]--; renderDeckRows(); }
+function deckCellClick(k) { deckInc(k); }
 
 function deckUseDefault() { DECK_WORK = deckDefaultCounts(DECK_FAC); renderDeckRows(); }
 
@@ -2351,12 +2659,21 @@ function renderDeckRows() {
   keys.forEach(function (k) {
     var d = DEFS[k];
     var n = DECK_WORK[k] || 0;
-    var stat = (d.type === "order") ? (d.cost + "c") : (d.cost + "c / " + opOf(d) + "op  " + d.atk + "/" + d.hp);
-    html += '<div class="drow"><span class="dname">' + d.name + '</span><span class="dstat">' + stat + '</span><span class="dtag">' + (d.type === "order" ? "ORDER" : "UNIT") + '</span>' +
-      '<button class="btn dbtn" onclick="deckDec(\'' + k + '\')">-</button><span class="dnum">' + n + '</span>' +
-      '<button class="btn dbtn" onclick="deckInc(\'' + k + '\')">+</button></div>';
+    var owned = cardOwned(k);
+    var locked = isPremium(k) && owned === 0;
+    var stat = (d.type === "order") ? (d.cost + "c \u00b7 ORDER") : (d.cost + "c \u00b7 " + opOf(d) + "op \u00b7 " + d.atk + "/" + d.hp);
+    if (isPremium(k)) stat = locked ? "LOCKED \u25c6 STORE" : ("PREMIUM " + owned + "/3");
+    var tip = d.name + " \u2014 " + d.text + (isPremium(k) ? (locked ? " (LOCKED - buy in the STORE)" : " (owned " + owned + "/3)") : "");
+    html += '<div class="dcell' + (n > 0 ? " in" : "") + (locked ? " locked" : "") + '" onclick="deckCellClick(\'' + k + '\')" oncontextmenu="event.preventDefault();deckDec(\'' + k + '\')" title="' + tip + '">' +
+      '<div class="dcost">' + d.cost + '</div>' +
+      '<div class="dart">' + d.art + '</div>' +
+      '<div class="dn2">' + d.name + '</div>' +
+      '<div class="dst2">' + stat + '</div>' +
+      '<div class="dcount">' + (n ? "x" + n : "") + '</div>' +
+      '<div class="dmini"><button title="Remove" onclick="event.stopPropagation();deckDec(\'' + k + '\')">-</button><button title="Add" onclick="event.stopPropagation();deckInc(\'' + k + '\')">+</button></div>' +
+      '</div>';
   });
-  document.getElementById("deckRows").innerHTML = html;
+  document.getElementById("deckRows").innerHTML = '<div class="dlegend">CLICK A CARD TO ADD \u00b7 RIGHT-CLICK OR \u2212 TO REMOVE \u00b7 GOLD BORDER = IN DECK \u00b7 \u25c6 CARDS COME FROM THE STORE</div><div class="dgrid">' + html + '</div>';
   var t = deckTotalWork();
   document.getElementById("deckInfo").textContent = "TOTAL: " + t + " / " + DECK_SIZE + " cards" + (t === DECK_SIZE ? "  \u2713" : "  (need exactly " + DECK_SIZE + ")");
 }
@@ -2392,6 +2709,7 @@ function awardVictory(winner) {
     var turn = Math.max(S.players[0].turnNum, S.players[1].turnNum);
     if (turn < 6) st.blitzWins = (st.blitzWins || 0) + 1;
     if (wHq <= 5) st.closeWins = (st.closeWins || 0) + 1;
+    missionEvent("win", 1);
   } else {
     st.losses = (st.losses || 0) + 1;
   }
@@ -2478,6 +2796,7 @@ function importProfileFile(input) {
 
 (function () { var b = document.getElementById("soundBtn"); if (b) b.textContent = "SOUND " + (SFX ? "ON" : "OFF"); })();
 updateAILevelBtn();
+refreshMetaUI();
 try {
   if (navigator.storage && navigator.storage.persist) {
     var persistReq = navigator.storage.persist();
