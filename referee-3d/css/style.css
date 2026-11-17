@@ -700,6 +700,8 @@ body.talking #stage canvas { cursor: help; }
 .btn.primary.tour-go { grid-column: auto; }
 .tour-abandon { background: transparent; border-color: #3a2226; }
 .tour-abandon b { color: #ff9d9d; }
+.tour-new { background: transparent; }
+.tour-new b { color: var(--ink); }
 
 .res-note { display: none; margin-top: 10px; font-size: 12px; letter-spacing: 1.6px; color: var(--gold); text-transform: uppercase; }
 .res-note.on { display: block; }

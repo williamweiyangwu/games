@@ -305,6 +305,20 @@ REF.UI = (function () {
         REF.Tour.play();
       });
       foot.appendChild(btn);
+
+      /* always offer a clear way to draw a brand-new tournament, even while
+         this one is still running — not just a negatively-worded "Abandon" */
+      var fresh = h('button', 'btn tour-new');
+      fresh.type = 'button';
+      fresh.innerHTML = '<b>New tournament</b><em>Fresh draw</em>';
+      fresh.addEventListener('click', function () {
+        REF.Audio.click();
+        if (confirm('Start a new tournament? This one will be lost.')) {
+          REF.Tour.reset();
+          buildTour();
+        }
+      });
+      foot.appendChild(fresh);
     } else {
       var again = h('button', 'btn primary tour-go');
       again.type = 'button';
@@ -316,17 +330,6 @@ REF.UI = (function () {
       });
       foot.appendChild(again);
     }
-    var abandon = h('button', 'btn tour-abandon');
-    abandon.type = 'button';
-    abandon.innerHTML = '<b>Abandon</b><em>Start over</em>';
-    abandon.addEventListener('click', function () {
-      REF.Audio.click();
-      if (confirm('Abandon this tournament?')) {
-        REF.Tour.reset();
-        buildTour();
-      }
-    });
-    foot.appendChild(abandon);
     body.appendChild(foot);
   }
 
