@@ -149,7 +149,7 @@
 <div id="standings" class="hidden"></div>
 <div id="banner" class="hidden"></div>
 <div id="lights" class="hidden"><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div></div>
-  <div id="verTag">v2.21</div>
+  <div id="verTag">v2.22</div>
   <button id="achBtn" class="ghost">ACHIEVEMENTS</button>
   <div id="achPanel"><b style="letter-spacing:.12em">ACHIEVEMENTS</b><div id="achList" style="margin-top:8px"></div></div>
   <div id="pitMsg"></div>
@@ -169,21 +169,17 @@
     <div class="pickCol"><div class="pickLabel">TRACK</div><div id="trackPick" class="cards"></div></div>
   </div>
   <div class="pickRow">
-    <div class="pickCol"><div class="pickLabel">TRACK NUMBER (1-150)</div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <input id="trackNumInput" type="number" min="1" max="150" value="1" style="width:100px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:#fff;font-size:16px">
-        <button id="trackNumApply" class="ghost" style="padding:8px 14px;font-size:14px">LOAD</button>
-      </div>
-      <span id="trackNumLabel" style="font-size:11px;opacity:.7;margin-top:4px">Track 1 of 150</span>
-    </div>
-  </div>
-  <div class="pickRow">
     <div class="pickCol"><div class="pickLabel">CAR</div><div id="carPick" class="cards"></div></div>
   </div>
   <div class="pickRow">
     <div class="pickCol"><div class="pickLabel">TYRES</div><div id="tyrePick" class="cards"></div></div>
     <div class="pickCol"><div class="pickLabel">WEATHER</div><div id="weatherPick" class="cards"></div></div>
-    <div class="pickCol"><div class="pickLabel">LAPS</div><div id="lapPick" class="cards"></div></div>
+    <div class="pickCol"><div class="pickLabel">LAPS (ROLLER)</div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <input id="lapRange" type="range" min="1" max="50" step="1" value="2" style="width:180px;accent-color:#ffd75e">
+        <b id="lapRangeVal" style="font-size:17px;min-width:28px;text-align:center">2</b>
+      </div>
+    </div>
   </div>
   <div class="pickRow">
     <div class="pickCol"><div class="pickLabel">AI DIFFICULTY</div><div id="diffPick" class="cards"></div></div>
@@ -1755,8 +1751,7 @@
 
   var selectedTyre = 1;        // MEDIUM
   var selectedWeather = 0;     // DRY
-  var LAP_CHOICES = [1, 2, 3, 5, 50];
-  var selectedLaps = 2;        // actual lap count
+  var selectedLaps = 2;        // chosen with the lap roller
   TOTAL_LAPS = selectedLaps;
 
 
@@ -1861,11 +1856,11 @@
   var started = false, paused = false, raceOver = false;
   var countdown = 0, clock = 0, camMode = 0, flashTimer = 0, goTimer = -1, smokeAcc = 0;
   var selectedTrack = 0, selectedCar = 0;
-  var currentTrackDef = TRACKS[0];   // live definition, including generated track numbers
+  var currentTrackDef = TRACKS[0];   // live circuit definition
   var lightsPhase = 0, lightsTimer = 0, lightsOut = false;
   var worldWet = 0;
 
-  var trackCountChoice = 1; // 1-150 track number
+  var trackCountChoice = 1; // index of the selected real circuit
   function seededRand(seed) {
     var x = Math.sin(seed * 9999.123) * 10000;
     return x - Math.floor(x);
@@ -1919,10 +1914,6 @@
     placeOnGrid();
     renderPickers();
     updateMenuText();
-    var lbl = document.getElementById('trackNumLabel');
-    if (lbl) lbl.textContent = 'Track ' + trackCountChoice + ' of 150: ' + (def ? def.name : '');
-    var inp = document.getElementById('trackNumInput');
-    if (inp) inp.value = trackCountChoice;
   }
   function renderPickers() {
     var tp = document.getElementById('trackPick');
@@ -1939,22 +1930,24 @@
           placeOnGrid();
           renderPickers();
           updateMenuText();
-          var lbl = document.getElementById('trackNumLabel'); if(lbl) lbl.textContent = 'Track ' + trackCountChoice + ' of 150: ' + t.name;
-          var inp = document.getElementById('trackNumInput'); if(inp) inp.value = trackCountChoice;
         });
         tp.appendChild(d);
       });
     }
-    // Track number controls
-    var inp = document.getElementById('trackNumInput');
-    var btn = document.getElementById('trackNumApply');
-    if (inp && !inp._wired) {
-      inp._wired = true;
-      inp.addEventListener('change', function(){ loadTrackNumber(inp.value); });
-    }
-    if (btn && !btn._wired) {
-      btn._wired = true;
-      btn.addEventListener('click', function(){ loadTrackNumber(inp ? inp.value : 1); });
+    // Lap roller (replaces the old track-number box)
+    var lr = document.getElementById('lapRange');
+    var lv = document.getElementById('lapRangeVal');
+    if (lr) {
+      lr.value = selectedLaps;
+      if (lv) lv.textContent = selectedLaps;
+      if (!lr._wired) {
+        lr._wired = true;
+        lr.addEventListener('input', function () {
+          selectedLaps = parseInt(lr.value, 10) || 1;
+          if (lv) lv.textContent = selectedLaps;
+          updateMenuText();
+        });
+      }
     }
     var cp = document.getElementById('carPick');
     cp.innerHTML = '';
@@ -1990,17 +1983,6 @@
         wp.appendChild(d);
       });
     }
-    var lp = document.getElementById('lapPick');
-    if (lp) {
-      lp.innerHTML = '';
-      LAP_CHOICES.forEach(function (n, i) {
-        var d = document.createElement('div');
-        d.className = 'card' + (i === selectedLapsIdx() ? ' sel' : '');
-        d.innerHTML = '<b>' + n + '</b><span>' + (n === 50 ? 'ENDURANCE' : 'LAPS') + '</span>';
-        d.addEventListener('click', function () { selectedLaps = n; renderPickers(); updateMenuText(); });
-        lp.appendChild(d);
-      });
-    }
     var dp = document.getElementById('diffPick');
     dp.innerHTML = '';
     DIFFICULTY.forEach(function (d, i) {
@@ -2011,7 +1993,6 @@
       dp.appendChild(el);
     });
   }
-  function selectedLapsIdx() { return LAP_CHOICES.indexOf(selectedLaps); }
   function applyWeather() {
     var w = WEATHERS[selectedWeather];
     var pal = currentTrackDef.palette;
@@ -2024,7 +2005,7 @@
   function updateMenuText() {
     if (document.getElementById('menuTitle')) document.getElementById('menuTitle').textContent = currentTrackDef.name;
     if (document.getElementById('menuSub')) document.getElementById('menuSub').textContent =
-      (ROSTER[selectedCar] ? ROSTER[selectedCar].name : 'DRIVER') + ' \u00b7 ' + currentTrackDef.blurb + ' \u00b7 ' + (cars.length - 1) + ' AI \u00b7 ' + selectedLaps + ' laps \u00b7 ' + TYRES[selectedTyre].label + ' \u00b7 ' + WEATHERS[selectedWeather].label + ' \u00b7 ' + DIFFICULTY[aiDiff].name + ' \u00b7 TRACK SET: ' + trackCountChoice;
+      (ROSTER[selectedCar] ? ROSTER[selectedCar].name : 'DRIVER') + ' \u00b7 ' + currentTrackDef.blurb + ' \u00b7 ' + (cars.length - 1) + ' AI \u00b7 ' + selectedLaps + ' laps \u00b7 ' + TYRES[selectedTyre].label + ' \u00b7 ' + WEATHERS[selectedWeather].label + ' \u00b7 ' + DIFFICULTY[aiDiff].name;
   }
 
   document.getElementById('startBtn').addEventListener('click', function () {
@@ -3960,7 +3941,7 @@ var pr = projectTrack(c.x, c.z, c.i);
       <b>PIT STOPS:</b> Near the start/finish straight, move to the inside edge and slow down to trigger service (repairs damage, refuels, fresh tyres).
     </p>
     <p style="line-height:1.7;opacity:0.9;margin-top:8px">
-      <b>TRACK NUMBER (1-150):</b> In the menu, enter any track number from 1–150 and click LOAD to race that track (tracks 1-25 are real F1 circuits; tracks 26-150 are procedurally generated).
+      <b>LAPS ROLLER:</b> Drag the LAPS slider in the menu to set the race length from 1 to 50 laps. Pick your real F1 circuit from the TRACK cards above.
     </p>
     <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
       <button id="closeTutorial">CLOSE</button>
