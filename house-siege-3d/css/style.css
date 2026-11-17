@@ -603,6 +603,39 @@ b{font-weight:700}
 .nr-go{font-size:9px;letter-spacing:.16em;color:#7c8799;flex:0 0 auto}
 .net-room:hover .nr-go{color:#cfe0ff}
 
+/* pre-match room lobby: roster + ready gate */
+#netLobby{z-index:84;background:rgba(4,6,10,.96)}
+.net-lobby-panel{width:min(520px,92vw)}
+.nl-code{color:var(--gold);letter-spacing:.22em}
+.nl-meta{font:600 9px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing:.16em;color:#7c8799;margin:8px 0 16px}
+.nl-sec{font-size:9px;letter-spacing:.28em;color:#6f7b91;padding-bottom:6px;
+  border-bottom:1px solid rgba(255,255,255,.07)}
+.nl-sec span{color:#9fb4d6;letter-spacing:.1em}
+.nl-roster{display:flex;flex-direction:column;gap:6px;min-height:64px;
+  max-height:270px;overflow-y:auto;margin:10px 0 12px}
+.nl-roster::-webkit-scrollbar{width:6px}
+.nl-roster::-webkit-scrollbar-thumb{background:rgba(120,160,220,.28);border-radius:3px}
+.nl-player{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:3px;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)}
+.nl-player.me{background:rgba(120,160,220,.09);border-color:rgba(120,160,220,.35)}
+.nl-name{flex:1;min-width:0;font-size:12px;font-weight:700;color:#dfe6f1;
+  letter-spacing:.06em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nl-host{font:800 8px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing:.14em;color:var(--gold);border:1px solid rgba(255,215,106,.4);
+  border-radius:2px;padding:3px 5px;margin-left:8px;vertical-align:1px}
+.nl-state{font:800 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing:.16em;color:#6d7889;padding:5px 8px;border-radius:2px;
+  border:1px solid rgba(255,255,255,.12);flex:0 0 auto}
+.nl-player.ready .nl-state{color:#8ff0c0;border-color:rgba(143,240,192,.5);
+  background:rgba(80,220,160,.1)}
+.nl-hint{font-size:10px;line-height:1.5;color:#8b94a6;min-height:15px}
+.nl-hint.go{color:#8ff0c0}
+.nl-ready{min-width:140px}
+.nl-ready.on{color:#8ff0c0;border-color:rgba(143,240,192,.55);
+  background:rgba(80,220,160,.12)}
+.nl-ready:disabled{opacity:.45;cursor:default}
+
 /* in-match chip */
 #netChip{position:fixed;left:50%;bottom:14px;transform:translateX(-50%) translateY(14px);
   display:none;align-items:center;gap:9px;padding:5px 12px;border-radius:2px;
