@@ -50,6 +50,15 @@ const NET = {
   remotes: new Map(),       // cid -> remote actor
   remoteList: [],           // same actors, as an array for hot loops
   rooms: new Map(),         // code -> advert
+  /* the pre-match ready check. The host owns the roster and publishes it
+     retained; a guest only ever reports its own ready bit and renders what the
+     host says. NET.live on the room config distinguishes "waiting in the
+     lobby" from "join a match already running". */
+  roster: new Map(),        // cid -> { cid, name, ready, joined }
+  ready: false,             // my ready bit
+  lobbyOpen: false,
+  deploying: false,
+  startedToken: '',         // ignores duplicate/replayed deploy notices
   sendT: 0, scoreT: 0, pingT: 0, rtt: 0, pingSent: 0,
   lastHit: {},              // cid -> info about the hit we just sent them
   hostLeftT: 0,
@@ -288,7 +297,13 @@ function netHost(opts) {
   if (cfg.pub) netPub(netTopic('rooms/' + code), netAdvert(cfg, 1), { retain: true });
 
   Ach.bump('roomsHosted');
-  netStartMatch(cfg);
+  NET.ready = false;
+  NET.deploying = false;
+  NET.startedToken = '';
+  NET.roster = new Map([[NET.cid,
+    { cid: NET.cid, name: NET.name, ready: false, joined: 0 }]]);
+  netShowLobby(true);
+  netPublishLobby();
 }
 
 function netAdvert(cfg, n) {
@@ -300,6 +315,141 @@ function netAdvert(cfg, n) {
     pub: !!cfg.pub,
     n: n || 1, ts: Date.now()
   };
+}
+
+/* ------------------------------------------------------------
+   PRE-MATCH ROOM LOBBY
+   ------------------------------------------------------------
+   Hosting used to call startGame() straight away, so a guest was dropped into
+   a live match with no say in it. The host now holds a roster instead: humans
+   announce themselves, tick READY, and the host deploys only when every human
+   in the roster is ready. The roster is one retained topic so a late joiner
+   sees the same list everybody else does. */
+function netLobbyTopic(code) { return netTopic('room/' + code + '/lobby'); }
+
+function netRosterList() {
+  const out = [...NET.roster.values()];
+  const host = NET.room && NET.room.host;
+  out.sort((a, b) => (b.cid === host) - (a.cid === host) || (a.joined || 0) - (b.joined || 0));
+  return out;
+}
+
+function netShowLobby(on) {
+  NET.lobbyOpen = !!on;
+  const el = $('netLobby');
+  if (el) el.classList.toggle('show', !!on);
+  if (on) netRenderLobbyRoom();
+}
+
+function netPublishLobby() {
+  if (!NET.isHost || !NET.room || !NET.lobbyOpen) return;
+  netPub(netLobbyTopic(NET.room.code), {
+    host: NET.room.host,
+    players: netRosterList().map(p => ({ cid: p.cid, name: p.name, ready: !!p.ready })),
+    ts: Date.now()
+  }, { retain: true });
+  if (NET.room.pub) {
+    netPub(netTopic('rooms/' + NET.room.code),
+      netAdvert(NET.room, NET.roster.size), { retain: true });
+  }
+}
+
+function netRenderLobbyRoom() {
+  const roster = $('nlRoster');
+  if (!roster) return;
+  const r = NET.room;
+  const set = (id, txt) => { const el = $(id); if (el) el.textContent = txt; };
+  set('nlCode', r ? r.code : '----');
+  set('nlMeta', r ? [
+    modeDef(r.mode).name.toUpperCase(),
+    mapDef(r.map).name.toUpperCase(),
+    (DIFF[r.diff] ? DIFF[r.diff].label : r.diff).toUpperCase() + ' AI',
+    r.pub ? 'PUBLIC' : 'PRIVATE'
+  ].join('   ·   ') : '—');
+
+  const list = netRosterList();
+  set('nlCount', String(list.length));
+  roster.innerHTML = list.map(p =>
+    '<div class="nl-player' + (p.ready ? ' ready' : '') + (p.cid === NET.cid ? ' me' : '') + '">' +
+      '<span class="nl-name">' + escHtml(p.name || 'OPERATOR') +
+        (r && p.cid === r.host ? '<i class="nl-host">HOST</i>' : '') + '</span>' +
+      '<span class="nl-state">' + (p.ready ? 'READY' : 'NOT READY') + '</span>' +
+    '</div>').join('') || '<div class="net-empty">Waiting for operators…</div>';
+
+  const all = list.length > 0 && list.every(p => p.ready);
+  const hint = $('nlHint');
+  if (hint) {
+    hint.classList.toggle('go', all);
+    if (NET.deploying) hint.textContent = 'Everyone is ready — deploying…';
+    else if (!r) hint.textContent = 'Connecting to the room…';
+    else if (all) hint.textContent = 'Everyone is ready — deploying…';
+    else {
+      const n = list.filter(p => !p.ready).length;
+      hint.textContent = n === list.length
+        ? 'Hit READY when you are in position.'
+        : n + (n === 1 ? ' operator is' : ' operators are') + ' still not ready.';
+    }
+  }
+  const btn = $('btnReady');
+  if (btn) {
+    btn.textContent = NET.deploying ? 'DEPLOYING…' : (NET.ready ? 'UNREADY' : 'READY');
+    btn.classList.toggle('on', !!NET.ready);
+    btn.disabled = !!NET.deploying || !NET.room;
+  }
+  set('nlStatus', NET.deploying ? 'DEPLOYING' : 'LOBBY');
+}
+
+function netSetReady(on) {
+  if (!NET.room || NET.deploying || !NET.lobbyOpen) return;
+  const want = on === undefined ? !NET.ready : !!on;
+  if (want === NET.ready) return;
+  NET.ready = want;
+  const me = NET.roster.get(NET.cid);
+  if (me) me.ready = want;
+  if (NET.isHost) {
+    netPublishLobby();
+    netCheckAllReady();
+  } else {
+    netPub(netTopic('room/' + NET.room.code + '/ev'),
+      { k: 'ready', code: NET.room.code, cid: NET.cid, name: NET.name, ready: want });
+  }
+  netRenderLobbyRoom();
+}
+
+/* Only the host starts a match, and only once every human is ready. */
+function netCheckAllReady() {
+  if (!NET.isHost || !NET.lobbyOpen || NET.deploying || !NET.room) return;
+  const list = [...NET.roster.values()];
+  if (list.length && list.every(p => p.ready)) netDeploy();
+}
+
+function netDeploy() {
+  if (!NET.room || NET.deploying) return;
+  NET.deploying = true;
+  const token = netId(6);
+  NET.startedToken = token;
+  const cfg = Object.assign({}, NET.room, { live: 1 });
+  NET.room = cfg;
+  netPub(netTopic('room/' + cfg.code + '/cfg'), cfg, { retain: true });
+  if (cfg.pub) netPub(netTopic('rooms/' + cfg.code), netAdvert(cfg, NET.roster.size), { retain: true });
+  /* the lobby is over: clear its retained state and tell everybody to deploy.
+     The notice is repeated because QoS 0 on a public broker can drop one. */
+  netPub(netLobbyTopic(cfg.code), { closed: true, ts: Date.now() }, { retain: true });
+  const notice = { k: 'start', code: cfg.code, token, cfg };
+  const say = () => netPub(netTopic('room/' + cfg.code + '/ev'), notice);
+  say(); setTimeout(say, 350); setTimeout(say, 900); setTimeout(say, 1800);
+  netShowLobby(false);
+  netStartMatch(cfg);
+}
+
+/* Called when a room's match ends: a joiner arriving after this point goes to
+   the lobby again rather than into a match that has already finished. */
+function netRoomLive(on) {
+  if (!NET.isHost || !NET.room) return;
+  const cfg = Object.assign({}, NET.room, { live: on ? 1 : 0 });
+  NET.room = cfg;
+  netPub(netTopic('room/' + cfg.code + '/cfg'), cfg, { retain: true });
+  if (cfg.pub) netPub(netTopic('rooms/' + cfg.code), netAdvert(cfg, NET.peers.size + 1), { retain: true });
 }
 
 /* ------------------------------------------------------------
@@ -360,10 +510,25 @@ function netAdoptRoom(cfg) {
   if (NET.room && NET.room.code === cfg.code && G.player) return;
   NET.room = cfg;
   NET.isHost = cfg.host === NET.cid;
-  netStartMatch(cfg);
+  NET.ready = false;
+  NET.deploying = false;
+  NET.startedToken = '';
+  NET.roster = new Map();
+  if (cfg.host && cfg.hostName) {
+    NET.roster.set(cfg.host, { cid: cfg.host, name: cfg.hostName, ready: false, joined: 0 });
+  }
+  /* Joining a room whose match is already running keeps the old behaviour:
+     drop straight in. Otherwise wait in the roster for the ready gate. */
+  if (cfg.live) { netStartMatch(cfg); return; }
+  netShowLobby(true);
+  netPub(netTopic('room/' + cfg.code + '/ev'),
+    { k: 'join', code: cfg.code, cid: NET.cid, name: NET.name });
+  netRenderLobbyRoom();
 }
 
 function netStartMatch(cfg) {
+  netShowLobby(false);
+  NET.deploying = false;
   G.netMode = true;
   G.netAi = !!cfg.ai;
   /* a room config is somebody else's JSON: an unknown difficulty would leave
@@ -404,6 +569,11 @@ function netLeave(quiet) {
     }
   }
   netClearRemotes();
+  netShowLobby(false);
+  NET.roster.clear();
+  NET.ready = false;
+  NET.deploying = false;
+  NET.startedToken = '';
   NET.room = null;
   NET.isHost = false;
   NET.peers.clear();
@@ -508,6 +678,19 @@ function netOnMessage(topic, payload) {
         netToast('Host set AI ' + (m.ai ? 'ON · ' + (DIFF[G.diff] ? DIFF[G.diff].label : G.diff) : 'OFF'));
       }
     }
+    return;
+  }
+
+  if (rest === 'lobby') {
+    if (m.closed) { NET.roster.clear(); netRenderLobbyRoom(); return; }
+    if (NET.isHost) return;                       // we wrote it
+    if (!NET.room || !m.host || m.host !== NET.room.host) return;
+    NET.roster = new Map((m.players || []).map((p, i) => [p.cid, {
+      cid: p.cid, name: p.name || 'OPERATOR', ready: !!p.ready, joined: i
+    }]));
+    const me = NET.roster.get(NET.cid);
+    if (me) NET.ready = me.ready;
+    netRenderLobbyRoom();
     return;
   }
 
@@ -631,11 +814,24 @@ function netEvent(ev) {
     return;
   }
 
-  /* somebody is trying to join: resend the room config and our own state so
-     they do not have to rely on retained delivery alone */
+  /* the host has finished the ready check: everybody deploys together */
+  if (ev.k === 'start') {
+    if (NET.isHost) return;
+    if (!NET.room || ev.code !== NET.room.code) return;
+    if (ev.token && NET.startedToken === ev.token) return;
+    NET.startedToken = ev.token || 'start';
+    NET.deploying = true;
+    netShowLobby(false);
+    netStartMatch(ev.cfg || NET.room);
+    return;
+  }
+
+  /* somebody is trying to join: resend the room config, roster and our own
+     state so they do not have to rely on retained delivery alone */
   if (ev.k === 'who') {
     if (NET.isHost && NET.room && NET.room.code === ev.code) {
       netPub(netTopic('room/' + NET.room.code + '/cfg'), NET.room, { retain: true });
+      netPublishLobby();
       netPublishScore(true);
       netPublishObj();
       netSendState(true);
@@ -672,7 +868,36 @@ function netEvent(ev) {
     netToast(ev.name + ' joined');
     /* the joiner needs our state right away rather than at the next tick */
     netSendState(true);
-    if (NET.isHost) { netPublishScore(true); netPublishObj(); }
+    if (NET.isHost && NET.room && (!ev.code || ev.code === NET.room.code)) {
+      /* add them to the ready list even if the match is already running, so a
+         later room re-open starts from an honest roster */
+      if (!NET.roster.has(ev.cid)) {
+        NET.roster.set(ev.cid, {
+          cid: ev.cid, name: ev.name || 'OPERATOR', ready: false, joined: NET.roster.size
+        });
+      }
+      if (NET.lobbyOpen) {
+        netPublishLobby();
+        netRenderLobbyRoom();
+        netCheckAllReady();
+      }
+      netPub(netTopic('room/' + NET.room.code + '/cfg'), NET.room, { retain: true });
+      netPublishScore(true);
+      netPublishObj();
+    }
+    return;
+  }
+
+  if (ev.k === 'ready') {
+    if (!NET.isHost || ev.cid === NET.cid) return;
+    if (!NET.room || (ev.code && ev.code !== NET.room.code)) return;
+    if (!NET.lobbyOpen) return;
+    const p = NET.roster.get(ev.cid);
+    if (!p) return;
+    p.ready = !!ev.ready;
+    netPublishLobby();
+    netRenderLobbyRoom();
+    netCheckAllReady();
     return;
   }
 
@@ -680,6 +905,14 @@ function netEvent(ev) {
     if (ev.cid === NET.cid) return;
     netDropRemote(ev.cid);
     netToast(ev.name + ' left');
+    if (NET.isHost && NET.room && (!ev.code || ev.code === NET.room.code)) {
+      NET.roster.delete(ev.cid);
+      if (NET.lobbyOpen) {
+        netPublishLobby();
+        netRenderLobbyRoom();
+        netCheckAllReady();
+      }
+    }
     return;
   }
 }
@@ -983,6 +1216,8 @@ function netPublishScore(force) {
    ------------------------------------------------------------ */
 function netTick(dt) {
   if (!NET.room) return;
+  /* In the lobby there is no match clock, flag or body to synchronise. */
+  if (NET.lobbyOpen) { netUpdateChip(); return; }
 
   NET.sendT += dt;
   if (NET.sendT >= 1 / NET_HZ) {
@@ -1024,7 +1259,7 @@ function netUpdateChip() {
   const info = $('netChipInfo');
   if (code && NET.room) code.textContent = NET.room.code;
   if (info) {
-    const n = NET.peers.size + 1;
+    const n = NET.lobbyOpen ? NET.roster.size : NET.peers.size + 1;
     const lat = NET.rtt ? ' · ' + NET.rtt + 'ms' : '';
     info.textContent = n + (n === 1 ? ' PLAYER' : ' PLAYERS') + lat + (NET.isHost ? ' · HOST' : '');
   }
@@ -1103,6 +1338,11 @@ function initNet() {
   });
   const closeBtn = $('btnNetClose');
   if (closeBtn) closeBtn.addEventListener('click', () => $('online').classList.remove('show'));
+
+  const readyBtn = $('btnReady');
+  if (readyBtn) readyBtn.addEventListener('click', () => netSetReady());
+  const leaveBtn = $('btnLobbyLeave');
+  if (leaveBtn) leaveBtn.addEventListener('click', () => netLeave());
 
   const hostBtn = $('btnHost');
   if (hostBtn) hostBtn.addEventListener('click', () => {
