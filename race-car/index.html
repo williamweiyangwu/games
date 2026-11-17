@@ -83,7 +83,8 @@
   #err{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:40px;text-align:center;
        background:#0b1020;font-size:18px;z-index:20}
   /* menu pickers */
-  #menu{overflow-y:auto;padding:26px 20px}
+  #menu{overflow-y:auto;justify-content:flex-start;padding:26px 20px}
+  #trackPick{max-height:230px;overflow-y:auto;justify-content:flex-start;align-content:flex-start;padding:4px}
   .pickRow{display:flex;gap:22px;flex-wrap:wrap;justify-content:center;margin-top:2px}
   .pickCol{display:flex;flex-direction:column;gap:8px;align-items:center}
   .pickLabel{font-size:11px;letter-spacing:.26em;opacity:.7}
@@ -149,7 +150,7 @@
 <div id="standings" class="hidden"></div>
 <div id="banner" class="hidden"></div>
 <div id="lights" class="hidden"><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div></div>
-  <div id="verTag">v2.22</div>
+  <div id="verTag">v2.23</div>
   <button id="achBtn" class="ghost">ACHIEVEMENTS</button>
   <div id="achPanel"><b style="letter-spacing:.12em">ACHIEVEMENTS</b><div id="achList" style="margin-top:8px"></div></div>
   <div id="pitMsg"></div>
@@ -3802,6 +3803,18 @@ var pr = projectTrack(c.x, c.z, c.i);
     saveAch(); renderAch();
   }
   loadAch(); renderAch();
+  (function () {
+    var btn = document.getElementById('achBtn');
+    var panel = document.getElementById('achPanel');
+    if (!btn || !panel) return;
+    btn.addEventListener('click', function () {
+      panel.classList.toggle('show');
+      renderAch();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && panel.classList.contains('show')) panel.classList.remove('show');
+    });
+  })();
 
   // ---- Pit stop logic ----
   var PIT_S = wrapS(LEN - 45);
@@ -3849,24 +3862,35 @@ var pr = projectTrack(c.x, c.z, c.i);
   function buildRaceLine() {
     if (raceLineMesh) { scene.remove(raceLineMesh); raceLineMesh.geometry.dispose(); raceLineMesh.material.dispose(); raceLineMesh = null; }
     if (!raceLineOn) return;
-    var pts = [];
-    var steps = 260;
-    for (var i = 0; i <= steps; i++) {
-      var s = (i/steps)*LEN;
+    var pos = [];
+    // one arrow = a filled head triangle + a tail rectangle, laid flat on the road
+    var head = [[-3.4, 0.5], [0, 5.6], [3.4, 0.5]];
+    var tail = [[-1.3, -4.6], [1.3, -4.6], [1.3, 0.5], [-1.3, 0.5]];
+    function addArrow(px, pz, T, N) {
+      function w(lx, lz) { return [px + N.x*lx + T.x*lz, pz + N.z*lx + T.z*lz]; }
+      function tri(a, b, c) {
+        [a, b, c].forEach(function (q) { var p = w(q[0], q[1]); pos.push(p[0], 0.075, p[1]); });
+      }
+      tri(head[0], head[1], head[2]);
+      tri(tail[0], tail[1], tail[2]);
+      tri(tail[0], tail[2], tail[3]);
+    }
+    for (var s = 0; s < LEN; s += 15) {
       var k = kappaAt(s);
-      // simple ideal line: move to inside on corners
       var lat = 0;
-      // sample heading change to infer corner direction
       var s1 = wrapS(s+8), s2 = wrapS(s-8);
       var h1 = yawAt(s1), h2 = yawAt(s2);
       var dh = h1 - h2; while(dh>Math.PI) dh-=TAU; while(dh<-Math.PI) dh+=TAU;
       if (Math.abs(k) > 0.002) lat = -Math.sign(dh) * Math.min(5.5, k * 900);
       var P = offsetPos(s, lat);
-      pts.push(new THREE.Vector3(P.x, 0.06, P.z));
+      addArrow(P.x, P.z, tangentAt(s), normalAt(s));
     }
-    var geo = new THREE.BufferGeometry().setFromPoints(pts);
-    var mat = new THREE.LineBasicMaterial({ color: 0x55ff88, transparent:true, opacity:0.55 });
-    raceLineMesh = new THREE.Line(geo, mat);
+    var geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    var mat = new THREE.MeshBasicMaterial({ color: 0x39ff78, transparent: true, opacity: 0.85,
+                                            side: THREE.DoubleSide, depthWrite: false });
+    raceLineMesh = new THREE.Mesh(geo, mat);
+    raceLineMesh.renderOrder = 2;
     scene.add(raceLineMesh);
   }
   // rebuild racing line when track changes
@@ -3906,8 +3930,12 @@ var pr = projectTrack(c.x, c.z, c.i);
   updateMenuText();
   placeOnGrid();
   wireTouch();
-  var _trlBtn = document.getElementById('toggleRaceLineBtn');
-  if (_trlBtn) _trlBtn.addEventListener('click', function(){ raceLineOn = !raceLineOn; buildRaceLine(); });
+  // exposed so the tutorial button (added after this script) can toggle the arrows
+  window.toggleRaceLine = function () {
+    raceLineOn = !raceLineOn;
+    buildRaceLine();
+    return raceLineOn;
+  };
 
   requestAnimationFrame(frame);
 })();
@@ -3943,9 +3971,12 @@ var pr = projectTrack(c.x, c.z, c.i);
     <p style="line-height:1.7;opacity:0.9;margin-top:8px">
       <b>LAPS ROLLER:</b> Drag the LAPS slider in the menu to set the race length from 1 to 50 laps. Pick your real F1 circuit from the TRACK cards above.
     </p>
+    <p style="line-height:1.7;opacity:0.9;margin-top:8px">
+      <b>RACING LINE:</b> Bright green arrows show the suggested path around the circuit. Use the button below to switch them on or off at any time.
+    </p>
     <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
       <button id="closeTutorial">CLOSE</button>
-      <button id="toggleRaceLineBtn" class="ghost">TOGGLE RACING LINE</button>
+      <button id="toggleRaceLineBtn" class="ghost">RACING LINE ARROWS: ON</button>
     </div>
   </div>
 </div>
@@ -3957,6 +3988,14 @@ var pr = projectTrack(c.x, c.z, c.i);
     var tut = document.getElementById('tutorial');
     if (ot) ot.onclick = function() { if (tut) tut.classList.remove('hidden'); };
     if (ct) ct.onclick = function() { if (tut) tut.classList.add('hidden'); };
+    var rtl = document.getElementById('toggleRaceLineBtn');
+    if (rtl) {
+      rtl.textContent = 'RACING LINE ARROWS: ON';
+      rtl.onclick = function () {
+        var on = window.toggleRaceLine ? window.toggleRaceLine() : false;
+        rtl.textContent = 'RACING LINE ARROWS: ' + (on ? 'ON' : 'OFF');
+      };
+    }
   }, 200);
 </script>
 </body>
