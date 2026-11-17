@@ -501,6 +501,22 @@
     { keys: ["who made", "who built", "creator", "william"], answer: "This arcade is William's collection of browser games — all free, all playable in the browser with no install." }
   ];
 
+  var CHAT_KEY = "arcade_chat_v1";
+  var chatLog = [];                        // saved conversation (survives reload)
+  var restoring = false;                   // true while replaying saved messages
+  function chatLoad() {
+    try {
+      var raw = localStorage.getItem(CHAT_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(arr)) return [];
+      return arr.filter(function (e) { return e && typeof e.text === "string" && e.text.trim(); });
+    } catch (e) { return []; }
+  }
+  function chatSave() {
+    try { localStorage.setItem(CHAT_KEY, JSON.stringify(chatLog)); }
+    catch (e) {}
+  }
+
   var history = [];
   var cache = {};
   var queued = [];
@@ -525,8 +541,8 @@
   var engineBtn = document.getElementById("aiEngineBtn");
   var engineBar = document.getElementById("aiProgress");
 
-  function timeNow() {
-    var d = new Date();
+  function timeNow(ts) {
+    var d = ts ? new Date(ts) : new Date();
     var h = d.getHours(), m = d.getMinutes();
     return (h < 10 ? "0" + h : h) + ":" + (m < 10 ? "0" + m : m);
   }
@@ -594,13 +610,14 @@
     } catch (e) { fallback(); }
   }
 
-  function finalizeBubble(row, role, rawText, note) {
+  function finalizeBubble(row, role, rawText, note, ts) {
+    var stamp = ts || Date.now();
     var body = row.querySelector(".msg-body");
     body.querySelector(".msg-bubble").innerHTML = renderMd(rawText);
     var meta = document.createElement("div");
     meta.className = "msg-meta";
     var label = document.createElement("span");
-    label.textContent = (role === "user" ? "You" : "AI") + " · " + timeNow();
+    label.textContent = (role === "user" ? "You" : "AI") + " · " + timeNow(stamp);
     meta.appendChild(label);
     if (role === "bot") {
       var c = document.createElement("button");
@@ -618,13 +635,18 @@
       body.appendChild(n);
     }
     msgs.scrollTop = msgs.scrollHeight;
+    if (!restoring) {
+      chatLog.push({ role: role, text: rawText, note: note || "", ts: stamp });
+      if (chatLog.length > 100) chatLog = chatLog.slice(-100);
+      chatSave();
+    }
     return row;
   }
 
-  function addMsg(role, text) {
+  function addMsg(role, text, note, ts) {
     var row = newBubble(role);
     row.querySelector(".msg-bubble").textContent = text;
-    return finalizeBubble(row, role, text);
+    return finalizeBubble(row, role, text, note, ts);
   }
 
   // reveal a full answer word by word so it feels like it is being typed
@@ -1108,10 +1130,10 @@
     return null;
   }
 
-  function say(text, note) {
+  function say(text, note, ts) {
     var row = newBubble("bot");
     row.querySelector(".msg-bubble").textContent = text;
-    return finalizeBubble(row, "bot", text, note);
+    return finalizeBubble(row, "bot", text, note, ts);
   }
 
   function finish() {
@@ -1279,6 +1301,8 @@
     history = [];
     cache = {};
     queued = [];
+    chatLog = [];
+    chatSave();
     msgs.innerHTML = "";
     addMsg("bot", "Chat cleared. What can I help you with?");
   });
@@ -1448,7 +1472,18 @@
     if (localStorage.getItem("arcadeAI") === "1") setTimeout(startLocal, 600);
   } catch (e) {}
 
-  addMsg("bot", "Hi! I'm the AI assistant — no key, no sign-in. Ask about any of the eleven games, or anything else. The quick AI is free; turn on the unlimited AI above and answers never wait.");
+  var savedChat = chatLoad();
+  if (savedChat.length) {
+    restoring = true;
+    for (var i = 0; i < savedChat.length; i++) {
+      var e = savedChat[i];
+      if (e.role === "user") addMsg("user", e.text, "", e.ts);
+      else say(e.text, e.note || "", e.ts);
+    }
+    restoring = false;
+  } else {
+    addMsg("bot", "Hi! I'm the AI assistant — no key, no sign-in. Ask about any of the eleven games, or anything else. The quick AI is free; turn on the unlimited AI above and answers never wait.");
+  }
 })();
 </script>
 </body>
