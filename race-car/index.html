@@ -137,20 +137,20 @@
 <div id="hud" class="hidden">
   <div id="speedBox"><b id="speed">0</b><span>KM/H</span></div>
   <div class="stat"><b id="lap">1/2</b><span>LAP</span></div>
-  <div class="stat"><b id="pos">1/6</b><span>POSITION</span></div>
+  <div class="stat"><b id="pos">1/22</b><span>POSITION</span></div>
   <div class="stat"><b id="time">0.00</b><span>RACE TIME</span></div>
   <div class="stat"><b id="best">--.--</b><span>BEST LAP</span></div>
   <div class="stat" id="damageBox"><b id="damagePct">0%</b><span>DAMAGE</span></div>
   <div class="stat" id="fuelBox"><b id="fuelPct">100%</b><span>FUEL</span></div>
   <div class="stat" id="tyreBox"><b id="tyreWear">0%</b><span>TYRE WEAR</span></div>
-  <div class="stat" id="boostBox"><b id="boostPct">100%</b><span>NITRO</span>
-    <div id="boostTrack"><div id="boostFill" style="width:100%"></div></div>
+  <div class="stat" id="boostBox"><b id="boostPct">35%</b><span>NITRO</span>
+    <div id="boostTrack"><div id="boostFill" style="width:35%"></div></div>
     <div id="driftTag">DRIFT</div><div id="boostTag">BOOST</div></div>
 </div>
 <div id="standings" class="hidden"></div>
 <div id="banner" class="hidden"></div>
 <div id="lights" class="hidden"><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div></div>
-  <div id="verTag">v2.23</div>
+  <div id="verTag">v2.24</div>
   <button id="achBtn" class="ghost">ACHIEVEMENTS</button>
   <div id="achPanel"><b style="letter-spacing:.12em">ACHIEVEMENTS</b><div id="achList" style="margin-top:8px"></div></div>
   <div id="pitMsg"></div>
@@ -165,7 +165,7 @@
 
 <div id="menu" class="overlay">
   <h1 id="menuTitle">VELOCITY GRAND PRIX</h1>
-    <h2 id="menuSub">2 laps - 19 AI opponents</h2>
+    <h2 id="menuSub">2 laps - 21 AI opponents</h2>
   <div class="pickRow">
     <div class="pickCol"><div class="pickLabel">TRACK</div><div id="trackPick" class="cards"></div></div>
   </div>
@@ -1682,9 +1682,8 @@
   /* The six cars you can pick from. `accel`/`top`/`grip`/`handling` are
    *  multipliers on the base physics; `skill`/`line` only matter when the car
    *  is driven by the AI.                                                     */
-  /* ---- the 2024-style 20-car field ---------------------------------- *
-   *  `selectable` cars appear in the garage; the rest fill out the grid   *
-   *  as AI-only entries. Each pair shares a team livery.                   *
+  /* ---- the 2026 22-driver, 11-team grid ------------------------------- *
+   *  All drivers are selectable; every pair shares its team livery.       *
    * -------------------------------------------------------------------- */
   function driverSpec(name, color, accent, accel, top, grip, handling, skill, line, style, blurb, selectable) {
     return {
@@ -1695,36 +1694,39 @@
     };
   }
   var ROSTER = [
-    // Red Bull
-    driverSpec('VERSTAPPEN', 0x3671c6, 0xffd700, 1.00, 1.03, 1.02, 1.04, 1.020,  0.5, 0, 'world champion', true),
-    driverSpec('PEREZ',      0x3671c6, 0xffd700, 1.01, 1.01, 1.00, 1.00, 0.995, -3.8, 1, '', true),
-    // Ferrari
-    driverSpec('LECLERC',   0xe8002d, 0xffffff, 1.05, 1.00, 1.00, 1.03, 1.015, -1.8, 2, 'prancing horse', true),
-    driverSpec('SAINZ',     0xe8002d, 0xffffff, 1.03, 1.00, 1.01, 1.01, 1.000,  2.4, 3, '', true),
     // Mercedes
-    driverSpec('RUSSELL',   0x27f4d2, 0x111111, 1.02, 1.01, 1.01, 1.02, 1.005,  2.2, 4, 'silver arrows', true),
-    driverSpec('HAMILTON',  0x27f4d2, 0x111111, 1.01, 1.02, 1.03, 1.05, 1.010, -0.7, 5, '', true),
+    driverSpec('RUSSELL',    0x27f4d2, 0x111111, 1.02, 1.01, 1.01, 1.02, 1.005,  2.2, 4, 'silver arrows', true),
+    driverSpec('ANTONELLI',  0x27f4d2, 0x111111, 1.04, 1.02, 1.00, 1.01, 0.998, -1.2, 1, '', true),
+    // Ferrari
+    driverSpec('LECLERC',    0xe8002d, 0xffffff, 1.05, 1.00, 1.00, 1.03, 1.015, -1.8, 2, 'prancing horse', true),
+    driverSpec('HAMILTON',   0xe8002d, 0xffffff, 1.01, 1.02, 1.03, 1.05, 1.010, -0.7, 5, 'seven-time champion', true),
+    // Red Bull Racing
+    driverSpec('VERSTAPPEN', 0x3671c6, 0xffd700, 1.00, 1.03, 1.02, 1.04, 1.020,  0.5, 0, 'four-time champion', true),
+    driverSpec('HADJAR',     0x3671c6, 0xffd700, 1.03, 1.00, 1.00, 1.02, 0.995, -3.4, 1, '', true),
     // McLaren
-    driverSpec('NORRIS',    0xff8000, 0x47c7fc, 1.00, 1.04, 1.03, 1.00, 1.010, -3.2, 0, 'papaya power', true),
-    driverSpec('PIASTRI',   0xff8000, 0x47c7fc, 1.01, 1.03, 1.02, 1.01, 0.998,  1.4, 1, '', true),
-    // Aston Martin
-    driverSpec('ALONSO',    0x229971, 0xcedc00, 1.03, 0.97, 1.05, 1.08, 0.995,  4.0, 2, 'el plan', true),
-    driverSpec('STROLL',    0x229971, 0xcedc00, 1.02, 0.96, 1.01, 1.01, 0.972, -5.4, 3, '', true),
+    driverSpec('NORRIS',     0xff8000, 0x47c7fc, 1.00, 1.04, 1.03, 1.00, 1.010, -3.2, 0, 'papaya power', true),
+    driverSpec('PIASTRI',    0xff8000, 0x47c7fc, 1.01, 1.03, 1.02, 1.01, 0.998,  1.4, 1, '', true),
+    // Racing Bulls
+    driverSpec('LAWSON',     0x6692ff, 0xffffff, 1.02, 0.99, 1.00, 1.02, 0.985, -2.4, 2, '', true),
+    driverSpec('LINDBLAD',   0x6692ff, 0xffffff, 1.04, 0.98, 0.99, 1.01, 0.978,  3.6, 3, 'rookie', true),
     // Alpine
-    driverSpec('GASLY',     0x0093cc, 0xff87bc, 1.04, 0.98, 0.99, 1.05, 0.985, -5.0, 4, 'bleu de france', true),
-    driverSpec('OCON',      0x0093cc, 0xff87bc, 1.01, 0.98, 1.00, 1.02, 0.982,  3.1, 5, '', true),
-    // Williams
-    driverSpec('ALBON',     0x64c4ff, 0xffffff, 1.02, 1.00, 0.98, 1.03, 0.980,  5.2, 0, '', true),
-    driverSpec('SARGEANT',  0x64c4ff, 0xffffff, 1.00, 0.98, 0.97, 1.00, 0.960, -6.0, 1, '', true),
-    // RB
-    driverSpec('TSUNODA',   0x6692ff, 0xffffff, 1.05, 0.97, 0.99, 1.04, 0.978, -2.6, 2, '', true),
-    driverSpec('RICCIARDO', 0x6692ff, 0xffffff, 1.02, 0.99, 1.00, 1.02, 0.986,  3.7, 3, '', true),
-    // Sauber
-    driverSpec('BOTTAS',    0x52e252, 0x111111, 1.00, 1.01, 0.98, 1.01, 0.976,  0.9, 4, '', true),
-    driverSpec('ZHOU',      0x52e252, 0x111111, 0.99, 1.00, 0.97, 1.00, 0.966, -4.4, 5, '', true),
+    driverSpec('GASLY',      0x0093cc, 0xff87bc, 1.04, 0.98, 0.99, 1.05, 0.985, -5.0, 4, 'bleu de france', true),
+    driverSpec('COLAPINTO',  0x0093cc, 0xff87bc, 1.03, 0.97, 0.98, 1.02, 0.975,  2.8, 5, '', true),
     // Haas
-    driverSpec('MAGNUSSEN', 0xb6babd, 0xe6002d, 1.02, 0.99, 0.96, 1.02, 0.970,  4.8, 0, '', true),
-    driverSpec('HULKENBERG',0xb6babd, 0xe6002d, 1.00, 1.00, 0.97, 1.01, 0.974, -1.5, 1, '', true)
+    driverSpec('BEARMAN',    0xb6babd, 0xe6002d, 1.03, 0.99, 0.98, 1.02, 0.980,  4.8, 0, '', true),
+    driverSpec('CAMARA',     0xb6babd, 0xe6002d, 1.04, 0.97, 0.97, 1.01, 0.972, -4.2, 1, '', true),
+    // Audi (formerly Sauber)
+    driverSpec('HULKENBERG', 0xe10626, 0x8a8f99, 1.00, 1.00, 0.97, 1.01, 0.974, -1.5, 1, '', true),
+    driverSpec('BORTOLETO',  0xe10626, 0x8a8f99, 1.03, 0.98, 0.98, 1.00, 0.970,  3.1, 2, '', true),
+    // Williams
+    driverSpec('SAINZ',      0x64c4ff, 0xffffff, 1.03, 1.00, 1.01, 1.01, 1.000,  2.4, 3, '', true),
+    driverSpec('ALBON',      0x64c4ff, 0xffffff, 1.02, 1.00, 0.98, 1.03, 0.980,  5.2, 0, '', true),
+    // Aston Martin
+    driverSpec('ALONSO',     0x229971, 0xcedc00, 1.03, 0.97, 1.05, 1.08, 0.995,  4.0, 2, 'el plan', true),
+    driverSpec('STROLL',     0x229971, 0xcedc00, 1.02, 0.96, 1.01, 1.01, 0.972, -5.4, 3, '', true),
+    // Cadillac (new 11th team)
+    driverSpec('PEREZ',      0x111111, 0xd4af37, 1.01, 0.99, 0.99, 1.00, 0.965,  0.9, 4, '', true),
+    driverSpec('BOTTAS',     0x111111, 0xd4af37, 1.00, 0.98, 0.98, 1.00, 0.960, -4.4, 5, '', true)
   ];
 
   /* ---- tyre compounds ---------------------------------------------- *
@@ -2031,7 +2033,7 @@
       c.penalty = 0;
       c.lightPenalty = 0;
       c.jumpStart = false;
-      c.boost = 1.0;
+      c.boost = 0.35;
     });
     applyWeather();
     placeOnGrid();
@@ -2109,7 +2111,7 @@
       c.x = P.x; c.z = P.z;
       c.yaw = yawAt(s);
       c.speed = 0; c.steer = 0; c.lap = 0;
-      c.vx = 0; c.vz = 0; c.boost = 1.0; c.boosting = false; c.drifting = false; c.contact = 0;
+      c.vx = 0; c.vz = 0; c.boost = 0.35; c.boosting = false; c.drifting = false; c.contact = 0;
       c.best = Infinity; c.finished = false; c.finishTime = 0;
       c.lapStart = 0; c.wobble = 0; c.halfPassed = false; c.stuck = 0;
       c.rev = 0; c.revDist = 0; c.revLock = 0; c.driftPulse = 0; c.driftWait = 0;
@@ -2155,7 +2157,7 @@
         c.penalty = 0;
         c.lightPenalty = 0;
         c.jumpStart = false;
-        c.boost = 1.0;
+        c.boost = 0.35;
       });
       applyWeather();
       placeOnGrid();
@@ -2551,8 +2553,9 @@ var pr = projectTrack(c.x, c.z, c.i);
     // Steering alone is just turning, and SHIFT alone on a straight is just
     // scrubbing speed -- neither fills the nitro meter.
     c.drifting = !c.finished && input.handbrake && Math.abs(input.steer) > 0.1 && Math.abs(c.speed) > 4 && slip > 1.5;
-    // Nitro only from initial gain - no drift gain, no passive gain
-    if (c.boosting) c.boost = Math.max(0, c.boost - 0.2 * dt);           // burns slowly, lasts longer
+    // Nitro starts at 35% and recovers 2% per second; drifting gives none.
+    if (c.boosting) c.boost = Math.max(0, c.boost - 0.2 * dt);
+    else c.boost = Math.min(1, (c.boost || 0) + 0.02 * dt);
 
     c.wheelSpin += c.speed * dt * 3;
 
@@ -3321,7 +3324,7 @@ var pr = projectTrack(c.x, c.z, c.i);
         var P = offsetPos(s, side * COL);
         c.x = P.x; c.z = P.z; c.yaw = yawAt(s);
         c.speed = 0; c.steer = 0; c.lap = 0;
-        c.vx = 0; c.vz = 0; c.boost = 1.0; c.boosting = false; c.drifting = false; c.contact = 0;
+        c.vx = 0; c.vz = 0; c.boost = 0.35; c.boosting = false; c.drifting = false; c.contact = 0;
         c.best = Infinity; c.finished = false; c.finishTime = 0; c.lapStart = 0;
         c.wobble = 0; c.halfPassed = false; c.stuck = 0;
         c.rev = 0; c.revDist = 0; c.revLock = 0; c.driftPulse = 0; c.driftWait = 0;
@@ -3864,8 +3867,8 @@ var pr = projectTrack(c.x, c.z, c.i);
     if (!raceLineOn) return;
     var pos = [];
     // one arrow = a filled head triangle + a tail rectangle, laid flat on the road
-    var head = [[-3.4, 0.5], [0, 5.6], [3.4, 0.5]];
-    var tail = [[-1.3, -4.6], [1.3, -4.6], [1.3, 0.5], [-1.3, 0.5]];
+    var head = [[-1.2, 0.2], [0, 2.2], [1.2, 0.2]];
+    var tail = [[-0.5, -1.8], [0.5, -1.8], [0.5, 0.2], [-0.5, 0.2]];
     function addArrow(px, pz, T, N) {
       function w(lx, lz) { return [px + N.x*lx + T.x*lz, pz + N.z*lx + T.z*lz]; }
       function tri(a, b, c) {
@@ -3951,7 +3954,7 @@ var pr = projectTrack(c.x, c.z, c.i);
       M — Mute &nbsp;|&nbsp; ESC — Pause &nbsp;|&nbsp; Touch buttons on mobile
     </p>
     <p style="line-height:1.7;opacity:0.9;margin-top:10px">
-      <b>RACING LINE (green line):</b> Shows the ideal path. Enter wide, hit the <b>apex</b> (inside of the turn), exit wide for maximum speed.
+      <b>RACING LINE (green arrows):</b> Shows the ideal path. Enter wide, hit the <b>apex</b> (inside of the turn), exit wide for maximum speed.
     </p>
     <p style="line-height:1.7;opacity:0.9;margin-top:8px">
       <b>WHEN TO DO WHAT:</b><br>
@@ -3961,6 +3964,9 @@ var pr = projectTrack(c.x, c.z, c.i);
       • <b>Mid-corner:</b> Maintain steady throttle/steering; avoid sudden inputs.<br>
       • <b>Corner exit:</b> Unwind steering and accelerate progressively.<br>
       • <b>Tight hairpins:</b> Brake harder, consider a small drift with SHIFT for rotation, then power out.
+    </p>
+    <p style="line-height:1.7;opacity:0.9;margin-top:8px">
+      <b>NITRO:</b> You start at <b>35%</b> and recharge <b>2% every second</b>. Drifting does not charge it — save SPACE for the straights.
     </p>
     <p style="line-height:1.7;opacity:0.9;margin-top:8px">
       <b>RACE START:</b> 5 red lights illuminate, then all go out — accelerate on lights out. Accelerating early = jump start (+10s penalty).
