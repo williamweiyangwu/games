@@ -150,7 +150,7 @@
 <div id="standings" class="hidden"></div>
 <div id="banner" class="hidden"></div>
 <div id="lights" class="hidden"><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div></div>
-  <div id="verTag">v2.24</div>
+  <div id="verTag">v2.25</div>
   <button id="achBtn" class="ghost">ACHIEVEMENTS</button>
   <div id="achPanel"><b style="letter-spacing:.12em">ACHIEVEMENTS</b><div id="achList" style="margin-top:8px"></div></div>
   <div id="pitMsg"></div>
@@ -1355,14 +1355,15 @@
       world.add(ribbon(-0.22, 0.22, 0.02, [0.92, 0.90, 0.55], ds, Math.min(ds + ON, LEN), 3));
     }
 
-    // The guardrail is solid: `RAIL_LAT` is the barrier's lateral offset, and the
-    // car is held just inside it by `stepCar`, so these meshes are what you hit.
-    world.add(wall(-RAIL_LAT, 1.15, 0, 1, P.wallA, P.wallB));
-    world.add(wall(RAIL_LAT, 1.15, 0, -1, P.wallA, P.wallB));
-    world.add(wall(-RAIL_LAT, 0.16, 1.15, 1, P.wallA, P.wallB));   // top rail
-    world.add(wall(RAIL_LAT, 0.16, 1.15, -1, P.wallA, P.wallB));
-    world.add(wall(-RAIL_LAT, 0.5, 1.31, 1, P.wallA, P.wallB));    // catch fence
-    world.add(wall(RAIL_LAT, 0.5, 1.31, -1, P.wallA, P.wallB));
+    // The guardrail is a continuous solid barrier: one colour per strip, not the
+    // old alternating panels that read as a row of triangles. `stepCar` keeps
+    // the whole car body inside these meshes.
+    world.add(wall(-RAIL_LAT, 1.15, 0, 1, P.wallA, P.wallA));
+    world.add(wall(RAIL_LAT, 1.15, 0, -1, P.wallA, P.wallA));
+    world.add(wall(-RAIL_LAT, 0.16, 1.15, 1, P.wallA, P.wallA));   // top rail
+    world.add(wall(RAIL_LAT, 0.16, 1.15, -1, P.wallA, P.wallA));
+    world.add(wall(-RAIL_LAT, 0.5, 1.31, 1, P.wallA, P.wallA));    // catch fence
+    world.add(wall(RAIL_LAT, 0.5, 1.31, -1, P.wallA, P.wallA));
 
     /* ---- start / finish: chequered band, timing line, gantry, flags ---- */
     world.add(chequer(-2.6, 6.6, 14, 2));
@@ -2478,7 +2479,9 @@ var pr = projectTrack(c.x, c.z, c.i);
      * its velocity is reflected off the wall: a graze keeps most of its speed, a
      * square hit loses almost all of it. The nose is then eased down the barrier
      * so a square hit turns into a slide instead of pinning the car in place.  */
-    var lim = RAIL_LAT - 1.15;
+    // Keep the whole car body inside the rail: CAR_R is 2.3 m, so a 1.15 m
+    // margin let the nose and wheels visibly pass through the barrier.
+    var lim = RAIL_LAT - CAR_R - 0.15;
     if (c.lat > lim || c.lat < -lim) {
       var side = c.lat > 0 ? 1 : -1;
       var NV = normalAt(c.s);
