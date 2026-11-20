@@ -127,6 +127,20 @@
   #cursorItem{position:fixed;left:0;top:0;width:34px;height:34px;pointer-events:none;display:none;z-index:6;transform:translate(-50%,-50%)}
   #cursorItem canvas{width:100%;height:100%;image-rendering:pixelated}
 
+  /* ---------- furnace ---------- */
+  #furnace{position:fixed;inset:0;display:grid;place-items:center;background:rgba(4,6,10,.55);z-index:4}
+  #furnace.hide{display:none}
+  #furnace .invpanel{width:min(360px,94vw)}
+  .fwrap{display:flex;align-items:center;justify-content:center;gap:18px;padding:6px 0}
+  .fcol{display:flex;flex-direction:column;gap:8px}
+  #fslot0,#fslot1,#fslot2{width:56px;height:56px}
+  .fmid{display:flex;flex-direction:column;align-items:center;gap:4px;width:44px}
+  .ffire{position:relative;width:28px;height:34px;overflow:hidden;border:1px solid var(--line);border-radius:5px;background:rgba(0,0,0,.5)}
+  #fflame{position:absolute;left:0;right:0;bottom:0;height:0;background:linear-gradient(180deg,#ffe27a,#ff8a1e 60%,#d63a12);transition:height .1s}
+  .farr{color:var(--dim);font-size:18px;line-height:1}
+  .fprog{width:44px;height:10px;border:1px solid var(--line);border-radius:3px;background:rgba(0,0,0,.45);overflow:hidden}
+  #fbar{display:block;height:100%;width:0;background:linear-gradient(90deg,#e8a52c,#ffe27a)}
+
   /* ---------- death ---------- */
   #death{position:fixed;inset:0;display:grid;place-items:center;background:rgba(70,6,6,.55);z-index:5}
   #death.hide{display:none}
@@ -202,7 +216,7 @@
 <div id="hud">
   <div id="cross"></div>
   <div id="name"></div>
-  <div id="hint">LMB attack / break &middot; RMB place / eat &middot; 1-9 / wheel select &middot; E inventory &middot; Q drop &middot; F fly &middot; F3 stats</div>
+  <div id="hint">LMB attack / break &middot; RMB place / eat / furnace &middot; 1-9 / wheel select &middot; E inventory &middot; Q drop &middot; F fly &middot; F3 stats</div>
   <div id="stats">
     <div id="hearts" class="bar2"></div>
     <div id="food" class="bar2"></div>
@@ -210,7 +224,7 @@
   <div id="bar"></div>
   <div id="dbg"></div>
   <div id="toast"></div>
-  <div id="ver">v1.5 build 2</div>
+  <div id="ver">v1.9 build 1</div>
 </div>
 
 <div id="inv" class="hide">
@@ -223,9 +237,25 @@
     </div>
     <div id="invgrid"></div>
     <div class="invfoot">LMB pick / swap &middot; RMB split half &middot; Q drop (Ctrl+Q all) &middot; craft in the 3&times;3 grid &middot; <b>E</b> / <b>Esc</b> close</div>
-    <div id="cursorItem"></div>
   </div>
 </div>
+
+<div id="furnace" class="hide">
+  <div class="invpanel">
+    <h3>Furnace</h3>
+    <div class="fwrap">
+      <div class="fcol"><div id="fslot0" class="islot"></div><div id="fslot1" class="islot"></div></div>
+      <div class="fmid">
+        <div class="ffire"><i id="fflame"></i></div>
+        <div class="farr">&#8595;</div>
+        <div class="fprog"><i id="fbar"></i></div>
+      </div>
+      <div id="fslot2" class="islot"></div>
+    </div>
+    <div class="invfoot">Top: item to smelt &middot; Bottom: fuel (coal = 8 items) &middot; <b>E</b> / <b>Esc</b> close</div>
+  </div>
+</div>
+<div id="cursorItem"></div>
 
 <div id="death" class="hide">
   <div class="dpanel">
@@ -238,14 +268,14 @@
 <div id="menu" class="hide">
   <div class="panel">
     <h1>BLOCKCRAFT</h1>
-    <h2>survival + creative &middot; v1.5 &middot; software-rendered in canvas 2d</h2>
+    <h2>survival + creative &middot; v1.9 &middot; mountains + furnaces &middot; software-rendered in canvas 2d</h2>
     <div class="grid">
       <div><b>W A S D</b> move</div>
       <div><b>Space</b> jump / swim up</div>
       <div><b>Shift</b> sprint</div>
       <div><b>Mouse</b> look around</div>
       <div><b>LMB</b> mine / attack</div>
-      <div><b>RMB</b> place / eat</div>
+      <div><b>RMB</b> place / eat / open furnace</div>
       <div><b>MMB</b> pick block</div>
       <div><b>E</b> inventory</div>
       <div><b>1-9 / Wheel</b> select</div>
@@ -317,7 +347,7 @@ function fbm(x, y, oct) {
 }
 
 /* ---------------------------------------------------------- textures */
-const TS = 16, TN = 20;
+const TS = 16, TN = 21;
 const TEX = new Uint32Array(TS * TS * TN);
 const tileCanvas = new Array(TN);
 
@@ -432,6 +462,19 @@ function buildTextures() {
     const cx = (R(18, i) * 15) | 0, cy = (R(19, i) * 15) | 0, d = -24 - R(20, i) * 26;
     for (let y = 0; y < 2; y++) for (let x = 0; x < 2; x++) putc(14, cx + x, cy + y, [132 + d, 128 + d, 126 + d]);
   }
+  /* 19 snow */
+  fillTile(19, [244, 248, 252]); speckle(19, [244, 248, 252], 18, 220);
+  for (let i = 0; i < 16; i++) { put(19, i, 0, 224, 236, 250); put(19, 0, i, 230, 240, 251); }
+  /* 20 furnace front (cobble shell + dark firebox) */
+  fillTile(20, [112, 112, 116]); speckle(20, [112, 112, 116], 10, 190);
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) if (x % 5 === 0 || y % 5 === 0) putc(20, x, y, [76, 76, 80]);
+  for (let y = 4; y < 12; y++) for (let x = 3; x < 13; x++) putc(20, x, y, [24, 22, 24]);
+  for (let x = 3; x < 13; x++) { putc(20, x, 3, [66, 64, 66]); putc(20, x, 12, [66, 64, 66]); }
+  for (let y = 4; y < 12; y++) { putc(20, 2, y, [66, 64, 66]); putc(20, 13, y, [66, 64, 66]); }
+  for (let i = 0; i < 16; i++) {
+    const cx = 4 + ((R(22, i) * 8) | 0), cy = 9 + ((R(23, i) * 2) | 0);
+    putc(20, cx, cy, [210 + ((R(24, i) * 45) | 0), 80 + ((R(25, i) * 70) | 0), 26]);
+  }
   /* 15..18 ores: stone base with coloured nuggets */
   const oreCol = [[30, 30, 34], [188, 160, 132], [250, 210, 90], [80, 220, 210]];
   for (let o = 0; o < 4; o++) {
@@ -470,10 +513,11 @@ function paintWater(st) {
 /* ------------------------------------------------------------ blocks */
 const T = { GRASS_TOP: 0, GRASS_SIDE: 1, DIRT: 2, STONE: 3, SAND: 4, LOG_TOP: 5, LOG_SIDE: 6,
             LEAVES: 7, PLANKS: 8, COBBLE: 9, BRICK: 10, GLASS: 11, WATER: 12, BEDROCK: 13, GRAVEL: 14,
-            COAL_ORE: 15, IRON_ORE: 16, GOLD_ORE: 17, DIAMOND_ORE: 18 };
+            COAL_ORE: 15, IRON_ORE: 16, GOLD_ORE: 17, DIAMOND_ORE: 18,
+            SNOW: 19, FURNACE_FRONT: 20 };
 const AIR = 0, GRASS = 1, DIRT = 2, STONE = 3, SAND = 4, LOG = 5, LEAVES = 6,
       PLANKS = 7, COBBLE = 8, BRICK = 9, GLASS = 10, WATER = 11, BEDROCK = 12, GRAVEL = 13,
-      COAL_ORE = 14, IRON_ORE = 15, GOLD_ORE = 16, DIAMOND_ORE = 17;
+      COAL_ORE = 14, IRON_ORE = 15, GOLD_ORE = 16, DIAMOND_ORE = 17, SNOW = 18, FURNACE = 19;
 
 /* t: [top, side, bottom]   solid: collision   opaque: hides neighbour faces
    cull: drop faces between identical blocks   a: 1 = opaque pass, <1 = blended */
@@ -495,9 +539,11 @@ const BLK = [
   { n: 'Coal Ore',     t: [T.COAL_ORE, T.COAL_ORE, T.COAL_ORE],           solid: 1, opaque: 1, cull: 0, a: 1 },
   { n: 'Iron Ore',     t: [T.IRON_ORE, T.IRON_ORE, T.IRON_ORE],           solid: 1, opaque: 1, cull: 0, a: 1 },
   { n: 'Gold Ore',     t: [T.GOLD_ORE, T.GOLD_ORE, T.GOLD_ORE],           solid: 1, opaque: 1, cull: 0, a: 1 },
-  { n: 'Diamond Ore',  t: [T.DIAMOND_ORE, T.DIAMOND_ORE, T.DIAMOND_ORE],  solid: 1, opaque: 1, cull: 0, a: 1 }
+  { n: 'Diamond Ore',  t: [T.DIAMOND_ORE, T.DIAMOND_ORE, T.DIAMOND_ORE],  solid: 1, opaque: 1, cull: 0, a: 1 },
+  { n: 'Snow Block',   t: [T.SNOW, T.SNOW, T.SNOW],                       solid: 1, opaque: 1, cull: 0, a: 1 },
+  { n: 'Furnace',      t: [T.COBBLE, T.COBBLE, T.COBBLE], front: T.FURNACE_FRONT, solid: 1, opaque: 1, cull: 0, a: 1 }
 ];
-const CREATIVE_PALETTE = [[GRASS, 64], [DIRT, 64], [STONE, 64], [COBBLE, 64], [PLANKS, 64], [LOG, 64], [LEAVES, 64], [GLASS, 64], [BRICK, 64]];
+const CREATIVE_PALETTE = [[GRASS, 64], [DIRT, 64], [STONE, 64], [COBBLE, 64], [PLANKS, 64], [LOG, 64], [LEAVES, 64], [GLASS, 64], [BRICK, 64], [FURNACE, 8], [SNOW, 64]];
 
 /* ------------------------------------------------- items & survival */
 const IT = { BEEF: 100, PORK: 101, MUTTON: 102, CHICKEN: 103, LEATHER: 104, WOOL: 105,
@@ -509,7 +555,8 @@ const IT = { BEEF: 100, PORK: 101, MUTTON: 102, CHICKEN: 103, LEATHER: 104, WOOL
              IPICK: 132, IAXE: 133, ISHOVEL: 134, ISWORD: 135,
              DPICK: 136, DAXE: 137, DSHOVEL: 138, DSWORD: 139,
              CPICK: 140, CAXE: 141, CSHOVEL: 142, CSWORD: 143,
-             GPICK: 144, GAXE: 145, GSHOVEL: 146, GSWORD: 147 };
+             GPICK: 144, GAXE: 145, GSHOVEL: 146, GSWORD: 147,
+              CBEET: 148, CPORK: 149, CMUTTON: 150, CCHICKEN: 151 };
 const ITEM = {};
 function rect(g, x, y, w, h, c) { g.fillStyle = c; g.fillRect(x, y, w, h); }
 function toolIcon(kind, c1, c2) {
@@ -544,6 +591,14 @@ function defineItems() {
   R(IT.ROTTEN, 'Rotten Flesh', 0x8a6a3a, 4, g => { rect(g,6,10,20,14,'#7d8a4a'); rect(g,6,10,20,4,'#96a45c'); rect(g,6,21,20,3,'#5c6636'); rect(g,10,14,4,3,'#b3bd78'); });
   R(IT.ARROW, 'Arrow', 0xb8b8b8, 0, g => { rect(g,15,5,2,22,'#c9c9c9'); rect(g,11,5,10,4,'#d9d9d9'); rect(g,12,24,8,3,'#e6e6e6'); rect(g,9,26,4,3,'#8a8a8a'); rect(g,19,26,4,3,'#8a8a8a'); });
   R(IT.STICK, 'Stick', 0x6b4a2a, 0, g => { rect(g,13,4,6,24,'#6b4a2a'); rect(g,13,4,2,24,'#8a6238'); rect(g,15,8,2,16,'#5a3d22'); });
+  const cooked = (id, n, col, food, c1, c2) => R(id, n, col, food, g => {
+    rect(g,4,9,24,15,c1); rect(g,4,9,24,4,c2); rect(g,8,13,4,3,'#e8c09a');
+    rect(g,17,17,5,3,'#d8a874'); rect(g,4,21,24,3,'#6b3a22');
+  });
+  cooked(IT.CBEET, 'Cooked Beef', 0x8a4426, 8, '#8f4a2a', '#b16238');
+  cooked(IT.CPORK, 'Cooked Porkchop', 0xb96850, 8, '#bd6a52', '#d98a70');
+  cooked(IT.CMUTTON, 'Cooked Mutton', 0x9a5238, 6, '#a0583e', '#bd7054');
+  cooked(IT.CCHICKEN, 'Cooked Chicken', 0xc8a060, 6, '#cba366', '#e0bc82');
   const W1 = '#b58b57', W2 = '#d3ab77', S1 = '#9a9a9a', S2 = '#c2c2c2';
   R(IT.WPICK, 'Wooden Pickaxe', W1, 0, toolIcon('pick', W1, W2));
   R(IT.WAXE, 'Wooden Axe', W1, 0, toolIcon('axe', W1, W2));
@@ -578,11 +633,13 @@ function defineItems() {
 }
 const DROPBLK = {}; DROPBLK[GRASS] = DIRT; DROPBLK[STONE] = COBBLE; DROPBLK[LEAVES] = 0; DROPBLK[GLASS] = 0; DROPBLK[BEDROCK] = 0;
 DROPBLK[COAL_ORE] = IT.COAL; DROPBLK[IRON_ORE] = IT.IRON; DROPBLK[GOLD_ORE] = IT.GOLD; DROPBLK[DIAMOND_ORE] = IT.DIAMOND;
+DROPBLK[SNOW] = SNOW; DROPBLK[FURNACE] = FURNACE;
 function blockDrop(id) { return (id in DROPBLK) ? DROPBLK[id] : id; }
 const HARD = {}; HARD[GRASS] = 0.55; HARD[DIRT] = 0.5; HARD[SAND] = 0.5; HARD[GRAVEL] = 0.6;
 HARD[STONE] = 1.7; HARD[COBBLE] = 1.7; HARD[BRICK] = 1.8; HARD[LOG] = 1.1; HARD[PLANKS] = 0.9;
 HARD[LEAVES] = 0.25; HARD[GLASS] = 0.35; HARD[BEDROCK] = 1e9;
 HARD[COAL_ORE] = 1.4; HARD[IRON_ORE] = 1.8; HARD[GOLD_ORE] = 1.8; HARD[DIAMOND_ORE] = 2.0;
+HARD[SNOW] = 0.25; HARD[FURNACE] = 2.6;
 function hardnessOf(id) { return HARD[id] !== undefined ? HARD[id] : 0.6; }
 /* stone-family + ores need a pickaxe; tier = minimum pickaxe tier to harvest */
 const ORE_TIER = {}; ORE_TIER[STONE] = 0; ORE_TIER[COBBLE] = 0; ORE_TIER[BRICK] = 0;
@@ -599,6 +656,7 @@ LOOT.spider = [[IT.STRING,0,2]];
 function itemName(id) { return id < 100 ? (BLK[id] ? BLK[id].n : '?') : (ITEM[id] ? ITEM[id].n : '?'); }
 function itemFood(id) { return (id >= 100 && ITEM[id]) ? ITEM[id].food : 0; }
 const RECIPES = [
+  { out: [FURNACE, 1], shape: [[COBBLE, COBBLE, COBBLE], [COBBLE, 0, COBBLE], [COBBLE, COBBLE, COBBLE]] },
   { out: [PLANKS, 4], shape: [[0, 0, 0], [0, LOG, 0], [0, 0, 0]] },
   { out: [IT.STICK, 4], shape: [[0, PLANKS, 0], [0, PLANKS, 0], [0, 0, 0]] },
   { out: [IT.WPICK, 1], shape: [[PLANKS, PLANKS, PLANKS], [0, IT.STICK, 0], [0, IT.STICK, 0]] },
@@ -650,6 +708,103 @@ function matchRecipe(grid) {
   }
   return null;
 }
+
+/* ---------------------------------------------------------- furnace */
+const SMELT_TIME = 3;                         /* seconds per item */
+const SMELT = {};
+SMELT[COAL_ORE] = [IT.COAL, 1];
+SMELT[IRON_ORE] = [IT.IRON, 1];
+SMELT[GOLD_ORE] = [IT.GOLD, 1];
+SMELT[SAND] = [GLASS, 1];
+SMELT[IT.BEEF] = [IT.CBEET, 1];
+SMELT[IT.PORK] = [IT.CPORK, 1];
+SMELT[IT.MUTTON] = [IT.CMUTTON, 1];
+SMELT[IT.CHICKEN] = [IT.CCHICKEN, 1];
+const FUEL = {};
+FUEL[IT.COAL] = SMELT_TIME * 8;               /* one coal smelts eight items */
+FUEL[LOG] = SMELT_TIME * 1.5;
+FUEL[PLANKS] = SMELT_TIME * 1.5;
+FUEL[IT.STICK] = SMELT_TIME * 0.5;
+function fuelValue(id) { return FUEL[id] || 0; }
+function slotPack(s) { return s ? [s.id, s.n] : 0; }
+function slotUnpack(s) { return (s && s[1] > 0) ? { id: s[0], n: s[1] } : null; }
+const furnaceMap = new Map();
+function fkey(x, y, z) { return x + ',' + y + ',' + z; }
+function furnaceAt(x, y, z, create) {
+  const k = fkey(x, y, z);
+  let f = furnaceMap.get(k);
+  if (!f && create) {
+    f = { x, y, z, in: null, fuel: null, out: null, burn: 0, max: 0, prog: 0 };
+    furnaceMap.set(k, f);
+  }
+  return f || null;
+}
+function fGet(f, i) { return i === 0 ? f.in : i === 1 ? f.fuel : f.out; }
+function fSet(f, i, s) { if (i === 0) f.in = s; else if (i === 1) f.fuel = s; else f.out = s; }
+function clearFurnaces() {
+  furnaceMap.clear();
+  if (furnaceOpen) {
+    furnaceOpen = 0; openF = null;
+    furnaceEl.classList.add('hide');
+    renderCursor();
+  }
+}
+function removeFurnace(x, y, z, dropContents) {
+  const k = fkey(x, y, z), f = furnaceMap.get(k);
+  if (!f) return;
+  if (dropContents) for (const s of [f.in, f.fuel, f.out]) {
+    if (!s) continue;
+    const left = addItem(s.id, s.n);
+    if (left) dropItem(s.id, left, pl.x, pl.y + 0.4, pl.z, Math.sin(cam.yaw) * 2.4, 2.2, Math.cos(cam.yaw) * 2.4);
+  }
+  furnaceMap.delete(k);
+  if (openF === f) closeFurnace();
+  saveDirty = 1;
+}
+function smeltResult(f) {
+  if (!f || !f.in) return null;
+  const r = SMELT[f.in.id];
+  if (!r) return null;
+  if (f.out && (f.out.id !== r[0] || f.out.n >= 64)) return null;
+  return r;
+}
+function stepFurnaces(sec) {
+  if (!(sec > 0) || !furnaceMap.size) return;
+  let changed = 0;
+  for (const f of furnaceMap.values()) {
+    const r = smeltResult(f);
+    if (!r) {
+      if (f.prog) { f.prog = 0; changed = 1; }
+      continue;
+    }
+    if (f.burn > 0) f.burn = Math.max(0, f.burn - sec);
+    if (f.burn <= 0 && f.fuel) {
+      const v = fuelValue(f.fuel.id);
+      if (v > 0) {
+        f.max = v; f.burn = v;
+        f.fuel.n--; if (f.fuel.n <= 0) f.fuel = null;
+        changed = 1;
+      }
+    }
+    if (f.burn > 0) {
+      f.prog += sec;
+      if (f.prog >= SMELT_TIME) {
+        f.prog -= SMELT_TIME;
+        f.in.n--; if (f.in.n <= 0) f.in = null;
+        if (!f.out) f.out = { id: r[0], n: r[1] };
+        else f.out.n += r[1];
+        changed = 1;
+      }
+    }
+  }
+  if (openF) {
+    const fl = openF.max > 0 ? Math.round(clamp(openF.burn / openF.max, 0, 1) * 10) * 10 : 0;
+    const bp = Math.round(clamp(openF.prog / SMELT_TIME, 0, 1) * 10) * 10;
+    if (changed || fl !== fLastFlame || bp !== fLastBar) renderFurnace();
+  }
+  if (changed) saveDirty = 1;
+}
+
 const itemCanvasCache = {};
 function itemCanvas(id) {
   if (itemCanvasCache[id]) return itemCanvasCache[id];
@@ -697,9 +852,16 @@ const localIdx = (x, y, z) => ((y * CH + (z & 15)) * CH + (x & 15));
 function setSeed(seed) { seedOff = (seed * 0.6180339887) % 997; }
 
 function heightAt(x, z) {
-  const cont = fbm(x * 0.020 + seedOff, z * 0.020, 4);
-  const mtn  = fbm(x * 0.0062 + 91 + seedOff, z * 0.0062 + 37, 3);
-  return clamp(Math.floor(SEA + 1 + (cont - 0.5) * 18 + Math.pow(mtn, 3) * 20 + 1), 1, H - 9);
+  const s = seedOff;
+  const cont = fbm(x * 0.018 + s, z * 0.018 + 7, 4);
+  /* mountain ranges: a broad region mask gates sharp ridged crests */
+  const mask = fbm(x * 0.0026 + 317 + s, z * 0.0026 + 211, 3);
+  const r1 = 1 - Math.abs(fbm(x * 0.0072 + 91 + s, z * 0.0072 + 37, 4) * 2 - 1);
+  const r2 = 1 - Math.abs(fbm(x * 0.016 + 51 + s, z * 0.016 + 83, 3) * 2 - 1);
+  const ridge = Math.pow(r1, 2.6) * 0.78 + Math.pow(r2, 3.4) * 0.22;
+  const strength = clamp((mask - 0.40) * 3.6, 0, 1);
+  const peaks = ridge * strength * 36;
+  return clamp(Math.floor(SEA + 2 + (cont - 0.5) * 14 + peaks), 1, H - 5);
 }
 
 function computeTop(ch) {
@@ -724,7 +886,8 @@ function genChunk(ch) {
       if (y === 0) b = BEDROCK;
       else if (y === 1 && hash3(x, y, z) < 0.6) b = BEDROCK;
       else if (y < h) b = (h - y >= 4) ? STONE : (beach ? SAND : DIRT);
-      else if (y === h) b = beach ? ((deep || hash3(x, 3, z) < 0.16) ? GRAVEL : SAND) : GRASS;
+      else if (y === h) b = beach ? ((deep || hash3(x, 3, z) < 0.16) ? GRAVEL : SAND)
+                                  : (h > SEA + 27 ? SNOW : GRASS);
       else if (y <= SEA) b = WATER;
       if (b) d[((y * CH + lz) * CH + lx)] = b;
     }
@@ -976,7 +1139,8 @@ function meshChunk(ch) {
           const nb = get(nx, ny, nz);
           if (BLK[nb].opaque) continue;
           if (nb === b && def.cull) continue;
-          const tile = f === 0 ? def.t[0] : f === 1 ? def.t[2] : def.t[1];
+          const tile = f === 0 ? def.t[0] : f === 1 ? def.t[2]
+                     : (f === 4 && def.front !== undefined) ? def.front : def.t[1];
           const e1 = F.e1, e2 = F.e2;
           const drop = (b === WATER && f === 0) ? 0.12 : 0;
           for (let i = 0; i < 4; i++) {
@@ -1778,7 +1942,8 @@ let mode = 'survival', hp = MAXHP, food = MAXFOOD;
 let hurtT = 0, regenT = 0, starveT = 0, drownT = 0, fallY = 0, dead = 0, attackT = 0;
 let INV = new Array(36).fill(null);
 let craftSlots = new Array(9).fill(null);
-let invOpen = 0, cursor = null, cursorX = 0, cursorY = 0;
+let invOpen = 0, furnaceOpen = 0, openF = null, cursor = null, cursorX = 0, cursorY = 0;
+let fLastFlame = -1, fLastBar = -1;
 let hostiles = [], arrows = [], drops = [], spawnPt = { x: 0, y: 0, z: 0 };
 
 const FSHADE = [1, 0.55, 0.78, 0.78, 0.7, 0.7];
@@ -1860,6 +2025,7 @@ function consumeSel() {
   if (invOpen) renderInv(); else refreshHotbar();
 }
 function useSel() {
+  if (hit && hit.id === FURNACE) { furnaceActivate(hit.x, hit.y, hit.z); return; }
   if (mode === 'survival') {
     const id = heldId(), f = itemFood(id);
     if (f > 0) {
@@ -2243,8 +2409,10 @@ function raycast(maxD, ox, oy, oz) {
 function remeshAround(x, z) { remeshChunksAt(Math.floor(x / CH), Math.floor(z / CH)); }
 function edit(p, remove) {
   if (!p) return;
+  if (!remove && p.id === FURNACE) { furnaceActivate(p.x, p.y, p.z); return; }
   if (remove) {
     if (p.id === BEDROCK) { toast('bedrock cannot be broken'); return; }
+    if (p.id === FURNACE) removeFurnace(p.x, p.y, p.z, true);
     spawnBreak(p.x, p.y, p.z, BLK[p.id].t[1]);
     set(p.x, p.y, p.z, AIR);
     seedWater(p.x, p.y, p.z);
@@ -2265,6 +2433,7 @@ function edit(p, remove) {
         nz + 1 > pl.z - hw && nz < pl.z + hw &&
         ny + 1 > pl.y && ny < pl.y + PH) { toast('no room there'); return; }
     set(nx, ny, nz, b);
+    if (b === FURNACE) furnaceAt(nx, ny, nz, true);
     remeshAround(nx, nz);
     sfx(430, 0.05, 'triangle');
     if (mode === 'survival') consumeSel();
@@ -2313,6 +2482,10 @@ const invGrid = document.getElementById('invgrid');
 const craftGridEl = document.getElementById('craftgrid');
 const craftOutEl = document.getElementById('craftout');
 const cursorEl = document.getElementById('cursorItem');
+const furnaceEl = document.getElementById('furnace');
+const fSlotEls = [0, 1, 2].map(i => document.getElementById('fslot' + i));
+const fFlameEl = document.getElementById('fflame');
+const fBarEl = document.getElementById('fbar');
 const deathEl = document.getElementById('death');
 const statsEl = document.getElementById('stats');
 const heartsEl = document.getElementById('hearts');
@@ -2445,6 +2618,78 @@ function closeInv() {
   invEl.classList.add('hide');
   view.requestPointerLock();
 }
+
+/* --------------------------------------------------- furnace UI */
+function furnaceSlotIndex(el) {
+  if (!el || !el.id) return -1;
+  const m = /^fslot([012])$/.exec(el.id);
+  return m ? +m[1] : -1;
+}
+function fSwap(f, i, half) {
+  if (!f || i < 0 || i > 2) return;
+  const s = fGet(f, i), canPlace = i < 2;
+  if (!half) {
+    if (!cursor) {
+      if (s) { cursor = s; fSet(f, i, null); }
+    } else if (canPlace && !s) {
+      fSet(f, i, cursor); cursor = null;
+    } else if (canPlace && s && s.id === cursor.id && s.n < 64) {
+      const t = Math.min(64 - s.n, cursor.n); s.n += t; cursor.n -= t; if (cursor.n <= 0) cursor = null;
+    } else if (canPlace && s) {
+      fSet(f, i, cursor); cursor = s;
+    }
+  } else {
+    if (!cursor) {
+      if (s) { const n = Math.ceil(s.n / 2); cursor = { id: s.id, n }; s.n -= n; if (s.n <= 0) fSet(f, i, null); }
+    } else if (canPlace && !s) {
+      fSet(f, i, { id: cursor.id, n: 1 }); cursor.n--; if (cursor.n <= 0) cursor = null;
+    } else if (canPlace && s && s.id === cursor.id && s.n < 64) {
+      s.n++; cursor.n--; if (cursor.n <= 0) cursor = null;
+    } else if (canPlace && s) {
+      fSet(f, i, cursor); cursor = s;
+    }
+  }
+  refreshHotbar(); renderFurnace(); saveDirty = 1;
+}
+function renderFurnace() {
+  if (!openF) return;
+  for (let i = 0; i < 3; i++) {
+    const el = fSlotEls[i]; el.innerHTML = '';
+    const s = fGet(openF, i);
+    if (s) {
+      el.appendChild(slotIconEl(s.id));
+      if (s.n > 1) { const q = document.createElement('b'); q.className = 'cnt'; q.textContent = s.n; el.appendChild(q); }
+      el.title = itemName(s.id);
+    } else el.title = '';
+  }
+  const flame = openF.max > 0 ? Math.round(clamp(openF.burn / openF.max, 0, 1) * 10) * 10 : 0;
+  const bar = Math.round(clamp(openF.prog / SMELT_TIME, 0, 1) * 10) * 10;
+  fFlameEl.style.height = flame + '%';
+  fBarEl.style.width = bar + '%';
+  fLastFlame = flame; fLastBar = bar;
+  renderCursor();
+}
+function openFurnace(x, y, z) {
+  const f = furnaceAt(x, y, z, true);
+  if (!f) return;
+  openF = f; furnaceOpen = 1;
+  furnaceEl.classList.remove('hide');
+  renderFurnace();
+  if (document.pointerLockElement) document.exitPointerLock();
+}
+function furnaceActivate(x, y, z) { openFurnace(x, y, z); }
+function closeFurnace() {
+  if (!furnaceOpen) return;
+  if (cursor) {
+    const left = addItem(cursor.id, cursor.n);
+    if (left) dropItem(cursor.id, left, pl.x, pl.y + 0.4, pl.z, Math.sin(cam.yaw) * 2.4, 2.2, Math.cos(cam.yaw) * 2.4);
+    cursor = null;
+  }
+  furnaceOpen = 0; openF = null;
+  furnaceEl.classList.add('hide');
+  refreshHotbar(); renderCursor(); saveDirty = 1;
+  view.requestPointerLock();
+}
 function slotSwap(arr, i) {
   const s = arr[i];
   if (!cursor) { if (s) { cursor = s; arr[i] = null; } }
@@ -2466,6 +2711,7 @@ function hoveredSlot() {
     const el = document.elementFromPoint(cursorX, cursorY);
     if (el && el.closest) {
       const d = el.closest('.islot');
+      if (d && furnaceOpen) { const fi = furnaceSlotIndex(d); if (fi >= 0) return { f: openF, i: fi }; }
       if (d && d.parentElement === invGrid) return { arr: INV, i: +d.getAttribute('data-i') };
       if (d && d.parentElement === craftGridEl) return { arr: craftSlots, i: +d.getAttribute('data-c') };
     }
@@ -2474,15 +2720,16 @@ function hoveredSlot() {
 }
 function dropHovered(all) {
   const hs = hoveredSlot();
-  let arr, i;
-  if (hs) { arr = hs.arr; i = hs.i; }
+  let arr, i, f;
+  if (hs && hs.f) { f = hs.f; i = hs.i; }
+  else if (hs) { arr = hs.arr; i = hs.i; }
   else if (INV[sel]) { arr = INV; i = sel; }
   else return;
-  const s = arr[i]; if (!s) return;
+  const s = f ? fGet(f, i) : arr[i]; if (!s) return;
   const n = all ? s.n : 1;
   dropItem(s.id, n, pl.x, pl.y + 0.4, pl.z, Math.sin(cam.yaw) * 2.4, 2.2, Math.cos(cam.yaw) * 2.4);
-  s.n -= n; if (s.n <= 0) arr[i] = null;
-  refreshHotbar(); renderInv(); saveDirty = 1;
+  s.n -= n; if (s.n <= 0) { if (f) fSet(f, i, null); else arr[i] = null; }
+  refreshHotbar(); if (invOpen) renderInv(); if (furnaceOpen) renderFurnace(); saveDirty = 1;
 }
 function dropHeld(all) {
   const s = INV[sel]; if (!s) return;
@@ -2530,6 +2777,22 @@ craftGridEl.addEventListener('mouseover', e => {
   hoverSlot = { arr: craftSlots, i: +d.getAttribute('data-c') };
 });
 invEl.addEventListener('mouseleave', () => { hoverSlot = null; });
+furnaceEl.addEventListener('click', e => {
+  if (!openF) return;
+  const d = e.target.closest('.islot'); if (!d) return;
+  fSwap(openF, furnaceSlotIndex(d), false);
+});
+furnaceEl.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  if (!openF) return;
+  const d = e.target.closest('.islot'); if (!d) return;
+  fSwap(openF, furnaceSlotIndex(d), true);
+});
+furnaceEl.addEventListener('mouseover', e => {
+  const d = e.target.closest('.islot'); if (!d || !openF) return;
+  const i = furnaceSlotIndex(d); if (i >= 0) hoverSlot = { f: openF, i };
+});
+furnaceEl.addEventListener('mouseleave', () => { hoverSlot = null; });
 document.getElementById('respawn').addEventListener('click', respawn);
 
 /* --------------------------------------------------------------- input */
@@ -2547,9 +2810,9 @@ addEventListener('keydown', e => {
   if (k === 'Tab' || k === 'Space' || k.startsWith('Arrow') || k === 'F3' || k === 'F5') e.preventDefault();
   if (keys[k]) return;
   keys[k] = 1;
-  if (k === 'KeyE') { if (invOpen) closeInv(); else if (running && !dead) openInv(); return; }
-  if (k === 'Escape' && invOpen) { closeInv(); return; }
-  if (k === 'KeyQ') { if (invOpen) dropHovered(e.ctrlKey); else if (running && !dead) dropHeld(e.ctrlKey); return; }
+  if (k === 'KeyE') { if (furnaceOpen) closeFurnace(); else if (invOpen) closeInv(); else if (running && !dead) openInv(); return; }
+  if (k === 'Escape') { if (furnaceOpen) closeFurnace(); else if (invOpen) closeInv(); return; }
+  if (k === 'KeyQ') { if (furnaceOpen || invOpen) dropHovered(e.ctrlKey); else if (running && !dead) dropHeld(e.ctrlKey); return; }
 if (!running) {
     if (k === 'Enter') {
       const ctn = document.getElementById('continue');
@@ -2605,11 +2868,11 @@ addEventListener('wheel', e => {
 document.addEventListener('pointerlockchange', () => {
   hasPointer = document.pointerLockElement === view;
   running = hasPointer;
-  menu.classList.toggle('hide', hasPointer || invOpen || dead);
+  menu.classList.toggle('hide', hasPointer || invOpen || furnaceOpen || dead);
   if (!hasPointer) {
     keys = Object.create(null); mining = 0;
     if (savingEnabled && saveDirty) { try { saveWorld(); } catch (e) {} }
-    if (!invOpen && !dead) updateMenu();
+    if (!invOpen && !furnaceOpen && !dead) updateMenu();
   }
 });
 document.addEventListener('visibilitychange', () => {
@@ -2620,7 +2883,7 @@ addEventListener('pagehide', () => {
 });
 addEventListener('mousemove', e => {
   cursorX = e.clientX; cursorY = e.clientY;
-  if (invOpen && cursor) { cursorEl.style.left = cursorX + 'px'; cursorEl.style.top = cursorY + 'px'; }
+  if ((invOpen || furnaceOpen) && cursor) { cursorEl.style.left = cursorX + 'px'; cursorEl.style.top = cursorY + 'px'; }
   if (!hasPointer) return;
   cam.yaw += e.movementX * 0.0026;
   cam.pitch = clamp(cam.pitch - e.movementY * 0.0026, -1.5533, 1.5533);
@@ -2786,12 +3049,15 @@ function saveWorld() {
     }
     const f = [];
     for (const fu of chunkFull.values()) f.push([fu.cx, fu.cz, btoa(rleEncode(fu.data))]);
+    const furn = [];
+    for (const fe of furnaceMap.values())
+      furn.push([fe.x, fe.y, fe.z, slotPack(fe.in), slotPack(fe.fuel), slotPack(fe.out), fe.burn, fe.max, fe.prog]);
     const payload = {
       v: 4, H, seed: worldSeed, dayT,
       px: pl.x, py: pl.y, pz: pl.z, yaw: cam.yaw, pitch: cam.pitch, sel,
       m: mode, hp, food, inv: INV.map(s => s ? [s.id, s.n] : 0),
       sp: [spawnPt.x, spawnPt.y, spawnPt.z],
-      e, f, at: Date.now()
+      e, f, fu: furn, at: Date.now()
     };
     if (!currentId) {
       const list = listSaves();
@@ -2817,6 +3083,7 @@ function loadWorld(o) {
   dayT = (o.dayT || 0) % 1;
   wq.length = 0;
   clearWorldChunks();
+  clearFurnaces();
   if (o.v >= 4) {
     /* infinite format: seed + sparse edits + optional legacy full chunks */
     if (Array.isArray(o.f)) for (const fu of o.f) {
@@ -2849,6 +3116,11 @@ function loadWorld(o) {
         chunkFull.set(chunkKey(cx, cz), { cx, cz, data });
       }
     } catch (err) {}
+  }
+  if (Array.isArray(o.fu)) for (const a of o.fu) {
+    const f = furnaceAt(a[0], a[1], a[2], true);
+    f.in = slotUnpack(a[3]); f.fuel = slotUnpack(a[4]); f.out = slotUnpack(a[5]);
+    f.burn = +a[6] || 0; f.max = +a[7] || 0; f.prog = +a[8] || 0;
   }
   pl.x = o.px; pl.y = o.py; pl.z = o.pz; pl.vx = pl.vy = pl.vz = 0; pl.fly = 0;
   cam.yaw = o.yaw || 0; cam.pitch = clamp(o.pitch !== undefined ? o.pitch : -0.1, -1.5533, 1.5533);
@@ -2953,6 +3225,7 @@ function newWorld(seed, m) {
   worldSeed = seed;
   setSeed(seed);
   clearWorldChunks();
+  clearFurnaces();
   wq.length = 0;
   pl.x = 0.5; pl.y = 20; pl.z = 0.5;
   buildClouds();
@@ -3012,6 +3285,7 @@ function frame(now) {
   stepArrows(dt);
   stepDrops(dt);
   stepSurvival(dt);
+  stepFurnaces(dt);
   spawnHostiles(dt);
   updateHUD();
   if (swing > 0) swing -= dt;
