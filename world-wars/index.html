@@ -243,6 +243,10 @@
     transition: opacity .16s ease;
   }
   .game-wrap.hit .hit-flash { opacity: 1; }
+  .game-wrap.crash .hit-flash {
+    opacity: 1;
+    background: radial-gradient(circle at 50% 62%, rgba(255,176,54,.24) 8%, rgba(178,28,10,.78) 92%);
+  }
   .game-overlay {
     position: absolute; inset: 0; z-index: 5; display: none; align-items: flex-start; justify-content: center;
     background: rgba(3,7,15,.8); padding: 20px; text-align: center; overflow-y: auto;
@@ -421,7 +425,7 @@
 
   <section id="fighter">
     <h2 data-i18n="fighterTitle">Plane Wars: Fly a WWII Fighter</h2>
-    <p class="sub" data-i18n="fighterSub">Fly over wartime Europe, where Allied and Axis squadrons dogfight around you. Steer with the mouse, hold left mouse button (or touch) to fire and hold Space to boost. Collect the cash Axis planes drop, upgrade in the hangar, and watch out for hills — Esc pauses.</p>
+    <p class="sub" data-i18n="fighterSub">Fly over wartime Europe, where Allied and Axis squadrons dogfight above famous battle sites marked on the map. Steer with the mouse, hold left mouse button (or touch) to fire and hold Space to boost. Watch for crashes and burning wrecks, collect the cash Axis planes drop, upgrade in the hangar, and watch out for hills — Esc pauses.</p>
     <div class="game-wrap" id="gameWrap">
       <canvas id="fighterCanvas" width="900" height="560"></canvas>
       <div class="reticle" aria-hidden="true"></div>
@@ -505,7 +509,7 @@ const WARS = {
     weaponsTitle: "Weapons of World War II",
     weaponsSub: "The machines and guns that shaped the battlefield, from the Blitzkrieg to the V-2.",
     fighterTitle: "Plane Wars: Fly a WWII Fighter",
-    fighterSub: "Fly over wartime Europe, where Allied and Axis squadrons dogfight around you. Steer with the mouse, hold left mouse button (or touch) to fire and hold Space to boost. Collect the cash Axis planes drop, upgrade in the hangar, and watch out for hills — Esc pauses.",
+    fighterSub: "Fly over wartime Europe, where Allied and Axis squadrons dogfight above famous battle sites marked on the map. Steer with the mouse, hold left mouse button (or touch) to fire and hold Space to boost. Watch for crashes and burning wrecks, collect the cash Axis planes drop, upgrade in the hangar, and watch out for hills — Esc pauses.",
     footer: "Data compiled from public historical sources for educational purposes; some figures are estimates.",
     statDuration: "Duration", statCountries: "Belligerent nations",
     statDeaths: "Fatalities (worldwide)", statCamps: "Major camps",
@@ -1897,6 +1901,51 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
         g.font = "bold 11px Arial";
         g.fillText(gr.abbr, gr.label[0], gr.label[1]);
       });
+      // Famous battle sites are painted onto the same map you fly over.
+      ww2.battles.forEach((b, i) => {
+        const x = b.x, y = b.y;
+        g.save();
+        g.lineWidth = 1.7;
+        g.strokeStyle = "rgba(255,225,140,0.95)";
+        g.fillStyle = "rgba(126,20,16,0.82)";
+        g.beginPath(); g.arc(x, y, 6.6, 0, Math.PI * 2); g.fill(); g.stroke();
+        g.beginPath();
+        for (let k = 0; k < 10; k++) {
+          const a = -Math.PI / 2 + k * Math.PI / 5;
+          const r = k % 2 ? 2.1 : 4.7;
+          const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r;
+          if (k === 0) g.moveTo(px, py); else g.lineTo(px, py);
+        }
+        g.closePath();
+        g.fillStyle = "#ffe9a8";
+        g.fill();
+        const short = b.name.en
+          .replace(/^Battle of /, "")
+          .replace(/^Siege of /, "")
+          .replace(/^Invasion of /, "")
+          .replace(" Campaign", "");
+        g.font = "bold 10px Arial";
+        const date = b.date && b.date.en ? b.date.en : "";
+        const boxW = Math.max(g.measureText(short).width, g.measureText(date).width) + 10;
+        const boxH = date ? 25 : 15;
+        const boxX = x > 600 ? x - 10 - boxW : x + 10;
+        const boxY = y - (i % 2 ? 1 : 9);
+        g.fillStyle = "rgba(7,14,23,0.86)";
+        g.fillRect(boxX, boxY - 9, boxW, boxH);
+        g.strokeStyle = "rgba(255,225,140,0.55)";
+        g.lineWidth = 0.7;
+        g.strokeRect(boxX, boxY - 9, boxW, boxH);
+        g.textAlign = "left";
+        g.textBaseline = "middle";
+        g.fillStyle = "#fff3ca";
+        g.fillText(short, boxX + 5, boxY - (date ? 3 : 0));
+        if (date) {
+          g.fillStyle = "rgba(205,224,238,0.82)";
+          g.font = "9px Arial";
+          g.fillText(date, boxX + 5, boxY + 8);
+        }
+        g.restore();
+      });
       g.restore();
     }
     const t = new THREE.CanvasTexture(c);
@@ -2242,10 +2291,59 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
   const glowTex = makeGlowTexture();
   const fxMatBase = new THREE.SpriteMaterial({ map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: 0xffb347 });
 
+  function makeSmokeTexture() {
+    const c = document.createElement("canvas");
+    c.width = c.height = 128;
+    const g = c.getContext("2d");
+    const rg = g.createRadialGradient(64, 64, 3, 64, 64, 64);
+    rg.addColorStop(0, "rgba(236,236,230,0.88)");
+    rg.addColorStop(0.42, "rgba(138,138,132,0.55)");
+    rg.addColorStop(1, "rgba(48,48,48,0)");
+    g.fillStyle = rg;
+    g.fillRect(0, 0, 128, 128);
+    const t = new THREE.CanvasTexture(c);
+    if ("colorSpace" in t) t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }
+  const smokeTex = makeSmokeTexture();
+  const smokeMatBase = new THREE.SpriteMaterial({ map: smokeTex, transparent: true, depthWrite: false, color: 0x65635e, opacity: 0.78 });
+
+  function makeScorchTexture() {
+    const c = document.createElement("canvas");
+    c.width = c.height = 128;
+    const g = c.getContext("2d");
+    const rg = g.createRadialGradient(64, 64, 2, 64, 64, 64);
+    rg.addColorStop(0, "rgba(12,9,7,0.95)");
+    rg.addColorStop(0.55, "rgba(30,22,16,0.7)");
+    rg.addColorStop(1, "rgba(30,22,16,0)");
+    g.fillStyle = rg;
+    g.fillRect(0, 0, 128, 128);
+    const t = new THREE.CanvasTexture(c);
+    if ("colorSpace" in t) t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }
+  const scorchTex = makeScorchTexture();
+  const scorchMat = new THREE.MeshBasicMaterial({
+    map: scorchTex, transparent: true, depthWrite: false, color: 0x1b1512,
+    side: THREE.DoubleSide, opacity: 0.9, polygonOffset: true, polygonOffsetFactor: -1
+  });
+  const groundMarkGeo = new THREE.CircleGeometry(1, 20);
+  const debrisGeo = new THREE.BoxGeometry(1.8, 0.4, 2.6);
+  const debrisMats = [
+    new THREE.MeshStandardMaterial({ color: 0x6b706f, roughness: 0.86, flatShading: true }),
+    new THREE.MeshStandardMaterial({ color: 0x8a3d34, roughness: 0.9, flatShading: true }),
+    new THREE.MeshStandardMaterial({ color: 0x3b6886, roughness: 0.9, flatShading: true })
+  ];
+
   let enemies = [];
   let bullets = [];
   let enemyBullets = [];
   let fx = [];
+  let wrecks = [];
+  let debris = [];
+  let smoke = [];
+  let groundMarks = [];
+  let playerCrash = { active: false };
 
   const playerPos = new THREE.Vector3(0, 30, 0);
   let targetX = 0, targetY = 30;
@@ -2285,6 +2383,168 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     s.material.dispose();
   }
 
+  function removeWreck(w) {
+    scene.remove(w);
+    w.traverse(obj => { if (obj.isMesh && obj.material) obj.material.dispose(); });
+  }
+
+  function spawnSmoke(pos, scale) {
+    if (smoke.length > 220) return;
+    const s = new THREE.Sprite(smokeMatBase.clone());
+    s.position.copy(pos);
+    s.position.x += rand(-0.8, 0.8) * scale;
+    s.position.y += rand(-0.3, 0.6) * scale;
+    const sz = rand(2.2, 4.6) * scale;
+    s.scale.set(sz, sz, 1);
+    const life = rand(1.1, 2.1);
+    s.userData = {
+      vx: rand(-2.4, 2.4), vy: rand(1.2, 4.5), vz: rand(-1.5, 1.5),
+      life, max: life, grow: rand(2.5, 6) * scale
+    };
+    scene.add(s);
+    smoke.push(s);
+  }
+
+  function spawnDebris(pos, count, scale) {
+    for (let i = 0; i < count && debris.length < 180; i++) {
+      const m = new THREE.Mesh(debrisGeo, debrisMats[Math.floor(Math.random() * debrisMats.length)]);
+      m.position.copy(pos);
+      m.position.x += rand(-1.2, 1.2) * scale;
+      m.position.y += rand(-0.6, 1.4) * scale;
+      m.position.z += rand(-1.2, 1.2) * scale;
+      m.rotation.set(rand(0, 6.28), rand(0, 6.28), rand(0, 6.28));
+      m.scale.setScalar(rand(0.6, 1.2) * scale);
+      m.userData = {
+        vx: rand(-12, 12) * scale, vy: rand(4, 18) * scale, vz: rand(-8, 8) * scale,
+        rx: rand(-7, 7), ry: rand(-7, 7), rz: rand(-7, 7),
+        life: rand(2.6, 3.8), max: 3.8
+      };
+      scene.add(m);
+      debris.push(m);
+    }
+  }
+
+  function groundImpact(pos, scale, spawnPieces = true, withMark = true) {
+    const p = pos.clone();
+    p.y = Math.max(0.6, Math.min(p.y, 2.2));
+    explode(p, 18, 1.25 * scale);
+    spawnSmoke(p, 1.4 * scale);
+    if (spawnPieces) spawnDebris(p, 9, scale);
+    if (withMark && groundMarks.length < 90) {
+      const mark = new THREE.Mesh(groundMarkGeo, scorchMat.clone());
+      mark.rotation.x = -Math.PI / 2;
+      mark.position.set(p.x, 0.08, p.z);
+      const ms = rand(4, 7) * scale;
+      mark.scale.set(ms, ms * rand(0.7, 1.15), 1);
+      mark.userData = { life: 7, max: 7 };
+      scene.add(mark);
+      groundMarks.push(mark);
+    }
+  }
+
+  // Shot-down planes fall as burning wrecks instead of vanishing in mid-air.
+  function makeWreck(e) {
+    if (wrecks.length > 26) removeWreck(wrecks.shift());
+    // The live plane's userData can hold circular target references; clone cleanly.
+    const liveData = e.userData;
+    e.userData = {};
+    const w = e.clone(true);
+    e.userData = liveData;
+    w.traverse(obj => {
+      if (obj.isMesh && obj.material) {
+        obj.material = obj.material.clone();
+        if (obj.material.color) obj.material.color.multiplyScalar(0.42);
+      }
+    });
+    w.position.copy(e.position);
+    w.rotation.copy(e.rotation);
+    w.userData = {
+      vx: rand(-4, 4), vy: rand(-2, 4), vz: rand(-3, 3),
+      spinX: rand(-2.4, 2.4), spinY: rand(-1.6, 1.6), spinZ: rand(-3.2, 3.2),
+      smokeT: 0, life: 4.5
+    };
+    scene.add(w);
+    wrecks.push(w);
+    return w;
+  }
+
+  function updateCrashEffects(dt, worldSpeed) {
+    for (let i = wrecks.length - 1; i >= 0; i--) {
+      const w = wrecks[i], ud = w.userData;
+      ud.life -= dt;
+      ud.vy -= 22 * dt;
+      w.position.x += ud.vx * dt;
+      w.position.y += ud.vy * dt;
+      w.position.z += (worldSpeed * 0.85 + ud.vz) * dt;
+      w.rotation.x += ud.spinX * dt;
+      w.rotation.y += ud.spinY * dt;
+      w.rotation.z += ud.spinZ * dt;
+      ud.smokeT -= dt;
+      if (ud.smokeT <= 0 && w.position.y > 1.5) {
+        spawnSmoke(w.position, 0.9);
+        if (Math.random() < 0.55) explode(w.position, 2, 0.42);
+        ud.smokeT = 0.06;
+      }
+      if (w.position.y <= 1.2) {
+        groundImpact(w.position, 1.1);
+        removeWreck(w);
+        wrecks.splice(i, 1);
+      } else if (ud.life <= 0 || w.position.z > 170) {
+        removeWreck(w);
+        wrecks.splice(i, 1);
+      }
+    }
+    for (let i = debris.length - 1; i >= 0; i--) {
+      const d = debris[i], ud = d.userData;
+      ud.life -= dt;
+      ud.vy -= 30 * dt;
+      d.position.x += ud.vx * dt;
+      d.position.y += ud.vy * dt;
+      d.position.z += (worldSpeed * 0.8 + ud.vz) * dt;
+      d.rotation.x += ud.rx * dt;
+      d.rotation.y += ud.ry * dt;
+      d.rotation.z += ud.rz * dt;
+      if (d.position.y <= 0.5) {
+        groundImpact(d.position, 0.35, false, false);
+        scene.remove(d);
+        debris.splice(i, 1);
+      } else if (ud.life <= 0 || d.position.z > 170) {
+        scene.remove(d);
+        debris.splice(i, 1);
+      }
+    }
+    for (let i = smoke.length - 1; i >= 0; i--) {
+      const s = smoke[i], ud = s.userData;
+      ud.life -= dt;
+      if (ud.life <= 0) {
+        scene.remove(s);
+        s.material.dispose();
+        smoke.splice(i, 1);
+        continue;
+      }
+      s.position.x += ud.vx * dt;
+      s.position.y += ud.vy * dt;
+      s.position.z += (worldSpeed * 0.6 + ud.vz) * dt;
+      ud.vx *= Math.max(0, 1 - 0.9 * dt);
+      ud.vy *= Math.max(0, 1 - 0.5 * dt);
+      ud.vz *= Math.max(0, 1 - 0.9 * dt);
+      s.material.opacity = Math.min(0.78, (ud.life / ud.max) * 0.78);
+      const sz = s.scale.x + ud.grow * dt;
+      s.scale.set(sz, sz, 1);
+    }
+    for (let i = groundMarks.length - 1; i >= 0; i--) {
+      const m = groundMarks[i], ud = m.userData;
+      ud.life -= dt;
+      m.position.z += worldSpeed * dt;
+      m.material.opacity = Math.max(0, (ud.life / ud.max) * 0.9);
+      if (ud.life <= 0 || m.position.z > 170) {
+        scene.remove(m);
+        m.material.dispose();
+        groundMarks.splice(i, 1);
+      }
+    }
+  }
+
   function clearWorldObjects() {
     enemies.forEach(e => scene.remove(e));
     enemies = [];
@@ -2296,6 +2556,14 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     bundles = [];
     fx.forEach(removeFx);
     fx = [];
+    wrecks.forEach(removeWreck);
+    wrecks = [];
+    debris.forEach(d => scene.remove(d));
+    debris = [];
+    smoke.forEach(s => { scene.remove(s); s.material.dispose(); });
+    smoke = [];
+    groundMarks.forEach(m => { scene.remove(m); m.material.dispose(); });
+    groundMarks = [];
   }
 
   function updateHud() {
@@ -2560,6 +2828,7 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     shake = 0;
     hitFlash = 0;
     respawnFlash = 0;
+    playerCrash = { active: false };
     roll = 0;
     pitch = 0;
     targetX = 0;
@@ -2568,7 +2837,7 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     player.rotation.set(0, 0, 0);
     player.visible = true;
     playerPos.set(0, 30, 0);
-    wrap.classList.remove("hit", "boost");
+    wrap.classList.remove("hit", "boost", "crash");
     updateHud();
   }
 
@@ -2591,50 +2860,110 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     explode(player.position, 30, 1.7);
     player.visible = false;
     hitFlash = 0;
-    wrap.classList.remove("hit", "boost");
+    wrap.classList.remove("hit", "boost", "crash");
     showOverlay("dead");
     updateHud();
   }
 
+  function beginPlayerCrash(kind) {
+    if (playerCrash.active || state !== "playing") return;
+    firing = false;
+    releasePointer();
+    wrap.classList.remove("boost");
+    wrap.classList.add("crash");
+    hitFlash = 0.2;
+    respawnFlash = 0;
+    shake = Math.max(shake, 0.9);
+    playerCrash = {
+      active: true,
+      kind,
+      t: 0,
+      duration: 2.2,
+      vx: rand(-6, 6),
+      vy: kind === "terrain" ? -12 : -18,
+      vz: rand(-2, 2),
+      spinX: rand(-2.6, 2.6),
+      spinY: rand(-1.8, 1.8),
+      spinZ: rand(-3.4, 3.4),
+      smokeT: 0
+    };
+    explode(player.position, 10, 0.85);
+    updateHud();
+  }
+
+  function updatePlayerCrash(dt, worldSpeed) {
+    const ud = playerCrash;
+    if (!ud.active) return;
+    ud.t += dt;
+    ud.vy -= 20 * dt;
+    player.position.x += ud.vx * dt;
+    player.position.y += ud.vy * dt;
+    player.position.z += (worldSpeed * 0.2 + ud.vz) * dt;
+    player.rotation.x += ud.spinX * dt;
+    player.rotation.y += ud.spinY * dt;
+    player.rotation.z += ud.spinZ * dt;
+    player.visible = true;
+    ud.smokeT -= dt;
+    if (ud.smokeT <= 0) {
+      spawnSmoke(player.position, 0.95);
+      explode(player.position, 2, 0.42);
+      ud.smokeT = 0.055;
+    }
+    shake = Math.max(shake, 0.32);
+    if (player.position.y <= 1.6 || ud.t >= ud.duration) finishPlayerCrash();
+  }
+
+  function finishPlayerCrash() {
+    const kind = playerCrash.kind;
+    player.position.y = Math.min(player.position.y, 1.5);
+    groundImpact(player.position, kind === "terrain" ? 1.4 : 1.7);
+    playerCrash = { active: false };
+    player.visible = false;
+    wrap.classList.remove("crash");
+    if (health <= 0) { die(); return; }
+    // A survivable terrain strike pulls out above the hills and resumes the fight.
+    targetX = 0;
+    targetY = 44;
+    player.position.set(0, 44, 0);
+    playerPos.set(0, 44, 0);
+    player.rotation.set(0, 0, 0);
+    roll = 0;
+    pitch = 0;
+    invuln = 1.9;
+    respawnFlash = 0.8;
+    player.visible = true;
+    // Clear enemies that were about to overrun the respawn point.
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      if (enemies[i].position.z > -110) { scene.remove(enemies[i]); enemies.splice(i, 1); }
+    }
+    lockPointer();
+    updateHud();
+  }
+
   function damage(amount) {
-    if (invuln > 0 || state !== "playing") return;
+    if (invuln > 0 || state !== "playing" || playerCrash.active) return;
     health -= amount;
     invuln = Math.max(invuln, 0.35);
     shake = 0.5;
     hitFlash = 0.2;
     if (health <= 0) {
       health = 0;
-      updateHud();
-      die();
+      beginPlayerCrash("shot");
       return;
     }
     updateHud();
   }
 
   function crashRespawn() {
-    if (state !== "playing" || invuln > 0) return;
-    explode(player.position, 22, 1.25);
+    if (state !== "playing" || invuln > 0 || playerCrash.active) return;
     health -= Math.max(10, Math.round(healthMax * 0.22));
-    shake = 0.9;
-    hitFlash = 0.35;
-    respawnFlash = 0.8;
-    player.position.set(0, 44, 0);
-    targetX = 0;
-    targetY = 44;
-    playerPos.set(0, 44, 0);
-    roll = 0;
-    pitch = 0;
-    invuln = 1.9;
-    // Clear enemies that were about to overrun the respawn point.
-    for (let i = enemies.length - 1; i >= 0; i--) {
-      if (enemies[i].position.z > -110) { scene.remove(enemies[i]); enemies.splice(i, 1); }
-    }
-    if (health <= 0) { health = 0; updateHud(); die(); return; }
-    updateHud();
+    if (health <= 0) health = 0;
+    beginPlayerCrash("terrain");
   }
 
   function resumeAfterAd() {
     health = healthMax;
+    playerCrash = { active: false };
     targetX = 0;
     targetY = 30;
     player.position.set(0, 30, 0);
@@ -2645,7 +2974,7 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     hideOverlay();
     adOverlay.classList.remove("open");
     state = "playing";
-    wrap.classList.remove("hit", "boost");
+    wrap.classList.remove("hit", "boost", "crash");
     updateHud();
     lockPointer();
   }
@@ -2745,11 +3074,12 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     e.userData.dead = true;
     const ud = e.userData;
     explode(e.position, ud.type === "bomber" ? 24 : 16, ud.type === "bomber" ? 1.5 : 1.05);
+    spawnSmoke(e.position, ud.type === "bomber" ? 1.3 : 0.95);
     const bounty = killer === player
       ? (ud.type === "bomber" ? rand(48, 82) : rand(16, 34))
       : (ud.team === "axis" ? rand(6, 14) : 0);
     if (bounty > 0) spawnBundle(e.position.clone(), Math.round(bounty));
-    scene.remove(e);
+    makeWreck(e);
     enemies.splice(index, 1);
   }
 
@@ -2764,7 +3094,12 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
         const dx = a.position.x - b.position.x;
         const dy = a.position.y - b.position.y;
         const dz = a.position.z - b.position.z;
-        if (dx * dx + dy * dy + dz * dz < 64) {
+        if (dx * dx + dy * dy + dz * dz < 121) {
+          const hit = a.position.clone().lerp(b.position, 0.5);
+          explode(hit, 16, 1.15);
+          spawnDebris(hit, 11, 1.05);
+          spawnSmoke(hit, 1.1);
+          shake = Math.max(shake, 0.28);
           killPlaneAt(i, b);
           killPlaneAt(j, a);
           break;
@@ -2834,6 +3169,8 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
         const dx = e.position.x - player.position.x;
         const dy = e.position.y - player.position.y;
         if (Math.abs(e.position.z) < 7.5 && dx * dx + dy * dy < 72) {
+          explode(e.position, 12, 0.95);
+          spawnDebris(e.position, 8, 0.9);
           killPlaneAt(i, player);
           damage(ud.type === "bomber" ? 24 : 18);
           if (state !== "playing") return;
@@ -3034,6 +3371,12 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     idleT += dt;
     const boosting = !!keys.Space;
     const worldSpeed = (54 + wave * 3.2) * plane.speed * (boosting ? 1.55 : 1);
+    if (playerCrash.active) {
+      updatePlayerCrash(dt, worldSpeed);
+      updateCrashEffects(dt, worldSpeed);
+      updateCamera(dt);
+      return;
+    }
 
     let ax = 0, ay = 0;
     if (keys.ArrowLeft || keys.KeyA) ax -= 1;
@@ -3072,7 +3415,7 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
         break;
       }
     }
-    if (state !== "playing") return;
+    if (playerCrash.active || state !== "playing") return;
 
     hudT += dt;
     if (hudT >= 0.1) { hudT = 0; updateHud(); }
@@ -3107,12 +3450,13 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
 
     updateEnemies(dt, worldSpeed);
     resolveDogfightCollisions();
-    if (state !== "playing") return;
+    if (playerCrash.active || state !== "playing") return;
     updateBullets(dt);
     updateEnemyBullets(dt);
-    if (state !== "playing") return;
+    if (playerCrash.active || state !== "playing") return;
     updateBundles(dt, worldSpeed);
     updateFx(dt);
+    updateCrashEffects(dt, worldSpeed);
     moveScenery(dt, worldSpeed);
     updateCamera(dt);
   }
@@ -3130,6 +3474,7 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     if (hitFlash > 0) hitFlash -= dt;
     wrap.classList.toggle("hit", hitFlash > 0 && state === "playing");
     updateFx(dt);
+    updateCrashEffects(dt, 16);
     updateCamera(dt);
   }
 
@@ -3250,7 +3595,7 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
   // Hook used by automated checks and for debugging.
   window.fighterGame = {
     start: startGame,
-    hit: (n = 100) => damage(n),
+    hit: (n = 100) => { invuln = 0; damage(n); return health; },
     cash: (n = 100) => { cash += n; runCash += n; updateHud(); saveProgress(); },
     teleport: (x, y, z = 0) => {
       player.position.set(x, y, z);
@@ -3268,6 +3613,8 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     paint: (id, idx) => { tryPaint(id, idx); return paintSel[id]; },
     spawnAxis: () => { spawnPlane("axis"); return enemies.length; },
     spawnAlly: () => { spawnPlane("allied"); return enemies.length; },
+    crash: (kind = "shot") => { beginPlayerCrash(kind); return playerCrash.active; },
+    downPlane: () => { if (enemies.length) killPlaneAt(0, player); return wrecks.length; },
     setFiring: v => { firing = !!v; return firing; },
     key: (code, down) => { keys[code] = !!down; if (state === "playing") updateHud(); return !!keys[code]; },
     planes: () => enemies.map(p => ({
@@ -3295,7 +3642,8 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     groundMap: () => ({
       countries: window.EUROPE_GEO ? Object.keys(window.EUROPE_GEO).length : 0,
       repeatX: groundTex.repeat.x, repeatY: groundTex.repeat.y,
-      mapColors: Object.keys((WARS.ww2 && WARS.ww2.STATE_COLORS) || {}).length
+      mapColors: Object.keys((WARS.ww2 && WARS.ww2.STATE_COLORS) || {}).length,
+      battleSites: WARS.ww2.battles.length
     }),
     tick: (dt = 1 / 60, n = 1) => {
       for (let i = 0; i < n; i++) {
@@ -3327,6 +3675,12 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
       bullets: bullets.length,
       enemyBullets: enemyBullets.length,
       bundles: bundles.length,
+      crash: playerCrash.active,
+      crashKind: playerCrash.active ? playerCrash.kind : null,
+      wrecks: wrecks.length,
+      debris: debris.length,
+      smoke: smoke.length,
+      groundMarks: groundMarks.length,
       hills: terrain.length,
       adOpen: adOverlay.classList.contains("open"),
       webgl: !!renderer.getContext(),
