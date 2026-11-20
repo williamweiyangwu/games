@@ -222,7 +222,7 @@
   #roomlist .tip { font-size: 11px; color: #8a917c; text-align: center; margin: 12px 0; }
   #roomlist .btns { display: flex; gap: 8px; justify-content: center; margin-top: 12px; }
 
-  #tutorial { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.72); align-items: center; justify-content: center; z-index: 60; }
+  #tutorial { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.72); align-items: center; justify-content: center; z-index: 80; }
   #tutorial.show { display: flex; }
   #tutorial .tbox {
     position: relative; width: 460px; max-width: 92vw; max-height: 84vh; overflow: auto;
@@ -471,40 +471,78 @@
   .btn#colToggle.active { background: rgba(77,127,184,.35); color: #cfeaff; border-color: #9fd4ff; }
 
   /* lobby page */
-  #lobbyPage { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.78); align-items: center; justify-content: center; z-index: 68; }
+  /* lobby hub */
+  #lobbyPage { display: none; position: fixed; inset: 0; background: radial-gradient(ellipse at top, #2b3320, #0c0f08 72%); align-items: center; justify-content: center; z-index: 68; }
   #lobbyPage.show { display: flex; }
-  #lobbyPage .abox { width: 470px; max-height: 86vh; overflow: auto; }
-  #lobbyPage .tclose {
-    position: absolute; top: 8px; right: 12px; width: 28px; height: 28px; line-height: 26px;
-    text-align: center; font-size: 15px; color: #c9b458; cursor: pointer;
-    border: 2px solid #6f6040; border-radius: 50%; background: rgba(0,0,0,.35);
+  .lobbyShell {
+    width: 960px; max-width: 96vw; max-height: 94vh; overflow: auto;
+    display: flex; flex-direction: column; gap: 10px; padding: 16px 20px;
+    border: 3px solid #c9b458; border-radius: 14px; background: linear-gradient(160deg, #343a22, #171b0e);
+    box-shadow: 0 12px 40px rgba(0,0,0,.7);
   }
-  #lobbyPage .tclose:hover { background: rgba(201,180,88,.3); color: #fff; }
-  .lobbyNameRow { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 11px; letter-spacing: 2px; color: #8a917c; margin: 8px 0 10px; }
-  .lobbyNameRow input, .lobbyActions input {
+  .lobbyHeader { display: flex; align-items: center; gap: 16px; padding-bottom: 10px; border-bottom: 2px solid #4a5033; }
+  .lobbyLogoMain { font-size: 25px; letter-spacing: 4px; color: #c9b458; font-weight: bold; }
+  .lobbyLogoMain span { font-size: 12px; color: #9fd4ff; letter-spacing: 2px; vertical-align: top; }
+  .lobbyLogoSub { font-size: 9px; letter-spacing: 3px; color: #8a917c; }
+  .lobbyCommander { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 10px; letter-spacing: 2px; color: #8a917c; }
+  .lobbyCommander input {
+    font-family: inherit; font-size: 12px; padding: 5px 9px; width: 130px;
+    background: rgba(0,0,0,.4); color: #f0e6c8; border: 2px solid #6f6040; border-radius: 8px; outline: none;
+  }
+  .lobbyCommander input:focus { border-color: #c9b458; }
+  .lobbyCurrency { font-size: 15px; color: #9fd4ff; font-weight: bold; }
+  .lobbyNav { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+  .lobbyNav .btn { padding: 5px 11px; font-size: 10px; letter-spacing: 1px; }
+  .lobbyBody { display: grid; grid-template-columns: 1fr 300px; gap: 14px; }
+  .lobbyModes { display: flex; flex-direction: column; gap: 8px; }
+  .lobbyMode {
+    display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+    border: 2px solid #4a5033; border-radius: 10px; background: rgba(0,0,0,.25); cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .lobbyMode:hover { border-color: #9fd4ff; background: rgba(77,127,184,.15); }
+  .lobbyMode.active { border-color: #ffd95e; background: rgba(201,180,88,.18); box-shadow: 0 0 14px rgba(255,217,94,.25); }
+  .lobbyMode .lmIcon { font-size: 25px; width: 34px; text-align: center; color: #c9b458; }
+  .lobbyMode .lmName { font-size: 14px; letter-spacing: 2px; color: #f0e6c8; min-width: 80px; }
+  .lobbyMode .lmDesc { font-size: 10px; color: #8a917c; line-height: 1.4; }
+  .lobbySide { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 2px solid #4a5033; border-radius: 10px; background: rgba(0,0,0,.3); }
+  .lpDecoTitle { font-size: 13px; letter-spacing: 2px; color: #c9b458; text-align: center; }
+  .lpDecoText { font-size: 10px; color: #b9c4a8; line-height: 1.5; min-height: 44px; }
+  .lpAiRow { display: flex; align-items: center; justify-content: space-between; font-size: 10px; letter-spacing: 1px; color: #8a917c; }
+  .lpAiRow .btn { padding: 4px 10px; font-size: 10px; }
+  .lpLoadout { display: flex; flex-direction: column; gap: 4px; padding: 8px 0; border-top: 1px solid #3a4030; border-bottom: 1px solid #3a4030; }
+  .lplRow { display: flex; justify-content: space-between; font-size: 11px; color: #e6e9d5; }
+  .lplRow .lbl { color: #8a917c; }
+  .playBtn { padding: 10px; font-size: 14px; letter-spacing: 3px; background: rgba(201,180,88,.3); border-color: #ffd95e; }
+  .playBtn:hover { background: rgba(201,180,88,.5); }
+  .lobbyOnline { display: none; flex-direction: column; gap: 6px; padding: 10px 12px; border: 2px solid #4a5033; border-radius: 10px; background: rgba(0,0,0,.25); }
+  .lobbyOnline.show { display: flex; }
+  .lobbySectionTitle { display: flex; align-items: center; justify-content: space-between; font-size: 11px; letter-spacing: 2px; color: #c9b458; }
+  .lobbySectionTitle .btn { padding: 3px 10px; font-size: 10px; letter-spacing: 1px; }
+  .lobbyActions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .lobbyActions .btn { padding: 6px 12px; font-size: 11px; }
+  .lobbyActions input {
     font-family: inherit; font-size: 12px; padding: 6px 10px; width: 130px;
     background: rgba(0,0,0,.4); color: #f0e6c8; border: 2px solid #6f6040; border-radius: 8px; outline: none;
   }
-  .lobbyNameRow input:focus, .lobbyActions input:focus { border-color: #c9b458; }
-  .lobbyActions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 10px; }
-  .lobbyActions .btn { padding: 6px 12px; font-size: 11px; }
-  #lpRoomStatus { display: none; flex-direction: column; gap: 4px; padding: 10px 12px; margin-bottom: 10px; border: 1px solid #6f6040; border-radius: 8px; background: rgba(0,0,0,.3); }
+  .lobbyActions input:focus { border-color: #c9b458; }
+  #lpRoomStatus { display: none; flex-direction: column; gap: 4px; padding: 8px 10px; border: 1px solid #6f6040; border-radius: 8px; background: rgba(0,0,0,.3); }
   #lpRoomStatus.show { display: flex; }
-  #lpRoomStatus .lpRow { display: flex; justify-content: space-between; font-size: 12px; color: #e6e9d5; }
+  #lpRoomStatus .lpRow { display: flex; justify-content: space-between; font-size: 11px; color: #e6e9d5; }
   #lpRoomStatus .lpRow .lbl { color: #8a917c; }
-  #lpRoomStatus .lpCode { color: #c9b458; font-size: 16px; letter-spacing: 2px; font-weight: bold; }
-  #lpRoomStatus .lpWait { font-size: 11px; color: #b9c4a8; min-height: 14px; text-align: center; }
+  #lpRoomStatus .lpCode { color: #c9b458; font-size: 14px; letter-spacing: 2px; font-weight: bold; }
+  #lpRoomStatus .lpWait { font-size: 10px; color: #b9c4a8; text-align: center; }
   #lpRoomStatus .lpStartBtn { margin-top: 4px; align-self: center; }
   #lpRoomStatus .lpStartBtn[disabled] { opacity: .4; }
   #lpRoomStatus .lpLeave { font-size: 10px; color: #e08a8a; text-align: center; cursor: pointer; text-decoration: underline; }
-  .lobbySectionTitle { display: flex; align-items: center; justify-content: space-between; font-size: 12px; letter-spacing: 2px; color: #c9b458; margin: 4px 0 6px; }
-  .lobbySectionTitle .btn { padding: 3px 10px; font-size: 10px; letter-spacing: 1px; }
-  .lobbyRoomRows { max-height: 34vh; overflow: auto; border: 1px solid #3a4030; border-radius: 6px; padding: 2px 8px; }
-  .lobbyRoomRows .rrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 0; border-bottom: 1px solid #3a4030; font-size: 12px; color: #e6e9d5; }
+  .lobbyRoomRows { max-height: 22vh; overflow: auto; border: 1px solid #3a4030; border-radius: 6px; padding: 2px 8px; }
+  .lobbyRoomRows .rrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid #3a4030; font-size: 11px; color: #e6e9d5; }
   .lobbyRoomRows .rrow:last-child { border-bottom: 0; }
   .lobbyRoomRows .rrow .rrowc { color: #c9b458; letter-spacing: 1px; font-weight: bold; }
-  .lobbyRoomRows .rrow .btn { padding: 4px 12px; font-size: 11px; }
-  .lobbyHint { font-size: 11px; color: #8a917c; text-align: center; margin: 10px 0; }
+  .lobbyRoomRows .rrow .btn { padding: 3px 10px; font-size: 10px; }
+  .lobbyHint { font-size: 10px; color: #8a917c; text-align: center; }
+  .lobbyFooter { display: flex; align-items: center; justify-content: space-between; padding-top: 8px; border-top: 2px solid #4a5033; font-size: 10px; color: #8a917c; }
+  .lobbyFooter .btn { padding: 5px 12px; font-size: 10px; }
 
   /* effects */
   #fit.shake { animation: k6shake .25s; }
@@ -525,7 +563,7 @@
   <div id="fit">
     <div id="stage">
       <header>
-        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v31</span></h1>
+        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v32</span></h1>
         <div id="turnbar">Player 1's Turn</div>
       </header>
 
@@ -575,6 +613,7 @@
       <footer>
         <button class="btn" id="endBtn">END TURN</button>
         <button class="btn" id="newBtn">NEW GAME</button>
+        <button class="btn" onclick="openLobbyPage()">LOBBY</button>
       </footer>
     </div>
     <div id="orderbox">
@@ -708,25 +747,81 @@
   </div>
 
   <div id="lobbyPage">
-    <div class="abox">
-      <div class="tclose" onclick="closeLobbyPage()">✕</div>
-      <h2>LOBBY</h2>
-      <div class="lobbyNameRow">
-        <span>YOUR NAME</span>
-        <input id="lpNameIn" maxlength="12" value="Player#1" onkeydown="if(event.key==='Enter')lpHost();">
+    <div class="lobbyShell">
+      <div class="lobbyHeader">
+        <div>
+          <div class="lobbyLogoMain">KARDS <span>LITE</span></div>
+          <div class="lobbyLogoSub">COMMANDER HEADQUARTERS</div>
+        </div>
+        <div class="lobbyCommander">
+          <span>COMMANDER</span>
+          <input id="lpNameIn" maxlength="12" value="Player#1">
+        </div>
+        <div class="lobbyCurrency" id="lpGems">◈ 120</div>
       </div>
-      <div class="lobbyActions">
-        <button class="btn" onclick="lpHost()">HOST GAME</button>
-        <input id="lpCodeIn" maxlength="6" placeholder="Room code" onkeydown="if(event.key==='Enter')lpJoin();">
-        <button class="btn" onclick="lpJoin()">JOIN</button>
+
+      <div class="lobbyNav">
+        <button class="btn" onclick="closeLobbyPage();openCollection()">COLLECTION</button>
+        <button class="btn" onclick="closeLobbyPage();openDeckEdit()">DECK</button>
+        <button class="btn" onclick="closeLobbyPage();openMissions()">MISSIONS</button>
+        <button class="btn" onclick="closeLobbyPage();openPacks()">PACKS</button>
+        <button class="btn" onclick="closeLobbyPage();openStore()">STORE</button>
+        <button class="btn" onclick="closeLobbyPage();openStats()">STATS</button>
+        <button class="btn" onclick="openTutorial()">TUTORIAL</button>
       </div>
-      <div id="lpRoomStatus"></div>
-      <div class="lobbySectionTitle">OPEN ROOMS <button class="btn" onclick="refreshRooms()">REFRESH</button></div>
-      <div id="lpRoomRows" class="lobbyRoomRows"></div>
-      <div id="lpRoomHint" class="lobbyHint">No rooms open right now. Host a game to create one.</div>
-      <div class="dbtns">
-        <button class="btn" onclick="refreshRooms()">REFRESH</button>
-        <button class="btn" onclick="closeLobbyPage()">CLOSE</button>
+
+      <div class="lobbyBody">
+        <div class="lobbyModes">
+          <div class="lobbyMode" id="lpModeLocal" onclick="lpSelectMode('local')">
+            <div class="lmIcon">⚔</div>
+            <div class="lmName">LOCAL</div>
+            <div class="lmDesc">Two commanders, one screen. A hot-seat duel with both nations selectable.</div>
+          </div>
+          <div class="lobbyMode" id="lpModeAi" onclick="lpSelectMode('ai')">
+            <div class="lmIcon">⚙</div>
+            <div class="lmName">VS AI</div>
+            <div class="lmDesc">Battle the computer commander. Pick its skill level before you play.</div>
+          </div>
+          <div class="lobbyMode" id="lpModeOnline" onclick="lpSelectMode('online')">
+            <div class="lmIcon">🌐</div>
+            <div class="lmName">ONLINE</div>
+            <div class="lmDesc">Host a room and share the code, or join another commander by code.</div>
+          </div>
+        </div>
+
+        <div class="lobbySide">
+          <div class="lpDecoTitle" id="lpModeTitle">LOCAL DUEL</div>
+          <div class="lpDecoText" id="lpModeText">Two players share one screen. Choose both nations in the game menu.</div>
+          <div class="lpAiRow" id="lpAiRow">
+            <span>AI SKILL</span>
+            <button class="btn" id="lpAiBtn" onclick="cycleAILevel();lobbyPageRender()">AI: NORMAL</button>
+          </div>
+          <div class="lpLoadout">
+            <div class="lplRow"><span class="lbl">NATION</span><span id="lpNation">USA</span></div>
+            <div class="lplRow"><span class="lbl">DECK</span><span id="lpDeck">40 / 40</span></div>
+            <button class="btn" onclick="closeLobbyPage();openDeckEdit()">EDIT DECK</button>
+          </div>
+          <button class="btn playBtn" id="lpPlayBtn" onclick="lpPlay()">PLAY LOCAL</button>
+        </div>
+      </div>
+
+      <div class="lobbyOnline" id="lpOnlineSection">
+        <div class="lobbySectionTitle">ONLINE MATCHMAKING</div>
+        <div class="lobbyActions">
+          <button class="btn" onclick="lpHost()">HOST GAME</button>
+          <input id="lpCodeIn" maxlength="6" placeholder="Room code" onkeydown="if(event.key==='Enter')lpJoin();">
+          <button class="btn" onclick="lpJoin()">JOIN</button>
+          <button class="btn" onclick="browseRooms()">BROWSE ROOMS</button>
+        </div>
+        <div id="lpRoomStatus"></div>
+        <div class="lobbySectionTitle">OPEN ROOMS <button class="btn" onclick="refreshRooms()">REFRESH</button></div>
+        <div id="lpRoomRows" class="lobbyRoomRows"></div>
+        <div id="lpRoomHint" class="lobbyHint">No rooms open right now. Host a game to create one.</div>
+      </div>
+
+      <div class="lobbyFooter">
+        <span id="lpMeta"></span>
+        <button class="btn" onclick="closeLobbyPage()">BACK TO GAME</button>
       </div>
     </div>
   </div>
@@ -1966,17 +2061,40 @@ function lobbyStart() {
   startGame();
 }
 
-// ---------------- Lobby page ----------------
+// ---------------- Lobby hub ----------------
 var LOBBY_OPEN = false;
+var LOBBY_MODE = "local";
+var LOBBY_MODES = {
+  local:  { title: "LOCAL DUEL", text: "Two players share one screen. Choose both nations in the game menu.", btn: "PLAY LOCAL" },
+  ai:     { title: "SKIRMISH VS AI", text: "Battle the computer commander. Set its skill level before you play.", btn: "PLAY VS AI" },
+  online: { title: "ONLINE BATTLE", text: "Host a room and share the code, or join a commander by code. Start when both are ready.", btn: "HOST GAME" }
+};
 
 function openLobbyPage() {
-  if (MODE !== "online") setMode("online");
   LOBBY_OPEN = true;
+  LOBBY_MODE = (MODE === "online") ? "online" : (MODE === "ai" ? "ai" : "local");
   var nm = document.getElementById("lpNameIn"), base = document.getElementById("nameIn");
   if (nm && base && base.value && base.value !== "Player#1") nm.value = base.value;
-  startRoomWatch();
+  if (LOBBY_MODE === "online" && !BROWSE) startRoomWatch();
   document.getElementById("lobbyPage").classList.add("show");
   lobbyPageRender();
+}
+
+function lpSelectMode(m) {
+  LOBBY_MODE = m;
+  if (m === "online" && !BROWSE) startRoomWatch();
+  lobbyPageRender();
+}
+
+function lpPlay() {
+  if (LOBBY_MODE === "local" || LOBBY_MODE === "ai") {
+    closeLobbyPage();
+    setMode(LOBBY_MODE);
+    return;
+  }
+  if (!NET) { lpHost(); return; }
+  if (NET.foeName && !NET.started) { lpLobbyStart(); return; }
+  status("Waiting for an opponent...");
 }
 
 function closeLobbyPage() {
@@ -1988,6 +2106,29 @@ function closeLobbyPage() {
 
 function lobbyPageRender() {
   if (!LOBBY_OPEN) return;
+
+  // Mode cards and side panel
+  ["local", "ai", "online"].forEach(function (m) {
+    var el = document.getElementById("lpMode" + m.charAt(0).toUpperCase() + m.slice(1));
+    if (el) el.classList.toggle("active", LOBBY_MODE === m);
+  });
+  var meta = LOBBY_MODES[LOBBY_MODE] || LOBBY_MODES.local;
+  var titleEl = document.getElementById("lpModeTitle"); if (titleEl) titleEl.textContent = meta.title;
+  var textEl = document.getElementById("lpModeText"); if (textEl) textEl.textContent = meta.text;
+  var playBtn = document.getElementById("lpPlayBtn");
+  if (playBtn) playBtn.textContent = (LOBBY_MODE === "online" && NET && NET.foeName && !NET.started) ? "START BATTLE" : meta.btn;
+  var aiRow = document.getElementById("lpAiRow"); if (aiRow) aiRow.style.display = (LOBBY_MODE === "ai") ? "flex" : "none";
+  var aiBtn = document.getElementById("lpAiBtn"); if (aiBtn) aiBtn.textContent = "AI: " + String(AI_LEVEL || "normal").toUpperCase();
+  var onlineSec = document.getElementById("lpOnlineSection"); if (onlineSec) onlineSec.classList.toggle("show", LOBBY_MODE === "online");
+
+  var nationEl = document.getElementById("lpNation");
+  if (nationEl && FACTIONS[FACTION]) nationEl.textContent = FACTIONS[FACTION].flag + " " + FACTIONS[FACTION].name;
+  var deckEl = document.getElementById("lpDeck"); if (deckEl) deckEl.textContent = buildDeck(FACTION).length + " / " + DECK_SIZE;
+  var gemsEl = document.getElementById("lpGems"); if (gemsEl) gemsEl.textContent = "\u25c6 " + (PROFILE.gems || 0);
+  var metaEl = document.getElementById("lpMeta");
+  if (metaEl) metaEl.textContent = "Earn diamonds from MISSIONS, unlock cards in the STORE, open PACKS, and build your DECK.";
+
+  // Current online room
   var box = document.getElementById("lpRoomStatus");
   if (!box) return;
   if (!NET || MODE !== "online") { box.classList.remove("show"); roomShowHint(); return; }
@@ -1998,8 +2139,8 @@ function lobbyPageRender() {
     ? (NET.foeName ? "Opponent ready. Press START BATTLE." : "Waiting for an opponent to join...")
     : "Waiting for the host to start...";
   var html = '<div class="lpRow"><span class="lbl">ROOM</span><span class="lpCode">' + (NET.code || "") + '</span></div>' +
-    '<div class="lpRow"><span class="lbl">HOST</span><span>' + host + '</span></div>' +
-    '<div class="lpRow"><span class="lbl">PLAYER 2</span><span>' + p2 + '</span></div>' +
+    '<div class="lpRow"><span class="lbl">HOST</span><span>' + lpEsc(host) + '</span></div>' +
+    '<div class="lpRow"><span class="lbl">PLAYER 2</span><span>' + lpEsc(p2) + '</span></div>' +
     '<div class="lpWait">' + wait + '</div>';
   if (isHost) html += '<button class="btn lpStartBtn" id="lpStart" onclick="lpLobbyStart()" ' + (NET.foeName ? "" : "disabled") + '>START BATTLE</button>';
   html += '<div class="lpLeave" onclick="lpLeave()">LEAVE ROOM</div>';
@@ -2897,7 +3038,7 @@ var TUT_STEPS = [
   { t: "6. ATTACKING", h: "<ul><li>Click your unit, then click an enemy unit or the enemy HQ. Every attack costs the unit's <b>action cost</b>.</li><li>Each unit acts <b>once per turn</b> (move <i>or</i> attack). When two units fight, <b>both</b> deal their attack to each other.</li><li><b>Support-line units</b> can only reach the enemy <b>frontline</b>. <b>Frontline units</b> can reach the enemy <b>support line and HQ</b>.</li><li><b>Guard</b> units must be fought first. <b>Air</b> units ignore Guard and can always hit the HQ.</li><li>A newly deployed unit cannot <b>attack</b> that turn unless it has <b>Blitz</b> \u2014 but any unit may <b>advance to the frontline</b> immediately (that uses its action for the turn).</li></ul>" },
   { t: "7. ORDERS", h: "<p>Orders are one-shot cards \u2014 they resolve, then vanish. A played order is shown in the box on the left for <b>2 seconds</b> before its effect takes place. Orders ignore the frontline and can strike any enemy unit. Each nation has its own orders. The shared effects are:</p><ul><li><b>Damage a unit</b> \u2014 click the order, then pick an enemy unit.</li><li><b>Damage the enemy HQ</b> \u2014 a direct strike.</li><li><b>Damage all enemy units</b> \u2014 a sweeping barrage (hits the HQ if their board is empty).</li><li><b>Heal your HQ</b> \u2014 recover hit points.</li><li><b>Draw cards</b> \u2014 refill your hand.</li><li><b>Gain resource</b> \u2014 bank energy for bigger plays.</li><li><b>Rally</b> \u2014 all your units can attack again.</li></ul>" },
   { t: "8. YOUR COLLECTION", h: "<ul><li>Open <b>DECK</b> to build your deck right from the <b>card collection</b> \u2014 click a card (or its <b>+</b>) to add a copy, right-click (or <b>-</b>) to remove one. A <b>gold border</b> means it's in your deck.</li><li>Each card tile shows <b>deploy cost</b>, <b>action cost</b> and <b>attack/HP</b>. Each nation keeps its <b>own saved deck</b>; in LOCAL use the <b>PLAYER 1 / PLAYER 2</b> toggle.</li><li>A deck needs <b>exactly 40 cards</b>, at most <b>3 copies</b> each. <b>USE DEFAULT</b> restores the starter deck, <b>SAVE</b> keeps changes.</li><li>Cards marked <b>\u25c6 PREMIUM</b> are locked until you unlock them in the <b>STORE</b> with diamonds.</li></ul>" },
-  { t: "9. PLAY & MENU", h: "<ul><li><b>LOCAL</b> \u2014 two players share one screen (hot-seat); choose <b>both</b> players' nations.</li><li><b>VS AI</b> \u2014 battle the computer; use <b>AI: EASY/NORMAL/HARD</b> to set its skill.</li><li><b>ONLINE</b> \u2014 HOST gives you a room code to share, or press <b>ROOMS</b> to join a waiting game. <b>LOBBY</b> \u2014 one page to host, join by code, or browse open rooms and start the battle.</li><li><b>NATION</b> \u2014 choose your nation. <b>DECK</b> \u2014 build your deck from your collection.</li><li><b>MISSIONS</b> \u2014 complete daily goals (win battles, deploy units, attack, advance, play orders) to earn <b>diamonds \u25c6</b>. <b>STORE</b> \u2014 spend diamonds on card packs or premium cards. <b>PACKS</b> \u2014 open your sealed packs to reveal the cards inside. <b>COLLECTION</b> \u2014 see every card you own; use <b>SHOW UNPOSSESSED</b> to reveal the ones you have not unlocked yet.</li><li><b>STATS</b> \u2014 track wins, losses and records. Use <b>EXPORT SAVE</b> to back up your progress before clearing browser data.</li><li><b>TUTORIAL</b> reopens this guide, <b>SOUND</b> toggles audio.</li></ul><p>Good luck, Commander!</p>" }
+  { t: "9. PLAY & MENU", h: "<ul><li><b>LOCAL</b> \u2014 two players share one screen (hot-seat); choose <b>both</b> players' nations.</li><li><b>VS AI</b> \u2014 battle the computer; use <b>AI: EASY/NORMAL/HARD</b> to set its skill.</li><li><b>ONLINE</b> \u2014 HOST gives you a room code to share, or press <b>ROOMS</b> to join a waiting game. <b>LOBBY</b> \u2014 the screen you see when the game opens. Pick <b>LOCAL</b>, <b>VS AI</b> or <b>ONLINE</b>, then press <b>PLAY</b>. In ONLINE you can host, join by code, or browse open rooms.</li><li><b>NATION</b> \u2014 choose your nation. <b>DECK</b> \u2014 build your deck from your collection.</li><li><b>MISSIONS</b> \u2014 complete daily goals (win battles, deploy units, attack, advance, play orders) to earn <b>diamonds \u25c6</b>. <b>STORE</b> \u2014 spend diamonds on card packs or premium cards. <b>PACKS</b> \u2014 open your sealed packs to reveal the cards inside. <b>COLLECTION</b> \u2014 see every card you own; use <b>SHOW UNPOSSESSED</b> to reveal the ones you have not unlocked yet.</li><li><b>STATS</b> \u2014 track wins, losses and records. Use <b>EXPORT SAVE</b> to back up your progress before clearing browser data.</li><li><b>TUTORIAL</b> reopens this guide, <b>SOUND</b> toggles audio.</li></ul><p>Good luck, Commander!</p>" }
 ];
 var TUT_PAGE = 0;
 
@@ -3187,6 +3328,7 @@ try {
 
 newGame();
 maybeShowTutorial();
+openLobbyPage();
 </script>
 </body>
 </html>
