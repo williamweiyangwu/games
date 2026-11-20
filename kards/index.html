@@ -563,7 +563,7 @@
   <div id="fit">
     <div id="stage">
       <header>
-        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v32</span></h1>
+        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v33</span></h1>
         <div id="turnbar">Player 1's Turn</div>
       </header>
 
@@ -924,9 +924,15 @@ var DEFS = {
   uk_meteor:     { f: "uk", name: "Gloster Meteor",  cost: 6, atk: 6, hp: 4, art: "✈", air: true, fx: { k: "blitz" }, premium: true, text: "Air. Blitz." },
   de_kingtiger:  { f: "germany", name: "King Tiger",  cost: 8, atk: 8, hp: 8, art: "▥", guard: true, premium: true, text: "Guard. An unstoppable heavy tank." },
   su_is3:        { f: "ussr", name: "IS-3",          cost: 7, atk: 7, hp: 7, art: "▤", guard: true, premium: true, text: "Guard. Reinforced steel." },
-  jp_shinden:    { f: "japan", name: "Shinden",       cost: 6, atk: 5, hp: 5, art: "✦", air: true, fx: { k: "blitz" }, premium: true, text: "Air. Blitz." }
+  jp_shinden:    { f: "japan", name: "Shinden",       cost: 6, atk: 5, hp: 5, art: "✦", air: true, fx: { k: "blitz" }, premium: true, text: "Air. Blitz." },
+  usa_b52:       { f: "usa", name: "B-52 Stratofortress", cost: 8, atk: 6, hp: 6, art: "≫", air: true, fx: { k: "hq", n: 4 }, premium: true, text: "Air. Deployment: Deal 4 damage to the enemy HQ." },
+  uk_typhoon:    { f: "uk", name: "Typhoon",         cost: 4, atk: 4, hp: 4, art: "✈", air: true, fx: { k: "aoe", n: 2 }, premium: true, text: "Air. Deployment: Deal 2 damage to all enemy units." },
+  de_me262:      { f: "germany", name: "Me 262",      cost: 5, atk: 5, hp: 3, art: "✦", air: true, fx: { k: "blitz" }, premium: true, text: "Air. Blitz." },
+  su_su100:      { f: "ussr", name: "SU-100",         cost: 5, atk: 5, hp: 4, art: "▤", fx: { k: "aoe", n: 3 }, premium: true, text: "Deployment: Deal 3 damage to all enemy units." },
+  jp_akagi:      { f: "japan", name: "Akagi",         cost: 6, atk: 4, hp: 6, art: "⚓", guard: true, fx: { k: "draw", n: 2 }, premium: true, text: "Guard. Deployment: Draw 2 cards." }
 };
-var PREMIUM_KEYS = ["usa_b29", "uk_meteor", "de_kingtiger", "su_is3", "jp_shinden"];
+var PREMIUM_KEYS = ["usa_b29", "uk_meteor", "de_kingtiger", "su_is3", "jp_shinden",
+                    "usa_b52", "uk_typhoon", "de_me262", "su_su100", "jp_akagi"];
 
 var FACTIONS = {
   usa:     { key: "usa",     name: "USA",     flag: "★", color: "#2a4d8c",
@@ -955,6 +961,7 @@ function defaultProfile() {
     missions: null,
     packs: 0,
     unopened: 0,
+    packQueue: [],
     stats: { games: 0, wins: 0, losses: 0, aiWins: 0, localWins: 0, onlineWins: 0, byFaction: {}, flawlessWins: 0, blitzWins: 0, closeWins: 0, heals: 0, fullBoards: 0, bigUnits: 0, decksSaved: 0, tutDone: 0 },
     sfx: true, tut: false, aiLevel: "normal"
   };
@@ -993,6 +1000,7 @@ function loadProfile() {
   p.cards = p.cards || {};
   p.packs = p.packs || 0;
   if (typeof p.unopened !== "number" || p.unopened < 0) p.unopened = 0;
+  if (!Array.isArray(p.packQueue)) p.packQueue = [];
   if (!p.missions || typeof p.missions !== "object") p.missions = null;
   if (typeof p.sfx !== "boolean") p.sfx = true;
   if (typeof p.tut !== "boolean") p.tut = false;
@@ -1018,7 +1026,8 @@ var MISSION_DEFS = [
   { id: "advance", title: "Seize the line",  desc: "Advance 5 units to the frontline", target: 5,  reward: 35, kind: "advance" },
   { id: "order",   title: "Tactical support", desc: "Play 8 orders",                  target: 8,  reward: 35, kind: "order" }
 ];
-var PACK_COST = 100, CHEST_COST = 250, PREMIUM_COST = 180, DUST_REFUND = 60;
+var PACK_COST = 100, CHEST_COST = 250, ARSENAL_COST = 550;
+var PREMIUM_COST = 180, DUST_REFUND = 60, NATION_PACK_COST = 150;
 var PACK_RESULT = null;
 
 function todayKey() { return new Date().toISOString().slice(0, 10); }
@@ -1147,6 +1156,14 @@ function renderStore() {
           '<button class="btn sbuy" onclick="buyPacks(1)">\u25c6 ' + PACK_COST + '</button></div>';
   html += '<div class="sitem"><div class="sinfo"><b>War Chest</b><span>2 sealed packs \u2014 reveal 2 random premium cards.</span></div>' +
           '<button class="btn sbuy" onclick="buyPacks(2)">\u25c6 ' + CHEST_COST + '</button></div>';
+  html += '<div class="sitem"><div class="sinfo"><b>Grand Arsenal</b><span>5 sealed packs at a discount \u2014 reveal 5 premium cards.</span></div>' +
+          '<button class="btn sbuy" onclick="buyPacks(5)">\u25c6 ' + ARSENAL_COST + '</button></div>';
+  html += '<div class="shead">NATION PACKS</div>';
+  FACTION_KEYS.forEach(function (f) {
+    html += '<div class="sitem"><div class="sinfo"><b>' + FACTIONS[f].flag + ' ' + FACTIONS[f].name + ' Pack</b>' +
+      '<span>1 sealed pack \u2014 guarantees a ' + FACTIONS[f].name + ' premium card.</span></div>' +
+      '<button class="btn sbuy" onclick="buyNationPack(\'' + f + '\')">\u25c6 ' + NATION_PACK_COST + '</button></div>';
+  });
   html += '<div class="shead">PREMIUM CARDS</div>';
   PREMIUM_KEYS.forEach(function (k) {
     var d = DEFS[k], owned = cardOwned(k);
@@ -1157,7 +1174,7 @@ function renderStore() {
       '<span>' + d.cost + 'c \u00b7 ' + d.atk + '/' + d.hp + ' ' + (d.air ? '\u00b7 AIR ' : '') + (d.guard ? '\u00b7 GUARD' : '') + '</span>' +
       '<span class="sown">OWNED ' + owned + '/3</span></div>' + b + '</div>';
   });
-  html += '<div class="snote">Packs go to your <b>PACKS</b> stash \u2014 open them there. Duplicates refund \u25c6' + DUST_REFUND + '. Earn diamonds from MISSIONS.</div>';
+  html += '<div class="snote">Packs go to your <b>PACKS</b> stash \u2014 open them there. <b>NATION PACKS</b> guarantee a card from that nation. Duplicates refund \u25c6' + DUST_REFUND + '. Earn diamonds from MISSIONS.</div>';
   document.getElementById("storeRows").innerHTML = html;
   if (msg) msg.textContent = keep;
 }
@@ -1175,13 +1192,30 @@ function buyCard(k) {
 }
 
 function buyPacks(count) {
-  var cost = count === 2 ? CHEST_COST : PACK_COST;
+  var cost = count >= 5 ? ARSENAL_COST : (count === 2 ? CHEST_COST : PACK_COST);
   if ((PROFILE.gems || 0) < cost) { storeMsg("Not enough diamonds. Complete missions to earn more."); return; }
   PROFILE.gems -= cost;
   PROFILE.packs = (PROFILE.packs || 0) + count;
   PROFILE.unopened = (PROFILE.unopened || 0) + count;
+  if (!Array.isArray(PROFILE.packQueue)) PROFILE.packQueue = [];
+  for (var i = 0; i < count; i++) PROFILE.packQueue.push("");
   saveProfile(); refreshMetaUI(); renderStore();
   storeMsg(count + " sealed pack" + (count === 1 ? "" : "s") + " added to your PACKS stash. Open them there!");
+  sfx("play");
+}
+
+function buyNationPack(f) {
+  if (FACTION_KEYS.indexOf(f) === -1) return;
+  var available = PREMIUM_KEYS.some(function (k) { return DEFS[k].f === f && cardOwned(k) < MAX_COPIES; });
+  if (!available) { storeMsg("All " + FACTIONS[f].name + " premium cards are already maxed."); return; }
+  if ((PROFILE.gems || 0) < NATION_PACK_COST) { storeMsg("Not enough diamonds. Complete missions to earn more."); return; }
+  PROFILE.gems -= NATION_PACK_COST;
+  PROFILE.packs = (PROFILE.packs || 0) + 1;
+  PROFILE.unopened = (PROFILE.unopened || 0) + 1;
+  if (!Array.isArray(PROFILE.packQueue)) PROFILE.packQueue = [];
+  PROFILE.packQueue.push(f);
+  saveProfile(); refreshMetaUI(); renderStore();
+  storeMsg(FACTIONS[f].name + " Pack added to your PACKS stash. Open it there for a guaranteed " + FACTIONS[f].name + " premium card!");
   sfx("play");
 }
 
@@ -1192,7 +1226,10 @@ function packMsg(msg) { var e = document.getElementById("packMsg"); if (e) e.tex
 
 function renderPacks() {
   var u = PROFILE.unopened || 0;
-  document.getElementById("packHead").innerHTML = "SEALED PACKS <b>" + u + "</b> \u00b7 EACH PACK REVEALS 1 PREMIUM CARD";
+  var next = (Array.isArray(PROFILE.packQueue) && PROFILE.packQueue.length) ? (PROFILE.packQueue[0] || "") : "";
+  var head = "SEALED PACKS <b>" + u + "</b> \u00b7 EACH PACK REVEALS 1 PREMIUM CARD";
+  if (next && FACTIONS[next]) head += " \u00b7 NEXT: " + FACTIONS[next].flag + " " + FACTIONS[next].name;
+  document.getElementById("packHead").innerHTML = head;
   var stage = document.getElementById("packStage"), btns = "";
   if (u > 0 && !PACK_RESULT) {
     stage.innerHTML = '<div class="packart" onclick="openOnePack()" title="Click to open">' +
@@ -1223,9 +1260,12 @@ function renderPacks() {
 
 function openOnePack() {
   if ((PROFILE.unopened || 0) <= 0) { packMsg("No sealed packs left."); return; }
+  var forced = "";
+  if (Array.isArray(PROFILE.packQueue) && PROFILE.packQueue.length) forced = PROFILE.packQueue.shift() || "";
   PROFILE.unopened--;
   PROFILE.packs = (PROFILE.packs || 0) + 1;
-  var pool = PREMIUM_KEYS.filter(function (k) { return cardOwned(k) < MAX_COPIES; });
+  var pool = PREMIUM_KEYS.filter(function (k) { return cardOwned(k) < MAX_COPIES && (!forced || DEFS[k].f === forced); });
+  if (!pool.length) pool = PREMIUM_KEYS.filter(function (k) { return cardOwned(k) < MAX_COPIES; });
   if (!pool.length) {
     PROFILE.gems = (PROFILE.gems || 0) + DUST_REFUND;
     PACK_RESULT = { key: PREMIUM_KEYS[0], owned: cardOwned(PREMIUM_KEYS[0]), refund: DUST_REFUND };
@@ -3038,7 +3078,7 @@ var TUT_STEPS = [
   { t: "6. ATTACKING", h: "<ul><li>Click your unit, then click an enemy unit or the enemy HQ. Every attack costs the unit's <b>action cost</b>.</li><li>Each unit acts <b>once per turn</b> (move <i>or</i> attack). When two units fight, <b>both</b> deal their attack to each other.</li><li><b>Support-line units</b> can only reach the enemy <b>frontline</b>. <b>Frontline units</b> can reach the enemy <b>support line and HQ</b>.</li><li><b>Guard</b> units must be fought first. <b>Air</b> units ignore Guard and can always hit the HQ.</li><li>A newly deployed unit cannot <b>attack</b> that turn unless it has <b>Blitz</b> \u2014 but any unit may <b>advance to the frontline</b> immediately (that uses its action for the turn).</li></ul>" },
   { t: "7. ORDERS", h: "<p>Orders are one-shot cards \u2014 they resolve, then vanish. A played order is shown in the box on the left for <b>2 seconds</b> before its effect takes place. Orders ignore the frontline and can strike any enemy unit. Each nation has its own orders. The shared effects are:</p><ul><li><b>Damage a unit</b> \u2014 click the order, then pick an enemy unit.</li><li><b>Damage the enemy HQ</b> \u2014 a direct strike.</li><li><b>Damage all enemy units</b> \u2014 a sweeping barrage (hits the HQ if their board is empty).</li><li><b>Heal your HQ</b> \u2014 recover hit points.</li><li><b>Draw cards</b> \u2014 refill your hand.</li><li><b>Gain resource</b> \u2014 bank energy for bigger plays.</li><li><b>Rally</b> \u2014 all your units can attack again.</li></ul>" },
   { t: "8. YOUR COLLECTION", h: "<ul><li>Open <b>DECK</b> to build your deck right from the <b>card collection</b> \u2014 click a card (or its <b>+</b>) to add a copy, right-click (or <b>-</b>) to remove one. A <b>gold border</b> means it's in your deck.</li><li>Each card tile shows <b>deploy cost</b>, <b>action cost</b> and <b>attack/HP</b>. Each nation keeps its <b>own saved deck</b>; in LOCAL use the <b>PLAYER 1 / PLAYER 2</b> toggle.</li><li>A deck needs <b>exactly 40 cards</b>, at most <b>3 copies</b> each. <b>USE DEFAULT</b> restores the starter deck, <b>SAVE</b> keeps changes.</li><li>Cards marked <b>\u25c6 PREMIUM</b> are locked until you unlock them in the <b>STORE</b> with diamonds.</li></ul>" },
-  { t: "9. PLAY & MENU", h: "<ul><li><b>LOCAL</b> \u2014 two players share one screen (hot-seat); choose <b>both</b> players' nations.</li><li><b>VS AI</b> \u2014 battle the computer; use <b>AI: EASY/NORMAL/HARD</b> to set its skill.</li><li><b>ONLINE</b> \u2014 HOST gives you a room code to share, or press <b>ROOMS</b> to join a waiting game. <b>LOBBY</b> \u2014 the screen you see when the game opens. Pick <b>LOCAL</b>, <b>VS AI</b> or <b>ONLINE</b>, then press <b>PLAY</b>. In ONLINE you can host, join by code, or browse open rooms.</li><li><b>NATION</b> \u2014 choose your nation. <b>DECK</b> \u2014 build your deck from your collection.</li><li><b>MISSIONS</b> \u2014 complete daily goals (win battles, deploy units, attack, advance, play orders) to earn <b>diamonds \u25c6</b>. <b>STORE</b> \u2014 spend diamonds on card packs or premium cards. <b>PACKS</b> \u2014 open your sealed packs to reveal the cards inside. <b>COLLECTION</b> \u2014 see every card you own; use <b>SHOW UNPOSSESSED</b> to reveal the ones you have not unlocked yet.</li><li><b>STATS</b> \u2014 track wins, losses and records. Use <b>EXPORT SAVE</b> to back up your progress before clearing browser data.</li><li><b>TUTORIAL</b> reopens this guide, <b>SOUND</b> toggles audio.</li></ul><p>Good luck, Commander!</p>" }
+  { t: "9. PLAY & MENU", h: "<ul><li><b>LOCAL</b> \u2014 two players share one screen (hot-seat); choose <b>both</b> players' nations.</li><li><b>VS AI</b> \u2014 battle the computer; use <b>AI: EASY/NORMAL/HARD</b> to set its skill.</li><li><b>ONLINE</b> \u2014 HOST gives you a room code to share, or press <b>ROOMS</b> to join a waiting game. <b>LOBBY</b> \u2014 the screen you see when the game opens. Pick <b>LOCAL</b>, <b>VS AI</b> or <b>ONLINE</b>, then press <b>PLAY</b>. In ONLINE you can host, join by code, or browse open rooms.</li><li><b>NATION</b> \u2014 choose your nation. <b>DECK</b> \u2014 build your deck from your collection.</li><li><b>MISSIONS</b> \u2014 complete daily goals (win battles, deploy units, attack, advance, play orders) to earn <b>diamonds \u25c6</b>. <b>STORE</b> \u2014 spend diamonds on Recruit Packs, War Chests, the Grand Arsenal (5 packs), nation packs that guarantee a faction's card, or any of the 10 premium cards. <b>PACKS</b> \u2014 open your sealed packs to reveal the cards inside; a queued nation pack is marked NEXT. <b>COLLECTION</b> \u2014 see every card you own; use <b>SHOW UNPOSSESSED</b> to reveal the ones you have not unlocked yet.</li><li><b>STATS</b> \u2014 track wins, losses and records. Use <b>EXPORT SAVE</b> to back up your progress before clearing browser data.</li><li><b>TUTORIAL</b> reopens this guide, <b>SOUND</b> toggles audio.</li></ul><p>Good luck, Commander!</p>" }
 ];
 var TUT_PAGE = 0;
 
