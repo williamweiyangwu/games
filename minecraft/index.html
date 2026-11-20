@@ -1242,6 +1242,17 @@ function groundTop(x, z) {
   }
   return 0;
 }
+/* Highest walkable block at or below fromY. Unlike topAt() this ignores tree
+   canopies and water above the animal, so ground height never flickers when a
+   mob walks under leaves or past a pond. */
+function groundBelow(x, z, fromY) {
+  const d = getChunk(x >> 4, z >> 4).data, lx = x & 15, lz = z & 15;
+  for (let y = Math.min(H - 1, Math.floor(fromY)); y >= 0; y--) {
+    const b = d[((y * CH + lz) * CH + lx)];
+    if (b && b !== LEAVES && b !== WATER) return y;
+  }
+  return -1;
+}
 /* topmost sunlight-blocking (opaque) block in a column; -1 if none */
 function topOpaque(x, z) {
   const ch = getChunk(x >> 4, z >> 4), d = ch.data;
@@ -1786,48 +1797,7 @@ function drawParts() {
   }
 }
 
-/* ------------------------------------------------------------- clouds */
-const clouds = [];
-function buildClouds() {
-  clouds.length = 0;
-  for (let i = 0; i < 140; i++) {
-    if (fbm(i * 3.1 + 5, i * 1.7 + 9, 3) < 0.46) continue;
-    clouds.push({
-      x: hash2(i, 1) * 300 - 150, y: 44 + hash2(i, 2) * 11, z: hash2(i, 3) * 300 - 150,
-      w: 9 + hash2(i, 4) * 22, d: 8 + hash2(i, 5) * 14
-    });
-  }
-}
-function drawClouds() {
-  matZ = 1; matA = 232;
-  const ox = ((worldT * 1.2) % 400 + 400) % 400 - 200;
-  for (const c of clouds) {
-    /* wrap the cloud field around the camera so an endless world still has clouds */
-    const cxw = cam.x + (((c.x + ox - cam.x + 200) % 400 + 400) % 400 - 200);
-    const czw = cam.z + (((c.z - cam.z + 200) % 400 + 400) % 400 - 200);
-    const dy = c.y - cam.y, dz = czw - cam.z, dx = cxw - cam.x;
-    const d = Math.hypot(dx, dy, dz);
-    const f = clamp((d - 60) / 220, 0, 0.8);
-    matR = lerp(252, sky.hor[0], f); matG = lerp(252, sky.hor[1], f); matB = lerp(255, sky.hor[2], f);
-    const hw = c.w / 2, hd = c.d / 2;
-    const ex = cxw - cam.x, ez = czw - cam.z;
-    QP[0] = (-hw) * rt[0] + dy * rt[1] + (-hd) * rt[2];
-    QP[1] = (-hw) * uv[0] + dy * uv[1] + (-hd) * uv[2];
-    QP[2] = (-hw) * fw[0] + dy * fw[1] + (-hd) * fw[2];
-    QP[3] = (hw) * rt[0] + dy * rt[1] + (-hd) * rt[2];
-    QP[4] = (hw) * uv[0] + dy * uv[1] + (-hd) * uv[2];
-    QP[5] = (hw) * fw[0] + dy * fw[1] + (-hd) * fw[2];
-    QP[6] = (hw) * rt[0] + dy * rt[1] + (hd) * rt[2];
-    QP[7] = (hw) * uv[0] + dy * uv[1] + (hd) * uv[2];
-    QP[8] = (hw) * fw[0] + dy * fw[1] + (hd) * fw[2];
-    QP[9] = (-hw) * rt[0] + dy * rt[1] + (hd) * rt[2];
-    QP[10] = (-hw) * uv[0] + dy * uv[1] + (hd) * uv[2];
-    QP[11] = (-hw) * fw[0] + dy * fw[1] + (hd) * fw[2];
-    for (let k = 0; k < 4; k++) QZ[k] = QP[k * 3 + 2];
-    const m = clipQ();
-    if (m >= 3) emitVerts(m, 1);
-  }
-}
+/* clouds intentionally omitted: clear sky, no drifting cloud layer */
 /* ---------------------------------------------- first-person red arm */
 function drawArm() {
   const punch = swing > 0 ? Math.sin((1 - swing / 0.34) * Math.PI) * 0.5 : 0;
@@ -2166,7 +2136,7 @@ function trySpawnAnimal() {
     const kind = (Math.random() * 4) | 0;
     animals.push({ kind, x: x + 0.5, z: z + 0.5, y: t + 1, dir: Math.random() * 6.283,
                    moving: 0, walkT: Math.random() * 2, bob: Math.random() * 6,
-                   hp: MOBS[kind].hp, kx: 0, kz: 0, flee: 0 });
+                   hp: MOBS[kind].hp, kx: 0, kz: 0, flee: 0, avoid: 0 });
     return true;
   }
   return false;
@@ -2195,8 +2165,8 @@ function stepAnimals(dt) {
       a.x += ax / al * M.sp * 1.8 * dt;
       a.z += az / al * M.sp * 1.8 * dt;
       a.bob += dt * 12; a.moving = 1;
-      const at = topAt(a.x | 0, a.z | 0);
-      if (at <= a.y + 1.2) a.y = at + 1;
+      const gy = groundBelow(a.x, a.z, a.y + 1.2);
+      if (gy >= 0 && gy <= a.y + 1.2) a.y = gy + 1;
       continue;
     }
     a.walkT -= dt;
@@ -2214,27 +2184,37 @@ function stepAnimals(dt) {
         a.x = ox; a.z = oz;
         a.moving = 0; a.dir += Math.PI * (0.4 + Math.random() * 0.8); a.walkT = 0.6 + Math.random();
       }
-      const at = topAt(a.x | 0, a.z | 0);
-      if (at > a.y + 1.2) {              /* a tree / wall: do not step up onto it */
+      const gy = groundBelow(a.x, a.z, a.y + 2);
+      if (gy < 0 || gy > a.y + 1.2) {    /* a tree / wall: do not step up onto it */
         a.x = ox; a.z = oz;
         a.moving = 0; a.dir += Math.PI * (0.5 + Math.random() * 0.5); a.walkT = 0.6 + Math.random();
-      } else a.y = at + 1;
+      } else a.y = gy + 1;
     }
+    if (a.avoid > 0) a.avoid -= dt;
     const at2 = topAt(a.x | 0, a.z | 0);
     const topb = get(a.x | 0, at2, a.z | 0);
-    if (topb === WATER) { a.dir += Math.PI; a.moving = 0; a.walkT = 0.5 + Math.random() * 1.5; }
-    else if (topb === LEAVES || topb === LOG) { a.dir += Math.PI * (0.6 + Math.random() * 0.4); a.moving = 0; a.walkT = 0.5 + Math.random() * 1.5; }
-    else if (waterNear(a.x, a.z, 2) && Math.random() < 0.7) {
+    /* Avoidance used to turn mobs every frame, which made them visibly jitter.
+       Each reaction is now rate-limited and the heading changes are gradual. */
+    if (topb === WATER || topb === LEAVES || topb === LOG) {
+      if (a.avoid <= 0) {
+        a.dir += Math.PI * (0.6 + Math.random() * 0.8);
+        a.moving = 0; a.walkT = 0.6 + Math.random() * 1.2; a.avoid = 0.9;
+      }
+    } else if (waterNear(a.x, a.z, 2) && a.avoid <= 0 && Math.random() < 0.4) {
       let bestD = a.dir, bestW = 1e9;
       for (let k = 0; k < 8; k++) {
-        const dd = k * Math.PI / 4, tx = a.x + Math.sin(dd) * 3, tz = a.z + Math.cos(dd) * 3;
+        const dd = a.dir + (k - 4) * Math.PI / 8;   /* prefer a gentle turn */
+        const tx = a.x + Math.sin(dd) * 3, tz = a.z + Math.cos(dd) * 3;
         const w = waterNear(tx, tz, 2) ? 1 : 0;
-        if (w === 0) { bestD = dd; bestW = 0; break; }
-        if (w < bestW || (w === bestW && Math.random() < 0.25)) { bestW = w; bestD = dd; }
+        if (w < bestW) { bestW = w; bestD = dd; }
+        if (w === 0) break;
       }
-      a.dir = bestD; a.moving = 1;
+      a.dir = bestD; a.moving = 1; a.walkT = 0.8 + Math.random() * 1.2; a.avoid = 1.2;
     }
-    if (topb !== WATER && topb !== LEAVES && topb !== LOG) a.y = at2 + 1;
+    if (topb !== WATER && topb !== LEAVES && topb !== LOG) {
+      const gy = groundBelow(a.x, a.z, a.y);
+      if (gy >= 0) a.y = gy + 1;
+    }
   }
   /* spatial ambient: hear nearby livestock even when off-screen */
   if (!muted && animals.length && Math.random() < dt * 0.09) {
@@ -3454,7 +3434,6 @@ function render() {
   for (const c of activeChunks) {
     if (c.tn && chunkVisible(c, tanW, tanH)) drawChunk(c.td, c.tn);
   }
-  if (!otherDim && !under && !enclosed) drawClouds();
   drawParts();
   drawEntities();
   drawDrops();
@@ -3632,7 +3611,6 @@ function loadWorld(o) {
   fallY = pl.y;
   pl.fly = 0;
   hudMode = ''; refreshHotbar(); select(o.sel || 0); updateHUD();
-  buildClouds();
   updateChunks(true);
   populateDimension();
   parts.length = 0;
@@ -3720,7 +3698,6 @@ function newWorld(seed, m) {
   clearFurnaces();
   wq.length = 0;
   pl.x = 0.5; pl.y = 20; pl.z = 0.5;
-  buildClouds();
   mode = (m === 'creative') ? 'creative' : 'survival';
   hp = MAXHP; food = MAXFOOD; INV = new Array(36).fill(null); craftSlots = new Array(9).fill(null);
   if (mode === 'creative') for (let i = 0; i < CREATIVE_PALETTE.length && i < 36; i++) INV[i] = { id: CREATIVE_PALETTE[i][0], n: CREATIVE_PALETTE[i][1] };
