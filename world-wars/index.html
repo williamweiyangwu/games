@@ -231,6 +231,8 @@
   }
   .game-hud span { white-space: nowrap; }
   .game-hud b { color: var(--gold); }
+  .game-wrap.boost .game-hud span:nth-child(4) b { color: #7dd3fc; }
+  .game-wrap.boost .reticle::before, .game-wrap.boost .reticle::after { background: #7dd3fc; }
   .reticle { position: absolute; left: 50%; top: 46%; width: 28px; height: 28px; margin: -14px 0 0 -14px; z-index: 1; pointer-events: none; opacity: .55; }
   .reticle::before, .reticle::after { content: ""; position: absolute; background: rgba(255,235,170,.9); box-shadow: 0 0 6px rgba(0,0,0,.85); }
   .reticle::before { left: 50%; top: 0; bottom: 0; width: 2px; margin-left: -1px; }
@@ -419,7 +421,7 @@
 
   <section id="fighter">
     <h2 data-i18n="fighterTitle">Plane Wars: Fly a WWII Fighter</h2>
-    <p class="sub" data-i18n="fighterSub">Click or tap to lock the camera, move to steer and hold to fire. Shoot down enemy planes, fly through the cash they drop, and spend it in the hangar on faster, tougher aircraft and paint jobs. Hitting a hill respawns you — Esc pauses.</p>
+    <p class="sub" data-i18n="fighterSub">Fly over wartime Europe, where Allied and Axis squadrons dogfight around you. Steer with the mouse, hold left mouse button (or touch) to fire and hold Space to boost. Collect the cash Axis planes drop, upgrade in the hangar, and watch out for hills — Esc pauses.</p>
     <div class="game-wrap" id="gameWrap">
       <canvas id="fighterCanvas" width="900" height="560"></canvas>
       <div class="reticle" aria-hidden="true"></div>
@@ -503,7 +505,7 @@ const WARS = {
     weaponsTitle: "Weapons of World War II",
     weaponsSub: "The machines and guns that shaped the battlefield, from the Blitzkrieg to the V-2.",
     fighterTitle: "Plane Wars: Fly a WWII Fighter",
-    fighterSub: "Click or tap to lock the camera, move to steer and hold to fire. Shoot down enemy planes, fly through the cash they drop, and spend it in the hangar on faster, tougher aircraft and paint jobs. Hitting a hill respawns you — Esc pauses.",
+    fighterSub: "Fly over wartime Europe, where Allied and Axis squadrons dogfight around you. Steer with the mouse, hold left mouse button (or touch) to fire and hold Space to boost. Collect the cash Axis planes drop, upgrade in the hangar, and watch out for hills — Esc pauses.",
     footer: "Data compiled from public historical sources for educational purposes; some figures are estimates.",
     statDuration: "Duration", statCountries: "Belligerent nations",
     statDeaths: "Fatalities (worldwide)", statCamps: "Major camps",
@@ -1846,44 +1848,70 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
   scene.add(sun);
   scene.add(new THREE.AmbientLight(0xffffff, 0.18));
 
-  // ---- Ground and low-poly hills (Plane Wars-style terrain) ----
+  // ---- Ground: the same real WWII Europe map used by the history section ----
   function makeGroundTexture() {
     const c = document.createElement("canvas");
-    c.width = c.height = 512;
+    c.width = c.height = 1024;
     const g = c.getContext("2d");
-    g.fillStyle = "#6f8a52";
-    g.fillRect(0, 0, 512, 512);
-    // Patchwork fields
-    for (let i = 0; i < 90; i++) {
-      const w = rand(24, 96), h = rand(18, 70);
-      const x = rand(0, 512), y = rand(0, 512);
-      const tones = ["#7e9a5e", "#68804a", "#8aa268", "#5f7743", "#93a86e", "#7b8f56"];
-      g.fillStyle = tones[(Math.random() * tones.length) | 0];
-      g.globalAlpha = 0.55;
-      g.fillRect(x, y, w, h);
-      g.globalAlpha = 1;
+    // Ocean + a faint navigation grid.
+    g.fillStyle = "#17354d";
+    g.fillRect(0, 0, c.width, c.height);
+    g.strokeStyle = "rgba(150,195,220,0.09)";
+    g.lineWidth = 1;
+    for (let i = 0; i <= c.width; i += 64) {
+      g.beginPath(); g.moveTo(i, 0); g.lineTo(i, c.height); g.stroke();
+      g.beginPath(); g.moveTo(0, i); g.lineTo(c.width, i); g.stroke();
     }
-    // Hedgerows / tracks
-    g.strokeStyle = "rgba(58,74,42,0.5)";
-    for (let i = 0; i < 46; i++) {
-      const y = rand(0, 512);
-      g.lineWidth = Math.random() < 0.7 ? 2 : 4;
-      g.beginPath();
-      g.moveTo(rand(-40, 200), y);
-      g.bezierCurveTo(180, y + rand(-8, 8), 330, y + rand(-8, 8), 560, y + rand(-20, 20));
-      g.stroke();
+    const geo = window.EUROPE_GEO;
+    const ww2 = WARS.ww2;
+    if (geo && window.Path2D) {
+      // A mid-war snapshot keeps the front lines recognisable from the air.
+      const snap = Object.assign({}, periods[Math.min(9, periods.length - 1)].control);
+      const codeGroup = {};
+      ww2.groups.forEach(gr => gr.codes.forEach(code => { codeGroup[code] = gr; }));
+      const scale = c.width / 800; // the SVG map uses viewBox 0 0 800 766
+      g.save();
+      g.translate(0, (c.height - 766 * scale) / 2);
+      g.scale(scale, scale);
+      Object.keys(geo).forEach(code => {
+        const gr = codeGroup[code];
+        const state = gr ? (snap[gr.id] || "neutral") : "neutral";
+        const path = new Path2D(geo[code]);
+        g.fillStyle = ww2.STATE_COLORS[state] || ww2.STATE_COLORS.neutral;
+        g.fill(path);
+        g.strokeStyle = "rgba(235,244,252,0.42)";
+        g.lineWidth = 0.75;
+        g.stroke(path);
+      });
+      // Sea names and country abbreviations make the territory readable.
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      ww2.seaLabels.forEach(s => {
+        g.fillStyle = "rgba(150,190,215,0.55)";
+        g.font = "italic 12px Arial";
+        g.fillText(s.en, s.x, s.y);
+      });
+      ww2.groups.forEach(gr => {
+        if (gr.skipLabel) return;
+        g.fillStyle = "rgba(8,16,26,0.9)";
+        g.font = "bold 11px Arial";
+        g.fillText(gr.abbr, gr.label[0], gr.label[1]);
+      });
+      g.restore();
     }
     const t = new THREE.CanvasTexture(c);
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
-    t.repeat.set(16, 16);
+    t.repeat.set(2, 2);
     t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
     if ("colorSpace" in t) t.colorSpace = THREE.SRGBColorSpace;
     return t;
   }
   const groundTex = makeGroundTexture();
+  // Keep ground scroll speed consistent with the old 16x repeating field texture.
+  const groundScroll = 0.0025 * (groundTex.repeat.y / 16);
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(3600, 3600),
-    new THREE.MeshStandardMaterial({ map: groundTex, color: 0x9fb583, roughness: 1, metalness: 0 })
+    new THREE.MeshStandardMaterial({ map: groundTex, color: 0xffffff, roughness: 1, metalness: 0 })
   );
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.3;
@@ -1974,6 +2002,10 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
   const enemyFighterMat = new THREE.MeshStandardMaterial({ color: 0x8d98a5, roughness: 0.68, metalness: 0.25, flatShading: true });
   const enemyBomberMat = new THREE.MeshStandardMaterial({ color: 0x707c87, roughness: 0.75, metalness: 0.2, flatShading: true });
   const enemyAccentMat = new THREE.MeshStandardMaterial({ color: 0xb8493e, roughness: 0.65, metalness: 0.25, flatShading: true });
+  // Allied squadrons share the sky with the Axis planes and fight their own dogfights.
+  const allyFighterMat = new THREE.MeshStandardMaterial({ color: 0xa8bdd2, roughness: 0.68, metalness: 0.25, flatShading: true });
+  const allyBomberMat = new THREE.MeshStandardMaterial({ color: 0x8ca6c0, roughness: 0.75, metalness: 0.2, flatShading: true });
+  const allyAccentMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.65, metalness: 0.25, flatShading: true });
 
   // ---- Player aircraft (model faces -Z; the camera sits behind) ----
   function buildPlayerPlane() {
@@ -2063,20 +2095,23 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     g.userData.twin = twin;
 
     g.userData.prop = prop;
+    g.userData.team = "allied";
     return g;
   }
 
   // ---- Enemy aircraft (model faces +Z, toward the player) ----
-  function buildEnemyPlane(type) {
+  function buildEnemyPlane(type, team) {
     const bomber = type === "bomber";
+    const ally = team === "allied";
     const g = new THREE.Group();
-    const body = bomber ? enemyBomberMat : enemyFighterMat;
+    const body = bomber ? (ally ? allyBomberMat : enemyBomberMat) : (ally ? allyFighterMat : enemyFighterMat);
+    const accent = ally ? allyAccentMat : enemyAccentMat;
 
     const fuselage = new THREE.Mesh(new THREE.SphereGeometry(1, 18, 12), body);
     fuselage.scale.set(bomber ? 1.25 : 0.9, bomber ? 1.2 : 0.82, bomber ? 6.4 : 4.7);
     g.add(fuselage);
 
-    const nose = new THREE.Mesh(new THREE.ConeGeometry(bomber ? 0.9 : 0.58, bomber ? 2.1 : 1.4, 14), enemyAccentMat);
+    const nose = new THREE.Mesh(new THREE.ConeGeometry(bomber ? 0.9 : 0.58, bomber ? 2.1 : 1.4, 14), accent);
     nose.rotation.x = Math.PI / 2;
     nose.position.z = bomber ? 7.2 : 5.4;
     g.add(nose);
@@ -2117,12 +2152,14 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     }
 
     g.userData.type = type;
+    g.userData.team = ally ? "allied" : "axis";
     return g;
   }
 
   const player = buildPlayerPlane();
   scene.add(player);
-  const enemyTemplates = { fighter: buildEnemyPlane("fighter"), bomber: buildEnemyPlane("bomber") };
+  const enemyTemplates = { fighter: buildEnemyPlane("fighter", "axis"), bomber: buildEnemyPlane("bomber", "axis") };
+  const allyTemplate = buildEnemyPlane("fighter", "allied");
 
   function applyPlaneVisuals() {
     plane = planeById(selectedId);
@@ -2184,6 +2221,8 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
   const playerBulletMat = new THREE.MeshBasicMaterial({ color: 0xffe08a, toneMapped: false });
   const enemyBulletGeo = new THREE.SphereGeometry(0.55, 8, 6);
   const enemyBulletMat = new THREE.MeshBasicMaterial({ color: 0xff6a3a, toneMapped: false });
+  const allyBulletGeo = new THREE.SphereGeometry(0.5, 8, 6);
+  const allyBulletMat = new THREE.MeshBasicMaterial({ color: 0x62d0ff, toneMapped: false });
 
   function makeGlowTexture() {
     const c = document.createElement("canvas");
@@ -2213,7 +2252,7 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
   let roll = 0, pitch = 0;
   let health = 100, healthMax = 100;
   let runCash = 0, runRecorded = false;
-  let spawnT = 0, fireT = 0, waveT = 0, invuln = 0;
+  let spawnT = 0, allyT = 0, fireT = 0, waveT = 0, invuln = 0;
   let shake = 0, hitFlash = 0, idleT = 0, hudT = 0, saveT = 0;
   let hangarMsg = "";
   let hangarReturn = "idle";
@@ -2263,7 +2302,7 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     els.cash.textContent = cash;
     els.wave.textContent = wave;
     els.health.textContent = Math.max(0, Math.ceil(health));
-    els.speed.textContent = Math.round((290 + wave * 12) * plane.speed) + " km/h";
+    els.speed.textContent = Math.round((290 + wave * 12) * plane.speed * (keys.Space && state === "playing" ? 1.55 : 1)) + " km/h";
     els.alt.textContent = Math.round(player.position.y * 30) + " m";
   }
 
@@ -2393,13 +2432,13 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
       overlay.innerHTML = `
         <div class="game-card">
           <h3>Plane Wars: WWII</h3>
-          <p>Take off, hunt enemy fighters and bombers, and fly through the cash bundles they drop. Spend your money in the hangar on faster, tougher aircraft and new paint jobs.</p>
+          <p>Take off over wartime Europe. Allied and Axis squadrons are already dogfighting below — join the melee, hunt Axis fighters and bombers, and fly through the cash bundles they drop. Spend your earnings in the hangar on faster, tougher aircraft and new paint jobs.</p>
           <p class="score">Cash $${cash} · Best run $${best} · Flying the ${plane.name}</p>
           <div class="game-btns">
             <button class="btn primary" id="gameStart">Take off</button>
             <button class="btn" id="gameHangar">Hangar</button>
           </div>
-          <p class="game-tip">Click or tap to lock the camera · move to steer · hold to fire · Space fires too · Esc pauses · hitting a hill costs hull and respawns you</p>
+          <p class="game-tip">Click or tap to lock the camera · move to steer · hold left mouse button or touch to fire · hold Space to boost · Esc pauses · hitting a hill costs hull and respawns you</p>
           ${leaderboardHtml()}
         </div>`;
       document.getElementById("gameStart").onclick = startGame;
@@ -2415,7 +2454,7 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
             <button class="btn" id="gameHangarPause">Hangar</button>
             <button class="btn" id="gameQuit">Restart</button>
           </div>
-          <p class="game-tip">Resume locks the mouse again · move to steer · hold to fire · Esc pauses</p>
+          <p class="game-tip">Resume locks the mouse again · move to steer · left mouse button or touch fires · Space boosts · Esc pauses</p>
         </div>`;
       document.getElementById("gameResume").onclick = resumeGame;
       document.getElementById("gameHangarPause").onclick = openHangar;
@@ -2493,12 +2532,14 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     if (state !== "playing") return;
     state = "paused";
     firing = false;
+    wrap.classList.remove("boost");
     showOverlay("paused");
   }
   function resumeGame() {
     hideOverlay();
     state = "playing";
     firing = false;
+    wrap.classList.remove("boost");
     lockPointer();
   }
 
@@ -2512,6 +2553,7 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     health = healthMax;
     firing = false;
     spawnT = 1.0;
+    allyT = 1.8;
     fireT = 0;
     waveT = 0;
     invuln = 0;
@@ -2526,7 +2568,7 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     player.rotation.set(0, 0, 0);
     player.visible = true;
     playerPos.set(0, 30, 0);
-    wrap.classList.remove("hit");
+    wrap.classList.remove("hit", "boost");
     updateHud();
   }
 
@@ -2549,7 +2591,7 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     explode(player.position, 30, 1.7);
     player.visible = false;
     hitFlash = 0;
-    wrap.classList.remove("hit");
+    wrap.classList.remove("hit", "boost");
     showOverlay("dead");
     updateHud();
   }
@@ -2603,7 +2645,7 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     hideOverlay();
     adOverlay.classList.remove("open");
     state = "playing";
-    wrap.classList.remove("hit");
+    wrap.classList.remove("hit", "boost");
     updateHud();
     lockPointer();
   }
@@ -2655,77 +2697,158 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     }
   }
 
-  function spawnEnemy() {
-    const bomber = Math.random() < Math.min(0.34, 0.06 + wave * 0.03);
+  function spawnEnemy() { spawnPlane("axis"); }
+  function spawnAlly() { spawnPlane("allied"); }
+
+  function spawnPlane(team) {
+    const ally = team === "allied";
+    const bomber = !ally && Math.random() < Math.min(0.3, 0.05 + wave * 0.025);
     const type = bomber ? "bomber" : "fighter";
-    const g = enemyTemplates[type].clone(true);
-    const hp = bomber ? 6 + Math.floor(wave / 2) : 2 + Math.floor(wave / 3);
+    const g = (ally ? allyTemplate : enemyTemplates[type]).clone(true);
+    const hp = bomber ? 5 + Math.floor(wave / 2) : (ally ? 3 + Math.floor(wave / 4) : 2 + Math.floor(wave / 3));
     g.position.set(rand(-54, 54), rand(13, 54), rand(-540, -430));
     g.userData = {
-      type,
-      hp,
-      maxHp: hp,
-      speed: rand(bomber ? 14 : 22, bomber ? 26 : 38),
+      team, type, hp, maxHp: hp,
+      speed: rand(bomber ? 14 : 22, bomber ? 26 : 38) * (ally ? 0.96 : 1),
       phase: rand(0, 6.28),
-      ampX: rand(4, 16),
-      ampY: rand(2, 8),
-      fire: rand(0.9, 2.4),
-      baseX: g.position.x,
-      baseY: g.position.y
+      ampX: rand(4, 16), ampY: rand(2, 8),
+      fire: rand(0.45, 1.5),
+      targetT: 0, target: null, dead: false,
+      baseX: g.position.x, baseY: g.position.y
     };
     scene.add(g);
     enemies.push(g);
   }
 
-  function enemyShoot(e) {
-    const from = new THREE.Vector3(e.position.x, e.position.y + 0.1, e.position.z + (e.userData.type === "bomber" ? 5 : 4));
-    const dir = new THREE.Vector3(player.position.x - from.x, player.position.y + 0.4 - from.y, -from.z);
-    if (dir.lengthSq() < 1) dir.set(0, 0, 1);
-    dir.normalize().multiplyScalar(135 + wave * 4);
-    const b = new THREE.Mesh(enemyBulletGeo, enemyBulletMat);
-    b.position.copy(from);
-    b.userData.vel = dir;
-    scene.add(b);
-    enemyBullets.push(b);
+  // Every plane looks for the nearest living opponent — including the player.
+  function pickTarget(e) {
+    const hostile = e.userData.team === "axis" ? "allied" : "axis";
+    let best = null, bestD = Infinity;
+    const consider = candidate => {
+      if (!candidate || candidate === e || candidate.userData.dead) return;
+      if (candidate.userData.team && candidate.userData.team !== hostile) return;
+      const dz = Math.abs(candidate.position.z - e.position.z);
+      if (dz > 300) return;
+      const dx = candidate.position.x - e.position.x;
+      const dy = candidate.position.y - e.position.y;
+      const d = dx * dx + dy * dy * 0.7 + dz * dz * 0.2;
+      if (d < bestD) { bestD = d; best = candidate; }
+    };
+    enemies.forEach(consider);
+    consider(player);
+    return best;
   }
 
-  function removeEnemyAt(i) {
-    scene.remove(enemies[i]);
-    enemies.splice(i, 1);
+  function killPlaneAt(index, killer) {
+    const e = enemies[index];
+    if (!e || e.userData.dead) return;
+    e.userData.dead = true;
+    const ud = e.userData;
+    explode(e.position, ud.type === "bomber" ? 24 : 16, ud.type === "bomber" ? 1.5 : 1.05);
+    const bounty = killer === player
+      ? (ud.type === "bomber" ? rand(48, 82) : rand(16, 34))
+      : (ud.team === "axis" ? rand(6, 14) : 0);
+    if (bounty > 0) spawnBundle(e.position.clone(), Math.round(bounty));
+    scene.remove(e);
+    enemies.splice(index, 1);
+  }
+
+  // Converging flights of hostile planes sometimes collide — part of the melee.
+  function resolveDogfightCollisions() {
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      const a = enemies[i];
+      if (!a || a.userData.dead) continue;
+      for (let j = i - 1; j >= 0; j--) {
+        const b = enemies[j];
+        if (!b || b.userData.dead || b.userData.team === a.userData.team) continue;
+        const dx = a.position.x - b.position.x;
+        const dy = a.position.y - b.position.y;
+        const dz = a.position.z - b.position.z;
+        if (dx * dx + dy * dy + dz * dz < 64) {
+          killPlaneAt(i, b);
+          killPlaneAt(j, a);
+          break;
+        }
+      }
+    }
+  }
+
+  function aiShoot(e, target) {
+    const ud = e.userData;
+    const from = new THREE.Vector3(e.position.x, e.position.y + 0.1, e.position.z + (ud.type === "bomber" ? 5 : 4));
+    const dir = new THREE.Vector3(target.position.x - from.x, target.position.y + 0.4 - from.y, target.position.z - from.z);
+    dir.x += rand(-3.5, 3.5);
+    dir.y += rand(-2, 2);
+    if (dir.lengthSq() < 1) dir.set(0, 0, 1);
+    dir.normalize().multiplyScalar(135 + wave * 4);
+    const axis = ud.team === "axis";
+    const b = new THREE.Mesh(axis ? enemyBulletGeo : allyBulletGeo, axis ? enemyBulletMat : allyBulletMat);
+    b.position.copy(from);
+    b.userData.vel = dir;
+    b.userData.team = ud.team;
+    b.userData.owner = e;
+    b.userData.life = 2.6;
+    scene.add(b);
+    enemyBullets.push(b);
   }
 
   function updateEnemies(dt, worldSpeed) {
     for (let i = enemies.length - 1; i >= 0; i--) {
       if (state !== "playing") return;
       const e = enemies[i];
+      if (!e || e.userData.dead) continue;
       const ud = e.userData;
+      ud.targetT -= dt;
+      if (ud.targetT <= 0 || !ud.target || ud.target.userData.dead) {
+        ud.target = pickTarget(e);
+        ud.targetT = rand(0.35, 0.7);
+      }
+      const prevX = e.position.x, prevY = e.position.y;
       e.position.z += (worldSpeed + ud.speed) * dt;
-      e.position.x = ud.baseX + Math.sin(idleT * 1.35 + ud.phase) * ud.ampX;
-      e.position.y = ud.baseY + Math.sin(idleT * 1.05 + ud.phase * 1.7) * ud.ampY;
-      e.rotation.z = Math.sin(idleT * 2.2 + ud.phase) * 0.42;
-      e.rotation.x = Math.sin(idleT * 1.4 + ud.phase) * 0.08;
+      const target = ud.target;
+      if (target) {
+        // Steering plus a constant jink makes the dogfights hard to read.
+        const jinkX = Math.sin(idleT * 3.1 + ud.phase) * 7;
+        const jinkY = Math.cos(idleT * 2.4 + ud.phase * 1.3) * 4;
+        const turn = (ud.type === "bomber" ? 1.0 : 2.5) * dt;
+        e.position.x += (clamp(target.position.x + jinkX, -58, 58) - e.position.x) * turn;
+        e.position.y += (clamp(target.position.y + jinkY, 9, 60) - e.position.y) * turn;
+      } else {
+        e.position.x = ud.baseX + Math.sin(idleT * 1.35 + ud.phase) * ud.ampX;
+        e.position.y = ud.baseY + Math.sin(idleT * 1.05 + ud.phase * 1.7) * ud.ampY;
+      }
+      const vx = (e.position.x - prevX) / Math.max(dt, 0.0001);
+      const vy = (e.position.y - prevY) / Math.max(dt, 0.0001);
+      e.rotation.z = clamp(-vx * 0.012, -0.75, 0.75);
+      e.rotation.x = clamp(vy * 0.008, -0.35, 0.35);
+      e.rotation.y = clamp(vx * 0.003, -0.2, 0.2) + Math.sin(idleT * 2.2 + ud.phase) * 0.08;
 
       if (e.position.z > 48) {
-        removeEnemyAt(i);
-        damage(4);
+        killPlaneAt(i, null);
+        if (ud.team === "axis") damage(2);
         if (state !== "playing") return;
         continue;
       }
 
-      const dx = e.position.x - player.position.x;
-      const dy = e.position.y - player.position.y;
-      if (Math.abs(e.position.z) < 7.5 && dx * dx + dy * dy < 72) {
-        explode(e.position, ud.type === "bomber" ? 24 : 16, ud.type === "bomber" ? 1.5 : 1.05);
-        removeEnemyAt(i);
-        damage(ud.type === "bomber" ? 24 : 18);
-        if (state !== "playing") return;
-        continue;
+      if (ud.team === "axis") {
+        const dx = e.position.x - player.position.x;
+        const dy = e.position.y - player.position.y;
+        if (Math.abs(e.position.z) < 7.5 && dx * dx + dy * dy < 72) {
+          killPlaneAt(i, player);
+          damage(ud.type === "bomber" ? 24 : 18);
+          if (state !== "playing") return;
+          continue;
+        }
       }
 
       ud.fire -= dt;
-      if (ud.fire <= 0 && e.position.z > -340 && e.position.z < -18) {
-        enemyShoot(e);
-        ud.fire = ud.type === "bomber" ? rand(2.0, 3.2) : rand(1.6, 2.8);
+      const shootingTarget = target || (ud.team === "axis" ? player : null);
+      const inRange = shootingTarget && Math.abs(shootingTarget.position.z - e.position.z) < 220 &&
+                      e.position.z > -360 && e.position.z < 38;
+      if (ud.fire <= 0 && inRange) {
+        aiShoot(e, shootingTarget);
+        ud.fire = ud.type === "bomber" ? rand(1.4, 2.4)
+          : rand(ud.team === "axis" ? 1.0 : 0.7, ud.team === "axis" ? 1.9 : 1.4);
       }
     }
   }
@@ -2743,6 +2866,7 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
       let hit = false;
       for (let j = enemies.length - 1; j >= 0; j--) {
         const e = enemies[j];
+        if (e.userData.team !== "axis" || e.userData.dead) continue;
         const zMin = Math.min(b.userData.prevZ, b.position.z) - 8;
         const zMax = Math.max(b.userData.prevZ, b.position.z) + 8;
         if (e.position.z < zMin || e.position.z > zMax) continue;
@@ -2753,12 +2877,7 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
         if (dx * dx + dy * dy > r * r) continue;
         ud.hp -= (b.userData.damage || 1);
         explode(b.position, 3, 0.55);
-        if (ud.hp <= 0) {
-          const bounty = ud.type === "bomber" ? rand(48, 82) : rand(16, 34);
-          explode(e.position, ud.type === "bomber" ? 26 : 16, ud.type === "bomber" ? 1.7 : 1.1);
-          spawnBundle(e.position.clone(), Math.round(bounty));
-          removeEnemyAt(j);
-        }
+        if (ud.hp <= 0) killPlaneAt(j, player);
         hit = true;
         break;
       }
@@ -2812,21 +2931,41 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     for (let i = enemyBullets.length - 1; i >= 0; i--) {
       const b = enemyBullets[i];
       b.position.addScaledVector(b.userData.vel, dt);
-      if (b.position.z > 30 || Math.abs(b.position.x) > 400 || Math.abs(b.position.y) > 160) {
+      b.userData.life -= dt;
+      let remove = b.userData.life <= 0 || b.position.z > 40 ||
+                   Math.abs(b.position.x) > 400 || Math.abs(b.position.y) > 160;
+      if (!remove && b.userData.team === "axis") {
+        const dx = b.position.x - player.position.x;
+        const dy = b.position.y - player.position.y;
+        const dz = b.position.z;
+        if (dx * dx + dy * dy + dz * dz < 24) {
+          explode(b.position, 7, 0.7);
+          damage(8);
+          remove = true;
+        }
+      }
+      if (!remove) {
+        // Bullets from either squadron can bring down an opponent's aircraft.
+        for (let j = enemies.length - 1; j >= 0; j--) {
+          const e = enemies[j];
+          if (e.userData.team === b.userData.team || e === b.userData.owner || e.userData.dead) continue;
+          const r = e.userData.type === "bomber" ? 8.6 : 5.3;
+          const dx = b.position.x - e.position.x;
+          const dy = b.position.y - e.position.y;
+          const dz = b.position.z - e.position.z;
+          if (dx * dx + dy * dy + dz * dz > r * r) continue;
+          e.userData.hp -= 1;
+          explode(b.position, 3, 0.55);
+          if (e.userData.hp <= 0) killPlaneAt(j, b.userData.owner);
+          remove = true;
+          break;
+        }
+      }
+      if (remove) {
         scene.remove(b);
         enemyBullets.splice(i, 1);
-        continue;
       }
-      const dx = b.position.x - player.position.x;
-      const dy = b.position.y - player.position.y;
-      const dz = b.position.z;
-      if (dx * dx + dy * dy + dz * dz < 24) {
-        scene.remove(b);
-        enemyBullets.splice(i, 1);
-        explode(b.position, 7, 0.7);
-        damage(8);
-        if (state !== "playing") return;
-      }
+      if (state !== "playing") return;
     }
   }
 
@@ -2874,7 +3013,7 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
         h.x = h.group.position.x;
       }
     });
-    groundTex.offset.y += speed * dt * 0.0025;
+    groundTex.offset.y += speed * dt * groundScroll;
   }
 
   function updateCamera(dt) {
@@ -2893,7 +3032,8 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
 
   function update(dt) {
     idleT += dt;
-    const worldSpeed = (54 + wave * 3.2) * plane.speed;
+    const boosting = !!keys.Space;
+    const worldSpeed = (54 + wave * 3.2) * plane.speed * (boosting ? 1.55 : 1);
 
     let ax = 0, ay = 0;
     if (keys.ArrowLeft || keys.KeyA) ax -= 1;
@@ -2944,19 +3084,29 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     if (hitFlash > 0) hitFlash -= dt;
     if (respawnFlash > 0) respawnFlash -= dt;
     wrap.classList.toggle("hit", hitFlash > 0 || respawnFlash > 0);
+    wrap.classList.toggle("boost", boosting);
 
+    // Left mouse / touch fires only. Space is the boost, never a trigger.
     fireT -= dt;
-    if ((firing || keys.Space) && fireT <= 0) { fire(); fireT = plane.rate; }
+    if (firing && fireT <= 0) { fire(); fireT = plane.rate; }
 
     spawnT -= dt;
+    allyT -= dt;
     waveT += dt;
     if (waveT > 18) { waveT = 0; wave++; updateHud(); }
     if (spawnT <= 0) {
-      spawnEnemy();
+      if (enemies.length < 18) spawnEnemy();
       spawnT = Math.max(0.42, 1.35 - wave * 0.055) * rand(0.75, 1.2);
+    }
+    if (allyT <= 0) {
+      let axisCount = 0, allyCount = 0;
+      enemies.forEach(p => { if (p.userData.team === "allied") allyCount++; else axisCount++; });
+      if (axisCount > 0 && allyCount < Math.max(2, Math.min(6, 2 + Math.floor(wave / 3)))) spawnAlly();
+      allyT = rand(1.5, 2.6);
     }
 
     updateEnemies(dt, worldSpeed);
+    resolveDogfightCollisions();
     if (state !== "playing") return;
     updateBullets(dt);
     updateEnemyBullets(dt);
@@ -3116,6 +3266,37 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     })),
     buy: (id) => { tryBuyPlane(id); return selectedId; },
     paint: (id, idx) => { tryPaint(id, idx); return paintSel[id]; },
+    spawnAxis: () => { spawnPlane("axis"); return enemies.length; },
+    spawnAlly: () => { spawnPlane("allied"); return enemies.length; },
+    setFiring: v => { firing = !!v; return firing; },
+    key: (code, down) => { keys[code] = !!down; if (state === "playing") updateHud(); return !!keys[code]; },
+    planes: () => enemies.map(p => ({
+      team: p.userData.team, type: p.userData.type,
+      x: Math.round(p.position.x * 10) / 10,
+      y: Math.round(p.position.y * 10) / 10,
+      z: Math.round(p.position.z * 10) / 10,
+      hp: p.userData.hp,
+      target: !p.userData.target ? null : (p.userData.target === player ? "player" : p.userData.target.userData.team)
+    })),
+    bulletsByTeam: () => enemyBullets.map(b => b.userData.team),
+    groundMapSample: () => {
+      const c = groundTex.image, g = c.getContext("2d");
+      const d = g.getImageData(0, 0, c.width, c.height).data;
+      let red = 0, blue = 0, neutral = 0, ocean = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        const r = d[i], gg = d[i + 1], b = d[i + 2];
+        if (r > 120 && r > gg * 1.4 && r > b * 1.3) red++;
+        else if (b > 120 && b > r * 1.4 && b > gg * 1.1) blue++;
+        else if (Math.abs(r - gg) < 25 && Math.abs(gg - b) < 25 && r < 110) neutral++;
+        else ocean++;
+      }
+      return { red, blue, neutral, ocean, total: d.length / 4 };
+    },
+    groundMap: () => ({
+      countries: window.EUROPE_GEO ? Object.keys(window.EUROPE_GEO).length : 0,
+      repeatX: groundTex.repeat.x, repeatY: groundTex.repeat.y,
+      mapColors: Object.keys((WARS.ww2 && WARS.ww2.STATE_COLORS) || {}).length
+    }),
     tick: (dt = 1 / 60, n = 1) => {
       for (let i = 0; i < n; i++) {
         if (state === "playing") update(dt);
@@ -3138,6 +3319,11 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
       health: Math.round(health),
       healthMax,
       enemies: enemies.length,
+      axis: enemies.filter(p => p.userData.team === "axis").length,
+      allies: enemies.filter(p => p.userData.team === "allied").length,
+      firing,
+      boost: !!keys.Space,
+      speed: els.speed.textContent,
       bullets: bullets.length,
       enemyBullets: enemyBullets.length,
       bundles: bundles.length,
