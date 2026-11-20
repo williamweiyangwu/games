@@ -446,7 +446,17 @@
     text-align: center; overflow: hidden;
   }
   .cocell.premium { border-color: #4d7fb8; }
-  .cocell.locked { opacity: .42; border-style: dashed; }
+  .cocell.locked {
+    filter: grayscale(1); opacity: .85; border-style: dashed;
+    border-color: #6b6b6b; background: rgba(120,120,120,.18);
+  }
+  .cocell.locked .cocost { background: #555; border-color: #999; color: #ddd; }
+  .cocell.locked .coflag,
+  .cocell.locked .coart,
+  .cocell.locked .coname,
+  .cocell.locked .costat,
+  .cocell.locked .coown { color: #9a9a9a; }
+  .cocell.locked .colock { color: #c0c0c0; }
   .cocell .cocost {
     position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; line-height: 13px;
     border-radius: 50%; background: #24407a; border: 1px solid #fff; color: #fff; font-size: 10px;
@@ -479,7 +489,7 @@
   <div id="fit">
     <div id="stage">
       <header>
-        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v29</span></h1>
+        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v30</span></h1>
         <div id="turnbar">Player 1's Turn</div>
       </header>
 
