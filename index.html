@@ -1,2980 +1,1482 @@
 <!DOCTYPE html>
-
 <html lang="en">
-
 <head>
-
 <meta charset="utf-8">
-
 <meta name="viewport" content="width=device-width,initial-scale=1">
-
 <title>Arcade — William's Games</title>
-
-<meta name="description" content="Eleven browser games in one place: a 3D referee simulator, WWII card battles, grand-strategy conquest, a voxel sandbox, a tank arena, 3D racing, survival horror, a 5v5 FPS, a sailing adventure and interactive WWI and WWII Europe timelines.">
-
+<meta name="description" content="Ten browser games in one place: a 3D referee simulator, WWII card battles, grand-strategy conquest, a voxel sandbox, a tank arena, 3D racing, survival horror, a 5v5 FPS, a sailing adventure and one interactive World Wars history page.">
 <meta name="theme-color" content="#0a0d14">
-
 <meta property="og:type" content="website">
-
 <meta property="og:site_name" content="Arcade">
-
 <meta property="og:title" content="Arcade — William's Games">
-
-<meta property="og:description" content="Eleven browser games in one place. Jump right in and start playing.">
-
+<meta property="og:description" content="Ten browser games in one place. Jump right in and start playing.">
 <meta property="og:url" content="https://williamweiyangwu.github.io/games/">
-
 <meta name="twitter:card" content="summary">
-
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-
 <style>
-
   :root{
-
     --bg:#0a0d14; --panel:#121724; --panel2:#1a2032; --line:#27314a;
-
     --ink:#eef2fb; --dim:#8b96ad;
-
   }
-
   *{box-sizing:border-box}
-
   html,body{height:100%;margin:0}
-
   body{
-
     background:
-
       radial-gradient(1200px 600px at 50% -10%, #1a2540 0%, transparent 60%),
-
       radial-gradient(800px 500px at 100% 110%, #241a34 0%, transparent 55%),
-
       var(--bg);
-
     color:var(--ink);
-
     font:15px/1.4 "Segoe UI",Roboto,system-ui,sans-serif;
-
     -webkit-font-smoothing:antialiased;
-
   }
-
   .wrap{max-width:1060px;margin:0 auto;padding:64px 24px 80px}
-
   header{text-align:center;margin-bottom:48px}
-
   .logo{
-
     display:inline-flex;align-items:center;gap:10px;font-weight:800;
-
     font-size:30px;letter-spacing:2px;
-
   }
-
   .logo i{
-
     width:34px;height:34px;border-radius:9px;flex:none;
-
     background:linear-gradient(135deg,#ffd75e,#ff9d2e);
-
     display:inline-block;box-shadow:0 6px 18px rgba(255,157,46,.4);
-
   }
-
   header p{color:var(--dim);margin:12px 0 0;letter-spacing:.4px}
-
   .grid{
-
     display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
-
     gap:22px;
-
   }
-
   a.card{
-
     position:relative;display:block;text-decoration:none;color:inherit;
-
     background:linear-gradient(180deg,var(--panel),var(--panel2));
-
     border:1px solid var(--line);border-radius:16px;padding:26px 24px;
-
     overflow:hidden;transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease;
-
   }
-
   a.card:hover{
-
     transform:translateY(-5px);border-color:#3d4c74;
-
     box-shadow:0 18px 40px rgba(0,0,0,.5);
-
   }
-
   .card .tag{
-
     position:absolute;top:16px;right:16px;font:700 10px/1.4 "Segoe UI",system-ui,sans-serif;
-
     letter-spacing:1.5px;padding:4px 8px;border-radius:6px;
-
     background:rgba(255,255,255,.08);color:var(--dim);
-
   }
-
   .card .dev{
-
     background:linear-gradient(135deg,#ffd75e,#ff9d2e);color:#14161d;
-
     box-shadow:0 4px 12px rgba(255,157,46,.35);
-
   }
-
   .card.disabled{cursor:not-allowed;opacity:.72;filter:saturate(.6)}
-
   .card.disabled:hover{transform:none;border-color:var(--line);box-shadow:none}
-
   .thumb{
-
     height:150px;border-radius:10px;margin-bottom:18px;position:relative;overflow:hidden;
-
     display:flex;align-items:center;justify-content:center;
-
     border:1px solid var(--line);
-
   }
-
   .thumb span{font-size:40px;font-weight:800;letter-spacing:2px;opacity:.92;text-shadow:0 4px 18px rgba(0,0,0,.5)}
-
   .thumb .glyph{font-size:46px;line-height:1}
-
   .c1{background:linear-gradient(135deg,#2a2e3a,#161a24)} .c1 span{color:#f3d47a}
-
   .c2{background:linear-gradient(135deg,#1f3a2e,#111a20)} .c2 span{color:#8fe6a0}
-
   .c3{background:linear-gradient(135deg,#3a2b1f,#1a1410)} .c3 span{color:#ffc887}
-
   .c4{background:linear-gradient(135deg,#152a3d,#0d141d)} .c4 span{color:#7ec8f0}
-
   .c5{background:linear-gradient(135deg,#3a1f22,#180f12)} .c5 span{color:#ff9d9d}
-
   .c6{background:linear-gradient(135deg,#2b2433,#181220)} .c6 span{color:#d8b6ff}
-
   .c7{background:linear-gradient(135deg,#3a3520,#0d0c06)} .c7 span{color:#e8dc9a}
-
   .c8{background:linear-gradient(135deg,#333c1e,#161a0b)} .c8 span{color:#c3e08a}
-
   .c9{background:linear-gradient(135deg,#40260f,#1c0f05)} .c9 span{color:#ffb26b}
-
   .c10{background:linear-gradient(135deg,#293446,#141a25)} .c10 span{color:#9fc4ee}
-
   .card h2{margin:0;font-size:20px;letter-spacing:1px}
-
   .card p{margin:8px 0 0;color:var(--dim);font-size:13.5px;min-height:38px}
-
   .card .meta{
-
     margin-top:16px;padding-top:14px;border-top:1px solid var(--line);
-
     display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim);letter-spacing:.5px;
-
   }
-
   .card .arrow{margin-left:auto;font-weight:800;color:#6d7ba0;transition:transform .16s}
-
   a.card:hover .arrow{transform:translateX(4px)}
-
   footer{text-align:center;color:#5b667c;font-size:12.5px;margin-top:56px;letter-spacing:.4px}
-
   footer a{color:#8b96ad}
 
-
-
   /* AI chat widget */
-
   #aiFAB{
-
     position:fixed;right:20px;bottom:20px;z-index:9999;
-
     width:58px;height:58px;border-radius:50%;border:1px solid var(--line);
-
     background:linear-gradient(135deg,#ffd75e,#ff9d2e);color:#14161d;
-
     font-size:15px;font-weight:800;letter-spacing:1px;cursor:pointer;
-
     display:flex;align-items:center;justify-content:center;
-
     box-shadow:0 8px 24px rgba(255,157,46,.35);transition:transform .15s ease;
-
   }
-
   #aiFAB:hover{transform:scale(1.06)}
-
   #aiChat{
-
     position:fixed;right:20px;bottom:90px;z-index:9999;
-
     width:min(380px,calc(100vw - 40px));height:min(560px,calc(100vh - 120px));
-
     background:var(--panel);border:1px solid var(--line);border-radius:16px;
-
     display:flex;flex-direction:column;overflow:hidden;
-
     box-shadow:0 20px 60px rgba(0,0,0,.6);
-
   }
-
   #aiChat.hidden{display:none}
-
   #aiChat .ai-head{
-
     display:flex;align-items:center;justify-content:space-between;
-
     padding:13px 16px;border-bottom:1px solid var(--line);background:var(--panel2);
-
   }
-
   #aiChat .ai-head b{font-size:15px;letter-spacing:.5px}
-
   #aiChat .ai-head button{background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer;line-height:1;padding:0}
-
   #aiChat .ai-head button:hover{color:var(--ink)}
-
   #aiChat .ai-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
-
   #aiChat .msg{display:flex;gap:8px;max-width:100%;align-items:flex-end}
-
   #aiChat .msg.user{flex-direction:row-reverse}
-
   #aiChat .msg-ava{width:28px;height:28px;border-radius:50%;flex:none;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;letter-spacing:.5px}
-
   #aiChat .msg.bot .msg-ava{background:linear-gradient(135deg,#ffd75e,#ff9d2e);color:#14161d}
-
   #aiChat .msg.user .msg-ava{background:linear-gradient(135deg,#2b3a63,#1b2542);color:#cdd6ee;border:1px solid var(--line)}
-
   #aiChat .msg-body{display:flex;flex-direction:column;max-width:86%;min-width:0}
-
   #aiChat .msg.user .msg-body{align-items:flex-end}
-
   #aiChat .msg-bubble{padding:10px 13px;border-radius:14px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word;overflow-wrap:break-word}
-
   #aiChat .msg.bot .msg-bubble{background:var(--panel2);border:1px solid var(--line);border-bottom-left-radius:4px}
-
   #aiChat .msg.user .msg-bubble{background:linear-gradient(135deg,#2b3a63,#1b2542);border-bottom-right-radius:4px}
-
   #aiChat .msg-bubble p{margin:0 0 6px}
-
   #aiChat .msg-bubble p:last-child{margin-bottom:0}
-
   #aiChat .msg-bubble ul{margin:6px 0;padding-left:18px}
-
   #aiChat .msg-bubble li{margin:2px 0}
-
   #aiChat .msg-bubble code{background:rgba(255,255,255,.08);border-radius:4px;padding:1px 5px;font-family:ui-monospace,Consolas,monospace;font-size:12.5px}
-
   #aiChat .msg-bubble pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;overflow-x:auto;margin:6px 0}
-
   #aiChat .msg-bubble pre code{background:none;padding:0}
-
   #aiChat .msg-meta{display:flex;align-items:center;gap:8px;font-size:10.5px;color:var(--dim);margin-top:4px;padding:0 2px}
-
   #aiChat .msg.user .msg-meta{justify-content:flex-end}
-
   #aiChat .msg-copy{background:none;border:none;color:var(--dim);font-size:10.5px;cursor:pointer;padding:0}
-
   #aiChat .msg-copy:hover{color:var(--ink)}
-
   #aiChat .msg.bot.typing .msg-bubble{display:flex;gap:4px;align-items:center;padding:14px 13px}
-
   #aiChat .msg.bot.typing i{width:6px;height:6px;border-radius:50%;background:var(--dim);animation:blink 1.2s infinite}
-
   #aiChat .msg.bot.typing i:nth-child(2){animation-delay:.2s}
-
   #aiChat .msg.bot.typing i:nth-child(3){animation-delay:.4s}
-
   @keyframes blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
-
   #aiChat .ai-chips{display:flex;gap:6px;flex-wrap:wrap;padding:10px 12px 2px;border-top:1px solid var(--line);background:var(--panel2)}
-
   #aiChat .ai-chip{background:var(--bg);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:5px 11px;font-size:12px;cursor:pointer;font-family:inherit}
-
   #aiChat .ai-chip:hover{color:var(--ink);border-color:#3d4c74}
-
   #aiChat .ai-title{display:flex;align-items:center;gap:9px}
-
   #aiChat .ai-logo{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#ffd75e,#ff9d2e);color:#14161d;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800}
-
   #aiChat .ai-head-actions{display:flex;align-items:center;gap:4px}
-
   #aiChat .ai-input{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line)}
-
   #aiChat .ai-input input{
-
     flex:1;background:var(--bg);border:1px solid var(--line);border-radius:10px;
-
     color:var(--ink);padding:10px 12px;font-size:14px;outline:none;
-
   }
-
   #aiChat .ai-input input:focus{border-color:#3d4c74}
-
   #aiChat .ai-input button{
-
     background:linear-gradient(135deg,#ffd75e,#ff9d2e);color:#14161d;border:none;
-
     border-radius:10px;padding:0 16px;font-weight:700;cursor:pointer;font-size:14px;
-
   }
-
   #aiChat .ai-input button:disabled{opacity:.5;cursor:default}
-
   #aiChat .ai-note{display:block;margin-top:6px;font-size:11px;line-height:1.35;color:var(--dim)}
-
   #aiChat .ai-engine{
-
     padding:8px 12px;border-bottom:1px solid var(--line);background:var(--bg);
-
     font-size:11.5px;color:var(--dim);display:flex;flex-direction:column;gap:6px;
-
   }
-
   #aiChat .ai-engine-line{display:flex;align-items:center;gap:8px}
-
   #aiChat .ai-engine .dot{width:7px;height:7px;border-radius:50%;background:#e0a64a;flex:0 0 auto}
-
   #aiChat .ai-engine.ready .dot{background:#4ad07a}
-
   #aiChat .ai-engine button{
-
     margin-left:auto;background:none;border:1px solid var(--line);color:var(--ink);
-
     border-radius:999px;padding:3px 10px;font-size:11px;cursor:pointer;white-space:nowrap;
-
   }
-
   #aiChat .ai-engine button:hover{border-color:#3d4c74}
-
   #aiChat .ai-engine button:disabled{opacity:.55;cursor:default}
-
   #aiChat .ai-progress{height:3px;border-radius:2px;background:var(--line);overflow:hidden;display:none}
-
   #aiChat .ai-progress.on{display:block}
-
   #aiChat .ai-progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ffd75e,#ff9d2e)}
-
   #aiChat .ai-cta{
-
     display:inline-block;margin-top:8px;background:linear-gradient(135deg,#ffd75e,#ff9d2e);
-
     color:#14161d;border:none;border-radius:8px;padding:7px 12px;font-size:12.5px;
-
     font-weight:700;cursor:pointer;
-
   }
-
   #aiChat .ai-cta:disabled{opacity:.6;cursor:default}
 
-
-
   /* feedback + operator */
-
   #fbBtn{
-
     position:fixed;left:20px;bottom:20px;z-index:9998;
-
     background:var(--panel2);border:1px solid var(--line);color:var(--ink);
-
     border-radius:999px;padding:10px 16px;font-size:13px;font-weight:600;letter-spacing:.3px;
-
     cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.4);transition:border-color .15s ease;
-
   }
-
   #fbBtn:hover{border-color:#3d4c74}
-
   .overlay{
-
     position:fixed;inset:0;z-index:10000;background:rgba(5,8,14,.72);
-
     backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px;
-
   }
-
   .overlay.hidden{display:none}
-
   .dialog{
-
     width:min(420px,100%);max-height:min(84vh,640px);background:var(--panel);
-
     border:1px solid var(--line);border-radius:16px;overflow:hidden;
-
     display:flex;flex-direction:column;box-shadow:0 24px 70px rgba(0,0,0,.6);
-
   }
-
   .dialog-head{
-
     display:flex;align-items:center;justify-content:space-between;
-
     padding:14px 18px;border-bottom:1px solid var(--line);background:var(--panel2);
-
   }
-
   .dialog-head b{font-size:15px;letter-spacing:.5px}
-
   .dialog-x{background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer;line-height:1;padding:0}
-
   .dialog-x:hover{color:var(--ink)}
-
   .dialog-body{padding:18px;overflow-y:auto;flex:1;min-height:0;display:flex;flex-direction:column;gap:10px}
-
   .fb-label{font-size:12px;color:var(--dim);letter-spacing:.5px;margin-bottom:-4px}
-
   .dialog-body input[type=text],.dialog-body input[type=password],.dialog-body textarea{
-
     width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;
-
     color:var(--ink);padding:10px 12px;font-size:14px;outline:none;font-family:inherit;resize:vertical;
-
   }
-
   .dialog-body input:focus,.dialog-body textarea:focus{border-color:#3d4c74}
-
   .fb-stars{display:flex;gap:2px}
-
   .fb-stars button{background:none;border:none;color:#3a4560;font-size:26px;cursor:pointer;padding:0;line-height:1}
-
   .fb-stars button.on{color:#ffd75e}
-
   .fb-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:6px}
-
   .fb-ok{font-size:12.5px;color:#4ad07a;margin-right:auto}
-
   .btn-primary{
-
     background:linear-gradient(135deg,#ffd75e,#ff9d2e);color:#14161d;border:none;
-
     border-radius:10px;padding:9px 18px;font-weight:700;cursor:pointer;font-size:14px;
-
   }
-
   .btn-ghost{
-
     background:var(--panel2);border:1px solid var(--line);color:var(--ink);
-
     border-radius:10px;padding:8px 14px;font-weight:600;cursor:pointer;font-size:13px;
-
   }
-
   .btn-ghost:hover{border-color:#3d4c74}
-
   .btn-ghost.danger{color:#ff9d9d;border-color:#4a2530}
-
   .op-err{font-size:12.5px;color:#ff9d9d;min-height:16px}
-
   #fbView,.op-login,.op-panel{display:flex;flex-direction:column;flex:1;min-height:0}
-
   #fbView.hidden,.op-login.hidden,.op-panel.hidden{display:none}
-
   .fb-switch{margin-top:14px;padding-top:14px;border-top:1px solid var(--line);text-align:center;font-size:12.5px;color:var(--dim)}
-
   .fb-switch a,.fb-back{color:#ffd75e;text-decoration:none;cursor:pointer;font-size:12.5px}
-
   .fb-switch a:hover,.fb-back:hover{text-decoration:underline}
-
   .fb-back{margin-right:auto}
-
   .op-list{display:flex;flex-direction:column;gap:10px}
-
   .op-item{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
-
   .op-item .t{font-size:14px;line-height:1.45;white-space:pre-wrap;word-wrap:break-word}
-
   .op-item .m{font-size:11.5px;color:var(--dim);margin-top:8px}
-
   .op-empty{color:var(--dim);text-align:center;padding:26px 0;font-size:14px}
-
 </style>
-
 </head>
-
 <body>
-
 <div class="wrap">
-
   <header>
-
     <div class="logo"><i></i>ARCADE</div>
-
-    <p>Eleven games — jump right in and start playing.</p>
-
+    <p>Ten games — jump right in and start playing.</p>
   </header>
-
   <div class="grid">
-
     <a class="card" href="referee-3d/">
-
       <div class="thumb c2"><span class="glyph">&#9673;</span></div>
-
       <span class="tag">SPORTS</span>
-
       <h2>WHISTLE</h2>
-
       <p>3D first-person referee simulator. You are in his boots, whistle in hand — take charge of twelve real World Cup and Champions League classics, or draw a sixteen-team World Cup or an eight-team Champions League knockout at random. Nothing starts without your whistle: kick-offs, corners, goal kicks, free kicks and penalties all wait for you. Decide goal or no goal, send it to VAR, describe every foul and choose play on, a warning, yellow or red, then spray the free-kick mark and place the wall exactly where you want it. Sharper keepers and strikers make every shot count. Start a fresh draw any time from the tournament screen. Points, kits and trophies can be backed up as a code, so wiping your browser does not cost you your career.</p>
-
       <div class="meta">Referee simulator <span class="arrow">&#8594;</span></div>
-
     </a>
-
-
 
     <a class="card" href="age-of-discovery/">
-
       <div class="thumb c4"><span class="glyph">&#9973;&#xFE0E;</span></div>
-
       <span class="tag">EXPLORATION</span>
-
       <h2>AGE OF DISCOVERY</h2>
-
       <p>3D sailing adventure. Command a caravel across an open ocean, discover uncharted islands, trade spices and silk — and bring your fleet home to Lisbon.</p>
-
       <div class="meta">Open-world sailing <span class="arrow">&#8594;</span></div>
-
     </a>
-
-
 
     <a class="card" href="backrooms/">
-
       <div class="thumb c7"><span class="glyph">&#9647;</span></div>
-
       <span class="tag">HORROR</span>
-
       <h2>THE BACKROOMS</h2>
-
       <p>3D first-person survival horror across three drowned city blocks. Vault through broken windows for what is inside, work the action on your magazines, fight or outrun what lives in there — alone, or in a room you host and invite a friend into.</p>
-
       <div class="meta">Three blocks · solo or co-op <span class="arrow">&#8594;</span></div>
-
     </a>
-
-
 
     <a class="card" href="house-siege-3d/">
-
       <div class="thumb c5"><span class="glyph">&#9678;</span></div>
-
       <span class="tag">FPS</span>
-
       <h2>HOUSE SIEGE 3D</h2>
-
       <p>5v5 first-person shooter. Fight red vs blue through a sealed white maze, loot weapon chests, and hold the enemy HQ in Team Deathmatch or Flag mode.</p>
-
       <div class="meta">5v5 shooter <span class="arrow">&#8594;</span></div>
-
     </a>
-
-
 
     
-
     <a class="card" href="kards/">
-
       <div class="thumb c1"><span class="glyph">&#9824;</span></div>
-
       <span class="tag">CARD GAME</span>
-
       <h2>KARDS</h2>
-
       <p>WWII collectible card game. Play hot-seat locally or battle a friend online.</p>
-
       <div class="meta">2 players <span class="arrow">&#8594;</span></div>
-
     </a>
-
-
 
     <a class="card" href="map-game/">
-
       <div class="thumb c2"><span class="glyph">&#9873;</span></div>
-
       <span class="tag">STRATEGY</span>
-
       <h2>MAP GAME</h2>
-
       <p>A grand-strategy conquest game with two worlds: WWII Europe 1939 and the provinces of China. Recruit armies, take territory and win the continent.</p>
-
       <div class="meta">Map game <span class="arrow">&#8594;</span></div>
-
     </a>
-
-
 
     <a class="card" href="minecraft/">
-
       <div class="thumb c3"><span class="glyph">&#9634;</span></div>
-
       <span class="tag">SANDBOX</span>
-
       <h2>BLOCKCRAFT</h2>
-
       <p>A voxel sandbox — mine blocks, place blocks, build whatever you can imagine.</p>
-
       <div class="meta">Single player <span class="arrow">&#8594;</span></div>
-
     </a>
-
-
 
     <a class="card" href="tank/">
-
       <div class="thumb c8"><span class="glyph">&#9932;</span></div>
-
       <span class="tag">ARENA</span>
-
       <h2>TANK WAR</h2>
-
       <p>Top-down 2D arena shooter. Blast through waves of enemies and claim victory.</p>
-
       <div class="meta">Arcade <span class="arrow">&#8594;</span></div>
-
     </a>
-
-
 
     <a class="card" href="race-car/">
-
       <div class="thumb c9"><span class="glyph">&#9881;</span></div>
-
       <span class="tag">RACING</span>
-
       <h2>APEX RACING</h2>
-
-      <p>3D F1 racing — choose from 22 drivers and 25 real circuits, master the lights start, pit stops and racing line. SPACE fires your stored nitro.</p>
-
+      <p>3D F1 racing — choose from 20 drivers and 25 real circuits, master the lights start, pit stops and racing line. SPACE fires your stored nitro.</p>
       <div class="meta">Racing <span class="arrow">&#8594;</span></div>
-
     </a>
 
-
-
-    <a class="card" href="ww2-europe/">
-
+    <a class="card" href="world-wars/">
       <div class="thumb c6"><span class="glyph">&#9203;</span></div>
-
       <span class="tag">HISTORY</span>
-
-      <h2>WWII EUROPE</h2>
-
-      <p>The complete story of WWII in Europe — interactive timeline, animated 1939–1945 map, key figures, weapons and a fighter game.</p>
-
+      <h2>WORLD WARS</h2>
+      <p>One interactive history page for both world wars — switch between WWI and WWII for animated maps, timelines, key figures and weapons, plus a fighter game in the WWII view.</p>
       <div class="meta">Interactive history <span class="arrow">&#8594;</span></div>
-
     </a>
-
-
-
-    <a class="card" href="ww1-europe/">
-
-      <div class="thumb c10"><span class="glyph">&#9876;</span></div>
-
-      <span class="tag">HISTORY</span>
-
-      <h2>WWI EUROPE</h2>
-
-      <p>The story of the First World War — interactive timeline, animated 1914–1918 map, key figures and weapons of the Great War.</p>
-
-      <div class="meta">Interactive history <span class="arrow">&#8594;</span></div>
-
-    </a>
-
   </div>
-
-
 
   <footer>
-
-    Built by <a href="https://github.com/williamweiyangwu">William</a> &middot; hosted on GitHub Pages &middot; <a href="#" id="opLink">Operator</a>
-
+    Built by <a href="https://github.com/williamweiyangwu">William</a> &middot; hosted on GitHub Pages
   </footer>
-
 </div>
-
-
 
 <button id="aiFAB" aria-label="Open AI assistant">AI</button>
-
 <div id="aiChat" class="hidden">
-
   <div class="ai-head">
-
     <div class="ai-title">
-
       <span class="ai-logo">AI</span>
-
       <b>AI Assistant</b>
-
     </div>
-
     <div class="ai-head-actions">
-
       <button id="aiClear" type="button" aria-label="Clear chat" title="Clear chat">&#8635;</button>
-
       <button id="aiClose" aria-label="Close">&#215;</button>
-
     </div>
-
   </div>
-
   <div class="ai-engine" id="aiEngine">
-
     <div class="ai-engine-line">
-
       <span class="dot"></span>
-
       <span id="aiEngineText">Quick AI &middot; free &middot; no key</span>
-
       <button id="aiEngineBtn" type="button">Unlimited AI</button>
-
     </div>
-
     <div class="ai-progress"><i id="aiProgress"></i></div>
-
   </div>
-
   <div class="ai-chips" id="aiChips"></div>
-
   <div class="ai-msgs" id="aiMsgs"></div>
-
   <div class="ai-input">
-
     <input id="aiInput" type="text" placeholder="Ask me anything…" autocomplete="off">
-
     <button id="aiSend">Send</button>
-
   </div>
-
 </div>
-
-
 
 <button id="fbBtn" type="button" aria-label="Send feedback">Feedback</button>
 
-
-
 <div id="fbOverlay" class="overlay hidden">
-
   <div class="dialog">
-
     <div id="fbView">
-
       <div class="dialog-head">
-
         <b>Send feedback</b>
-
         <button id="fbClose" class="dialog-x" aria-label="Close">&#215;</button>
-
       </div>
-
       <div class="dialog-body">
-
         <label class="fb-label" for="fbName">Your name (optional)</label>
-
         <input id="fbName" type="text" placeholder="Anonymous" autocomplete="off">
-
         <label class="fb-label">How was your visit?</label>
-
         <div id="fbStars" class="fb-stars" aria-label="Rating">
-
           <button type="button" data-v="1">&#9733;</button>
-
           <button type="button" data-v="2">&#9733;</button>
-
           <button type="button" data-v="3">&#9733;</button>
-
           <button type="button" data-v="4">&#9733;</button>
-
           <button type="button" data-v="5">&#9733;</button>
-
         </div>
-
         <label class="fb-label" for="fbText">Your message</label>
-
         <textarea id="fbText" rows="4" placeholder="Tell William what you think…"></textarea>
-
         <div class="fb-actions">
-
           <span id="fbOk" class="fb-ok"></span>
-
           <button id="fbSend" type="button" class="btn-primary">Send</button>
-
         </div>
-
         <div class="fb-switch">Are you the owner? <a href="#" id="opLinkBox">Operator access</a></div>
-
       </div>
-
     </div>
-
     <div id="opLogin" class="op-login hidden">
-
       <div class="dialog-head">
-
         <b>Operator access</b>
-
         <button id="opClose1" class="dialog-x" aria-label="Close">&#215;</button>
-
       </div>
-
       <div class="dialog-body">
-
         <label class="fb-label" for="opPass">Password</label>
-
         <input id="opPass" type="password" placeholder="Enter password" autocomplete="off">
-
         <div id="opErr" class="op-err"></div>
-
         <div class="fb-actions">
-
           <a href="#" id="opBack1" class="fb-back">&#8592; Back to feedback</a>
-
           <button id="opGo" type="button" class="btn-primary">Unlock</button>
-
         </div>
-
       </div>
-
     </div>
-
     <div id="opPanel" class="op-panel hidden">
-
       <div class="dialog-head">
-
         <b>Feedback</b>
-
         <button id="opClose2" class="dialog-x" aria-label="Close">&#215;</button>
-
       </div>
-
       <div class="dialog-body">
-
         <div id="opList" class="op-list"></div>
-
         <div class="fb-actions">
-
           <a href="#" id="opBack2" class="fb-back">&#8592; Back to feedback</a>
-
           <button id="opExport" type="button" class="btn-ghost">Copy JSON</button>
-
           <button id="opClear" type="button" class="btn-ghost danger">Delete all</button>
-
         </div>
-
       </div>
-
     </div>
-
   </div>
-
 </div>
 
-
-
 <script>
-
 (function () {
-
   /* -----------------------------------------------------------------
-
      AI assistant — NO API key, no sign-in, no 45-second wall.
 
-
-
      Two free public providers answer first (usually in a few seconds).
-
      When they are rate limited, a small language model that runs inside
-
      this page takes over, so chat keeps working with no limit at all.
-
      That model downloads once (about 460 MB) and is then cached by the
-
      browser, so it only costs time the first time.
 
-
-
      Optional: set GEMINI_KEY to switch everything to Google Gemini.
-
      ----------------------------------------------------------------- */
-
   var GEMINI_KEY = "";                     // optional, leave empty for free mode
-
   var GEMINI_MODEL = "gemini-2.0-flash";
 
-
-
   var PROVIDERS = [
-
     { url: "https://text.pollinations.ai/openai", model: "openai", fallbackWait: 45, maxCool: 45, timeout: 15000 },
-
     { url: "https://api.llm7.io/v1/chat/completions", model: "gpt-oss:20b", fallbackWait: 5, maxCool: 8, timeout: 20000 }
-
   ];
-
-
 
   // In-browser engine (transformers.js). The model files are served by
-
   // ModelScope, which allows cross-origin reads from this site.
-
   var LOCAL = {
-
     repo: "Xenova/LaMini-Flan-T5-248M",
-
     task: "text2text-generation",
-
     cdn: "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.2",
-
     host: "https://modelscope.cn/models/",
-
     tpl: "{model}/resolve/master/",
-
     files: [
-
       { name: "encoder_model_quantized.onnx", path: "onnx/encoder_model_quantized.onnx", bytes: 110502358 },
-
       { name: "decoder_model_merged_quantized.onnx", path: "onnx/decoder_model_merged_quantized.onnx", bytes: 164739632 }
-
     ],
-
     size: "270 MB"
-
   };
-
   LOCAL.total = LOCAL.files[0].bytes + LOCAL.files[1].bytes;
-
   var SYSTEM = "You are a friendly, concise assistant embedded on the Arcade page of William's games website. " +
-
-    "The site hosts eleven free browser games: WHISTLE (3D referee simulator), Age of Discovery (3D sailing and " +
-
+    "The site hosts ten free browser games: WHISTLE (3D referee simulator), Age of Discovery (3D sailing and " +
     "exploration), The Backrooms (first-person survival horror), House Siege 3D (5v5 FPS), KARDS (WWII card " +
-
     "battles), Map Game (grand-strategy conquest), Blockcraft (voxel sandbox), Tank War (multiplayer tank arena), " +
-
-    "Apex Racing (3D racing), WWII Europe (interactive WWII timeline, map and fighter game) and WWI Europe " +
-
-    "(interactive WWI timeline and map). You may answer questions about " +
-
+    "Apex Racing (3D racing) and World Wars (one page that switches between WWI and WWII, with an animated " +
+    "map, timeline, key figures and weapons, plus a fighter game in the WWII view). You may answer questions about " +
     "the games or anything else. Reply in plain text. You may use **bold** for emphasis and simple - bullet " +
-
     "lists when useful, but no headings, tables, code fences or links. Keep it to at most three short sentences " +
-
     "unless the user explicitly asks for more detail.";
 
-
-
   var KB = [
-
     { keys: ["tank war"], answer: "Tank War is a multiplayer 3D tank arena. Open it from the hub card, then drive with WASD, aim with the mouse and fire with the left button. You can host or join a room to play with a friend." },
-
-    { keys: ["apex racing", "race-car", "racing", "race car"], answer: "Apex Racing is a 3D F1 game with 25 real circuits and 22 drivers. Use the arrow keys or WASD to drive, SPACE for nitro. You can race against a friend in the same room." },
-
+    { keys: ["apex racing", "race-car", "racing", "race car"], answer: "Apex Racing is a 3D F1 game with 25 real circuits and 20 drivers. Use the arrow keys or WASD to drive, SPACE for nitro. You can race against a friend in the same room." },
     { keys: ["backrooms"], answer: "The Backrooms is a first-person survival horror walk through endless corridors. Move with WASD and look with the mouse; your goal is to find the way out." },
-
     { keys: ["kards", "card game", "deck"], answer: "KARDS is a WWII-themed card battle game. Build a deck for a nation, spend Kredits to play units and orders, and destroy the enemy headquarters." },
-
     { keys: ["map game", "strategy", "conquest"], answer: "Map Game is a grand-strategy conquest game: pick a nation, manage your army and economy, then expand across the map." },
-
     { keys: ["blockcraft", "minecraft", "voxel", "sandbox"], answer: "Blockcraft is a voxel sandbox: break and place blocks to build whatever you like. Move with WASD, jump with Space, and click to mine or place." },
-
-    { keys: ["wwii", "ww2", "world war", "hitler", "stalingrad"], answer: "WWII Europe is an interactive history page: a timeline, a map of territorial control that changes over time, key figures, weapons and a Plane Wars-style fighter game. Open its card on the hub to explore it." },
-
-    { keys: ["wwi", "ww1", "world war i", "great war", "armistice", "trench"], answer: "WWI Europe is an interactive history page covering 1914–1918: a timeline, an animated map of the Central Powers and Entente, key figures and weapons of the Great War. Open its card on the hub to explore it." },
-
+    { keys: ["wwii", "ww2", "world war", "hitler", "stalingrad"], answer: "World Wars is an interactive history page with a WWII view: a timeline, an animated map of territorial control, key figures, weapons and a Plane Wars-style fighter game. Use the WWII/WWI switch at the top and open its card on the hub to explore it." },
+    { keys: ["wwi", "ww1", "world war i", "great war", "armistice", "trench"], answer: "World Wars is an interactive history page with a WWI view covering 1914–1918: a timeline, an animated map of the Central Powers and Entente, key figures and weapons of the Great War. Use the WWII/WWI switch at the top; the fighter game is only in the WWII view." },
     { keys: ["age of discovery", "sailing", "sail", "exploration"], answer: "Age of Discovery is a 3D sailing and exploration game: captain a ship, discover new lands and trade along the way." },
-
     { keys: ["house siege", "white maze", "5v5", "shooter", "fps"], answer: "House Siege 3D is a fast 5v5 first-person shooter. Move with WASD, aim with the mouse, fire with the left button and use the keyboard to switch or reload weapons." },
-
     { keys: ["whistle", "referee", "football", "soccer"], answer: "WHISTLE is a 3D first-person referee simulator. Pick a classic or draw a tournament at random; nothing starts without your whistle. Decide goals with VAR, describe fouls and choose the sanction, place the free-kick wall yourself, and start a fresh draw any time from the tournament screen." },
-
-    { keys: ["how many games", "list of games", "which games", "all games"], answer: "There are eleven games: WHISTLE, Age of Discovery, The Backrooms, House Siege 3D, KARDS, Map Game, Blockcraft, Tank War, Apex Racing, WWII Europe and WWI Europe. Each card on this page opens one." },
-
+    { keys: ["how many games", "list of games", "which games", "all games"], answer: "There are ten games: WHISTLE, Age of Discovery, The Backrooms, House Siege 3D, KARDS, Map Game, Blockcraft, Tank War, Apex Racing and World Wars (one page covering both world wars). Each card on this page opens one." },
     { keys: ["who made", "who built", "creator", "william"], answer: "This arcade is William's collection of browser games — all free, all playable in the browser with no install." }
-
   ];
 
-
-
   var CHAT_KEY = "arcade_chat_v1";
-
   var chatLog = [];                        // saved conversation (survives reload)
-
   var restoring = false;                   // true while replaying saved messages
-
   function chatLoad() {
-
     try {
-
       var raw = localStorage.getItem(CHAT_KEY);
-
       var arr = raw ? JSON.parse(raw) : [];
-
       if (!Array.isArray(arr)) return [];
-
       return arr.filter(function (e) { return e && typeof e.text === "string" && e.text.trim(); });
-
     } catch (e) { return []; }
-
   }
-
   function chatSave() {
-
     try { localStorage.setItem(CHAT_KEY, JSON.stringify(chatLog)); }
-
     catch (e) {}
-
   }
-
-
 
   var history = [];
-
   var cache = {};
-
   var queued = [];
-
   var busy = false;
-
   var cool = {};                           // provider url -> timestamp it is usable again
 
-
-
   var localState = "off";                  // off | loading | ready | error
-
   var localGen = null;
-
   var localModule = null;
-
   var localPct = 0;
-
   var localErr = "";
-
   var waitingLocal = null;                 // question held until the in-browser model is ready
 
-
-
   var fab = document.getElementById("aiFAB");
-
   var chat = document.getElementById("aiChat");
-
   var msgs = document.getElementById("aiMsgs");
-
   var input = document.getElementById("aiInput");
-
   var send = document.getElementById("aiSend");
-
   var close = document.getElementById("aiClose");
-
   var engineEl = document.getElementById("aiEngine");
-
   var engineText = document.getElementById("aiEngineText");
-
   var engineBtn = document.getElementById("aiEngineBtn");
-
   var engineBar = document.getElementById("aiProgress");
 
-
-
   function timeNow(ts) {
-
     var d = ts ? new Date(ts) : new Date();
-
     var h = d.getHours(), m = d.getMinutes();
-
     return (h < 10 ? "0" + h : h) + ":" + (m < 10 ? "0" + m : m);
-
   }
-
-
 
   function escapeHtml(s) {
-
     return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-
   }
-
-
 
   // small, safe markdown-lite renderer (bold, italic, code, lists)
-
   function renderMd(text) {
-
     var t = escapeHtml(text);
-
     t = t.replace(/```([\s\S]*?)```/g, function (m, c) { return "<pre><code>" + c.trim() + "</code></pre>"; });
-
     t = t.replace(/`([^`\n]+)`/g, "<code>$1</code>");
-
     t = t.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
-
     t = t.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, "$1<em>$2</em>");
-
     var lines = t.split("\n");
-
     var html = [];
-
     var inList = false;
-
     function closeList() { if (inList) { html.push("</ul>"); inList = false; } }
-
     for (var i = 0; i < lines.length; i++) {
-
       var line = lines[i];
-
       var m = line.match(/^\s*[-*]\s+(.*)$/);
-
       if (m) {
-
         if (!inList) { html.push("<ul>"); inList = true; }
-
         html.push("<li>" + m[1] + "</li>");
-
       } else {
-
         closeList();
-
         if (line === "") html.push(""); else html.push("<p>" + line + "</p>");
-
       }
-
     }
-
     closeList();
-
     return html.join("\n");
-
   }
-
-
 
   function newBubble(role) {
-
     var row = document.createElement("div");
-
     row.className = "msg " + (role === "user" ? "user" : "bot");
-
     var ava = document.createElement("div");
-
     ava.className = "msg-ava";
-
     ava.textContent = role === "user" ? "You" : "AI";
-
     var body = document.createElement("div");
-
     body.className = "msg-body";
-
     var bubble = document.createElement("div");
-
     bubble.className = "msg-bubble";
-
     body.appendChild(bubble);
-
     row.appendChild(ava);
-
     row.appendChild(body);
-
     msgs.appendChild(row);
-
     return row;
-
   }
-
-
 
   function copyText(text, btn) {
-
     function ok() { if (btn) { btn.textContent = "Copied"; setTimeout(function () { btn.textContent = "Copy"; }, 1400); } }
-
     function fallback() {
-
       var ta = document.createElement("textarea");
-
       ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
-
       document.body.appendChild(ta); ta.focus(); ta.select();
-
       try { document.execCommand("copy"); ok(); } catch (e) {}
-
       document.body.removeChild(ta);
-
     }
-
     try {
-
       if (navigator.clipboard && navigator.clipboard.writeText) {
-
         navigator.clipboard.writeText(text).then(ok, fallback);
-
       } else fallback();
-
     } catch (e) { fallback(); }
-
   }
-
-
 
   function finalizeBubble(row, role, rawText, note, ts) {
-
     var stamp = ts || Date.now();
-
     var body = row.querySelector(".msg-body");
-
     body.querySelector(".msg-bubble").innerHTML = renderMd(rawText);
-
     var meta = document.createElement("div");
-
     meta.className = "msg-meta";
-
     var label = document.createElement("span");
-
     label.textContent = (role === "user" ? "You" : "AI") + " · " + timeNow(stamp);
-
     meta.appendChild(label);
-
     if (role === "bot") {
-
       var c = document.createElement("button");
-
       c.type = "button";
-
       c.className = "msg-copy";
-
       c.textContent = "Copy";
-
       c.addEventListener("click", function () { copyText(rawText, c); });
-
       meta.appendChild(c);
-
     }
-
     body.appendChild(meta);
-
     if (note) {
-
       var n = document.createElement("div");
-
       n.className = "ai-note";
-
       n.textContent = note;
-
       body.appendChild(n);
-
     }
-
     msgs.scrollTop = msgs.scrollHeight;
-
     if (!restoring) {
-
       chatLog.push({ role: role, text: rawText, note: note || "", ts: stamp });
-
       if (chatLog.length > 100) chatLog = chatLog.slice(-100);
-
       chatSave();
-
     }
-
     return row;
-
   }
-
-
 
   function addMsg(role, text, note, ts) {
-
     var row = newBubble(role);
-
     row.querySelector(".msg-bubble").textContent = text;
-
     return finalizeBubble(row, role, text, note, ts);
-
   }
-
-
 
   // reveal a full answer word by word so it feels like it is being typed
-
   function typewriter(bubble, text, onDone) {
-
     var words = String(text).split(/(\s+)/);
-
     var i = 0;
-
     function step() {
-
       if (i >= words.length) { if (onDone) onDone(); return; }
-
       bubble.textContent += words[i++];
-
       msgs.scrollTop = msgs.scrollHeight;
-
       setTimeout(step, 18);
-
     }
-
     step();
-
   }
-
-
 
   function setTyping(text) {
-
     var t = document.getElementById("aiTyping");
-
     if (text === null || text === undefined) { if (t) t.remove(); return; }
-
     if (!t) {
-
       t = document.createElement("div");
-
       t.id = "aiTyping";
-
       t.className = "msg bot typing";
-
       t.innerHTML = '<div class="msg-ava">AI</div><div class="msg-body"><div class="msg-bubble"><i></i><i></i><i></i></div><div class="ai-note"></div></div>';
-
       msgs.appendChild(t);
-
     }
-
     var note = t.querySelector(".ai-note");
-
     if (note) {
-
       note.textContent = (text === "Thinking…" || text === "Thinking locally…") ? "" : text;
-
     }
-
     msgs.scrollTop = msgs.scrollHeight;
-
   }
-
-
 
   function attempt(url, options, ms) {
-
     var ctrl = window.AbortController ? new AbortController() : null;
-
     if (ctrl) options.signal = ctrl.signal;
-
     var timer = null;
-
     var req = fetch(url, options);
-
     return new Promise(function (resolve, reject) {
-
       timer = setTimeout(function () {
-
         if (ctrl) { try { ctrl.abort(); } catch (e) {} }
-
         reject(new Error("timeout"));
-
       }, ms);
-
       req.then(function (v) { clearTimeout(timer); resolve(v); },
-
                function (e) { clearTimeout(timer); reject(e); });
-
     });
-
   }
-
-
 
   function parseWait(text, fallback) {
-
     var wait = fallback;
-
     try {
-
       var j = JSON.parse(text);
-
       if (j.retry_after) wait = +j.retry_after;
-
       else if (j.error && j.error.retry_after) wait = +j.error.retry_after;
-
       var m = /retry after\s+(\d+)/i.exec((j.error && j.error.message) || j.message || "");
-
       if (m) wait = +m[1];
-
     } catch (e) {
-
       var m2 = /wait\s+(\d+)/i.exec(text) || /after\s+(\d+)\s*s/i.exec(text) || /(\d+)\s*seconds/i.exec(text);
-
       if (m2) wait = +m2[1];
-
     }
-
     return Math.max(1, Math.min(90, wait));
-
   }
-
-
 
   function askProvider(prov, messages) {
-
     var now = Date.now();
-
     if (cool[prov.url] && cool[prov.url] > now) {
-
       var e0 = new Error("cooling");
-
       e0.code = "LIMIT";
-
       e0.retryAfter = Math.ceil((cool[prov.url] - now) / 1000);
-
       return Promise.reject(e0);
-
     }
-
     return attempt(prov.url, {
-
       method: "POST",
-
       headers: { "Content-Type": "application/json" },
-
       body: JSON.stringify({ model: prov.model, messages: messages, referrer: location.hostname || "local" })
-
     }, prov.timeout || 15000).then(function (res) {
-
       return res.text().then(function (txt) {
-
         if (!res.ok) {
-
           var e = new Error("http " + res.status);
-
           e.status = res.status;
-
           if (res.status === 402 || res.status === 429) {
-
             e.code = "LIMIT";
-
             e.retryAfter = Math.min(parseWait(txt, prov.fallbackWait), prov.maxCool || 45);
-
             cool[prov.url] = Date.now() + e.retryAfter * 1000;
-
           }
-
           throw e;
-
         }
-
         var data = null;
-
         try { data = JSON.parse(txt); } catch (e2) {}
-
         if (!data) return String(txt || "").trim();
-
         var m = data.choices && data.choices[0] && data.choices[0].message;
-
         return String((m && m.content) || "").trim();
-
       });
-
     });
-
   }
-
-
 
   // optional engine: Google Gemini, used only when a key is pasted above
-
   function askGemini(messages) {
-
     var sys = messages[0].content;
-
     var contents = messages.slice(1).map(function (m) {
-
       return { role: m.role === "user" ? "user" : "model", parts: [{ text: m.content }] };
-
     });
-
     return attempt("https://generativelanguage.googleapis.com/v1beta/models/" + GEMINI_MODEL +
-
       ":generateContent?key=" + encodeURIComponent(GEMINI_KEY), {
-
         method: "POST",
-
         headers: { "Content-Type": "application/json" },
-
         body: JSON.stringify({ contents: contents, systemInstruction: { parts: [{ text: sys }] } })
-
       }, 30000)
-
       .then(function (res) { return res.json().then(function (d) { return { ok: res.ok, d: d }; }); })
-
       .then(function (r) {
-
         if (!r.ok) throw new Error((r.d.error && r.d.error.message) || "Gemini error");
-
         var parts = (r.d.candidates && r.d.candidates[0] && r.d.candidates[0].content &&
-
                      r.d.candidates[0].content.parts) || [];
-
         return parts.map(function (p) { return p.text; }).join("").trim();
-
       });
-
   }
-
-
 
   // try each provider in turn; one being rate limited is simply skipped
-
   function askChain(messages, i) {
-
     i = i || 0;
-
     return askProvider(PROVIDERS[i], messages).catch(function (e) {
-
       if (i + 1 < PROVIDERS.length) return askChain(messages, i + 1);
-
       throw e;
-
     });
-
   }
-
-
 
   function askCloud(messages) {
-
     return GEMINI_KEY ? askGemini(messages) : askChain(messages, 0);
-
   }
-
-
 
   /* -------------------- in-browser unlimited engine -------------------- */
 
-
-
   // The offline model is ~270 MB in two files. Those are too big for the
-
   // browser's own cache (it rejects large entries), so they are stored once
-
   // in the Origin Private File System and streamed from there afterwards.
-
   var opfsRoot = null;
-
   var modelFetchReady = false;
-
   var localStarting = false;
 
-
-
   function modelURL(path) {
-
     return LOCAL.host + LOCAL.repo + "/resolve/master/" + path;
-
   }
-
-
 
   function getRoot() {
-
     if (opfsRoot) return Promise.resolve(opfsRoot);
-
     if (!navigator.storage || !navigator.storage.getDirectory) {
-
       return Promise.reject(new Error("this browser has no private file storage"));
-
     }
-
     return navigator.storage.getDirectory().then(function (root) {
-
       opfsRoot = root;
-
       return root;
-
     });
-
   }
-
-
 
   function handleFor(name) {
-
     return getRoot().then(function (root) {
-
       return root.getFileHandle("arcade-" + name, { create: true });
-
     });
-
   }
-
-
 
   function readChunk(reader, ms) {
-
     return new Promise(function (resolve, reject) {
-
       var done = false;
-
       var timer = setTimeout(function () {
-
         if (done) return;
-
         done = true;
-
         try { reader.cancel(); } catch (e) {}
-
         reject(new Error("stalled"));
-
       }, ms);
-
       reader.read().then(function (r) {
-
         if (done) return;
-
         done = true;
-
         clearTimeout(timer);
-
         resolve(r);
-
       }, function (e) {
-
         if (done) return;
-
         done = true;
-
         clearTimeout(timer);
-
         reject(e);
-
       });
-
     });
-
   }
-
-
 
   // Download to memory first, then store the finished file in one write.
-
   // (Writing small pieces straight into a large file makes the browser copy
-
   // the whole file on every re-open, which stalls badly at this size.)
-
   function downloadFile(f, onProgress) {
-
     var parts = [];
-
     var have = 0;
-
     var tries = 0;
 
-
-
     function attempt() {
-
       tries++;
-
       var headers = have ? { Range: "bytes=" + have + "-" } : {};
-
       var ctl = window.AbortController ? new AbortController() : null;
-
       var slow = setTimeout(function () { if (ctl) ctl.abort(); }, 45000);
-
       return fetch(modelURL(f.path), { headers: headers, signal: ctl ? ctl.signal : undefined })
-
         .then(function (res) {
-
           clearTimeout(slow);
-
           // server ignored the resume point, so start this file again
-
           if (have && res.status !== 206) {
-
             try { if (res.body) res.body.cancel(); } catch (e) {}
-
             parts = [];
-
             have = 0;
-
             throw new Error("restart");
-
           }
-
           if (!res.ok && res.status !== 206) throw new Error("http " + res.status);
-
           var reader = res.body.getReader();
-
           function pump() {
-
             return readChunk(reader, 45000).then(function (r) {
-
               if (r.done) return;
-
               parts.push(r.value);
-
               have += r.value.length;
-
               onProgress(have);
-
               return pump();
-
             });
-
           }
-
           return pump().catch(function (e) {
-
             try { reader.cancel(); } catch (e2) {}
-
             throw e;
-
           });
-
         }, function (e) {
-
           clearTimeout(slow);
-
           throw e;
-
         })
-
         .catch(function (e) {
-
           if (tries >= 12) throw e;
-
           return attempt();
-
         });
-
     }
-
-
 
     return attempt().then(function () {
-
       if (have !== f.bytes) throw new Error("incomplete download");
-
       return new Blob(parts);
-
     });
-
   }
-
-
 
   function storeFile(f, blob, onProgress) {
-
     return getRoot().then(function (root) {
-
       return root.removeEntry("arcade-" + f.name).catch(function () {});
-
     }).then(function () {
-
       return handleFor(f.name);
-
     }).then(function (fh) {
-
       return fh.createWritable();
-
     }).then(function (w) {
-
       return w.write(blob).then(function () {
-
         return w.close();
-
       });
-
     }).then(function () {
-
       return handleFor(f.name);
-
     }).then(function (fh) {
-
       return fh.getFile();
-
     }).then(function (file) {
-
       if (file.size !== f.bytes) throw new Error("incomplete file");
-
       onProgress(f.bytes);
-
     });
-
   }
-
-
 
   function ensureOne(f, onProgress) {
-
     return handleFor(f.name).then(function (fh) {
-
       return fh.getFile();
-
     }).then(function (file) {
-
       if (file.size === f.bytes) { onProgress(f.bytes); return; }
-
       onProgress(0);
-
       return downloadFile(f, onProgress).then(function (blob) {
-
         return storeFile(f, blob, onProgress);
-
       });
-
     });
-
   }
-
-
 
   function ensureModel(onProgress) {
-
     var done = 0;
-
     function step(i) {
-
       if (i >= LOCAL.files.length) { onProgress(LOCAL.total); return Promise.resolve(); }
-
       var f = LOCAL.files[i];
-
       return ensureOne(f, function (loaded) {
-
         onProgress(Math.min(LOCAL.total, done + loaded));
-
       }).then(function () {
-
         done += f.bytes;
-
         return step(i + 1);
-
       });
-
     }
-
     return step(0);
-
   }
-
-
 
   // Answer transformers.js from the stored files instead of the network.
-
   function serveModel() {
-
     if (modelFetchReady) return;
-
     modelFetchReady = true;
-
     var original = window.fetch.bind(window);
-
     var prefix = LOCAL.host + LOCAL.repo + "/resolve/master/";
-
     var names = {};
-
     for (var i = 0; i < LOCAL.files.length; i++) names[LOCAL.files[i].path] = LOCAL.files[i].name;
 
-
-
     window.fetch = function (input, init) {
-
       var url = typeof input === "string" ? input : (input && input.url) || "";
-
       if (url.indexOf(prefix) === 0 && names[url.slice(prefix.length)]) {
-
         return handleFor(names[url.slice(prefix.length)]).then(function (fh) {
-
           return fh.getFile();
-
         }).then(function (file) {
-
           return new Response(file.stream(), {
-
             status: 200,
-
             headers: {
-
               "Content-Type": "application/octet-stream",
-
               "Content-Length": String(file.size)
-
             }
-
           });
-
         });
-
       }
-
       return original(input, init);
-
     };
-
   }
-
-
 
   function updateEngine() {
-
     if (!engineEl) return;
-
     if (localState === "ready") {
-
       engineEl.className = "ai-engine ready";
-
       if (engineText) engineText.textContent = "Unlimited AI ready — runs in this page";
-
       if (engineBtn) engineBtn.style.display = "none";
-
       if (engineBar && engineBar.parentNode) engineBar.parentNode.classList.remove("on");
-
     } else if (localState === "loading") {
-
       engineEl.className = "ai-engine";
-
       if (engineText) {
-
         engineText.textContent = localStarting
-
           ? "Starting the unlimited AI…"
-
           : "Downloading unlimited AI " + localPct + "% (one time)";
-
       }
-
       if (engineBtn) engineBtn.style.display = "none";
-
       if (engineBar) {
-
         engineBar.parentNode.classList.add("on");
-
         engineBar.style.width = localPct + "%";
-
       }
-
     } else if (localState === "error") {
-
       engineEl.className = "ai-engine";
-
       if (engineText) engineText.textContent = "Unlimited AI could not start on this browser";
-
       if (engineBtn) { engineBtn.style.display = ""; engineBtn.disabled = false; engineBtn.textContent = "Retry"; }
-
       if (engineBar && engineBar.parentNode) engineBar.parentNode.classList.remove("on");
-
     } else {
-
       engineEl.className = "ai-engine";
-
       if (engineText) engineText.textContent = "Quick AI · free · no key";
-
       if (engineBtn) { engineBtn.style.display = ""; engineBtn.disabled = false; engineBtn.textContent = "Unlimited AI (" + LOCAL.size + ")"; }
-
       if (engineBar && engineBar.parentNode) engineBar.parentNode.classList.remove("on");
-
     }
-
   }
 
-
-
   function startLocal() {
-
     if (localState === "loading" || localState === "ready") return;
-
     localState = "loading";
-
     localPct = 0;
-
     localErr = "";
-
     localStarting = false;
-
     updateEngine();
-
     if (waitingLocal) setTyping("Downloading the unlimited AI… 0%");
 
-
-
     // the previous version of the engine stored one much larger file here
-
     getRoot().then(function (root) {
-
       ["arcade-model.onnx", "arcade-model.onnx.crswap"].forEach(function (name) {
-
         root.removeEntry(name).catch(function () {});
-
       });
-
     }).catch(function () {});
 
-
-
     function progress(bytes) {
-
       localPct = Math.max(localPct, Math.min(99, Math.round((bytes / LOCAL.total) * 99)));
-
       updateEngine();
-
       if (waitingLocal) setTyping("Downloading the unlimited AI… " + localPct + "%");
-
     }
-
-
 
     try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
 
-
-
     ensureModel(progress)
-
       .then(function () {
-
         serveModel();
-
         localStarting = true;
-
         updateEngine();
-
         if (waitingLocal) setTyping("Starting the unlimited AI…");
-
         try { indexedDB.deleteDatabase("arcadeAI"); } catch (e) {}
-
         return import(LOCAL.cdn);
-
       })
-
       .then(function (mod) {
-
         localModule = mod;
-
         var env = mod.env;
-
         env.allowLocalModels = false;
-
         env.remoteHost = LOCAL.host;
-
         env.remotePathTemplate = LOCAL.tpl;
-
         env.useCustomCache = false;
-
         return mod.pipeline(LOCAL.task, LOCAL.repo, {
-
           dtype: "q8",
-
           device: "wasm",
-
           progress_callback: function () {}
-
         });
-
       })
-
       .then(function (gen) {
-
         localGen = gen;
-
         localState = "ready";
-
         localPct = 100;
-
         updateEngine();
-
         try { localStorage.setItem("arcadeAI", "1"); } catch (e) {}
-
         var w = waitingLocal;
-
         waitingLocal = null;
-
         if (w) run(w.q, w.ctx, true);
-
       })
-
       .catch(function (e) {
-
         localState = "error";
-
         localErr = String((e && e.message) || e).slice(0, 140);
-
         updateEngine();
-
         var w = waitingLocal;
-
         waitingLocal = null;
-
         if (w) localFailed(w.q, w.ctx);
-
       });
-
   }
-
-
 
   function askLocal(messages, onToken) {
-
     if (!localGen) return Promise.reject(new Error("no local model"));
-
     var q = "";
-
     for (var i = (messages || []).length - 1; i >= 0; i--) {
-
       if (messages[i].role === "user") { q = messages[i].content; break; }
-
     }
-
     if (!q) return Promise.reject(new Error("no question"));
-
     var opts = {
-
       max_new_tokens: 80,
-
       do_sample: false
-
     };
-
     if (onToken) {
-
       try {
-
         var Streamer = localModule && localModule.TextStreamer;
-
         var tok = localGen.tokenizer;
-
         if (Streamer && tok) {
-
           opts.streamer = new Streamer(tok, {
-
             skip_prompt: true,
-
             skip_special_tokens: true,
-
             callback_function: function (t) { try { onToken(t); } catch (e) {} }
-
           });
-
         }
-
       } catch (e) {}
-
     }
-
     return localGen(q, opts).then(function (out) {
-
       var g = out && out[0] && out[0].generated_text;
-
       var text = "";
-
       if (Array.isArray(g)) {
-
         var last = g[g.length - 1];
-
         text = (last && (last.content || last.text)) || "";
-
       } else if (typeof g === "string") {
-
         text = g;
-
       }
-
       return String(text || "").trim();
-
     });
-
   }
 
-
-
   // small hook used by the site owner to check the in-browser engine
-
   window.__arcade = {
-
     state: function () { return localState; },
-
     error: function () { return localErr; },
-
     ask: askLocal,
-
     model: function () { return localGen; }
-
   };
-
-
 
   /* ------------------------------ answers ------------------------------ */
 
-
-
   function clean(text) {
-
     var t = String(text || "").replace(/\r/g, "");
-
     // drop fenced code blocks down to their text
-
     t = t.replace(/```[a-z]*\n?/gi, "").replace(/`{3}/g, "");
-
     // drop markdown-table separator lines, flatten the rest
-
     t = t.split("\n").filter(function (line) { return !/^\s*\|?[\s:|-]{4,}\|?\s*$/.test(line); }).join("\n");
-
     t = t.split("\n").map(function (line) {
-
       if (line.indexOf("|") === -1) return line;
-
       var cells = line.replace(/^\s*\|/, "").replace(/\|\s*$/, "").split("|");
-
       return cells.map(function (c) { return c.trim(); }).filter(Boolean).join(" — ");
-
     }).join("\n");
-
     // keep bullet/heading markers useful, strip heading hashes
-
     t = t.replace(/^#{1,6}\s+/gm, "");
-
     return t.replace(/\n{3,}/g, "\n\n").trim();
-
   }
-
-
 
   function knowledge(q) {
-
     var s = " " + q.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ") + " ";
-
     for (var i = 0; i < KB.length; i++) {
-
       for (var j = 0; j < KB[i].keys.length; j++) {
-
         if (s.indexOf(" " + KB[i].keys[j] + " ") !== -1) return KB[i].answer;
-
       }
-
     }
-
     return null;
-
   }
-
-
 
   function say(text, note, ts) {
-
     var row = newBubble("bot");
-
     row.querySelector(".msg-bubble").textContent = text;
-
     return finalizeBubble(row, "bot", text, note, ts);
-
   }
-
-
 
   function finish() {
-
     busy = false;
-
     setTyping(null);
-
     if (queued.length) { var nxt = queued.shift(); run(nxt.q, nxt.ctx, false); return; }
-
     if (!chat.classList.contains("hidden")) input.focus();
-
   }
-
-
 
   function buildMessages(q, ctx) {
-
     return [{ role: "system", content: SYSTEM }]
-
       .concat((ctx || []).map(function (h) {
-
         return { role: h.role === "user" ? "user" : "assistant", content: h.text };
-
       }))
-
       .concat([{ role: "user", content: q }]);
-
   }
-
-
 
   function offerUnlimited(q, ctx) {
-
     setTyping(null);
-
     var d = addMsg("bot", "The free cloud AI is busy right now. Turn on the unlimited AI — it runs inside this page, needs no key, and downloads once (" + LOCAL.size + "). After that, answers never wait.");
-
     var b = document.createElement("button");
-
     b.className = "ai-cta";
-
     b.type = "button";
-
     b.textContent = "Turn on unlimited AI (" + LOCAL.size + ")";
-
     b.addEventListener("click", function () {
-
       b.disabled = true;
-
       b.textContent = "Starting…";
-
       waitingLocal = { q: q, ctx: ctx };
-
       startLocal();
-
     });
-
     d.querySelector(".msg-body").appendChild(b);
-
     finish();
-
   }
-
-
 
   function localFailed(q, ctx) {
-
     setTyping(null);
-
     var quick = knowledge(q);
-
     if (quick) {
-
       say(quick, "Answered from the built-in guide.");
-
       finish();
-
       return;
-
     }
-
     say("The unlimited AI could not start on this browser" + (localErr ? " (" + localErr + ")" : "") +
-
         ". The quick AI still works — try again in a moment.");
-
     finish();
-
   }
 
-
-
   function run(q, ctx, forceLocal) {
-
     busy = true;
-
     setTyping(forceLocal ? "Thinking locally…" : "Thinking…");
-
     var payload = buildMessages(q, ctx);
 
-
-
     function done(reply, note) {
-
       reply = clean(reply);
-
       if (!reply) throw new Error("empty");
-
       history.push({ role: "model", text: reply });
-
       cache[q.toLowerCase()] = reply;
-
       setTyping(null);
-
       var row = newBubble("bot");
-
       var bubble = row.querySelector(".msg-bubble");
-
       typewriter(bubble, reply, function () {
-
         finalizeBubble(row, "bot", reply, note);
-
         finish();
-
       });
-
     }
-
-
 
     function unable() {
-
       setTyping(null);
-
       var quick = knowledge(q);
-
       if (quick) { say(quick, "Answered from the built-in guide."); finish(); return; }
-
       if (localState === "off" || localState === "error") { offerUnlimited(q, ctx); return; }
-
       say("The AI is still getting ready. Please try again in a moment.");
-
       finish();
-
     }
-
-
 
     // the offline model writes its answer word by word, so it appears while
-
     // it is still thinking instead of after a long pause
-
     function localAnswer() {
-
       setTyping(null);
-
       var row = newBubble("bot");
-
       var bubble = row.querySelector(".msg-bubble");
-
       var text = "";
-
       askLocal(payload, function (t) {
-
         text += t;
-
         bubble.textContent = text;
-
         msgs.scrollTop = msgs.scrollHeight;
-
       }).then(function (reply) {
-
         var final = clean(String(reply || text || "").trim());
-
         if (!final) throw new Error("empty");
-
         finalizeBubble(row, "bot", final, "Answered by the built-in offline AI.");
-
         history.push({ role: "model", text: final });
-
         cache[q.toLowerCase()] = final;
-
         finish();
-
       }).catch(function () {
-
         if (row.parentNode) row.parentNode.removeChild(row);
-
         unable();
-
       });
-
     }
-
-
 
     if (forceLocal && localState === "ready") { localAnswer(); return; }
 
-
-
     askCloud(payload).then(function (r) {
-
       done(r);
-
     }).catch(function () {
-
       // game questions are answered accurately from the built-in guide
-
       // before the slower offline model is started
-
       var quick = knowledge(q);
-
       if (quick) { done(quick, "Answered from the built-in guide."); return; }
-
       if (localState === "ready") {
-
         setTyping("Thinking locally…");
-
         localAnswer();
-
         return;
-
       }
-
       if (localState === "loading") {
-
         waitingLocal = { q: q, ctx: ctx };
-
         setTyping("Downloading the unlimited AI… " + localPct + "%");
-
         return;
-
       }
-
       unable();
-
     });
-
   }
-
-
 
   function ask() {
-
     var q = input.value.trim();
-
     if (!q) return;
-
     input.value = "";
-
     addMsg("user", q);
-
     history.push({ role: "user", text: q });
 
-
-
     var cached = cache[q.toLowerCase()];
-
     if (cached) { addMsg("bot", cached); return; }
 
-
-
     if (busy) { queued.push({ q: q, ctx: history.slice(0, -1) }); return; }
-
     run(q, history.slice(0, -1), false);
-
   }
-
-
 
   fab.addEventListener("click", function () {
-
     chat.classList.toggle("hidden");
-
     if (!chat.classList.contains("hidden")) input.focus();
-
   });
-
   close.addEventListener("click", function () { chat.classList.add("hidden"); });
-
   send.addEventListener("click", ask);
-
   input.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); ask(); } });
-
   if (engineBtn) engineBtn.addEventListener("click", function () { startLocal(); });
 
-
-
   /* ---- suggested prompts ---- */
-
   var chipsEl = document.getElementById("aiChips");
-
   if (chipsEl) {
-
     ["What games are there?", "How do I play Tank War?", "Who made this site?"].forEach(function (c) {
-
       var b = document.createElement("button");
-
       b.type = "button";
-
       b.className = "ai-chip";
-
       b.textContent = c;
-
       b.addEventListener("click", function () {
-
         if (busy) return;
-
         input.value = c;
-
         ask();
-
       });
-
       chipsEl.appendChild(b);
-
     });
-
   }
 
-
-
   var clearBtn = document.getElementById("aiClear");
-
   if (clearBtn) clearBtn.addEventListener("click", function () {
-
     history = [];
-
     cache = {};
-
     queued = [];
-
     chatLog = [];
-
     chatSave();
-
     msgs.innerHTML = "";
-
     addMsg("bot", "Chat cleared. What can I help you with?");
-
   });
-
-
 
   /* ------------------------------ feedback ------------------------------ */
 
-
-
   var FB_KEY = "arcade_feedback_v1";
 
-
-
   function fbLoad() {
-
     try { return JSON.parse(localStorage.getItem(FB_KEY) || "[]"); } catch (e) { return []; }
-
   }
-
   function fbSave(list) {
-
     try { localStorage.setItem(FB_KEY, JSON.stringify(list)); } catch (e) {}
-
   }
-
-
 
   var fbBtn = document.getElementById("fbBtn");
-
   var fbOverlay = document.getElementById("fbOverlay");
-
   var fbView = document.getElementById("fbView");
-
   var fbText = document.getElementById("fbText");
-
   var fbName = document.getElementById("fbName");
-
   var fbStars = document.getElementById("fbStars");
-
   var fbOk = document.getElementById("fbOk");
-
   var fbRating = 0;
 
-
-
   if (fbStars) {
-
     Array.prototype.forEach.call(fbStars.children, function (s) {
-
       s.addEventListener("click", function () {
-
         fbRating = +s.getAttribute("data-v");
-
         Array.prototype.forEach.call(fbStars.children, function (x) {
-
           x.classList.toggle("on", +x.getAttribute("data-v") <= fbRating);
-
         });
-
       });
-
     });
-
   }
 
-
-
   if (fbBtn) fbBtn.addEventListener("click", function () {
-
     fbShow();
-
     fbOk.textContent = "";
-
     if (fbText) fbText.focus();
-
   });
-
   if (document.getElementById("fbClose")) document.getElementById("fbClose").addEventListener("click", function () {
-
     fbOverlay.classList.add("hidden");
-
   });
-
   if (fbOverlay) fbOverlay.addEventListener("click", function (e) {
-
     if (e.target === fbOverlay) fbOverlay.classList.add("hidden");
-
   });
-
-
 
   if (document.getElementById("fbSend")) document.getElementById("fbSend").addEventListener("click", function () {
-
     var text = fbText.value.trim();
-
     if (!text) { fbOk.textContent = "Please write a message."; return; }
-
     var list = fbLoad();
-
     list.push({
-
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
-
       name: fbName.value.trim(),
-
       rating: fbRating,
-
       text: text,
-
       ts: Date.now(),
-
       page: location.pathname
-
     });
-
     fbSave(list);
-
     fbText.value = "";
-
     fbName.value = "";
-
     fbRating = 0;
-
     Array.prototype.forEach.call(fbStars.children, function (x) { x.classList.remove("on"); });
-
     fbOk.textContent = "Thanks! Your feedback was sent.";
-
     setTimeout(function () { fbOk.textContent = ""; fbOverlay.classList.add("hidden"); }, 1500);
-
   });
-
-
 
   /* ------------------------------ operator ------------------------------ */
 
-
-
   var OP_HASH = "e83f7eda58c0f1930259f4e567b005bc24e57bdd32014d2b133ab497d13ac5bc";
 
-
-
   var opLogin = document.getElementById("opLogin");
-
   var opPanel = document.getElementById("opPanel");
-
   var opPass = document.getElementById("opPass");
-
   var opErr = document.getElementById("opErr");
-
   var opList = document.getElementById("opList");
 
-
-
   function renderFeedback() {
-
     opList.innerHTML = "";
-
     var list = fbLoad().slice().reverse();
-
     if (!list.length) {
-
       var e = document.createElement("div");
-
       e.className = "op-empty";
-
       e.textContent = "No feedback yet.";
-
       opList.appendChild(e);
-
       return;
-
     }
-
     list.forEach(function (f) {
-
       var d = document.createElement("div");
-
       d.className = "op-item";
-
       var t = document.createElement("div");
-
       t.className = "t";
-
       t.textContent = f.text;
-
       var m = document.createElement("div");
-
       m.className = "m";
-
       var stars = f.rating ? "\u2605".repeat(f.rating) + "\u2606".repeat(5 - f.rating) : "";
-
       m.textContent = (f.name ? f.name + " · " : "") + (stars ? stars + " · " : "") +
-
         new Date(f.ts).toLocaleString();
-
       d.appendChild(t);
-
       d.appendChild(m);
-
       opList.appendChild(d);
-
     });
-
   }
-
-
 
   function opUnlock() {
-
     var val = opPass.value;
-
     opPass.value = "";
-
     opErr.textContent = "Checking…";
-
     try {
-
       crypto.subtle.digest("SHA-256", new TextEncoder().encode(val)).then(function (buf) {
-
         var hex = Array.prototype.map.call(new Uint8Array(buf), function (b) {
-
           return ("0" + b.toString(16)).slice(-2);
-
         }).join("");
-
         if (hex === OP_HASH) {
-
           opErr.textContent = "";
-
           opLogin.classList.add("hidden");
-
           opPanel.classList.remove("hidden");
-
           renderFeedback();
-
         } else {
-
           opErr.textContent = "Wrong password.";
-
         }
-
       }).catch(function () { opErr.textContent = "Hashing unavailable."; });
-
     } catch (e) { opErr.textContent = "Hashing unavailable."; }
-
   }
-
-
 
   function opOpen() {
-
     fbOverlay.classList.remove("hidden");
-
     if (fbView) fbView.classList.add("hidden");
-
     opLogin.classList.remove("hidden");
-
     opPanel.classList.add("hidden");
-
     opErr.textContent = "";
-
     if (opPass) opPass.focus();
-
   }
-
-
 
   function fbShow() {
-
     fbOverlay.classList.remove("hidden");
-
     if (fbView) fbView.classList.remove("hidden");
-
     opLogin.classList.add("hidden");
-
     opPanel.classList.add("hidden");
-
   }
-
-
 
   var opLink = document.getElementById("opLink");
-
   if (opLink) opLink.addEventListener("click", function (e) { e.preventDefault(); opOpen(); });
-
   var opLinkBox = document.getElementById("opLinkBox");
-
   if (opLinkBox) opLinkBox.addEventListener("click", function (e) { e.preventDefault(); opOpen(); });
-
   var opBack1 = document.getElementById("opBack1");
-
   if (opBack1) opBack1.addEventListener("click", function (e) { e.preventDefault(); fbShow(); });
-
   var opBack2 = document.getElementById("opBack2");
-
   if (opBack2) opBack2.addEventListener("click", function (e) { e.preventDefault(); fbShow(); });
-
   if (document.getElementById("opGo")) document.getElementById("opGo").addEventListener("click", opUnlock);
-
   if (opPass) opPass.addEventListener("keydown", function (e) { if (e.key === "Enter") opUnlock(); });
-
   if (document.getElementById("opClose1")) document.getElementById("opClose1").addEventListener("click", function () { fbOverlay.classList.add("hidden"); });
-
   if (document.getElementById("opClose2")) document.getElementById("opClose2").addEventListener("click", function () { fbOverlay.classList.add("hidden"); });
-
   if (fbOverlay) fbOverlay.addEventListener("click", function (e) {
-
     if (e.target === fbOverlay) fbOverlay.classList.add("hidden");
-
   });
-
   if (document.getElementById("opExport")) document.getElementById("opExport").addEventListener("click", function () {
-
     copyText(JSON.stringify(fbLoad(), null, 2), this);
-
   });
-
   if (document.getElementById("opClear")) document.getElementById("opClear").addEventListener("click", function () {
-
     if (confirm("Delete all feedback on this device?")) { fbSave([]); renderFeedback(); }
-
   });
-
-
 
   updateEngine();
-
   try {
-
     if (localStorage.getItem("arcadeAI") === "1") setTimeout(startLocal, 600);
-
   } catch (e) {}
 
-
-
   var savedChat = chatLoad();
-
   if (savedChat.length) {
-
     restoring = true;
-
     for (var i = 0; i < savedChat.length; i++) {
-
       var e = savedChat[i];
-
       if (e.role === "user") addMsg("user", e.text, "", e.ts);
-
       else say(e.text, e.note || "", e.ts);
-
     }
-
     restoring = false;
-
   } else {
-
-    addMsg("bot", "Hi! I'm the AI assistant — no key, no sign-in. Ask about any of the eleven games, or anything else. The quick AI is free; turn on the unlimited AI above and answers never wait.");
-
+    addMsg("bot", "Hi! I'm the AI assistant — no key, no sign-in. Ask about any of the ten games, or anything else. The quick AI is free; turn on the unlimited AI above and answers never wait.");
   }
-
 })();
-
 </script>
-
 </body>
-
 </html>
-
