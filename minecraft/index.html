@@ -216,7 +216,7 @@
 <div id="hud">
   <div id="cross"></div>
   <div id="name"></div>
-  <div id="hint">LMB attack / break &middot; RMB place / eat / furnace &middot; 1-9 / wheel select &middot; E inventory &middot; Q drop &middot; F fly &middot; F3 stats</div>
+  <div id="hint">LMB attack / break &middot; RMB place / eat / furnace / ignite portals &middot; walk into a portal to travel &middot; E inventory &middot; Q drop &middot; F fly &middot; F3 stats</div>
   <div id="stats">
     <div id="hearts" class="bar2"></div>
     <div id="food" class="bar2"></div>
@@ -224,7 +224,7 @@
   <div id="bar"></div>
   <div id="dbg"></div>
   <div id="toast"></div>
-  <div id="ver">v1.9 build 1</div>
+  <div id="ver">v2.0 build 1</div>
 </div>
 
 <div id="inv" class="hide">
@@ -268,7 +268,7 @@
 <div id="menu" class="hide">
   <div class="panel">
     <h1>BLOCKCRAFT</h1>
-    <h2>survival + creative &middot; v1.9 &middot; mountains + furnaces &middot; software-rendered in canvas 2d</h2>
+    <h2>survival + creative &middot; v2.0 &middot; nether + end dimensions &middot; software-rendered in canvas 2d</h2>
     <div class="grid">
       <div><b>W A S D</b> move</div>
       <div><b>Space</b> jump / swim up</div>
@@ -347,7 +347,7 @@ function fbm(x, y, oct) {
 }
 
 /* ---------------------------------------------------------- textures */
-const TS = 16, TN = 21;
+const TS = 16, TN = 32;
 const TEX = new Uint32Array(TS * TS * TN);
 const tileCanvas = new Array(TN);
 
@@ -475,6 +475,51 @@ function buildTextures() {
     const cx = 4 + ((R(22, i) * 8) | 0), cy = 9 + ((R(23, i) * 2) | 0);
     putc(20, cx, cy, [210 + ((R(24, i) * 45) | 0), 80 + ((R(25, i) * 70) | 0), 26]);
   }
+  /* 21 obsidian */
+  fillTile(21, [28, 20, 38]); speckle(21, [28, 20, 38], 20, 260);
+  for (let i = 0; i < 18; i++) {
+    const cx = (R(40, i) * 15) | 0, cy = (R(41, i) * 15) | 0;
+    put(21, cx, cy, 12, 8, 22); put(21, (cx + 1) % 16, cy, 58, 38, 84);
+  }
+  /* 22 nether portal (animated in paintPortal) */
+  fillTile(22, [96, 30, 168]);
+  /* 23 netherrack */
+  fillTile(23, [126, 38, 32]); speckle(23, [138, 42, 34], 34, 320);
+  for (let i = 0; i < 30; i++) putc(23, (R(42, i) * 15) | 0, (R(43, i) * 15) | 0, [92, 26, 24]);
+  /* 24 soul sand */
+  fillTile(24, [92, 78, 68]); speckle(24, [112, 94, 80], 22, 250);
+  for (let i = 0; i < 10; i++) {
+    const cx = (R(44, i) * 15) | 0, cy = (R(45, i) * 15) | 0;
+    put(24, cx, cy, 44, 36, 32); put(24, (cx + 1) % 16, cy, 150, 128, 108);
+  }
+  /* 25 glowstone */
+  fillTile(25, [226, 174, 76]); speckle(25, [246, 202, 104], 30, 320);
+  for (let i = 0; i < 12; i++) putc(25, (R(46, i) * 15) | 0, (R(47, i) * 15) | 0, [255, 238, 168]);
+  /* 26 nether brick */
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+    const row = (y / 4) | 0;
+    if (y % 4 === 3 || (x + row * 5) % 8 === 7) putc(26, x, y, [66, 28, 30]);
+    else putc(26, x, y, [104, 44, 42]);
+  }
+  speckle(26, [104, 44, 42], 12, 120);
+  /* 27 end stone */
+  fillTile(27, [216, 214, 188]); speckle(27, [226, 224, 198], 18, 260);
+  for (let i = 0; i < 24; i++) {
+    const cx = (R(48, i) * 15) | 0, cy = (R(49, i) * 15) | 0;
+    putc(27, cx, cy, [186, 184, 160]);
+  }
+  /* 28 end portal (animated in paintPortal) */
+  fillTile(28, [12, 8, 22]);
+  /* 29 end portal frame top */
+  fillTile(29, [86, 78, 104]); speckle(29, [104, 94, 124], 18, 180);
+  for (let x = 2; x < 14; x++) { putc(29, x, 4, [56, 48, 72]); putc(29, x, 12, [56, 48, 72]); }
+  for (let y = 4; y <= 12; y++) { putc(29, 2, y, [56, 48, 72]); putc(29, 13, y, [56, 48, 72]); }
+  putc(29, 8, 8, [104, 226, 198]);
+  /* 30 end portal frame side */
+  fillTile(30, [78, 70, 96]); speckle(30, [96, 86, 116], 16, 160);
+  for (let y = 0; y < 16; y += 5) for (let x = 0; x < 16; x++) putc(30, x, y, [52, 46, 68]);
+  /* 31 lava (animated in paintPortal) */
+  fillTile(31, [216, 82, 18]);
   /* 15..18 ores: stone base with coloured nuggets */
   const oreCol = [[30, 30, 34], [188, 160, 132], [250, 210, 90], [80, 220, 210]];
   for (let o = 0; o < 4; o++) {
@@ -510,14 +555,38 @@ function paintWater(st) {
   }
 }
 
+function paintPortal(st) {
+  /* nether portal: purple swirl */
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+    const w = Math.sin(x * 0.9 + st * 2.2) + Math.sin(y * 0.75 - st * 1.6) + Math.sin((x + y) * 0.5 + st);
+    put(22, x, y, 88 + w * 24, 28 + w * 16, 172 + w * 28, 205);
+  }
+  /* end portal: dark star field */
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+    const tw = Math.sin(st * 2.4 + hash2(x, y) * 12.6);
+    const c = hash2(x + 31, y + 17);
+    put(28, x, y, 8 + c * 30 + tw * 12, 6 + c * 22, 22 + c * 50, 235);
+  }
+  /* lava: rolling orange crust */
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+    const w = Math.sin(x * 0.7 + st * 1.7) + Math.sin(y * 0.9 - st * 1.2);
+    put(31, x, y, 208 + w * 22, 64 + w * 26, 12 + w * 8, 235);
+  }
+}
+
 /* ------------------------------------------------------------ blocks */
 const T = { GRASS_TOP: 0, GRASS_SIDE: 1, DIRT: 2, STONE: 3, SAND: 4, LOG_TOP: 5, LOG_SIDE: 6,
             LEAVES: 7, PLANKS: 8, COBBLE: 9, BRICK: 10, GLASS: 11, WATER: 12, BEDROCK: 13, GRAVEL: 14,
             COAL_ORE: 15, IRON_ORE: 16, GOLD_ORE: 17, DIAMOND_ORE: 18,
-            SNOW: 19, FURNACE_FRONT: 20 };
+            SNOW: 19, FURNACE_FRONT: 20, OBSIDIAN: 21, PORTAL: 22, NETHERRACK: 23,
+            SOUL_SAND: 24, GLOWSTONE: 25, NETHER_BRICK: 26, END_STONE: 27, END_PORTAL: 28,
+            END_FRAME_TOP: 29, END_FRAME_SIDE: 30, LAVA: 31 };
 const AIR = 0, GRASS = 1, DIRT = 2, STONE = 3, SAND = 4, LOG = 5, LEAVES = 6,
       PLANKS = 7, COBBLE = 8, BRICK = 9, GLASS = 10, WATER = 11, BEDROCK = 12, GRAVEL = 13,
-      COAL_ORE = 14, IRON_ORE = 15, GOLD_ORE = 16, DIAMOND_ORE = 17, SNOW = 18, FURNACE = 19;
+      COAL_ORE = 14, IRON_ORE = 15, GOLD_ORE = 16, DIAMOND_ORE = 17, SNOW = 18, FURNACE = 19,
+      OBSIDIAN = 20, PORTAL = 21, NETHERRACK = 22, SOUL_SAND = 23, GLOWSTONE = 24,
+      NETHER_BRICK = 25, END_STONE = 26, END_PORTAL = 27, END_FRAME = 28, END_FRAME_FILLED = 29,
+      LAVA = 30;
 
 /* t: [top, side, bottom]   solid: collision   opaque: hides neighbour faces
    cull: drop faces between identical blocks   a: 1 = opaque pass, <1 = blended */
@@ -541,9 +610,21 @@ const BLK = [
   { n: 'Gold Ore',     t: [T.GOLD_ORE, T.GOLD_ORE, T.GOLD_ORE],           solid: 1, opaque: 1, cull: 0, a: 1 },
   { n: 'Diamond Ore',  t: [T.DIAMOND_ORE, T.DIAMOND_ORE, T.DIAMOND_ORE],  solid: 1, opaque: 1, cull: 0, a: 1 },
   { n: 'Snow Block',   t: [T.SNOW, T.SNOW, T.SNOW],                       solid: 1, opaque: 1, cull: 0, a: 1 },
-  { n: 'Furnace',      t: [T.COBBLE, T.COBBLE, T.COBBLE], front: T.FURNACE_FRONT, solid: 1, opaque: 1, cull: 0, a: 1 }
+  { n: 'Furnace',      t: [T.COBBLE, T.COBBLE, T.COBBLE], front: T.FURNACE_FRONT, solid: 1, opaque: 1, cull: 0, a: 1 },
+  { n: 'Obsidian',     t: [T.OBSIDIAN, T.OBSIDIAN, T.OBSIDIAN],           solid: 1, opaque: 1, cull: 0, a: 1 },
+  { n: 'Nether Portal',t: [T.PORTAL, T.PORTAL, T.PORTAL],                 solid: 0, opaque: 0, cull: 1, a: 0.72 },
+  { n: 'Netherrack',   t: [T.NETHERRACK, T.NETHERRACK, T.NETHERRACK],     solid: 1, opaque: 1, cull: 0, a: 1 },
+  { n: 'Soul Sand',    t: [T.SOUL_SAND, T.SOUL_SAND, T.SOUL_SAND],        solid: 1, opaque: 1, cull: 0, a: 1 },
+  { n: 'Glowstone',    t: [T.GLOWSTONE, T.GLOWSTONE, T.GLOWSTONE],        solid: 1, opaque: 1, cull: 0, a: 1 },
+  { n: 'Nether Brick', t: [T.NETHER_BRICK, T.NETHER_BRICK, T.NETHER_BRICK], solid: 1, opaque: 1, cull: 0, a: 1 },
+  { n: 'End Stone',    t: [T.END_STONE, T.END_STONE, T.END_STONE],        solid: 1, opaque: 1, cull: 0, a: 1 },
+  { n: 'End Portal',   t: [T.END_PORTAL, T.END_PORTAL, T.END_PORTAL],     solid: 0, opaque: 0, cull: 1, a: 0.82 },
+  { n: 'End Portal Frame', t: [T.END_FRAME_TOP, T.END_FRAME_SIDE, T.END_FRAME_TOP], solid: 1, opaque: 1, cull: 0, a: 1 },
+  { n: 'End Portal Frame (eye)', t: [T.END_FRAME_TOP, T.END_FRAME_SIDE, T.END_FRAME_TOP], solid: 1, opaque: 1, cull: 0, a: 1 },
+  { n: 'Lava',         t: [T.LAVA, T.LAVA, T.LAVA],                       solid: 0, opaque: 0, cull: 1, a: 0.82 }
 ];
-const CREATIVE_PALETTE = [[GRASS, 64], [DIRT, 64], [STONE, 64], [COBBLE, 64], [PLANKS, 64], [LOG, 64], [LEAVES, 64], [GLASS, 64], [BRICK, 64], [FURNACE, 8], [SNOW, 64]];
+const CREATIVE_PALETTE = [[GRASS, 64], [DIRT, 64], [STONE, 64], [COBBLE, 64], [PLANKS, 64], [LOG, 64], [LEAVES, 64], [GLASS, 64], [BRICK, 64], [FURNACE, 8], [SNOW, 64],
+  [OBSIDIAN, 32], [PORTAL, 16], [NETHERRACK, 64], [SOUL_SAND, 64], [GLOWSTONE, 64], [NETHER_BRICK, 64], [END_STONE, 64], [END_PORTAL, 16], [END_FRAME, 32], [LAVA, 16]];
 
 /* ------------------------------------------------- items & survival */
 const IT = { BEEF: 100, PORK: 101, MUTTON: 102, CHICKEN: 103, LEATHER: 104, WOOL: 105,
@@ -556,7 +637,8 @@ const IT = { BEEF: 100, PORK: 101, MUTTON: 102, CHICKEN: 103, LEATHER: 104, WOOL
              DPICK: 136, DAXE: 137, DSHOVEL: 138, DSWORD: 139,
              CPICK: 140, CAXE: 141, CSHOVEL: 142, CSWORD: 143,
              GPICK: 144, GAXE: 145, GSHOVEL: 146, GSWORD: 147,
-              CBEET: 148, CPORK: 149, CMUTTON: 150, CCHICKEN: 151 };
+              CBEET: 148, CPORK: 149, CMUTTON: 150, CCHICKEN: 151,
+             FLINT_STEEL: 152, ENDER_PEARL: 153, ENDER_EYE: 154 };
 const ITEM = {};
 function rect(g, x, y, w, h, c) { g.fillStyle = c; g.fillRect(x, y, w, h); }
 function toolIcon(kind, c1, c2) {
@@ -630,20 +712,42 @@ function defineItems() {
   R(IT.GAXE, 'Gold Axe', G1, 0, toolIcon('axe', G1, G2));
   R(IT.GSHOVEL, 'Gold Shovel', G1, 0, toolIcon('shovel', G1, G2));
   R(IT.GSWORD, 'Gold Sword', G1, 0, toolIcon('sword', G1, G2));
+  R(IT.FLINT_STEEL, 'Flint and Steel', 0x9a9a9e, 0, g => {
+    rect(g, 4, 12, 20, 5, '#8d8d94'); rect(g, 4, 12, 20, 2, '#c2c2c8');
+    rect(g, 18, 6, 4, 9, '#6b4a2a'); rect(g, 19, 3, 3, 5, '#3a3a40');
+    rect(g, 22, 5, 4, 3, '#ffb43c'); rect(g, 23, 3, 3, 3, '#ffe27a');
+  });
+  R(IT.ENDER_PEARL, 'Ender Pearl', 0x59b9a4, 0, g => {
+    rect(g, 8, 7, 16, 18, '#4cae9a'); rect(g, 8, 7, 16, 4, '#78d6c4');
+    rect(g, 11, 11, 10, 12, '#5ec3af'); rect(g, 10, 12, 4, 8, '#8fe4d4');
+    rect(g, 8, 22, 16, 3, '#2e7a6c');
+  });
+  R(IT.ENDER_EYE, 'Eye of Ender', 0x6fd4c0, 0, g => {
+    rect(g, 7, 9, 18, 14, '#8a7aa8'); rect(g, 7, 9, 18, 3, '#a99ac2');
+    rect(g, 10, 12, 12, 8, '#6dd8c2'); rect(g, 12, 13, 6, 6, '#b6f6e8');
+    rect(g, 7, 20, 18, 3, '#57496e'); rect(g, 14, 14, 3, 3, '#ffffff');
+  });
 }
 const DROPBLK = {}; DROPBLK[GRASS] = DIRT; DROPBLK[STONE] = COBBLE; DROPBLK[LEAVES] = 0; DROPBLK[GLASS] = 0; DROPBLK[BEDROCK] = 0;
 DROPBLK[COAL_ORE] = IT.COAL; DROPBLK[IRON_ORE] = IT.IRON; DROPBLK[GOLD_ORE] = IT.GOLD; DROPBLK[DIAMOND_ORE] = IT.DIAMOND;
 DROPBLK[SNOW] = SNOW; DROPBLK[FURNACE] = FURNACE;
+DROPBLK[PORTAL] = 0; DROPBLK[END_PORTAL] = 0; DROPBLK[LAVA] = 0;
+DROPBLK[END_FRAME_FILLED] = END_FRAME;
 function blockDrop(id) { return (id in DROPBLK) ? DROPBLK[id] : id; }
 const HARD = {}; HARD[GRASS] = 0.55; HARD[DIRT] = 0.5; HARD[SAND] = 0.5; HARD[GRAVEL] = 0.6;
 HARD[STONE] = 1.7; HARD[COBBLE] = 1.7; HARD[BRICK] = 1.8; HARD[LOG] = 1.1; HARD[PLANKS] = 0.9;
 HARD[LEAVES] = 0.25; HARD[GLASS] = 0.35; HARD[BEDROCK] = 1e9;
 HARD[COAL_ORE] = 1.4; HARD[IRON_ORE] = 1.8; HARD[GOLD_ORE] = 1.8; HARD[DIAMOND_ORE] = 2.0;
 HARD[SNOW] = 0.25; HARD[FURNACE] = 2.6;
+HARD[OBSIDIAN] = 8; HARD[PORTAL] = 0.5; HARD[NETHERRACK] = 0.8; HARD[SOUL_SAND] = 1;
+HARD[GLOWSTONE] = 0.8; HARD[NETHER_BRICK] = 1.4; HARD[END_STONE] = 1.6;
+HARD[END_PORTAL] = 0.5; HARD[END_FRAME] = 2; HARD[END_FRAME_FILLED] = 2; HARD[LAVA] = 0.5;
 function hardnessOf(id) { return HARD[id] !== undefined ? HARD[id] : 0.6; }
 /* stone-family + ores need a pickaxe; tier = minimum pickaxe tier to harvest */
 const ORE_TIER = {}; ORE_TIER[STONE] = 0; ORE_TIER[COBBLE] = 0; ORE_TIER[BRICK] = 0;
 ORE_TIER[COAL_ORE] = 0; ORE_TIER[IRON_ORE] = 1; ORE_TIER[GOLD_ORE] = 2; ORE_TIER[DIAMOND_ORE] = 2;
+ORE_TIER[OBSIDIAN] = 3; ORE_TIER[NETHERRACK] = 0; ORE_TIER[NETHER_BRICK] = 0;
+ORE_TIER[GLOWSTONE] = 0; ORE_TIER[END_STONE] = 1; ORE_TIER[END_FRAME] = 1; ORE_TIER[END_FRAME_FILLED] = 1;
 const LOOT = {};
 LOOT.cow = [[IT.BEEF,1,3],[IT.LEATHER,0,2]];
 LOOT.pig = [[IT.PORK,1,3]];
@@ -653,6 +757,9 @@ LOOT.zombie = [[IT.ROTTEN,0,2]];
 LOOT.skeleton = [[IT.BONE,0,2],[IT.ARROW,0,2]];
 LOOT.creeper = [[IT.GUNPOWDER,0,2]];
 LOOT.spider = [[IT.STRING,0,2]];
+LOOT.pigman = [[IT.GOLD,0,1],[IT.ROTTEN,0,1]];
+LOOT.enderman = [[IT.ENDER_PEARL,1,2]];
+LOOT.dragon = [[IT.ENDER_PEARL,2,4]];
 function itemName(id) { return id < 100 ? (BLK[id] ? BLK[id].n : '?') : (ITEM[id] ? ITEM[id].n : '?'); }
 function itemFood(id) { return (id >= 100 && ITEM[id]) ? ITEM[id].food : 0; }
 const RECIPES = [
@@ -682,7 +789,11 @@ const RECIPES = [
   { out: [IT.GPICK, 1], shape: [[IT.GOLD, IT.GOLD, IT.GOLD], [0, IT.STICK, 0], [0, IT.STICK, 0]] },
   { out: [IT.GAXE, 1], shape: [[IT.GOLD, IT.GOLD, 0], [IT.GOLD, IT.STICK, 0], [0, IT.STICK, 0]] },
   { out: [IT.GSHOVEL, 1], shape: [[0, IT.GOLD, 0], [0, IT.STICK, 0], [0, IT.STICK, 0]] },
-  { out: [IT.GSWORD, 1], shape: [[0, IT.GOLD, 0], [0, IT.GOLD, 0], [0, IT.STICK, 0]] }
+  { out: [IT.GSWORD, 1], shape: [[0, IT.GOLD, 0], [0, IT.GOLD, 0], [0, IT.STICK, 0]] },
+  { out: [IT.FLINT_STEEL, 1], shape: [[IT.IRON, 0, 0], [0, IT.STICK, 0], [0, 0, IT.IRON]] },
+  { out: [IT.ENDER_EYE, 1], shape: [[0, 0, 0], [0, IT.ENDER_PEARL, 0], [0, IT.GUNPOWDER, 0]] },
+  { out: [END_FRAME, 1], shape: [[OBSIDIAN, 0, OBSIDIAN], [0, IT.ENDER_EYE, 0], [OBSIDIAN, 0, OBSIDIAN]] },
+  { out: [NETHER_BRICK, 4], shape: [[NETHERRACK, NETHERRACK, 0], [NETHERRACK, NETHERRACK, 0], [0, 0, 0]] }
 ];
 function trimShape(rows) {
   let minR = 3, maxR = -1, minC = 3, maxC = -1;
@@ -716,6 +827,7 @@ SMELT[COAL_ORE] = [IT.COAL, 1];
 SMELT[IRON_ORE] = [IT.IRON, 1];
 SMELT[GOLD_ORE] = [IT.GOLD, 1];
 SMELT[SAND] = [GLASS, 1];
+SMELT[NETHERRACK] = [NETHER_BRICK, 1];
 SMELT[IT.BEEF] = [IT.CBEET, 1];
 SMELT[IT.PORK] = [IT.CPORK, 1];
 SMELT[IT.MUTTON] = [IT.CMUTTON, 1];
@@ -729,16 +841,17 @@ function fuelValue(id) { return FUEL[id] || 0; }
 function slotPack(s) { return s ? [s.id, s.n] : 0; }
 function slotUnpack(s) { return (s && s[1] > 0) ? { id: s[0], n: s[1] } : null; }
 const furnaceMap = new Map();
-function fkey(x, y, z) { return x + ',' + y + ',' + z; }
-function furnaceAt(x, y, z, create) {
-  const k = fkey(x, y, z);
+function fkey(x, y, z) { return dim + ':' + x + ',' + y + ',' + z; }
+function furnaceAtDim(d, x, y, z, create) {
+  const k = d + ':' + x + ',' + y + ',' + z;
   let f = furnaceMap.get(k);
   if (!f && create) {
-    f = { x, y, z, in: null, fuel: null, out: null, burn: 0, max: 0, prog: 0 };
+    f = { x, y, z, dim: d, in: null, fuel: null, out: null, burn: 0, max: 0, prog: 0 };
     furnaceMap.set(k, f);
   }
   return f || null;
 }
+function furnaceAt(x, y, z, create) { return furnaceAtDim(dim, x, y, z, create); }
 function fGet(f, i) { return i === 0 ? f.in : i === 1 ? f.fuel : f.out; }
 function fSet(f, i, s) { if (i === 0) f.in = s; else if (i === 1) f.fuel = s; else f.out = s; }
 function clearFurnaces() {
@@ -842,16 +955,50 @@ const RD = 6;                                    /* streamed chunk radius */
 const CS = CH * CH * H;                          /* voxels in one chunk   */
 let seedOff = 0;
 
+/* Three Minecraft-style dimensions. Chunk keys carry the dimension in the
+   high bits so edits, full snapshots and streaming stay completely separate. */
+const OVERWORLD = 0, NETHER = 1, END = 2;
+const DIM_NAMES = ['Overworld', 'Nether', 'End'];
+const DIM_SALT = [0, 7919, 15937];
+const DIM_MULT = 1099511627776;                  /* 2^40: safely inside 2^53 */
+let dim = OVERWORLD;
+function keyForDim(cx, cz, d) { return d * DIM_MULT + cx * 65536 + cz; }
+function chunkDim(key) { return key >= DIM_MULT ? Math.floor(key / DIM_MULT) : (key < -DIM_MULT ? Math.ceil(key / DIM_MULT) : 0); }
+function applyDimSeed() { setSeed(worldSeed + DIM_SALT[dim]); }
+
 const chunkStore = new Map();                    /* key -> live chunk            */
-const chunkEdits = new Map();                    /* key -> { cx, cz, map }       */
-const chunkFull  = new Map();                    /* key -> { cx, cz, data }      */
+const chunkEdits = new Map();                    /* key -> { cx, cz, map, dim }  */
+const chunkFull  = new Map();                    /* key -> { cx, cz, data, dim } */
 let lastChunk = null;
-const chunkKey = (cx, cz) => cx * 65536 + cz;
+const chunkKey = (cx, cz) => keyForDim(cx, cz, dim);
 const localIdx = (x, y, z) => ((y * CH + (z & 15)) * CH + (x & 15));
+
+let dimPos = [null, null, null];                 /* last position per dimension */
+let dimSpawn = [null, null, null];               /* spawn point per dimension   */
+let portalCd = 0;                                /* travel cooldown              */
 
 function setSeed(seed) { seedOff = (seed * 0.6180339887) % 997; }
 
+function heightNether(x, z) {
+  const s = seedOff;
+  const base = fbm(x * 0.012 + s, z * 0.012 + 13, 4);
+  const ridge = 1 - Math.abs(fbm(x * 0.031 + 71 + s, z * 0.031 + 29, 3) * 2 - 1);
+  return clamp(Math.floor(6 + base * 15 + ridge * 10), 4, 34);
+}
+function endVoid(x, z) {
+  const s = seedOff;
+  return hash2(Math.floor(x / 42) + s * 3, Math.floor(z / 42) + 17) > 0.86 &&
+         Math.abs(x) > 14 && Math.abs(z) > 14;
+}
+function heightEnd(x, z) {
+  if (Math.abs(x) < 9 && Math.abs(z) < 9) return 20;  /* spawn island */
+  const s = seedOff;
+  const base = fbm(x * 0.008 + s + 101, z * 0.008 + 57, 4);
+  return clamp(Math.floor(17 + (base - 0.5) * 10), 12, 25);
+}
 function heightAt(x, z) {
+  if (dim === NETHER) return heightNether(x, z);
+  if (dim === END) return heightEnd(x, z);
   const s = seedOff;
   const cont = fbm(x * 0.018 + s, z * 0.018 + 7, 4);
   /* mountain ranges: a broad region mask gates sharp ridged crests */
@@ -874,7 +1021,7 @@ function computeTop(ch) {
 }
 
 /* deterministic chunk generation - identical for every client/seed */
-function genChunk(ch) {
+function genOverworldChunk(ch) {
   const d = ch.data, x0 = ch.ox, z0 = ch.oz;
   d.fill(0);
   for (let lz = 0; lz < CH; lz++) for (let lx = 0; lx < CH; lx++) {
@@ -938,11 +1085,82 @@ function genChunk(ch) {
   computeTop(ch);
 }
 
+function genNetherChunk(ch) {
+  const d = ch.data, x0 = ch.ox, z0 = ch.oz;
+  d.fill(0);
+  for (let lz = 0; lz < CH; lz++) for (let lx = 0; lx < CH; lx++) {
+    const x = x0 + lx, z = z0 + lz, h = heightAt(x, z);
+    for (let y = 0; y <= h; y++) {
+      let b = AIR;
+      if (y === 0) b = BEDROCK;
+      else if (y < h) b = NETHERRACK;
+      else b = (hash3(x, 55, z) < 0.22) ? SOUL_SAND : NETHERRACK;
+      if (b) d[((y * CH + lz) * CH + lx)] = b;
+    }
+    for (let y = 3; y <= 7 && y < h; y++) if (hash3(x * 3 + 11, y, z * 5 + 7) > 0.994) d[((y * CH + lz) * CH + lx)] = LAVA;
+    for (let y = H - 6; y < H; y++) d[((y * CH + lz) * CH + lx)] = NETHERRACK;   /* roof */
+    if (hash3(x * 7, 91, z * 13) > 0.992) d[(((H - 7) * CH + lz) * CH + lx)] = GLOWSTONE;
+  }
+  /* glowstone clusters hanging from the roof and obsidian veins */
+  for (let lz = 1; lz < CH - 1; lz++) for (let lx = 1; lx < CH - 1; lx++) {
+    const x = x0 + lx, z = z0 + lz;
+    if (hash2(x * 19 + 3, z * 23 + 7) > 0.988) {
+      for (let dy = 0; dy < 3; dy++) for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) {
+        const yy = H - 7 - dy, ix = lx + dx, iz = lz + dz;
+        if (ix < 0 || ix >= CH || iz < 0 || iz >= CH) continue;
+        if (hash3(x + dx, yy, z + dz) > 0.35) d[((yy * CH + iz) * CH + ix)] = GLOWSTONE;
+      }
+    }
+    if (hash3(x * 5 + 17, 29, z * 7 + 11) > 0.9975) {
+      const y = 4 + ((hash2(x, z) * 14) | 0);
+      d[((y * CH + lz) * CH + lx)] = OBSIDIAN;
+    }
+  }
+  computeTop(ch);
+}
+
+function genEndChunk(ch) {
+  const d = ch.data, x0 = ch.ox, z0 = ch.oz;
+  d.fill(0);
+  for (let lz = 0; lz < CH; lz++) for (let lx = 0; lx < CH; lx++) {
+    const x = x0 + lx, z = z0 + lz;
+    if (endVoid(x, z)) continue;
+    const h = heightAt(x, z);
+    for (let y = 0; y <= h; y++) {
+      let b = BEDROCK;
+      if (y === h) b = END_STONE;
+      else if (y > 0) b = END_STONE;
+      d[((y * CH + lz) * CH + lx)] = b;
+    }
+  }
+  /* obsidian pillars on a sparse grid, like the End's obsidian spires */
+  const gx0 = Math.floor((x0 - 4) / 12) * 12 + 6, gx1 = x0 + CH + 4;
+  const gz0 = Math.floor((z0 - 4) / 12) * 12 + 6, gz1 = z0 + CH + 4;
+  for (let gz = gz0; gz <= gz1; gz += 12) for (let gx = gx0; gx <= gx1; gx += 12) {
+    if (Math.abs(gx) < 12 && Math.abs(gz) < 12) continue;
+    if (hash2(gx * 11 + 5, gz * 17 + 9) < 0.72) continue;
+    const th = 5 + ((hash2(gx + 3, gz) * 9) | 0), gy = heightAt(gx, gz) + 1;
+    for (let y = 0; y < th; y++) {
+      const lx = gx - x0, lz = gz - z0, yy = gy + y;
+      if (lx < 0 || lx >= CH || lz < 0 || lz >= CH || yy >= H) continue;
+      d[((yy * CH + lz) * CH + lx)] = OBSIDIAN;
+    }
+  }
+  computeTop(ch);
+}
+
+/* deterministic chunk generation - identical for every client/seed */
+function genChunk(ch) {
+  if (dim === NETHER) genNetherChunk(ch);
+  else if (dim === END) genEndChunk(ch);
+  else genOverworldChunk(ch);
+}
+
 function makeChunk(cx, cz) {
   const key = chunkKey(cx, cz);
   const full = chunkFull.get(key);
   const ch = {
-    cx, cz, key, ox: cx * CH, oz: cz * CH,
+    cx, cz, key, dim, ox: cx * CH, oz: cz * CH,
     data: full ? full.data : new Uint8Array(CS),
     top: new Uint8Array(CH * CH),
     flow: null, d: null, n: 0, td: null, tn: 0, meshed: false, active: false,
@@ -973,7 +1191,7 @@ function get(x, y, z) {
   if (y >= H) return AIR;
   const cx = x >> 4, cz = z >> 4;
   let ch = lastChunk;
-  if (!ch || ch.cx !== cx || ch.cz !== cz) {
+  if (!ch || ch.cx !== cx || ch.cz !== cz || ch.dim !== dim) {
     ch = getChunk(cx, cz);
     lastChunk = ch;
   }
@@ -1004,12 +1222,25 @@ function set(x, y, z, b) {
   /* persist edits against the generated terrain (full chunks persist whole) */
   if (!ch.full) {
     let e = chunkEdits.get(key);
-    if (!e) { e = { cx, cz, map: new Map() }; chunkEdits.set(key, e); }
+    if (!e) { e = { cx, cz, map: new Map(), dim }; chunkEdits.set(key, e); }
     if (ch.base[li] === b) e.map.delete(li); else e.map.set(li, b);
   }
 }
 function topAt(x, z) {
   return getChunk(x >> 4, z >> 4).top[(z & 15) * CH + (x & 15)] || 0;
+}
+/* The Nether has a solid roof, so topAt() sees the ceiling instead of the
+   ground. Spawning, mob placement and ground snapping use this helper, which
+   ignores the roof layer and finds the highest walkable surface below it. */
+function groundTop(x, z) {
+  if (dim !== NETHER) return topAt(x, z);
+  const d = getChunk(x >> 4, z >> 4).data, lx = x & 15, lz = z & 15;
+  for (let y = H - 8; y >= 0; y--) {
+    if (y >= 40) continue;                        /* roof + hanging glowstone */
+    const b = d[((y * CH + lz) * CH + lx)];
+    if (b && b !== LAVA) return y;
+  }
+  return 0;
 }
 /* topmost sunlight-blocking (opaque) block in a column; -1 if none */
 function topOpaque(x, z) {
@@ -1062,6 +1293,29 @@ function clearWorldChunks() {
   chunkStore.clear(); chunkEdits.clear(); chunkFull.clear();
   activeChunks = []; meshQueue = []; lastChunk = null;
   lastCX = 1e9; lastCZ = 1e9;
+  wq.length = 0; wMesh.clear();
+}
+/* travelling keeps edits/full snapshots (they are dimension-qualified) but
+   throws away live chunks, meshes, liquids and entities from the old place. */
+function clearActiveChunks() {
+  chunkStore.clear();
+  activeChunks = []; meshQueue = []; lastChunk = null;
+  lastCX = 1e9; lastCZ = 1e9;
+  wq.length = 0; wMesh.clear();
+  animals.length = 0; hostiles.length = 0; arrows.length = 0; drops.length = 0; parts.length = 0;
+}
+function switchDimension(d, x, y, z) {
+  dimPos[dim] = { x: pl.x, y: pl.y, z: pl.z };
+  dim = d;
+  applyDimSeed();
+  clearActiveChunks();
+  pl.x = x; pl.y = y; pl.z = z;
+  pl.vx = pl.vy = pl.vz = 0; pl.fly = 0; fallY = y;
+  portalCd = 2.5;
+  updateChunks(true);
+  populateDimension();
+  dimPos[d] = { x: pl.x, y: pl.y, z: pl.z };
+  saveDirty = 1;
 }
 
 /* ---------------------------------------------------- liquid water */
@@ -1411,6 +1665,24 @@ function chunkVisible(c, tanW, tanH) {
 
 /* ---------------------------------------------------------------- sky */
 function drawSky() {
+  if (dim === NETHER || dim === END) {
+    const net = dim === NETHER;
+    const top = net ? [52, 16, 18] : [10, 8, 24];
+    const hor = net ? [122, 44, 32] : [44, 32, 66];
+    sky.top = top; sky.hor = hor;
+    sky.sun = net ? [255, 150, 70] : [180, 180, 220];
+    LIGHT = net ? 0.94 : 0.86;
+    sunDir[0] = 0; sunDir[1] = -1; sunDir[2] = 0;
+    const hy = SCY;
+    for (let y = 0; y < RH; y++) {
+      const f = clamp((hy - y) / (RH * 0.62), -1, 1);
+      let r, g, b;
+      if (f >= 0) { r = lerp(hor[0], top[0], f); g = lerp(hor[1], top[1], f); b = lerp(hor[2], top[2], f); }
+      else { r = hor[0]; g = hor[1]; b = hor[2]; }
+      PX.fill(0xff000000 | (b << 16) | (g << 8) | r, y * RW, y * RW + RW);
+    }
+    return;
+  }
   const s = Math.sin((dayT - 0.25) * Math.PI * 2);
   const dayF = clamp(s * 2.2 + 0.30, 0, 1);
   const horiz = Math.max(0, 1 - Math.abs(s) * 3.2);
@@ -1822,6 +2094,47 @@ function drawMob(m) {
     }
     return;
   }
+
+  if (M.mt === 'pigman') {
+    for (const sx of [-1, 1]) {
+      part(sx * 0.17, 0.39, 0, 0.22, 0.78, 0.22, [70, 92, 120]);
+      part(sx * 0.42, 1.3, 0.26, 0.18, 0.66, 0.2, body);
+      part(sx * 0.42, 1.02, 0.3, 0.18, 0.14, 0.2, head);
+    }
+    part(0, 1.16, 0, 0.62, 0.72, 0.32, body);
+    part(0, 1.78, 0, 0.5, 0.5, 0.46, head);
+    part(0, 1.66, 0.25, 0.32, 0.2, 0.12, [226, 186, 126]);
+    part(-0.12, 1.82, 0.24, 0.08, 0.08, 0.04, [30, 30, 30]);
+    part(0.12, 1.82, 0.24, 0.08, 0.08, 0.04, [30, 30, 30]);
+    return;
+  }
+
+  if (M.mt === 'enderman') {
+    for (const sx of [-1, 1]) {
+      part(sx * 0.16, 0.75, 0, 0.13, 1.5, 0.13, leg);
+      part(sx * 0.32, 1.95, 0.1, 0.11, 1.0, 0.11, body);
+    }
+    part(0, 2.0, 0, 0.38, 1.0, 0.24, body);
+    part(0, 2.72, 0, 0.4, 0.44, 0.36, head);
+    part(-0.1, 2.76, 0.19, 0.09, 0.08, 0.03, [196, 92, 214]);
+    part(0.1, 2.76, 0.19, 0.09, 0.08, 0.03, [196, 92, 214]);
+    return;
+  }
+
+  if (M.mt === 'dragon') {
+    const flap = Math.sin(m.bob * 0.8) * 0.5;
+    part(0, 1.45, -0.5, 1.0, 0.85, 2.1, body);                               /* torso */
+    part(0, 1.6, 0.95, 0.72, 0.7, 0.8, shade(body, 1.2));                    /* neck */
+    part(0, 1.8, 1.5, 0.8, 0.6, 0.9, head);                                  /* head */
+    part(-0.24, 2.0, 1.78, 0.12, 0.12, 0.06, [244, 92, 92]);
+    part(0.24, 2.0, 1.78, 0.12, 0.12, 0.06, [244, 92, 92]);
+    part(0, 1.58, -1.7, 0.5, 0.4, 1.2, shade(body, 0.9));                    /* tail */
+    for (const sx of [-1, 1]) {
+      part(sx * 1.1, 1.9 + flap * sx, -0.2, 1.9, 0.12, 1.1, shade(head, 0.85));
+      part(sx * 0.45, 0.85, -0.3, 0.26, 0.55, 0.3, leg);
+    }
+    return;
+  }
 }
 function drawEntities() {
   for (const m of animals) {
@@ -1841,6 +2154,7 @@ function drawEntities() {
   }
 }
 function trySpawnAnimal() {
+  if (dim !== OVERWORLD) return false;
   for (let i = 0; i < 24; i++) {
     const a = Math.random() * 6.283, d = 10 + Math.random() * 24;
     const x = Math.floor(pl.x + Math.cos(a) * d), z = Math.floor(pl.z + Math.sin(a) * d);
@@ -1939,7 +2253,7 @@ let keys = Object.create(null), breath = 0, dt = 0, thirdPerson = false, dive = 
 /* ------------------------------------------------------ survival state */
 const MAXHP = 20, MAXFOOD = 20;
 let mode = 'survival', hp = MAXHP, food = MAXFOOD;
-let hurtT = 0, regenT = 0, starveT = 0, drownT = 0, fallY = 0, dead = 0, attackT = 0;
+let hurtT = 0, regenT = 0, starveT = 0, drownT = 0, lavaT = 0, fallY = 0, dead = 0, attackT = 0;
 let INV = new Array(36).fill(null);
 let craftSlots = new Array(9).fill(null);
 let invOpen = 0, furnaceOpen = 0, openF = null, cursor = null, cursorX = 0, cursorY = 0;
@@ -1955,7 +2269,10 @@ const MOBS = [
   { n: 'zombie', mt: 'zombie', b: [0.6, 1.0, 0.6], c: [86, 122, 74], h: [96, 128, 82], l: [92, 120, 80], hs: 0.5, hh: 1.4, lh: 0.78, lw: 0.18, sp: 0.62, hp: 20, legs: 4, dmg: 3, hostile: 1 },
   { n: 'skeleton', mt: 'skeleton', b: [0.52, 0.95, 0.5], c: [206, 206, 198], h: [228, 228, 220], l: [200, 200, 192], hs: 0.46, hh: 1.2, lh: 0.72, lw: 0.16, sp: 0.82, hp: 20, legs: 4, dmg: 2, hostile: 1, ranged: 1 },
   { n: 'creeper', mt: 'creeper', b: [0.6, 0.95, 0.6], c: [78, 168, 74], h: [92, 182, 88], l: [70, 150, 66], hs: 0.5, hh: 1.1, lh: 0.32, lw: 0.16, sp: 0.66, hp: 20, legs: 4, dmg: 12, hostile: 1, fuse: 1 },
-  { n: 'spider', mt: 'spider', b: [0.9, 0.5, 0.9], c: [48, 40, 44], h: [62, 50, 54], l: [40, 34, 38], hs: 0.4, hh: 0.7, lh: 0.38, lw: 0.14, sp: 1.05, hp: 16, legs: 8, dmg: 2, hostile: 1 }
+  { n: 'spider', mt: 'spider', b: [0.9, 0.5, 0.9], c: [48, 40, 44], h: [62, 50, 54], l: [40, 34, 38], hs: 0.4, hh: 0.7, lh: 0.38, lw: 0.14, sp: 1.05, hp: 16, legs: 8, dmg: 2, hostile: 1 },
+  { n: 'pigman', mt: 'pigman', b: [0.6, 1.0, 0.6], c: [196, 154, 96], h: [214, 172, 112], l: [70, 92, 120], hs: 0.5, hh: 1.4, lh: 0.78, lw: 0.18, sp: 0.7, hp: 20, legs: 4, dmg: 3, hostile: 1 },
+  { n: 'enderman', mt: 'enderman', b: [0.5, 1.05, 0.5], c: [24, 22, 30], h: [32, 30, 40], l: [22, 20, 28], hs: 0.42, hh: 2.4, lh: 1.5, lw: 0.14, sp: 0.95, hp: 40, legs: 4, dmg: 4, hostile: 1 },
+  { n: 'dragon', mt: 'dragon', b: [2.4, 1.4, 3.2], c: [42, 36, 56], h: [58, 48, 76], l: [34, 30, 46], hs: 1.1, hh: 1.5, lh: 1, lw: 0.4, sp: 1, hp: 200, legs: 0, dmg: 6, hostile: 1 }
 ];
 let animals = [];
 
@@ -2026,6 +2343,14 @@ function consumeSel() {
 }
 function useSel() {
   if (hit && hit.id === FURNACE) { furnaceActivate(hit.x, hit.y, hit.z); return; }
+  if (hit && hit.id === OBSIDIAN && heldId() === IT.FLINT_STEEL) {
+    if (igniteNetherPortal(hit.x, hit.y, hit.z) && mode === 'survival') consumeSel();
+    return;
+  }
+  if (hit && hit.id === END_FRAME && heldId() === IT.ENDER_EYE) {
+    if (activateEndFrame(hit.x, hit.y, hit.z) && mode === 'survival') consumeSel();
+    return;
+  }
   if (mode === 'survival') {
     const id = heldId(), f = itemFood(id);
     if (f > 0) {
@@ -2088,8 +2413,27 @@ function skyOpen(x, y, z) {
   for (let yy = Math.floor(y) + 1; yy < H; yy++) if (opaqueAt(Math.floor(x), yy, Math.floor(z))) return false;
   return true;
 }
+function spawnDimHostile() {
+  for (let tries = 0; tries < 14; tries++) {
+    const a = Math.random() * 6.283, d = 10 + Math.random() * 18;
+    const x = Math.floor(pl.x + Math.cos(a) * d), z = Math.floor(pl.z + Math.sin(a) * d);
+    const t = groundTop(x, z), tb = get(x, t, z);
+    if (t <= 0 || tb === AIR || tb === LAVA || tb === WATER || tb === PORTAL || tb === END_PORTAL) continue;
+    const kind = dim === NETHER ? (Math.random() < 0.78 ? 8 : 5) : 9;
+    hostiles.push({ kind, x, z, y: t + 1, dir: Math.random() * 6.283, moving: 1, walkT: 1,
+                    bob: Math.random() * 6, hp: MOBS[kind].hp, atk: 1 + Math.random(),
+                    fuse: 0, shoot: 1 + Math.random() * 2, kx: 0, kz: 0 });
+    return true;
+  }
+  return false;
+}
 function spawnHostiles(dt) {
   if (mode !== 'survival' || dead) return;
+  if (dim !== OVERWORLD) {
+    if (hostiles.length >= 6 || Math.random() > dt * 0.35) return;
+    spawnDimHostile();
+    return;
+  }
   if (!night()) { if (hostiles.length) for (let i = hostiles.length - 1; i >= 0; i--) if (Math.random() < dt * 0.3) hostiles.splice(i, 1); return; }
   if (hostiles.length >= 6) return;
   if (Math.random() > dt * 0.8) return;
@@ -2111,6 +2455,18 @@ function stepHostiles(dt) {
     if (hd0 * hd0 + hd1 * hd1 > 72 * 72) { hostiles.splice(i, 1); continue; }
     const h = hostiles[i], M = MOBS[h.kind];
     h.bob += dt * 7;
+    if (h.kind === 10) {
+      const tx = pl.x - h.x, tz = pl.z - h.z, ty = (pl.y + 4) - h.y;
+      const td = Math.hypot(tx, ty, tz) || 1;
+      h.x += tx / td * 7 * dt; h.z += tz / td * 7 * dt; h.y += ty / td * 3.5 * dt;
+      h.dir = Math.atan2(tx, tz);
+      if (Math.hypot(tx, tz) < 3.4 && mode === 'survival' && !dead) {
+        h.atk -= dt;
+        if (h.atk <= 0) { hurt(M.dmg, tx / td * 3, tz / td * 3); h.atk = 1.4; }
+      }
+      if (!muted && Math.random() < dt * 0.12) sfxAt(58, 0.5, 'sawtooth', h.x, h.y, h.z, 44);
+      continue;
+    }
     if (!muted && mode === 'survival') {
       if (h.kind === 6 && h.fuse > 0 && Math.random() < dt * 9)
         sfxAt(880 + Math.random() * 180, 0.05, 'square', h.x, h.y + 0.8, h.z, 14);
@@ -2119,7 +2475,7 @@ function stepHostiles(dt) {
         sfxAt(f, 0.22, 'sawtooth', h.x, h.y + 1.1, h.z, 26);
       }
     }
-    if (mode === 'survival' && !night() && (h.kind === 4 || h.kind === 5) && skyOpen(h.x, h.y, h.z)) {
+    if (mode === 'survival' && dim === OVERWORLD && !night() && (h.kind === 4 || h.kind === 5) && skyOpen(h.x, h.y, h.z)) {
       h.burnT = (h.burnT || 0) + dt;
       if (h.burnT >= 0.35) {
         h.burnT = 0; h.hp -= 2;
@@ -2148,7 +2504,7 @@ function stepHostiles(dt) {
       h.dir = Math.atan2(dx / l, dz / l);
     }
     if (solidAt(h.x | 0, h.y | 0, h.z | 0) || solidAt(h.x | 0, (h.y + 1) | 0, h.z | 0)) { h.x = prevx; h.z = prevz; }
-    const at = topAt(h.x | 0, h.z | 0);
+    const at = groundTop(h.x | 0, h.z | 0);
     if (at <= h.y + 1.3) h.y = at + 1;
   }
 }
@@ -2293,22 +2649,128 @@ function stepSurvival(dt) {
 
 function spawnPlayer() {
   let sx = 0, sz = 0, best = -1;
-  for (let r = 2; r < 80; r++) {
+  if (dim === END) { sx = 0; sz = 0; best = heightEnd(0, 0); }
+  else for (let r = 2; r < 80; r++) {
     for (let k = 0; k < 24; k++) {
       const a = k / 24 * Math.PI * 2 + r * 0.7;
       const x = Math.round(Math.cos(a) * r * 1.6), z = Math.round(Math.sin(a) * r * 1.6);
-      const t = topAt(x, z);
+      const t = groundTop(x, z);
       const tb = get(x, t, z);
-      if (tb === LEAVES || tb === LOG || tb === WATER) continue;
-      if (t > SEA + 1 && t > best) { best = t; sx = x; sz = z; }
+      if (tb === LEAVES || tb === LOG || tb === WATER || tb === LAVA || tb === AIR) continue;
+      if (dim === NETHER ? (t > 5 && t > best) : (t > SEA + 1 && t > best)) { best = t; sx = x; sz = z; }
     }
-    if (best > SEA + 4) break;
+    if (best > (dim === NETHER ? 8 : SEA + 4)) break;
   }
-  pl.x = sx + 0.5; pl.z = sz + 0.5; pl.y = topAt(sx, sz) + 1.05;
+  const safe = findSafeColumn(sx, sz);
+  pl.x = safe.x + 0.5; pl.z = safe.z + 0.5; pl.y = safe.y;
   pl.vx = pl.vy = pl.vz = 0; pl.fly = 0;
   cam.yaw = (hash2(sx, sz) - 0.5) * 6.2; cam.pitch = -0.1;
   spawnPt = { x: pl.x, y: pl.y, z: pl.z };
+  dimSpawn[dim] = { x: pl.x, y: pl.y, z: pl.z };
   fallY = pl.y;
+}
+
+/* Find a nearby column with solid ground and two clear blocks above it. */
+function findSafeColumn(cx, cz) {
+  for (let r = 0; r <= 14; r++) {
+    for (let k = 0; k < (r ? 18 : 1); k++) {
+      const a = k / 18 * 6.283;
+      const x = cx + Math.round(Math.cos(a) * r), z = cz + Math.round(Math.sin(a) * r);
+      const t = groundTop(x, z), b = get(x, t, z);
+      if (t <= 0 || b === AIR || b === LAVA || b === WATER || b === PORTAL ||
+          b === END_PORTAL || b === LEAVES || b === LOG) continue;
+      if (get(x, t + 1, z) !== AIR || get(x, t + 2, z) !== AIR) continue;
+      return { x, z, y: t + 1.05 };
+    }
+  }
+  return { x: cx, z: cz, y: H - 4 };
+}
+
+function populateDimension() {
+  animals.length = 0;
+  if (dim === OVERWORLD) { spawnAnimals(); return; }
+  for (let i = 0; i < 4; i++) spawnDimHostile();
+  if (dim === END) spawnDragon();
+}
+function spawnDragon() {
+  if (hostiles.some(e => e.kind === 10)) return;
+  hostiles.push({ kind: 10, x: 22.5, z: 22.5, y: 30, dir: 0, moving: 1, walkT: 1,
+                  bob: 0, hp: 200, atk: 1, fuse: 0, shoot: 9, kx: 0, kz: 0 });
+}
+
+/* ------------------------------------------------------------- portals */
+function igniteNetherPortal(x, y, z) {
+  for (const alongX of [true, false]) {
+    for (let w = 2; w <= 4; w++) for (let h = 2; h <= 4; h++) {
+      for (let oa = -(w - 1); oa <= 0; oa++) for (let oy = -(h - 1); oy <= 0; oy++) {
+        const a0 = (alongX ? x : z) + oa, y0 = y + oy, fix = alongX ? z : x;
+        let ok = true, obs = 0, inner = 0;
+        for (let j = 0; j < h && ok; j++) for (let i = 0; i < w; i++) {
+          const a = a0 + i, yy = y0 + j;
+          const bx = alongX ? a : fix, bz = alongX ? fix : a, b = get(bx, yy, bz);
+          const edge = i === 0 || i === w - 1 || j === 0 || j === h - 1;
+          if (edge) { if (b !== OBSIDIAN && b !== PORTAL) { ok = false; break; } if (b === OBSIDIAN) obs++; }
+          else { if (b !== AIR && b !== PORTAL) { ok = false; break; } inner++; }
+        }
+        if (!ok || obs < 6 || !inner) continue;
+        for (let j = 1; j < h - 1; j++) for (let i = 1; i < w - 1; i++) {
+          const bx = alongX ? a0 + i : fix, bz = alongX ? fix : a0 + i;
+          set(bx, y0 + j, bz, PORTAL);
+        }
+        remeshAround(x, z); sfx(660, 0.35, 'sawtooth'); toast('nether portal opened');
+        saveDirty = 1;
+        return true;
+      }
+    }
+  }
+  toast('build an obsidian frame first');
+  return false;
+}
+function activateEndFrame(x, y, z) {
+  if (get(x, y, z) !== END_FRAME) return false;
+  set(x, y, z, END_FRAME_FILLED);
+  for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) {
+    const cx = x + dx, cz = z + dz;
+    let full = true;
+    for (let gz = -1; gz <= 1 && full; gz++) for (let gx = -1; gx <= 1; gx++) {
+      if (gx === 0 && gz === 0) continue;
+      if (get(cx + gx, y, cz + gz) !== END_FRAME_FILLED) { full = false; break; }
+    }
+    if (!full || get(cx, y, cz) !== AIR) continue;
+    set(cx, y, cz, END_PORTAL);
+    remeshAround(cx, cz); sfx(880, 0.4, 'sine'); toast('end portal opened');
+    saveDirty = 1;
+    return true;
+  }
+  remeshAround(x, z);
+  toast('end portal frame · place 8 in a ring');
+  return true;
+}
+function travelTo(d, x, z) {
+  if (dimPos[d]) { x = dimPos[d].x; z = dimPos[d].z; }
+  switchDimension(d, x + 0.5, 24, z + 0.5);
+  const safe = findSafeColumn(Math.floor(pl.x), Math.floor(pl.z));
+  pl.x = safe.x + 0.5; pl.z = safe.z + 0.5; pl.y = safe.y;
+  pl.vx = pl.vy = pl.vz = 0; fallY = pl.y;
+  dimPos[d] = { x: pl.x, y: pl.y, z: pl.z };
+  updateChunks(true);
+  toast('entered ' + DIM_NAMES[d].toLowerCase());
+  sfx(280, 0.5, 'triangle');
+  saveDirty = 1;
+}
+function checkPortalTravel() {
+  if (portalCd > 0 || dead || !running) return;
+  const bx = Math.floor(pl.x), by = Math.floor(pl.y + 0.4), bz = Math.floor(pl.z);
+  const b = get(bx, by, bz);
+  if (b === PORTAL) {
+    if (dim === OVERWORLD) travelTo(NETHER, Math.round(pl.x), Math.round(pl.z));
+    else if (dim === NETHER) travelTo(OVERWORLD, Math.round(pl.x * 8), Math.round(pl.z * 8));
+    return;
+  }
+  if (b === END_PORTAL) {
+    if (dim === OVERWORLD) travelTo(END, 0, 0);
+    else travelTo(OVERWORLD, 0, 0);
+  }
 }
 
 function moveAxis(ax, amount) {
@@ -2334,6 +2796,15 @@ function physics() {
   const head = get(Math.floor(pl.x), Math.floor(pl.y + EYE), Math.floor(pl.z)) === WATER;
   const feet = get(Math.floor(pl.x), Math.floor(pl.y + 0.2), Math.floor(pl.z)) === WATER;
   under = head;
+  const headLava = get(Math.floor(pl.x), Math.floor(pl.y + EYE), Math.floor(pl.z)) === LAVA;
+  const feetLava = get(Math.floor(pl.x), Math.floor(pl.y + 0.2), Math.floor(pl.z)) === LAVA;
+  if (headLava || feetLava) {
+    pl.vy += 11 * dt; pl.vy = Math.min(pl.vy, 3.5);
+    pl.vx *= Math.max(0, 1 - 2.5 * dt); pl.vz *= Math.max(0, 1 - 2.5 * dt);
+    lavaT += dt;
+    if (lavaT > 0.8) { lavaT = 0; hurt(2, 0, 0); sfx(90, 0.18, 'sawtooth'); }
+    if (Math.random() < dt * 6) parts.push({ x: pl.x + (Math.random() - 0.5) * 0.5, y: pl.y + Math.random() * 1.5, z: pl.z + (Math.random() - 0.5) * 0.5, vx: (Math.random() - 0.5) * 1, vy: 1 + Math.random() * 2, vz: (Math.random() - 0.5) * 1, s: 0.06, life: 0.3, r: 255, g: 140, b: 40 });
+  } else lavaT = 0;
   const pressS = keys['Space'] && !wSpace; wSpace = !!keys['Space'];
   const fwd = (keys['KeyW'] ? 1 : 0) - (keys['KeyS'] ? 1 : 0);
   const str = (keys['KeyD'] ? 1 : 0) - (keys['KeyA'] ? 1 : 0);
@@ -2366,7 +2837,11 @@ function physics() {
   moveAxis(2, pl.vz * dt);
   moveAxis(1, pl.vy * dt);
 
-  if (pl.y < -10) { pl.y = H - 2; pl.vy = 0; }
+  if (pl.y < -10) {
+    if (dim === END) { pl.x = spawnPt.x; pl.z = spawnPt.z; pl.y = spawnPt.y; hurt(4, 0, 0); }
+    else pl.y = H - 2;
+    pl.vy = 0;
+  }
   pl.bob += Math.hypot(pl.vx, pl.vz) * dt * 1.9;
   breath = head ? breath + dt : Math.max(0, breath - dt * 4);
   if (breath > 14) pl.vy = Math.max(pl.vy, 1.4);
@@ -2928,6 +3403,7 @@ function render() {
   const t0 = performance.now();
   worldT += dt;
   paintWater(worldT);
+  paintPortal(worldT);
   camBasis();
   const tanH = Math.tan(0.6109);                          /* 70 degree vertical fov */
   FOC = (RH / 2) / tanH;
@@ -2935,11 +3411,17 @@ function render() {
   SCX = RW / 2; SCY = RH / 2;
   const acx = Math.floor(pl.x), acz = Math.floor(pl.z);
   const eyeY = pl.y + EYE;
-  enclosed = isEnclosed(acx, acz, eyeY);
+  const otherDim = dim !== OVERWORLD;
+  enclosed = otherDim ? false : isEnclosed(acx, acz, eyeY);
   drawSky();
 
-  const fNear = enclosed ? 3 : under ? 2 : 45, fFar = enclosed ? 30 : under ? 19 : (RD * CH - 6);
-  if (enclosed) { fogR = 84; fogG = 80; fogB = 74; }
+  const fNear = otherDim ? (dim === NETHER ? 10 : 18) : (enclosed ? 3 : under ? 2 : 45);
+  const fFar = otherDim ? (dim === NETHER ? 96 : 118) : (enclosed ? 30 : under ? 19 : (RD * CH - 6));
+  if (otherDim) {
+    const c = dim === NETHER ? [118, 42, 32] : [44, 32, 66];
+    fogR = c[0]; fogG = c[1]; fogB = c[2];
+  }
+  else if (enclosed) { fogR = 84; fogG = 80; fogB = 74; }
   else if (under) { fogR = 22; fogG = 78; fogB = 108; }
   else { fogR = sky.hor[0] * 0.94; fogG = sky.hor[1] * 0.94; fogB = sky.hor[2] * 0.94; }
   fogN = fNear; fogF = fFar;
@@ -2972,7 +3454,7 @@ function render() {
   for (const c of activeChunks) {
     if (c.tn && chunkVisible(c, tanW, tanH)) drawChunk(c.td, c.tn);
   }
-  if (!under && !enclosed) drawClouds();
+  if (!otherDim && !under && !enclosed) drawClouds();
   drawParts();
   drawEntities();
   drawDrops();
@@ -3045,18 +3527,21 @@ function saveWorld() {
       if (!ed.map.size) continue;
       const a = [];
       for (const [i, id] of ed.map) a.push(i, id);
-      e.push([ed.cx, ed.cz, a]);
+      e.push([ed.cx, ed.cz, a, ed.dim || 0]);
     }
     const f = [];
-    for (const fu of chunkFull.values()) f.push([fu.cx, fu.cz, btoa(rleEncode(fu.data))]);
+    for (const fu of chunkFull.values()) f.push([fu.cx, fu.cz, btoa(rleEncode(fu.data)), fu.dim || 0]);
     const furn = [];
     for (const fe of furnaceMap.values())
-      furn.push([fe.x, fe.y, fe.z, slotPack(fe.in), slotPack(fe.fuel), slotPack(fe.out), fe.burn, fe.max, fe.prog]);
+      furn.push([fe.x, fe.y, fe.z, slotPack(fe.in), slotPack(fe.fuel), slotPack(fe.out), fe.burn, fe.max, fe.prog, fe.dim || 0]);
+    dimPos[dim] = { x: pl.x, y: pl.y, z: pl.z };
+    dimSpawn[dim] = { x: spawnPt.x, y: spawnPt.y, z: spawnPt.z };
     const payload = {
-      v: 4, H, seed: worldSeed, dayT,
+      v: 5, H, seed: worldSeed, dayT, dim,
       px: pl.x, py: pl.y, pz: pl.z, yaw: cam.yaw, pitch: cam.pitch, sel,
       m: mode, hp, food, inv: INV.map(s => s ? [s.id, s.n] : 0),
       sp: [spawnPt.x, spawnPt.y, spawnPt.z],
+      dp: dimPos, ds: dimSpawn,
       e, f, fu: furn, at: Date.now()
     };
     if (!currentId) {
@@ -3079,22 +3564,26 @@ function saveWorld() {
 function loadWorld(o) {
   keepPos = true;
   worldSeed = o.seed;
-  setSeed(worldSeed);
+  dim = (o.v >= 5 && o.dim >= 0 && o.dim <= 2) ? o.dim : 0;
+  applyDimSeed();
   dayT = (o.dayT || 0) % 1;
   wq.length = 0;
   clearWorldChunks();
   clearFurnaces();
+  dimPos = Array.isArray(o.dp) ? o.dp.slice(0, 3).map(p => p ? { x: p.x, y: p.y, z: p.z } : null) : [null, null, null];
+  dimSpawn = Array.isArray(o.ds) ? o.ds.slice(0, 3).map(p => p ? { x: p.x, y: p.y, z: p.z } : null) : [null, null, null];
+  portalCd = 0;
   if (o.v >= 4) {
     /* infinite format: seed + sparse edits + optional legacy full chunks */
     if (Array.isArray(o.f)) for (const fu of o.f) {
-      const data = new Uint8Array(CS);
+      const data = new Uint8Array(CS), d = fu[3] || 0;
       try { rleDecode(atob(fu[2]), data); } catch (err) {}
-      chunkFull.set(chunkKey(fu[0], fu[1]), { cx: fu[0], cz: fu[1], data });
+      chunkFull.set(keyForDim(fu[0], fu[1], d), { cx: fu[0], cz: fu[1], data, dim: d });
     }
     if (Array.isArray(o.e)) for (const ed of o.e) {
-      const map = new Map(), a = ed[2] || [];
+      const map = new Map(), a = ed[2] || [], d = ed[3] || 0;
       for (let i = 0; i + 1 < a.length; i += 2) map.set(a[i], a[i + 1]);
-      if (map.size) chunkEdits.set(chunkKey(ed[0], ed[1]), { cx: ed[0], cz: ed[1], map });
+      if (map.size) chunkEdits.set(keyForDim(ed[0], ed[1], d), { cx: ed[0], cz: ed[1], map, dim: d });
     }
   } else {
     /* legacy v1/v2/v3 whole-world save -> per-chunk full snapshots */
@@ -3118,7 +3607,7 @@ function loadWorld(o) {
     } catch (err) {}
   }
   if (Array.isArray(o.fu)) for (const a of o.fu) {
-    const f = furnaceAt(a[0], a[1], a[2], true);
+    const f = furnaceAtDim(a[9] || 0, a[0], a[1], a[2], true);
     f.in = slotUnpack(a[3]); f.fuel = slotUnpack(a[4]); f.out = slotUnpack(a[5]);
     f.burn = +a[6] || 0; f.max = +a[7] || 0; f.prog = +a[8] || 0;
   }
@@ -3134,6 +3623,7 @@ function loadWorld(o) {
       if (s && s[1] > 0) INV[i] = { id: s[0], n: s[1] };
     }
     if (Array.isArray(o.sp)) spawnPt = { x: o.sp[0], y: o.sp[1], z: o.sp[2] };
+    if (dimSpawn[dim]) spawnPt = dimSpawn[dim];
   } else {
     mode = 'creative'; hp = MAXHP; food = MAXFOOD; INV = new Array(36).fill(null);
   }
@@ -3144,7 +3634,7 @@ function loadWorld(o) {
   hudMode = ''; refreshHotbar(); select(o.sel || 0); updateHUD();
   buildClouds();
   updateChunks(true);
-  spawnAnimals();
+  populateDimension();
   parts.length = 0;
   genQueue = activeChunks.slice(); genTotal = Math.max(1, genQueue.length);
   loadEl.style.display = 'grid';
@@ -3152,7 +3642,7 @@ function loadWorld(o) {
 function loadWorldById(id) {
   try {
     const p = JSON.parse(localStorage.getItem('blockcraft_w_' + id));
-    if (!p || p.v < 1 || p.v > 4) return false;
+    if (!p || p.v < 1 || p.v > 5) return false;
     if (p.v < 4 && typeof p.w !== 'string') return false;
     loadWorld(p);
     currentId = id;
@@ -3223,7 +3713,9 @@ function beginPlay() {
 
 function newWorld(seed, m) {
   worldSeed = seed;
-  setSeed(seed);
+  dim = OVERWORLD;
+  applyDimSeed();
+  dimPos = [null, null, null]; dimSpawn = [null, null, null]; portalCd = 0;
   clearWorldChunks();
   clearFurnaces();
   wq.length = 0;
@@ -3234,7 +3726,7 @@ function newWorld(seed, m) {
   if (mode === 'creative') for (let i = 0; i < CREATIVE_PALETTE.length && i < 36; i++) INV[i] = { id: CREATIVE_PALETTE[i][0], n: CREATIVE_PALETTE[i][1] };
   hostiles = []; arrows = []; drops = []; dead = 0; hurtT = 0; regenT = 0; starveT = 0; drownT = 0; fallY = 0;
   updateChunks(true);
-  spawnAnimals();
+  populateDimension();
   parts.length = 0;
   hudMode = ''; refreshHotbar(); select(0); updateHUD();
   genQueue = activeChunks.slice(); genTotal = Math.max(1, genQueue.length);
@@ -3249,7 +3741,7 @@ function stepGen() {
     genQueue = null;
     loadEl.style.display = 'none';
     if (keepPos) keepPos = false;
-    else { spawnPlayer(); updateChunks(true); spawnAnimals(); }
+    else { spawnPlayer(); updateChunks(true); populateDimension(); }
     if (!started) { updateMenu(); menu.classList.remove('hide'); }
   }
 }
@@ -3266,7 +3758,9 @@ function frame(now) {
   processMeshQueue();
 
   if (running) {
+    if (portalCd > 0) portalCd -= dt;
     physics();
+    checkPortalTravel();
     hit = raycast(6.5, pl.x, pl.y + EYE, pl.z);
     if (mining && hit) {
       if (hit.id === BEDROCK) mineT = 0;
@@ -3319,6 +3813,7 @@ function frame(now) {
                    (enclosed ? '   underground' : '') + '\n' +
         'faces    ' + faces + '\n' +
         'animals  ' + animals.length + '\n' +
+        'dim      ' + DIM_NAMES[dim] + '\n' +
         'seed     ' + worldSeed + '   time ' + (dayT * 24).toFixed(1) + 'h';
     }
   }
