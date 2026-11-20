@@ -2944,6 +2944,25 @@ function aiTurn(){
       });
       if(zone) u.moving={to:zone,t:1,from:u.loc,assault:false};
     });
+
+    /* --- land fronts: spend treasury to fortify the most threatened province --- */
+    if((S.gold[n.id]||0)>=60 && Math.random()<0.3){
+      var front=null, bestThreat=0;
+      for(var fid2 in S.prov){
+        if(S.prov[fid2].owner!==n.id || !isLandFront(fid2) || (S.prov[fid2].fort||0)>=3) continue;
+        var th=0;
+        (NBY[fid2].snb||[]).forEach(function(m){
+          if(S.prov[m] && S.prov[m].owner!==n.id && atWar(n.id,S.prov[m].owner))
+            th=Math.max(th, totalPower(m));
+        });
+        if(th>bestThreat){ bestThreat=th; front=fid2; }
+      }
+      if(front){
+        S.gold[n.id]-=30;
+        S.prov[front].fort=(S.prov[front].fort||0)+1;
+        S.prov[front].fortBy=n.id; S.prov[front].fortT=0;
+      }
+    }
   });
 }
 function isShipType(t){ var d=UNITS[t]; return !!(d&&d.navy); }
