@@ -221,7 +221,7 @@
 <div class="hud" id="hint">
   WASD / ARROWS — move<br>
   MOUSE — aim &nbsp;|&nbsp; CLICK / SPACE — fire<br>
-  B — shop &nbsp;|&nbsp; 1-6 — quick buy
+  E — shop &nbsp;|&nbsp; 1-6 — quick buy
 </div>
 <div class="hud" id="cash">$0</div>
 <div class="hud" id="nation"></div>
@@ -285,7 +285,7 @@
     <button class="nbtn" id="mAch" style="border-color:#b6ff8a;margin-left:10px">TROPHIES</button>
   </div>
   <div style="text-align:center;margin-top:16px;font-size:11px;color:#7d90ad">
-    WASD move &nbsp;•&nbsp; MOUSE aim &nbsp;•&nbsp; CLICK fire &nbsp;•&nbsp; B shop &nbsp;•&nbsp; 1-6 quick buy</div>
+    WASD move &nbsp;•&nbsp; MOUSE aim &nbsp;•&nbsp; CLICK fire &nbsp;•&nbsp; E shop &nbsp;•&nbsp; 1-6 quick buy</div>
 </div></div>
 <div id="online"><div class="panel">
   <h2>ONLINE</h2>
@@ -375,7 +375,7 @@
   <h2>ARMORY <span id="shopNation" style="font-size:12px;letter-spacing:2px;color:#7d90ad"></span></h2>
   <p class="sub">Spend credits to field a stronger tank. Instantly replaces your current tank.</p>
   <div class="cards" id="cards"></div>
-  <div class="close">press <b>B</b> / <b>ESC</b> or tap outside to close</div>
+  <div class="close">press <b>E</b> / <b>ESC</b> or tap outside to close</div>
   <button id="shopClose" style="margin-top:10px;padding:10px 26px;font-size:14px;font-family:inherit;
     cursor:pointer;background:#1b3b63;color:#fff;border:2px solid #8fd0ff;border-radius:4px;
     touch-action:manipulation;">CLOSE</button>
@@ -1093,7 +1093,7 @@ let tut={ step:0, moved:0, fired:false, shopped:false, px:null, pz:null };
 const TUT_STEPS = [
   { txt:'MOVE — <b>WASD / ARROWS</b> or the <b>LEFT stick</b>', tt:'MOVE — drag the <b>LEFT stick</b> around', chk:()=> tut.moved>12 },
   { txt:'AIM &amp; FIRE — <b>MOUSE + CLICK</b> or the <b>RIGHT stick</b>', tt:'AIM &amp; FIRE — drag the <b>RIGHT stick</b> to aim, release to stop firing', chk:()=> tut.fired },
-  { txt:'UPGRADE — press <b>B</b> or the <b>SHOP</b> button and buy a tank', tt:'UPGRADE — tap <b>SHOP</b>, pick a tank, then tap outside the panel to close it', chk:()=> tut.shopped },
+  { txt:'UPGRADE — press <b>E</b> or the <b>SHOP</b> button and buy a tank', tt:'UPGRADE — tap <b>SHOP</b>, pick a tank, then tap outside the panel to close it', chk:()=> tut.shopped },
   { txt:'NOW <b>DESTROY THE RED HQ</b> to win — good luck!', tt:'NOW <b>DESTROY THE RED HQ</b> to win — good luck!', chk:()=> false },
 ];
 function resetTutorial(){
@@ -1647,7 +1647,7 @@ const keys={};
 addEventListener('keydown', e=>{
   const k=e.key.toLowerCase();
   keys[k]=true;
-  if(k==='b'){ toggleShop(); }
+  if(k==='e'){ toggleShop(); }
   if(k==='escape'){ closeShop(); }
   if(k>='1'&&k<='6'){ buy(ORDER[+k-1]); }
   if(k===' '){ if(player) player.wantFire=true; e.preventDefault(); }
@@ -2075,7 +2075,7 @@ function startGame(mode){
   el('hint').innerHTML = touch.active
     ? 'AI — <b style="color:#8fd0ff">'+AI().label+'</b><br>LEFT STICK — move<br>RIGHT STICK — aim &amp; fire<br>SHOP — upgrade tank'
     : 'AI — <b style="color:#8fd0ff">'+AI().label+'</b><br>'
-      + 'WASD / ARROWS — move<br>MOUSE — aim &nbsp;|&nbsp; CLICK / SPACE — fire<br>B — shop &nbsp;|&nbsp; 1-6 — quick buy';
+      + 'WASD / ARROWS — move<br>MOUSE — aim &nbsp;|&nbsp; CLICK / SPACE — fire<br>E — shop &nbsp;|&nbsp; 1-6 — quick buy';
 }
 el('mDef').onclick = ()=>startGame('siege');
 el('mTdm').onclick = ()=>startGame('tdm');
@@ -2644,7 +2644,7 @@ function netBeginPlay(mode, roster, localId){
   el('hint').innerHTML = 'AI — <b style="color:#8fd0ff">'+AI().label+'</b> · ROOM '+NET.code+'<br>'
     + (touch.active
       ? 'LEFT STICK — move<br>RIGHT STICK — aim &amp; fire<br>SHOP — upgrade'
-      : 'WASD / ARROWS — move<br>MOUSE — aim &nbsp;|&nbsp; CLICK / SPACE — fire<br>B — shop &nbsp;|&nbsp; 1-6 — quick buy');
+      : 'WASD / ARROWS — move<br>MOUSE — aim &nbsp;|&nbsp; CLICK / SPACE — fire<br>E — shop &nbsp;|&nbsp; 1-6 — quick buy');
   showBadge(true);
   netSetMsg('lobbyMsg','');
   netHubUnregister();   // a room in progress is no longer joinable
