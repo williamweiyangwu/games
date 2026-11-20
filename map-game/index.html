@@ -186,6 +186,12 @@
   .airBadge.sel rect{stroke:#ffd75e;stroke-width:2.2}
   .airBadge.tgt rect{stroke:#7fe08a;stroke-width:2.2}
   .airBadge text{font:700 8.5px "Segoe UI",sans-serif;fill:#fff;paint-order:stroke;stroke:#000b;stroke-width:2.4px;text-anchor:middle;pointer-events:none;user-select:none;letter-spacing:.2px}
+  .resBadge{pointer-events:auto;cursor:pointer}
+  .resBadge rect{stroke:#e2b13c;stroke-width:1.1;rx:3}
+  .resBadge.food rect{stroke:#7fe08a}
+  .resBadge.sel rect{stroke:#ffd75e;stroke-width:2.4}
+  .resBadge.tgt rect{stroke:#7fe08a;stroke-width:2.2;stroke-dasharray:3 2}
+  .resBadge text{font:700 8px "Segoe UI",sans-serif;fill:#fff;paint-order:stroke;stroke:#000b;stroke-width:2.6px;text-anchor:middle;pointer-events:none;user-select:none;letter-spacing:.2px}
   .lbl{font:700 11.5px "Segoe UI",sans-serif;fill:#fff;paint-order:stroke;stroke:#000a;stroke-width:3px;
        text-anchor:middle;pointer-events:none;user-select:none}
   .ct{pointer-events:none;user-select:none}
@@ -420,6 +426,7 @@
   <div id="brand">EUROPE 1939<small>MAP GAME &middot; WORLD WAR II</small></div>
   <div class="stat" id="moneyBox"><b id="sMoney">0</b><span>treasury</span></div>
   <div class="stat"><b id="sInc">0</b><span>mine gold/day</span></div>
+  <div class="stat" id="resBox"><b id="sRes">0 / 0</b><span id="sResLbl">oil / food</span></div>
   <div class="stat"><b id="sLand">0</b><span>territory</span></div>
   <div class="stat"><b id="sUnits">0</b><span>units</span></div>
   <div class="stat"><b id="sPow">0</b><span>power</span></div>
@@ -458,6 +465,7 @@
       <div class="row"><span>Mine fields</span><b id="pMines">0</b></div>
       <div class="row"><span>Land front</span><b id="pFort">0</b></div>
       <div id="bFort"></div>
+      <div class="row"><span>Resource site</span><b id="pRes">&mdash;</b></div>
       <div class="row"><span>Air superiority</span><b id="pAir">&mdash;</b></div>
       <div id="bGar"></div>
     </div>
@@ -510,6 +518,8 @@
       fighters: no tanks, heavy armour or bomber fleets.<br>
       Send your men at a front and they <b>hold the ground until the country falls</b> &mdash; only then do the
       survivors march back home to rearm. Only <b>one territory on the whole map</b> changes hands each day.<br>
+      Marked oil fields and grain farms pay a second daily income once occupied by ground troops. Every unit
+      eats food; tanks, aircraft and ships burn oil. Empty stores weaken formations and eventually disband them.<br>
       You win by holding <b>every</b> territory. You lose if you hold none.
     </p>
     <div id="pick"></div>
@@ -711,6 +721,16 @@
           on every map.</p>
         </div>
       </div>
+      <div class="tutS">
+        <div class="tutN">9</div>
+        <div>
+          <h4>Oil &amp; food</h4>
+          <p>Gold comes only from mines, but <b>oil fields</b> and <b>grain farms</b> are marked on the map too.
+          Select ground troops and click a neighbouring site to occupy it; a lone party claims it after a day.
+          Every unit eats food daily, while tanks, aircraft and ships burn oil. Watch the <b>oil / food</b>
+          counter in the top bar &mdash; empty stores first weaken, then scatter your formations.</p>
+        </div>
+      </div>
     </div>
     <label class="tutChk"><input type="checkbox" id="tutNoShow"> Don&rsquo;t show this on a new war again</label>
   </div>
@@ -843,6 +863,7 @@ function sndStartMusic(){
    below, so the rest of the engine never needs to know which map is live.
    ======================================================================= */
 var GEO, NATIONS, REGIONS, SPLITS, NBY, SECTORS, NAT_SECTORS, REGION_IDS, WIN_NEED, ALL;
+var RES_SITES=[];   /* capturable oil fields / grain farms, layered like air zones */
 var NATION_STATS, ARSENAL, NAT_NAME={}, UNITS, SEC_CAP, NAT_CAP, FALLBACK;
 var LON0, LON1, LAT0, LAT1, W, KY, H;
 var EU_GEO = {
@@ -1043,6 +1064,8 @@ var EU_SEA = [
    nation controls strengthens ALL of its land and sea units in battle.
    ======================================================================= */
 function airBox(a,b,c,d){ return [[[a,c],[b,c],[b,d],[a,d]]]; }
+/* one compact site polygon around a real-world oil field or breadbasket */
+function resPoly(cx,cy,dx,dy){ return [[[cx-dx,cy-dy],[cx+dx,cy-dy],[cx+dx,cy+dy],[cx-dx,cy+dy]]]; }
 var EU_AIR = [
   {id:'airnorth', name:'Northern Skies', flag:'&#9992;', color:'#9a86cf', air:true, lab:[7,62.5],
    polys:airBox(-2,26,56,68),
@@ -1077,6 +1100,38 @@ var EU_AIR = [
    nb:['wmed','cmed','aegean','iberia','italy','greece','turkey','spain','france','albania',
        'airsouth','airbalkans','airatlantic']}
 ];
+/* =======================================================================
+    2a-RES. EUROPE OIL FIELDS & GRAIN FARMS
+    Period sites, not modern resource nodes: Ploiești, Galicia, the Caucasus
+    and Leuna's synthetic fuel plant supply oil; the great wheat basins feed
+    the armies. A land unit can occupy and flip a marked site like an air zone.
+    ======================================================================= */
+var EU_RES = [
+  {id:'res_ploiesti', name:'Ploiești Oilfields', flag:'\uD83D\uDEE2', color:'#c8a24a', res:true, resType:'oil', gain:4,
+   owner:'romania', lab:[25.9,45.0], polys:resPoly(25.9,45.0,0.85,0.55), nb:['romania','hungary','yugoslavia','bulgaria','ussr']},
+  {id:'res_galicia', name:'Galician Oilfield', flag:'\uD83D\uDEE2', color:'#c8a24a', res:true, resType:'oil', gain:3,
+   owner:'poland', lab:[23.1,49.7], polys:resPoly(23.1,49.7,0.8,0.5), nb:['poland','germany','czechoslovakia','hungary','ussr']},
+  {id:'res_caucasus', name:'Caucasus Oilfields', flag:'\uD83D\uDEE2', color:'#c8a24a', res:true, resType:'oil', gain:5,
+   owner:'ussr', lab:[45.2,43.4], polys:resPoly(45.2,43.4,0.9,0.6), nb:['ussr','turkey']},
+  {id:'res_leuna', name:'Leuna Synthetic Fuel', flag:'\uD83D\uDEE2', color:'#c8a24a', res:true, resType:'oil', gain:4,
+   owner:'germany', lab:[11.9,51.3], polys:resPoly(11.9,51.3,0.7,0.45), nb:['germany','poland','czechoslovakia']},
+  {id:'res_ukraine', name:'Ukrainian Breadbasket', flag:'\uD83C\uDF3E', color:'#6f9f5a', res:true, resType:'food', gain:7,
+   owner:'ussr', lab:[32.4,48.6], polys:resPoly(32.4,48.6,1.1,0.7), nb:['ussr','poland','romania','hungary','czechoslovakia']},
+  {id:'res_prussia', name:'East Prussian Rye', flag:'\uD83C\uDF3E', color:'#6f9f5a', res:true, resType:'food', gain:5,
+   owner:'germany', lab:[20.2,54.2], polys:resPoly(20.2,54.2,0.85,0.5), nb:['germany','poland','ussr']},
+  {id:'res_paris', name:'Paris Basin Wheat', flag:'\uD83C\uDF3E', color:'#6f9f5a', res:true, resType:'food', gain:5,
+   owner:'france', lab:[2.4,48.8], polys:resPoly(2.4,48.8,0.9,0.55), nb:['france','belgium','germany','uk']},
+  {id:'res_danube', name:'Danube Wheatlands', flag:'\uD83C\uDF3E', color:'#6f9f5a', res:true, resType:'food', gain:5,
+   owner:'hungary', lab:[19.4,47.2], polys:resPoly(19.4,47.2,0.9,0.55), nb:['hungary','austria','czechoslovakia','yugoslavia','romania']},
+  {id:'res_po', name:'Po Valley Farms', flag:'\uD83C\uDF3E', color:'#6f9f5a', res:true, resType:'food', gain:4,
+   owner:'italy', lab:[10.2,45.1], polys:resPoly(10.2,45.1,0.85,0.5), nb:['italy','france','switzerland','austria','yugoslavia']},
+  {id:'res_castile', name:'Castilian Wheatlands', flag:'\uD83C\uDF3E', color:'#6f9f5a', res:true, resType:'food', gain:4,
+   owner:'spain', lab:[-4.4,40.1], polys:resPoly(-4.4,40.1,1.0,0.6), nb:['spain','portugal','france']},
+  {id:'res_eastanglia', name:'East Anglian Farms', flag:'\uD83C\uDF3E', color:'#6f9f5a', res:true, resType:'food', gain:4,
+   owner:'uk', lab:[0.8,52.5], polys:resPoly(0.8,52.5,0.7,0.45), nb:['uk']},
+  {id:'res_thrace', name:'Thracian Grain', flag:'\uD83C\uDF3E', color:'#6f9f5a', res:true, resType:'food', gain:4,
+   owner:'bulgaria', lab:[25.4,41.8], polys:resPoly(25.4,41.8,0.8,0.5), nb:['bulgaria','greece','turkey','yugoslavia']}
+];
 var AIR_ZONES=[];
 /* where each coastal nation's first squadrons put to sea */
 var EU_HOME_SEA={uk:'nsea', germany:'nsea', netherlands:'nsea', denmark:'baltic',
@@ -1091,6 +1146,15 @@ function isShip(u){ var t=u&&U(u.owner,u.type); return !!(t&&t.navy); }
 function isSea(id){ return !!(NBY[id]&&NBY[id].sea); }
 function isAirZone(id){ return !!(NBY[id]&&NBY[id].air); }
 function isAirUnit(u){ var t=u&&U(u.owner,u.type); return !!(t&&t.air); }
+function isRes(id){ return !!(NBY[id]&&NBY[id].res); }
+function isOil(id){ return !!(NBY[id]&&NBY[id].resType==='oil'); }
+function isFood(id){ return !!(NBY[id]&&NBY[id].resType==='food'); }
+function resTypeName(id){
+  if(!isRes(id)) return '';
+  if(MAP==='china') return isOil(id)?'Petroleum well':'Grain fields';
+  return isOil(id)?'Oil field':'Grain farm';
+}
+function resYield(id){ return (NBY[id]&&NBY[id].gain)||0; }
 function seaTint(hex){
   var h=String(hex||'#16394f').replace('#','');
   if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
@@ -1137,7 +1201,7 @@ var EU_SHIP_DEFAULT=['destroyer:Destroyer|A fast escort for the coastal fleet.',
 var SEA_ZONES=[];
 function buildNBY(){
   NBY={};
-  [].concat(NATIONS,REGIONS,SEA_ZONES||[],AIR_ZONES||[]).forEach(function(n){ NBY[n.id]=n; });
+  [].concat(NATIONS,REGIONS,SEA_ZONES||[],AIR_ZONES||[],RES_SITES||[]).forEach(function(n){ NBY[n.id]=n; });
   if(SEA_ZONES&&SEA_ZONES.length) NBY.sea={id:'sea',name:'Open Sea',flag:'&#127754;',color:'#122b3d',bloc:'Sea',nb:[]};
   if(AIR_ZONES&&AIR_ZONES.length) NBY.air={id:'air',name:'Open Sky',flag:'&#9992;',color:'#6a5f8f',bloc:'Sky',nb:[]};
 }
@@ -1223,7 +1287,7 @@ function linkSector(a,b){
 function buildSectors(){
   SECTORS=[]; NAT_SECTORS={};
   var had={};
-  [].concat(NATIONS,REGIONS,SEA_ZONES||[],AIR_ZONES||[]).forEach(function(n){
+  [].concat(NATIONS,REGIONS,SEA_ZONES||[],AIR_ZONES||[],RES_SITES||[]).forEach(function(n){
     var polys=n.polys||GEO[n.id]||[];
     var sp=SPLITS[n.id];
     var pieces=(sp && polys.length) ? splitEqual(polys,sp.axis,sp.n) : [polys];
@@ -1236,7 +1300,8 @@ function buildSectors(){
       var sec={ id:sid, nat:n.id, name:nm, flag:n.flag, color:n.color, bloc:n.bloc,
                 nb:(n.nb||[]).slice(), snb:[], polys:ps, playable:false,
                 owner:n.sea?'sea':(n.air?'air':(n.owner||undefined)),
-                 sea:!!n.sea, air:!!n.air, lab:n.lab||null };
+                 sea:!!n.sea, air:!!n.air, res:!!n.res, resType:n.resType||null,
+                 gain:n.gain||0, lab:n.lab||null };
       SECTORS.push(sec); NAT_SECTORS[n.id].push(sid); NBY[sid]=sec;
     });
     if(!NAT_SECTORS[n.id].length){
@@ -1275,7 +1340,7 @@ function buildSectors(){
     }); });
   });
   /* a declared frontier that the outlines did not prove gets every-to-every */
-  [].concat(NATIONS,REGIONS,SEA_ZONES||[],AIR_ZONES||[]).forEach(function(n){
+  [].concat(NATIONS,REGIONS,SEA_ZONES||[],AIR_ZONES||[],RES_SITES||[]).forEach(function(n){
     (n.nb||[]).forEach(function(m){
       if(had[n.id+'>'+m]) return;
       (NAT_SECTORS[n.id]||[]).forEach(function(a){
@@ -1919,7 +1984,7 @@ function polyD(poly){
 var NS = 'http://www.w3.org/2000/svg';
 function el(t,a){ var e=document.createElementNS(NS,t); for(var k in a) e.setAttribute(k,a[k]); return e; }
 
-const labEl={}, markEl={}, PP={}, airEl={};
+const labEl={}, markEl={}, PP={}, airEl={}, resEl={};
 let landG, unitG, fxG;
 
 function buildMap(){
@@ -1944,7 +2009,7 @@ function buildMap(){
   unitG=el('g',{}); g.appendChild(unitG);
   fxG=el('g',{}); g.appendChild(fxG);
 
-  SECTORS.filter(function(s){ return !s.sea; }).sort(function(a,b){ return (a.nat==='ussr'?-1:0)-(b.nat==='ussr'?-1:0); })
+  SECTORS.filter(function(s){ return !s.sea && !s.res; }).sort(function(a,b){ return (a.nat==='ussr'?-1:0)-(b.nat==='ussr'?-1:0); })
   .forEach(function(sec){
     /* a fat same-colour stroke drawn under every land path fills the hairline
        gaps between adjacent pieces, so the map reads as one continent */
@@ -1977,7 +2042,7 @@ function buildMap(){
     }
   });
 
-  SECTORS.filter(function(s){ return !s.sea; }).sort(function(a,b){ return (a.nat==='ussr'?-1:0)-(b.nat==='ussr'?-1:0); })
+  SECTORS.filter(function(s){ return !s.sea && !s.res; }).sort(function(a,b){ return (a.nat==='ussr'?-1:0)-(b.nat==='ussr'?-1:0); })
   .forEach(function(sec){
     var x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
     PP[sec.id]=[];
@@ -2025,6 +2090,20 @@ function buildMap(){
     g.appendChild(rect); g.appendChild(tx); unitG.appendChild(g);
     airEl[sec.id]={g:g, rect:rect, text:tx};
   });
+
+  /* RESOURCE SITES: small oil / grain badges over the real field or farm.
+     Clicking one issues a land order when ground troops are selected. */
+  SECTORS.filter(function(s){ return !!s.res; }).forEach(function(sec){
+    var x=px(sec.lab?sec.lab[0]:0), y=py(sec.lab?sec.lab[1]:0)+11;
+    markEl[sec.id]={x:x,y:y};
+    var w=Math.max(30, sec.name.length*4.6+18);
+    var g=el('g',{class:'resBadge'+(isFood(sec.id)?' food':''),'data-id':sec.id});
+    var rect=el('rect',{x:(x-w/2).toFixed(1),y:(y-7).toFixed(1),width:w.toFixed(1),height:14,fill:sec.color});
+    var tx=el('text',{x:x.toFixed(1),y:(y+3).toFixed(1)});
+    tx.textContent=sec.flag+' '+sec.name;
+    g.appendChild(rect); g.appendChild(tx); unitG.appendChild(g);
+    resEl[sec.id]={g:g, rect:rect, text:tx};
+  });
 }
 
 /* =======================================================================
@@ -2052,6 +2131,7 @@ function warMap(){
   if(WAR_MAP) return WAR_MAP;
   WAR_MAP={};
   for(var id in S.prov){
+    if(isSea(id)||isAirZone(id)||isRes(id)) continue;   /* domain layers do not redraw the war map */
     var a=S.prov[id].owner, sn=(NBY[id]&&NBY[id].snb)||[];
     for(var i=0;i<sn.length;i++){
       var t=S.prov[sn[i]];
@@ -2080,7 +2160,7 @@ function declareWar(a,b){
 function newGame(player){
   S={ player:player, day:0, uid:0, sel:firstSector(player), pick:new Set(), log:[], over:null, wars:new Set(),
       prov:{}, units:[], targets:[], aggro:{}, aiT:{}, orderMode:true, gold:{}, news:[], elimSet:new Set(),
-      capSet:new Set(),
+      capSet:new Set(), oil:{}, food:{}, oilShort:{}, foodShort:{},
       brokeSet:new Set(), mail:[], pact:new Set(), mood:{}, mailSeq:0, nextDispatchDay:0, nextMailDay:2 };
   SECTORS.forEach(function(sec){
     var nat=NBY[sec.nat];
@@ -2092,6 +2172,9 @@ function newGame(player){
   });
   ALL.forEach(function(n){
     S.gold[n.id]=(n.id==='iceland')?0:startGold(n.id);
+    S.oil[n.id]=(n.id==='iceland')?0:30;
+    S.food[n.id]=(n.id==='iceland')?0:50;
+    S.oilShort[n.id]=0; S.foodShort[n.id]=0;
     S.aiT[n.id]=(n.id==='iceland')?99:(4+(Math.random()*4|0));
     S.aggro[n.id]=0.9+Math.random()*0.45;
     S.mood[n.id]=0;
@@ -2142,6 +2225,11 @@ function newGame(player){
     });
     log('Air wings have taken to the skies - '+AIR_ZONES.length+' air zones are contested.');
   }
+  if(RES_SITES.length){
+    log(MAP==='china'
+      ? 'Rock-oil wells and grain farms are marked on the map - occupy a site to claim its yield.'
+      : 'Oil fields and grain farms are marked on the map - occupy a site to claim its yield.');
+  }
   S.pick.clear();
   invalidateWars();
   selectProv(firstSector(player));
@@ -2165,6 +2253,103 @@ function unitsOf(c){ return S.units.filter(function(u){ return u.owner===c && u.
 function upkeep(c){ return unitsOf(c).reduce(function(s,u){ return s+U(u.owner,u.type).up; },0); }
 function mineCount(c){ var t=0; for(var id in S.prov) if(S.prov[id].owner===c) t+=S.prov[id].mines; return t; }
 function income(c){ return mineCount(c)*mineGold(c) - upkeep(c); }
+
+/* ---- oil / food economy (the second resource layer) ---- */
+function oilIncome(c){
+  var t=0;
+  RES_SITES.forEach(function(s){
+    if(isOil(s.id) && S.prov[s.id] && S.prov[s.id].owner===c) t+=resYield(s.id);
+  });
+  return t;
+}
+function foodIncome(c){
+  var t=0;
+  RES_SITES.forEach(function(s){
+    if(isFood(s.id) && S.prov[s.id] && S.prov[s.id].owner===c) t+=resYield(s.id);
+  });
+  return t;
+}
+function oilUp(u){
+  var t=U(u.owner,u.type); if(!t) return 0;
+  if(t.navy) return Math.min(5,Math.max(1,Math.ceil(t.up*0.8)));
+  if(MAP!=='china' && (TANK_KEYS[u.type]||u.type==='tank'||u.type==='heavy'))
+    return Math.min(6,Math.max(1,Math.ceil(t.up*0.8)));
+  if(t.air && MAP!=='china') return Math.min(4,Math.max(1,Math.ceil(t.up*0.7)));
+  /* Chinese horse archers live off grain; only gunpowder engines burn lamp oil */
+  if(MAP==='china' && (u.type==='rocket'||u.type==='hnky')) return 1;
+  return 0;
+}
+function foodUp(u){
+  var t=U(u.owner,u.type);
+  return Math.min(3,1+((t&&t.up>=3)?1:0));
+}
+function scrapWorst(c,pred){
+  var us=S.units.filter(function(u){ return u.owner===c && u.hp>0 && (!pred||pred(u)); });
+  if(!us.length) return null;
+  us.sort(function(a,b){
+    var va=(oilUp(b)*4+foodUp(b))*10+(U(b.owner,b.type).cost||0);
+    var vb=(oilUp(a)*4+foodUp(a))*10+(U(a.owner,a.type).cost||0);
+    return vb-va;
+  });
+  var u=us[0], ix=S.units.indexOf(u);
+  if(ix>=0) S.units.splice(ix,1);
+  return u;
+}
+function resourceTick(){
+  ALL.forEach(function(n){
+    var c=n.id;
+    if(c==='iceland') return;
+    if(landOf(c)===0 && unitsOf(c).length===0) return;
+    S.oil[c]=(S.oil[c]||0)+oilIncome(c);
+    S.food[c]=(S.food[c]||0)+foodIncome(c);
+    var us=unitsOf(c);
+    var needO=us.reduce(function(s,u){ return s+oilUp(u); },0);
+    var needF=us.reduce(function(s,u){ return s+foodUp(u); },0);
+    var shortO=Math.max(0,needO-(S.oil[c]||0));
+    var shortF=Math.max(0,needF-(S.food[c]||0));
+    S.oil[c]=Math.max(0,(S.oil[c]||0)-needO);
+    S.food[c]=Math.max(0,(S.food[c]||0)-needF);
+    var oilBad=shortO>0, foodBad=shortF>0;
+    S.oilShort[c]=oilBad?(S.oilShort[c]||0)+1:0;
+    S.foodShort[c]=foodBad?(S.foodShort[c]||0)+1:0;
+    if(!oilBad && !foodBad) return;
+
+    us.forEach(function(u){
+      var hit=0;
+      if(foodBad) hit+=2;                       /* hungry formations weaken */
+      if(oilBad && oilUp(u)>0) hit+=3;          /* dry engines weaken faster */
+      if(hit) u.hp-=hit;
+    });
+
+    if(oilBad && S.oilShort[c]===1 && c===S.player)
+      log(MAP==='china'?'Lamp oil is running out - your gunpowder engines are faltering.'
+                       :'Oil reserves are empty - your machines are losing power.');
+    if(foodBad && S.foodShort[c]===1 && c===S.player)
+      log(MAP==='china'?'The grain stores are empty - your host is going hungry.'
+                       :'Food stores are empty - your troops are going hungry.');
+
+    var scrap=null, word=MAP==='china'?'deserted':'disbanded';
+    var oilWord=MAP==='china'?'ran dry':'ran out of fuel';
+    if(oilBad && S.oilShort[c]>=3){
+      scrap=scrapWorst(c,function(u){ return oilUp(u)>0; });
+      if(scrap){ S.oilShort[c]=1;
+        if(c===S.player) log('Oil '+oilWord+' - your '+U(c,scrap.type).name.toLowerCase()+' was '+word+'.');
+      }
+    }
+    if(foodBad && S.foodShort[c]>=3){
+      scrap=scrapWorst(c,null);
+      if(scrap){ S.foodShort[c]=1;
+        if(c===S.player) log('Famine - your '+U(c,scrap.type).name.toLowerCase()+' '+word+'.');
+      }
+    }
+    if((oilBad||foodBad) && Math.random()<0.12){
+      news(MAP==='china'?Nname(c)+' faces a grain shortage':Nname(c)+' feels the squeeze',
+        MAP==='china'
+          ? 'Empty granaries and dry oil wells have left <b>'+Nname(c)+'</b> host short of supplies.'
+          : 'Empty food stores and fuel tanks are grounding machines in <b>'+Nname(c)+'</b> service.',false);
+    }
+  });
+}
 
 /* ---- garrison capacity: big nations field bigger armies ---- */
 var SIZE_AREA={};
@@ -2199,6 +2384,7 @@ var EU_NAT_CAP = {
 };
 function capacity(c){
   if(isAirZone(c)) return 6;                 /* an air wing, not a garrison */
+  if(isRes(c)) return 4;                     /* a field party, not a full garrison */
   if(SEC_CAP[c]!==undefined) return SEC_CAP[c];
   var nat=natOf(c);
   if(NAT_CAP[nat]!==undefined) return NAT_CAP[nat];
@@ -2342,6 +2528,35 @@ var CN_AIR = [
    polys:airBox(74,106,34,48),
    nb:['xinjiang','gansu','qinghai','shaanxi','ningxia','innermongolia','tibet','airnorth','airsw','aircentral']}
 ];
+/* =======================================================================
+    4b-RES. CHINA ROCK-OIL WELLS & GRAIN FARMS
+    Ancient equivalents: pitch and fire-wells burn for the siege engines,
+    while the great granaries feed every levy. Names follow the period.
+    ======================================================================= */
+var CN_RES = [
+  {id:'cn_oil_shaanxi', name:'Shaanxi Rock Oil', flag:'\uD83D\uDEE2', color:'#c8a24a', res:true, resType:'oil', gain:3,
+   owner:'shaanxi', lab:[109.1,36.3], polys:resPoly(109.1,36.3,0.9,0.6), nb:['shaanxi','gansu','shanxi','henan']},
+  {id:'cn_oil_xinjiang', name:'Xinjiang Oil Springs', flag:'\uD83D\uDEE2', color:'#c8a24a', res:true, resType:'oil', gain:4,
+   owner:'xinjiang', lab:[85.4,43.5], polys:resPoly(85.4,43.5,1.0,0.6), nb:['xinjiang','gansu','qinghai']},
+  {id:'cn_oil_sichuan', name:'Sichuan Fire-Wells', flag:'\uD83D\uDEE2', color:'#c8a24a', res:true, resType:'oil', gain:2,
+   owner:'sichuan', lab:[104.6,30.6], polys:resPoly(104.6,30.6,0.8,0.5), nb:['sichuan','chongqing','guizhou','yunnan','shaanxi']},
+  {id:'cn_food_central', name:'Central Plain Granary', flag:'\uD83C\uDF3E', color:'#6f9f5a', res:true, resType:'food', gain:6,
+   owner:'henan', lab:[113.8,34.4], polys:resPoly(113.8,34.4,1.0,0.6), nb:['henan','hebei','shandong','anhui','shanxi']},
+  {id:'cn_food_yangtze', name:'Yangtze Rice Belt', flag:'\uD83C\uDF3E', color:'#6f9f5a', res:true, resType:'food', gain:6,
+   owner:'jiangsu', lab:[119.3,32.0], polys:resPoly(119.3,32.0,1.0,0.6), nb:['jiangsu','anhui','zhejiang','shanghai','hubei']},
+  {id:'cn_food_sichuan', name:'Sichuan Basin Granary', flag:'\uD83C\uDF3E', color:'#6f9f5a', res:true, resType:'food', gain:5,
+   owner:'sichuan', lab:[103.9,30.1], polys:resPoly(103.9,30.1,0.9,0.55), nb:['sichuan','chongqing','shaanxi','guizhou','hubei']},
+  {id:'cn_food_hetao', name:'Hetao Wheatlands', flag:'\uD83C\uDF3E', color:'#6f9f5a', res:true, resType:'food', gain:4,
+   owner:'innermongolia', lab:[108.0,40.7], polys:resPoly(108.0,40.7,1.0,0.6), nb:['innermongolia','ningxia','gansu','shaanxi','shanxi']},
+  {id:'cn_food_liaoning', name:'Liaoning Millet Fields', flag:'\uD83C\uDF3E', color:'#6f9f5a', res:true, resType:'food', gain:4,
+   owner:'liaoning', lab:[123.0,41.8], polys:resPoly(123.0,41.8,0.9,0.55), nb:['liaoning','jilin','hebei','innermongolia']},
+  {id:'cn_food_jiangnan', name:'Jiangnan Rice Fields', flag:'\uD83C\uDF3E', color:'#6f9f5a', res:true, resType:'food', gain:5,
+   owner:'zhejiang', lab:[120.3,29.5], polys:resPoly(120.3,29.5,0.9,0.55), nb:['zhejiang','jiangsu','anhui','fujian','jiangxi']},
+  {id:'cn_food_yunnan', name:'Yunnan Terrace Fields', flag:'\uD83C\uDF3E', color:'#6f9f5a', res:true, resType:'food', gain:3,
+   owner:'yunnan', lab:[102.4,25.1], polys:resPoly(102.4,25.1,0.9,0.55), nb:['yunnan','guizhou','sichuan','guangxi']},
+  {id:'cn_food_hunan', name:'Hunan Rice Granary', flag:'\uD83C\uDF3E', color:'#6f9f5a', res:true, resType:'food', gain:4,
+   owner:'hunan', lab:[112.0,27.8], polys:resPoly(112.0,27.8,0.9,0.55), nb:['hunan','hubei','jiangxi','guangxi','guizhou']}
+];
 
 /* --- placeholders for the Europe pack's fallback (minors keep basic arms) --- */
 var EU_FALLBACK={ army:['infantry','mine','artillery'], air:['fighter'] };
@@ -2362,9 +2577,10 @@ var MAPS={
     units:function(){ return EU_UNITS; }, fallback:function(){ return EU_FALLBACK; },
     secCap:function(){ return EU_SEC_CAP; }, natCap:function(){ return EU_NAT_CAP; },
     proj:function(){ return EU_PROJ; }, sea:function(){ return EU_SEA; }, air:function(){ return EU_AIR; },
+    res:function(){ return EU_RES; },
     blocs:['Axis','Allies','Other','Neutral'],
     defaultPlayer:'germany', tabAir:'&#9992; Air Force', newsName:'THE CONTINENTAL',
-    rules:'Nations that fought in the Second World War are on the map. Each begins with its own treasury, riflemen and two mine fields at home &mdash; a major power far more than a micro-state.<br>There is <b>no daily income</b> &mdash; <b>mine fields are the only gold</b> in the game, mined at each nation\u2019s own rate. Buy mine cars to lay more, and take countries to grow your yield.<br>Once you have chosen a nation, the Shop&rsquo;s <b>Tanks</b> tab lists that nation&rsquo;s own historical armour.<br>Click a country to open its sheet: a small map of the country with the units standing in it. Recruit in your own territory, then order units into a neighbouring country. Every front is a real front &mdash; the AI nations fight each other too, so a war can be won without fighting the whole continent.<br>Units fight at their best on friendly soil, and hardest of all in their homeland. Tanks, artillery and bombers cost upkeep every day, so a huge army can bankrupt you.<br>Army sizes follow real history: micro-states like <b>Albania</b> or <b>Denmark</b> hold just <b>2&ndash;3</b> units, while a major power fields up to <b>14</b>. The Soviet Union is split into three fronts &mdash; <b>South 4</b>, <b>Centre 4</b>, <b>North 5</b> &mdash; and a weak state buys only basic rifles, guns and fighters: no tanks, heavy armour or bomber fleets.<br>Send your men at a front and they <b>hold the ground until the country falls</b> &mdash; only then do the survivors march back home to rearm. Only <b>one territory on the whole map</b> changes hands each day.<br>The <b>Navy</b> tab builds ships in any coastal nation: destroyers, submarines, cruisers, battleships and carriers. Twelve <b>sea zones</b> are painted on the ocean &mdash; sail into them to contest them, control them to open deeper water, and storm enemy coastlines from the sea. Only ships can enter a sea zone, and landlocked nations cannot build a fleet.<br>Eight purple <b>air zones</b> hang over the continent: select your aircraft and click a neighbouring zone to fly in and contest it. Every zone you hold adds <b>+5% power</b> to every land and sea unit you own. On the ground you can <b>entrench</b> any province you own (or leave engineers there) for up to <b>+45% defence</b>; forts are lost when the province falls.<br>You win by holding <b>every</b> land territory. You lose if you hold none.'
+    rules:'Nations that fought in the Second World War are on the map. Each begins with its own treasury, riflemen and two mine fields at home &mdash; a major power far more than a micro-state.<br>There is <b>no daily income</b> &mdash; <b>mine fields are the only gold</b> in the game, mined at each nation\u2019s own rate. Buy mine cars to lay more, and take countries to grow your yield.<br>Once you have chosen a nation, the Shop&rsquo;s <b>Tanks</b> tab lists that nation&rsquo;s own historical armour.<br>Click a country to open its sheet: a small map of the country with the units standing in it. Recruit in your own territory, then order units into a neighbouring country. Every front is a real front &mdash; the AI nations fight each other too, so a war can be won without fighting the whole continent.<br>Units fight at their best on friendly soil, and hardest of all in their homeland. Tanks, artillery and bombers cost upkeep every day, so a huge army can bankrupt you.<br>Army sizes follow real history: micro-states like <b>Albania</b> or <b>Denmark</b> hold just <b>2&ndash;3</b> units, while a major power fields up to <b>14</b>. The Soviet Union is split into three fronts &mdash; <b>South 4</b>, <b>Centre 4</b>, <b>North 5</b> &mdash; and a weak state buys only basic rifles, guns and fighters: no tanks, heavy armour or bomber fleets.<br>Send your men at a front and they <b>hold the ground until the country falls</b> &mdash; only then do the survivors march back home to rearm. Only <b>one territory on the whole map</b> changes hands each day.<br>The <b>Navy</b> tab builds ships in any coastal nation: destroyers, submarines, cruisers, battleships and carriers. Twelve <b>sea zones</b> are painted on the ocean &mdash; sail into them to contest them, control them to open deeper water, and storm enemy coastlines from the sea. Only ships can enter a sea zone, and landlocked nations cannot build a fleet.<br>Eight purple <b>air zones</b> hang over the continent: select your aircraft and click a neighbouring zone to fly in and contest it. Every zone you hold adds <b>+5% power</b> to every land and sea unit you own. On the ground you can <b>entrench</b> any province you own (or leave engineers there) for up to <b>+45% defence</b>; forts are lost when the province falls.<br>The gold-marked <b>oil fields</b> and green-marked <b>grain farms</b> are a second economy: march a ground unit onto one to seize it, and every site held pays oil or food each day. Every unit eats food; tanks, aircraft and ships burn oil. Empty stores weaken formations and, after three days, disband the costliest one.<br>You win by holding <b>every</b> land territory. You lose if you hold none.'
   },
   china:{
     id:'china', title:'CHINA &middot; THE PROVINCES', tag:'Choosing your province',
@@ -2374,17 +2590,18 @@ var MAPS={
     stats:function(){ return CN_STATS; }, arsenal:function(){ return null; },
     units:function(){ return CN_UNITS; }, fallback:function(){ return CN_FALLBACK; },
     secCap:function(){ return CN_SEC_CAP; }, natCap:function(){ return CN_NAT_CAP; },
-    proj:function(){ return CN_PROJ; }, air:function(){ return CN_AIR; },
+    proj:function(){ return CN_PROJ; }, air:function(){ return CN_AIR; }, res:function(){ return CN_RES; },
     blocs:CN_BLOCS,
     defaultPlayer:'shaanxi', tabAir:'&#127993; Siege &amp; Cavalry', newsName:'THE COURT GAZETTE',
-    rules:'The 34 province-level divisions of the modern People\u2019s Republic are on the map &mdash; each a country in its own right, fighting to unify the realm. Every province begins with its own treasury, spearmen and salt works at home.<br>There is <b>no daily income</b> &mdash; <b>salt is the only gold</b>, boiled at each province\u2019s own rate. Buy <b>Salt Works</b> and send them to your frontier to swell your yield.<br>Buy levies, crossbows and chariots in the <b>Army</b> tab; the <b>Siege &amp; Cavalry</b> tab holds horse archers, ballistae, catapults and the full siege train, which strike across a border and retire home.<br>Click a province to open its sheet: a small map of it with the units standing there. Recruit in your own land, then order units into a neighbouring province. Every frontier is a real front &mdash; the rival provinces fight one another too.<br>Units fight best on friendly soil and hardest of all in their homeland. Heavy chariots, siege engines and the Imperial Guard cost upkeep daily, so a vast host can bankrupt you.<br>Send your men at a frontier and they <b>hold the ground until it falls</b> &mdash; only then do the survivors march home. Only <b>one province on the whole map</b> changes hands each day.<br>The seven purple <b>air zones</b> are the war theatres of the realm: horse archers and siege trains fly into them just like aircraft. Each zone you hold adds <b>+5% power</b> to all your forces. <b>Entrench</b> your own provinces (or garrison military engineers) for up to <b>+45% defence</b>; forts are lost when a province falls.<br>You win by holding <b>every</b> province. You lose if you hold none.',
+    rules:'The 34 province-level divisions of the modern People\u2019s Republic are on the map &mdash; each a country in its own right, fighting to unify the realm. Every province begins with its own treasury, spearmen and salt works at home.<br>There is <b>no daily income</b> &mdash; <b>salt is the only gold</b>, boiled at each province\u2019s own rate. Buy <b>Salt Works</b> and send them to your frontier to swell your yield.<br>Buy levies, crossbows and chariots in the <b>Army</b> tab; the <b>Siege &amp; Cavalry</b> tab holds horse archers, ballistae, catapults and the full siege train, which strike across a border and retire home.<br>Click a province to open its sheet: a small map of it with the units standing there. Recruit in your own land, then order units into a neighbouring province. Every frontier is a real front &mdash; the rival provinces fight one another too.<br>Units fight best on friendly soil and hardest of all in their homeland. Heavy chariots, siege engines and the Imperial Guard cost upkeep daily, so a vast host can bankrupt you.<br>Send your men at a frontier and they <b>hold the ground until it falls</b> &mdash; only then do the survivors march home. Only <b>one province on the whole map</b> changes hands each day.<br>The seven purple <b>air zones</b> are the war theatres of the realm: horse archers and siege trains fly into them just like aircraft. Each zone you hold adds <b>+5% power</b> to all your forces. <b>Entrench</b> your own provinces (or garrison military engineers) for up to <b>+45% defence</b>; forts are lost when a province falls.<br>The gold-marked <b>rock-oil wells</b> and green-marked <b>grain farms</b> feed the war: occupy a site with ground troops to claim its daily petroleum or grain. Every unit eats grain, and fire-lance rockets and siege trains also burn naphtha. Empty stores weaken a host and, after three days, scatter its costliest formation.<br>You win by holding <b>every</b> province. You lose if you hold none.',
     tutCN:"<div class=\"tutS\"><div class=\"tutN\">1</div><div><h4>Pick a province</h4><p>Aim of the war: hold <b>every</b> province on the map. You start with <b>your province's own treasury and spearmen</b> and two salt works at home. The frontier is long and every neighbour is a rival.</p></div></div>"+
       "<div class=\"tutS\"><div class=\"tutN\">2</div><div><h4>Money comes from salt</h4><p>There is <b>no daily income</b> &mdash; salt works pay <b>4 gold a day each</b>. Buy <b>Salt Works</b> in the Shop and send them to your frontier to lay more. No salt, no money to pay for troops.</p></div></div>"+
       "<div class=\"tutS\"><div class=\"tutN\">3</div><div><h4>Recruit &amp; move</h4><p>Click a province you own to open it, pick a unit in the Shop (the <b>Army</b> and <b>Siege &amp; Cavalry</b> tabs). Then click <b>Battle</b>, tick your units, and click a flashing border to send them into a neighbouring province. <b>Select every unit on my fronts</b> grabs your whole line at once. They hold the ground until it falls, then the survivors retire home.</p></div></div>"+
       "<div class=\"tutS\"><div class=\"tutN\">4</div><div><h4>One piece a day</h4><p>Only <b>one province on the whole map</b> can change hands each day &mdash; whoever has held the front longest takes it. Attack on several borders and the strongest claim wins. When a province loses its last piece it <b>capitulates</b> and its host disbands.</p></div></div>"+
       "<div class=\"tutS\"><div class=\"tutN\">5</div><div><h4>Defend your homeland</h4><p>Units fight at their best on friendly soil, and hardest of all in their home province. Salt works maul attackers. Heavy chariots, siege engines and the Imperial Guard cost upkeep every day, so a vast host can bankrupt you.</p></div></div>"+
       "<div class=\"tutS\"><div class=\"tutN\">6</div><div><h4>Speed controls</h4><p>Use <b>0.5&times;</b>, <b>1&times;</b>, <b>2&times;</b> or <b>3&times;</b> to speed up or slow the war down, and <b>Pause</b> to stop it. Open <b>News</b> for dispatches and <b>Mail</b> to talk to other provinces.</p></div></div>"+
-      "<div class=\"tutS\"><div class=\"tutN\">7</div><div><h4>Air zones &amp; land fronts</h4><p>The purple <b>air zones</b> are the war theatres of the realm. Select your horse archers or siege engines, then click a neighbouring zone to ride in and contest it. Each zone you hold adds <b>+5% power</b> to all your forces. Open a province you own and press <b>Entrench</b> (or leave military engineers there) to raise a fortified front worth up to <b>+45% defence</b>. Forts are destroyed when a province falls.</p></div></div>"
+      "<div class=\"tutS\"><div class=\"tutN\">7</div><div><h4>Air zones &amp; land fronts</h4><p>The purple <b>air zones</b> are the war theatres of the realm. Select your horse archers or siege engines, then click a neighbouring zone to ride in and contest it. Each zone you hold adds <b>+5% power</b> to all your forces. Open a province you own and press <b>Entrench</b> (or leave military engineers there) to raise a fortified front worth up to <b>+45% defence</b>. Forts are destroyed when a province falls.</p></div></div>"+
+      "<div class=\"tutS\"><div class=\"tutN\">8</div><div><h4>Oil &amp; grain</h4><p>Gold comes only from salt, but the map also marks <b>rock-oil wells</b> and <b>grain farms</b>. Occupy a site with ground troops to claim its daily yield. Every unit eats grain; fire-lance rockets and siege trains also need lamp oil. Watch the <b>oil / grain</b> counter &mdash; empty stores first weaken a host, then scatter it.</p></div></div>"
   }
 };
 var MAP='europe';
@@ -2396,6 +2613,7 @@ function useMap(name){
   var P=MAPS[name];
   SEA_ZONES=(P.sea&&P.sea())||[];
   AIR_ZONES=(P.air&&P.air())||[];
+  RES_SITES=(P.res&&P.res())||[];
   GEO=P.geo(); NATIONS=P.nations(); REGIONS=P.regions(); SPLITS=P.splits();
   NATION_STATS=P.stats(); ARSENAL=P.arsenal(); UNITS=P.units(); FALLBACK=P.fallback();
   SEC_CAP=P.secCap(); NAT_CAP=P.natCap();
@@ -2406,7 +2624,7 @@ function useMap(name){
   buildNBY(); buildNatName(); buildSectors();
   REGION_IDS=REGIONS.map(function(r){ return r.id; });
   ALL=[].concat(NATIONS,REGIONS);
-  WIN_NEED=SECTORS.filter(function(s){ return !s.sea && !s.air && REGION_IDS.indexOf(s.nat)<0; }).length;
+  WIN_NEED=SECTORS.filter(function(s){ return !s.sea && !s.air && !s.res && REGION_IDS.indexOf(s.nat)<0; }).length;
   /* Europe's coastal nations keep their own historical ship names. */
   if(SEA_ZONES.length && ARSENAL){
     Object.keys(ARSENAL).forEach(function(n){
@@ -2537,6 +2755,9 @@ function tick(){
     }
   }
 
+  /* --- oil / food: stockpiles pay upkeep, shortages weaken then disband --- */
+  resourceTick();
+
   /* --- battles --- */
   for(var id2 in S.prov){
     var pr=S.prov[id2];
@@ -2606,9 +2827,10 @@ function tick(){
     capEv.push({taker:nu, prov:win.id, old:old, d:S.day});
     fxAdd('capture',win.id);
     if(nu===S.player) sfx('capture');
-    mailWarEvent(nu, old);
+    if(!isRes(win.id)) mailWarEvent(nu, old);
     invalidateWars();
-    if(nu===S.player || old===S.player) declareWar(S.player, (nu===S.player?old:nu));
+    if(!isRes(win.id) && (nu===S.player || old===S.player))
+      declareWar(S.player, (nu===S.player?old:nu));
     if(nu===S.player || old===S.player) log(captureMsg(nu,wp.id,old,'captured'));
     else if(Math.random()<0.18) log(captureMsg(nu,wp.id,old,'took'));
   }
@@ -2880,7 +3102,7 @@ function aiTurn(){
     var myUnits=unitsOf(n.id).length;
     if(myUnits>=3 && (S.gold[n.id]||0)>0){
     for(var id in S.prov){
-      if(S.prov[id].owner!==n.id || isAirZone(id) || isSea(id)) continue;
+      if(S.prov[id].owner!==n.id || isAirZone(id) || isSea(id) || isRes(id)) continue;
       var stack=unitsAt(id);
       if(stack.length<2) continue;
       var here=totalPower(id);
@@ -2906,6 +3128,19 @@ function aiTurn(){
       break;   /* one offensive action per turn */
     }
     }
+    /* --- resource sites: send a small party to occupy unowned fields/farms --- */
+    unitsOf(n.id).forEach(function(u){
+      if(u.moving || u.air || u.hp<=0 || isShip(u) || isAirUnit(u)) return;
+      if(unitsAt(u.loc).length<=1 || Math.random()>=0.22) return;
+      var take=null;
+      (NBY[u.loc].snb||[]).forEach(function(m){
+        if(take || !S.prov[m] || !isRes(m)) return;
+        if(S.prov[m].owner===n.id || unitsAt(m).length>=capacity(m)) return;
+        take=m;
+      });
+      if(take) u.moving={to:take,t:1,from:u.loc,assault:false};
+    });
+
     /* --- fleet manoeuvres: ships contest the sea and storm enemy coasts --- */
     unitsOf(n.id).filter(isShip).forEach(function(u){
       if(u.moving || u.air || u.hp<=0) return;
@@ -2914,6 +3149,7 @@ function aiTurn(){
         if(best || !S.prov[m]) return;
         var oo=S.prov[m].owner;
         if(oo===n.id) return;
+        if(isRes(m)) return;                       /* fields are taken by land parties */
         if(isSea(m)){ if(oo!=='sea' && !atWar(n.id,oo)) return; }
         else if(!atWar(n.id,oo)) return;
         if(unitsAt(m).length>=capacity(m)) return;
@@ -2930,7 +3166,7 @@ function aiTurn(){
         if(Math.random()<0.4){
           var strike=null;
           (NBY[u.loc].snb||[]).forEach(function(m){
-            if(strike||!S.prov[m]||isAirZone(m)||isSea(m)) return;
+            if(strike||!S.prov[m]||isAirZone(m)||isSea(m)||isRes(m)) return;
             if(S.prov[m].owner!==n.id && atWar(n.id,S.prov[m].owner)) strike=m;
           });
           if(strike){ u.air=strike; return; }
@@ -2969,7 +3205,7 @@ function isShipType(t){ var d=UNITS[t]; return !!(d&&d.navy); }
 function pickRecruit(c){
   var best=null,bestScore=-1e9;
   for(var id in S.prov){
-    if(S.prov[id].owner!==c || isSea(id) || isAirZone(id)) continue;
+    if(S.prov[id].owner!==c || isSea(id) || isAirZone(id) || isRes(id)) continue;
     if(unitsAt(id).length>=7) continue;
     var d=0, b=0;
     (NBY[id].snb||[]).forEach(function(m){
@@ -3005,8 +3241,8 @@ function known(id){
 }
 function moveTo(dst){
   if(!S.prov[dst]) return flash('No such front.');
-  var own=S.prov[dst].owner, sea=isSea(dst), zone=isAirZone(dst);
-  if(!zone && own!==S.player && own!=='sea' && !atWar(S.player,own))
+  var own=S.prov[dst].owner, sea=isSea(dst), zone=isAirZone(dst), site=isRes(dst);
+  if(!zone && !site && own!==S.player && own!=='sea' && !atWar(S.player,own))
     return flash('You are not at war with '+NBY[own].name+'.');
   var ids=[],n=0;
   unitsOf(S.player).forEach(function(u){
@@ -3014,8 +3250,9 @@ function moveTo(dst){
     if((NBY[u.loc].snb||[]).indexOf(dst)<0) return;                 /* must border the target */
     if(sea && !isShip(u)) return;                                  /* armies cannot walk on water */
     if(zone && !isAirUnit(u)) return;                              /* only aircraft may enter air zones */
+    if(site && (isShip(u)||isAirUnit(u))) return;                  /* only ground troops take fields */
     ids.push(u.id);
-    if(zone){ u.air=null; u.moving={to:dst,t:1,from:u.loc,assault:false}; }
+    if(zone||site){ u.air=null; u.moving={to:dst,t:1,from:u.loc,assault:false}; }
     else if(isAirUnit(u) && own!==S.player) u.air=dst;            /* aircraft strike and return home */
     else u.moving={to:dst,t:1,from:u.loc,assault:(own!==S.player)};
     n++;
@@ -3038,6 +3275,7 @@ function recruit(type){
   var u=U(S.player,type);
   if(!S.prov[id] || S.prov[id].owner!==S.player){ flash('Select one of your own territories to recruit.'); return; }
   if(isAirZone(id)){ flash('Recruit on your own land, then fly the aircraft into an air zone.'); return; }
+  if(isRes(id)){ flash('Resource sites are occupied, not recruited in. Take one with ground troops.'); return; }
   if(u.navy && isSea(id)){ flash('Build ships in a coastal port, then sail them out.'); return; }
   if(u.navy && !hasCoast(natOf(id))){ flash('Only coastal nations can build ships.'); return; }
   if(!u.navy && isSea(id)){ flash('Only ships can be built at sea.'); return; }
@@ -3329,13 +3567,20 @@ function computeTargets(){
   }
   var picked=unitsOf(S.player).filter(function(u){ return S.pick.has(u.id); });
   var hasShip=picked.some(isShip), hasAir=picked.some(isAirUnit),
-      hasLand=picked.some(function(u){ return !isShip(u); });
-  if(!picked.length && S.sel && S.prov[S.sel] && S.prov[S.sel].owner===S.player) hasLand=true;
+      hasLand=picked.some(function(u){ return !isShip(u); }),
+      hasGround=picked.some(function(u){ return !isShip(u)&&!isAirUnit(u); });
+  if(!picked.length && S.sel && S.prov[S.sel] && S.prov[S.sel].owner===S.player){
+    hasLand=true; hasGround=!isSea(S.sel)&&!isAirZone(S.sel)&&!isRes(S.sel);
+  }
   var out={};
   from.forEach(function(f){
     (NBY[f].snb||[]).forEach(function(m){
       if(!S.prov[m]) return;
       var own=S.prov[m].owner===S.player;
+      if(isRes(m)){
+        if(hasGround && !own) out[m]=1;   /* ground troops occupy oil fields and farms */
+        return;
+      }
       if(isAirZone(m)){
         if(hasAir) out[m]=1;          /* aircraft fly into any sky zone to contest it */
         return;
@@ -3414,6 +3659,12 @@ function render(){
       ab.rect.setAttribute('fill',color);
       ab.g.setAttribute('class','airBadge'+(id===S.sel?' sel':'')+(S.targets.indexOf(id)>=0?' tgt':''));
     }
+    var rb=resEl[id];
+    if(rb){
+      rb.rect.setAttribute('fill',color);
+      rb.g.setAttribute('class','resBadge'+(isFood(id)?' food':'')+(id===S.sel?' sel':'')+
+        (S.targets.indexOf(id)>=0?' tgt':''));
+    }
   }
   /* --- mine fields only: units live on the country sheet, not on the map --- */
   var kids=Array.prototype.slice.call(unitG.childNodes);
@@ -3449,6 +3700,15 @@ function renderPanel(){
   document.getElementById('sMoney').textContent=gold;
   document.getElementById('sInc').innerHTML=(inc>=0?'+':'')+inc;
   document.getElementById('sInc').style.color=inc>=0?'#7fe08a':'#ff8a8a';
+  var oil=Math.max(0,Math.floor(S.oil[me]||0)), food=Math.max(0,Math.floor(S.food[me]||0));
+  var rb=document.getElementById('sRes');
+  if(rb){
+    rb.textContent=oil+' / '+food;
+    rb.style.color=((S.oilShort[me]||0)>0||(S.foodShort[me]||0)>0)?'#ff8a8a':'#e2b13c';
+  }
+  var rbox=document.getElementById('resBox');
+  if(rbox) rbox.title=(MAP==='china'?'Petroleum +':'Oil +')+oilIncome(me)+'/day  \u00b7  '+
+    (MAP==='china'?'Grain +':'Food +')+foodIncome(me)+'/day';
   document.getElementById('sLand').textContent=landOf(me);
   document.getElementById('sUnits').textContent=unitsOf(me).length;
   document.getElementById('sPow').textContent=Math.round(unitsOf(me).reduce(function(s,u){
@@ -3485,6 +3745,10 @@ function renderPanel(){
   if(fortEl) fortEl.innerHTML=(see && isLandFront(id))
     ? ((p.fort||0)+' / 3'+(p.fort? ' <span style="color:#c9a2ff">+'+(15*p.fort)+'% def</span>':''))
     : '\u2014';
+  var resF=document.getElementById('pRes');
+  if(resF) resF.innerHTML=isRes(id)
+    ? '<span style="color:'+(isOil(id)?'#e2b13c':'#7fe08a')+'">'+resTypeName(id)+'</span> +'+resYield(id)+'/day'
+    : '<span style="opacity:.6">&mdash;</span>';
   var sup=airSup(me), airF=document.getElementById('pAir');
   if(airF) airF.innerHTML='<span style="color:#c9a2ff">'+sup+'</span> zone'+(sup===1?'':'s')+
     ' <span style="color:#7fe08a">+'+Math.round((airMod(me)-1)*100)+'%</span>';
@@ -3612,6 +3876,8 @@ function wireMap(){
       ' &middot; def '+(vis?Math.round(totalPower(id)):'?')+
       (p.mines?'<br>mines: '+p.mines:'')+
       (isLandFront(id)&&p.fort?'<br>land front: '+p.fort+'/3 (+'+(15*p.fort)+'% def)':'')+
+      (isRes(id)?'<br><span style="color:'+(isOil(id)?'#e2b13c':'#7fe08a')+'">'+
+        resTypeName(id).toUpperCase()+' &middot; +'+resYield(id)+'/day &middot; occupy with ground troops</span>':'')+
       (isAirZone(id)?'<br><span style="color:#c9a2ff">AIR ZONE &middot; each zone held adds +5% power</span>':'');
     tip.innerHTML=s;
     tip.style.display='block';
@@ -3784,6 +4050,8 @@ function applyMapUI(){
   if(t) t.innerHTML=P.title+'<small id="startSub">'+P.blurb+'</small>';
   var r=document.getElementById('rulesText');
   if(r) r.innerHTML=P.rules;
+  var rl=document.getElementById('sResLbl');
+  if(rl) rl.textContent=MAP==='china'?'oil / grain':'oil / food';
   var ta=document.getElementById('tabAir');
   if(ta) ta.innerHTML=P.tabAir;
   var tn=document.getElementById('tabNavy');
@@ -4295,7 +4563,8 @@ function saveGame(silent){
     return o;
   });
   var data={v:1, map:MAP, day:S.day, uid:S.uid, player:S.player, diff:DIFF, wars:wars, prov:prov, units:units,
-            gold:S.gold, aiT:S.aiT, aggro:S.aggro, mood:S.mood, log:S.log.slice(-40), news:S.news.slice(-30),
+            gold:S.gold, oil:S.oil||{}, food:S.food||{}, oilShort:S.oilShort||{}, foodShort:S.foodShort||{},
+            aiT:S.aiT, aggro:S.aggro, mood:S.mood, log:S.log.slice(-40), news:S.news.slice(-30),
             elim:Array.prototype.slice.call(S.elimSet||[]), cap:Array.prototype.slice.call(S.capSet||[]),
             broke:Array.prototype.slice.call(S.brokeSet||[]),
             mail:S.mail.slice(-60), pact:Array.prototype.slice.call(S.pact||[]),
@@ -4332,7 +4601,8 @@ function loadGame(){
       over:o.over||null, wars:new Set(o.wars||[]), prov:{}, units:[], targets:[], aggro:o.aggro||{},
       aiT:o.aiT||{}, orderMode:true, gold:o.gold||{}, news:o.news||[], elimSet:new Set(o.elim||[]),
       capSet:new Set(o.cap||[]), brokeSet:new Set(o.broke||[]), mail:o.mail||[], pact:new Set(o.pact||[]),
-      mood:o.mood||{}, mailSeq:o.mailSeq||0, nextDispatchDay:o.nextDispatchDay||0, nextMailDay:o.nextMailDay||2 };
+      mood:o.mood||{}, mailSeq:o.mailSeq||0, nextDispatchDay:o.nextDispatchDay||0, nextMailDay:o.nextMailDay||2,
+      oil:o.oil||{}, food:o.food||{}, oilShort:o.oilShort||{}, foodShort:o.foodShort||{} };
   /* an older save may predate the sea map - seed it before restoring ownership */
   if(SEA_ZONES.length) SEA_ZONES.forEach(function(z){
     if(!S.prov[z.id]) S.prov[z.id]={id:z.id,nat:z.id,owner:'sea',units:[],mines:0,mineBy:null,mineT:0,pend:0};
@@ -4340,6 +4610,10 @@ function loadGame(){
   /* an older save may predate air zones - seed them as neutral sky */
   if(AIR_ZONES.length) AIR_ZONES.forEach(function(z){
     if(!S.prov[z.id]) S.prov[z.id]={id:z.id,nat:z.id,owner:'air',units:[],mines:0,mineBy:null,mineT:0,pend:0};
+  });
+  /* an older save may predate the resource layer - seed sites with their home owner */
+  if(RES_SITES.length) RES_SITES.forEach(function(z){
+    if(!S.prov[z.id]) S.prov[z.id]={id:z.id,nat:z.id,owner:z.owner,units:[],mines:0,mineBy:null,mineT:0,pend:0};
   });
   for(var k in o.prov){ var p=o.prov[k]; S.prov[k]={id:k, owner:p.o, units:[], mines:p.m, mineBy:p.mb,
     mineT:p.mt, pend:p.pend||0, fort:p.f||0, fortBy:p.fb||null, fortT:p.ft||0}; }
@@ -4524,6 +4798,22 @@ function unitLead(prov,taker){
 /* each day, every capture on the map is bundled per conqueror into one story */
 function newsCaptures(evs){
   if(!newsCanvas()) return;
+  /* oil fields and grain farms are a supply story, not a land grab */
+  var sites=[];
+  evs=evs.filter(function(e){ if(isRes(e.prov)){ sites.push(e); return false; } return true; });
+  if(sites.length){
+    var rs={};
+    sites.forEach(function(e){ (rs[e.taker]=rs[e.taker]||[]).push(e); });
+    Object.keys(rs).forEach(function(tk){
+      var sl=rs[tk].map(function(e){ return Nname(e.prov); });
+      var oil=rs[tk].some(function(e){ return isOil(e.prov); });
+      news(Nname(tk)+' seizes the '+(oil?'oil fields':'granaries'),
+        pickT(['The wells and fields of <b>'+sl.join(', ')+'</b> now supply <b>'+Nname(tk)+'</b>.',
+               'Supply officers for <b>'+Nname(tk)+'</b> have taken the stores at '+sl.join(' and ')+'.'],
+              ['<b>'+Nname(tk)+'</b> has claimed the rock-oil and grain stores of '+sl.join(', ')+'.',
+               'The granaries and fire-wells of '+sl.join(' and ')+' now fly the banner of <b>'+Nname(tk)+'</b>.']),false);
+    });
+  }
   /* sky-zone captures read differently from land grabs */
   var skies=[];
   evs=evs.filter(function(e){ if(isAirZone(e.prov)){ skies.push(e); return false; } return true; });
