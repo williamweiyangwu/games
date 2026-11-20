@@ -177,6 +177,10 @@
   .land.tgt{stroke:#7fe08a;stroke-width:2.2;stroke-dasharray:5 3}
   .land.war{stroke:#7a2a2a;stroke-width:1.6}
   .sea{stroke:#243449;stroke-width:.7;stroke-dasharray:2 2}
+  .seaZone{stroke:#3b7b99;stroke-width:1.2;stroke-dasharray:5 4;opacity:.94}
+  .seaZone.sel{stroke:#a8ecff;stroke-width:2.4}
+  .seaZone.tgt{stroke:#7fe08a;stroke-width:2.2;stroke-dasharray:5 3}
+  .seaLbl{font:italic 700 10.5px "Segoe UI",sans-serif;fill:#9bd4ee;paint-order:stroke;stroke:#06121c;stroke-width:3.2px;text-anchor:middle;pointer-events:none;user-select:none;letter-spacing:.7px}
   .lbl{font:700 11.5px "Segoe UI",sans-serif;fill:#fff;paint-order:stroke;stroke:#000a;stroke-width:3px;
        text-anchor:middle;pointer-events:none;user-select:none}
   .ct{pointer-events:none;user-select:none}
@@ -450,7 +454,7 @@
       <div id="bGar"></div>
     </div>
 
-    <button class="bigbtn shop" id="mShop">&#65291; Shop</button>
+    <button class="bigbtn shop" id="mShop" title="Shop (E)">&#65291; Shop <small>(E)</small></button>
     <button class="bigbtn battle" id="mBattle">&#9876; Battle</button>
 
     <div class="card" id="newsCard">
@@ -486,6 +490,7 @@
       riflemen and two mine fields at home &mdash; a major power far more than a micro-state.<br>
       There is <b>no daily income</b> &mdash; <b>mine fields are the only gold</b> in the game, mined at each
       nation's own rate. Buy mine cars to lay more, and take countries to grow your yield.<br>
+      Once you have chosen a nation, the Shop's <b>Tanks</b> tab lists that nation's own historical armour.<br>
       Click a country to open its sheet: a small map of the country with the units standing in it.
       Recruit in your own territory, then order units into a neighbouring country. Every front is a real front &mdash;
       the AI nations fight each other too, so a war can be won without fighting the whole continent.<br>
@@ -511,6 +516,10 @@
       <button class="b-online" id="bOnline">&#127760; Play online multiplayer</button>
       <button class="btn" id="bAchStart">&#127942; Achievements</button>
       <button class="btn" id="bContinue" style="display:none">&#128190; Continue saved war</button>
+      <button class="btn" id="bExportStart" title="Save a backup file outside the browser">&#128190; Backup progress</button>
+      <button class="btn" id="bImportStart" title="Restore progress from a backup file">&#128229; Restore backup</button>
+      <input type="file" id="bImportFileStart" accept="application/json,.json,text/plain" style="display:none">
+      <div class="sub" style="margin-top:6px;opacity:.8;max-width:620px">The war saves itself every few seconds. Clearing your browser's site data still erases it &mdash; press <b>Backup progress</b> first, then <b>Restore backup</b> afterwards.</div>
     </div>
   </div>
 </div>
@@ -527,7 +536,9 @@
         <div class="sub" id="shopHint" style="margin-bottom:8px">&nbsp;</div>
         <div class="tabs">
           <button class="tab" id="tabArmy">&#9876; Army</button>
+          <button class="tab" id="tabTanks">&#128737; Tanks</button>
           <button class="tab" id="tabAir">&#9992; Air Force</button>
+          <button class="tab" id="tabNavy" style="display:none">&#9875; Navy</button>
           <span class="tabCount" id="shopCount"></span>
         </div>
         <div id="shop"></div>
@@ -636,8 +647,8 @@
         <div class="tutN">3</div>
         <div>
           <h4>Recruit &amp; move</h4>
-          <p>Click a territory you own to open it, pick a unit in the Shop. Then click
-          <b>Battle</b>, tick your units, and click a flashing border to send them into a
+          <p>Click a territory you own to open it, pick a unit in the Shop (<b>E</b>). Then open
+          <b>Battle</b> (<b>B</b>), tick your units, and click a flashing border to send them into a
           neighbouring country. <b>Select every unit on my fronts</b> grabs your whole line at once.
           They hold the ground until it falls, then the survivors retire home.</p>
         </div>
@@ -669,6 +680,16 @@
           to other nations.</p>
         </div>
       </div>
+      <div class="tutS">
+        <div class="tutN">7</div>
+        <div>
+          <h4>War at sea</h4>
+          <p>Coastal nations can build <b>ships</b> in the <b>Navy</b> tab. The twelve blue <b>sea zones</b>
+          are real ground: select a fleet in port, then click an adjacent sea zone to sail there. Fleets
+          fight enemy ships in the same zone, and a lone fleet takes control of the zone. From a sea zone
+          you can <b>storm an enemy coast</b> &mdash; an amphibious landing. Only ships may enter the sea.</p>
+        </div>
+      </div>
     </div>
     <label class="tutChk"><input type="checkbox" id="tutNoShow"> Don&rsquo;t show this on a new war again</label>
   </div>
@@ -682,7 +703,7 @@
       <div class="sub" id="achHead" style="margin-bottom:6px">&nbsp;</div>
       <div id="achList"></div>
       <div style="margin-top:12px;padding-top:10px;border-top:1px solid #2a3548">
-        <div class="sub" style="opacity:.85">Your progress lives in this browser. If it keeps vanishing after you restart your computer, your browser is clearing site data on exit &mdash; export a backup here and you can restore it any time.</div>
+        <div class="sub" style="opacity:.85">Your campaign and achievements save themselves in this browser. Clearing your browser's site data still erases them &mdash; export a backup here first, then import it to restore everything.</div>
         <div style="margin-top:8px">
           <button class="btn" id="bExport">&#128190; Export backup</button>
           <button class="btn" id="bImport">&#128229; Import backup</button>
@@ -949,7 +970,111 @@ var EU_REGIONS = [
    nb:['germany','czechoslovakia','hungary','yugoslavia','italy','switzerland'],
    owner:'germany',playable:false}
 ];
-function buildNBY(){ NBY={}; [].concat(NATIONS,REGIONS).forEach(function(n){ NBY[n.id]=n; }); }
+/* =======================================================================
+   2a-EU. EUROPE SEA ZONES   (Europe map only - China has no navy)
+   Water is real geography here: twelve capturable sea zones painted over
+   the ocean, linked to coastal nations and to one another. Fleets sail
+   between them, contest them, and land troops on enemy shores.
+   ======================================================================= */
+function seaBox(a,b,c,d){ return [[[a,c],[b,c],[b,d],[a,d]]]; }
+var EU_SEA = [
+  {id:'nsea', name:'North Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[3.4,55.1],
+   polys:seaBox(1,8,51.6,58.4),
+   nb:['uk','netherlands','belgium','germany','denmark','norway','norwsea','baltic','chan','irishsea']},
+  {id:'baltic', name:'Baltic Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[19.3,60.2],
+   polys:seaBox(12.5,25.5,54,65.5),
+   nb:['germany','denmark','sweden','finland','poland','estonia','latvia','lithuania','ussr','nsea']},
+  {id:'norwsea', name:'Norwegian Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[4.2,63.4],
+   polys:seaBox(-6,16,58.5,68),
+   nb:['uk','norway','nsea','barents','atlantic']},
+  {id:'barents', name:'Barents Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[31,69.7],
+   polys:seaBox(16,46,68.1,71.1),
+   nb:['norway','ussr','norwsea']},
+  {id:'atlantic', name:'North Atlantic', flag:'&#127754;', color:'#16394f', sea:true, lab:[-17,50.2],
+   polys:seaBox(-27,-6.2,40,59.9),
+   nb:['ireland','uk','france','spain','portugal','norwsea','chan','iberia','irishsea']},
+  {id:'chan', name:'English Channel', flag:'&#127754;', color:'#16394f', sea:true, lab:[-5.0,48.4],
+   polys:seaBox(-12,2,44,51.5),
+   nb:['uk','france','belgium','netherlands','spain','nsea','atlantic','iberia','irishsea']},
+  {id:'irishsea', name:'Irish Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[-4.6,53.2],
+   polys:seaBox(-6.1,-3,51.2,55),
+   nb:['uk','ireland','atlantic','chan','nsea']},
+  {id:'iberia', name:'Iberian Waters', flag:'&#127754;', color:'#16394f', sea:true, lab:[-9.3,40.0],
+   polys:seaBox(-12,-5.2,36,43.9),
+   nb:['spain','portugal','france','atlantic','chan','wmed']},
+  {id:'wmed', name:'Western Mediterranean', flag:'&#127754;', color:'#16394f', sea:true, lab:[2.6,39.6],
+   polys:seaBox(-5.1,12,36,43.9),
+   nb:['france','spain','italy','iberia','cmed']},
+  {id:'cmed', name:'Central Mediterranean', flag:'&#127754;', color:'#16394f', sea:true, lab:[17.1,38.4],
+   polys:seaBox(12.1,23,35.6,41.9),
+   nb:['italy','yugoslavia','albania','greece','wmed','aegean']},
+  {id:'aegean', name:'Aegean Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[26.3,38.2],
+   polys:seaBox(23.1,30,35.6,40.9),
+   nb:['greece','turkey','bulgaria','cmed','blacksea']},
+  {id:'blacksea', name:'Black Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[34.4,44.1],
+   polys:seaBox(28,41,41.1,46.8),
+   nb:['turkey','bulgaria','romania','ussr','aegean']}
+];
+/* where each coastal nation's first squadrons put to sea */
+var EU_HOME_SEA={uk:'nsea', germany:'nsea', netherlands:'nsea', denmark:'baltic',
+  poland:'baltic', sweden:'baltic', finland:'baltic', estonia:'baltic', latvia:'baltic',
+  lithuania:'baltic', norway:'norwsea', ireland:'irishsea', france:'chan', belgium:'chan',
+  spain:'iberia', portugal:'iberia', italy:'cmed', yugoslavia:'cmed', albania:'cmed',
+  greece:'aegean', turkey:'blacksea', bulgaria:'blacksea', romania:'blacksea', ussr:'blacksea'};
+/* only these nations are landlocked - everyone else can build ships */
+var EU_LANDLOCKED={czechoslovakia:1,hungary:1,switzerland:1,austria:1,iceland:1};
+function hasCoast(n){ return !!(SEA_ZONES&&SEA_ZONES.length) && !EU_LANDLOCKED[n]; }
+function isShip(u){ var t=u&&U(u.owner,u.type); return !!(t&&t.navy); }
+function isSea(id){ return !!(NBY[id]&&NBY[id].sea); }
+function seaTint(hex){
+  var h=String(hex||'#16394f').replace('#','');
+  if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  if(h.length!==6 || /[^0-9a-fA-F]/.test(h)) return '#16394f';
+  var a=[17,47,66], b=[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];
+  return '#'+b.map(function(v,i){ var q=Math.round(v*0.6+a[i]*0.4).toString(16); return q.length<2?'0'+q:q; }).join('');
+}
+var EU_SHIP_NAMES={
+  germany:['destroyer:Zerst&ouml;rer|Fast, hard-hitting escorts of the Kriegsmarine.',
+           'submarine:U-boat|The wolf packs that nearly starved Britain.',
+           'cruiser:Prinz Eugen|A fast cruiser that ran with the Bismarck.',
+           'battleship:Bismarck|The pride of the German fleet, gone in three days.',
+           'carrier:Graf Zeppelin|An aircraft carrier never quite finished.'],
+  uk:['destroyer:Destroyer|The thin grey line that kept the sea lanes open.',
+      'submarine:Submarine|Silent patrols in the North Atlantic.',
+      'cruiser:HMS Belfast|A light cruiser, tough enough to survive D-Day.',
+      'battleship:HMS King George V|The backbone of the Royal Navy.',
+      'carrier:HMS Ark Royal|Aircraft at sea, long before anyone else got it right.'],
+  france:['destroyer:Le Hardi|Fast French destroyers built for the Atlantic.',
+          'submarine:Sous-marin|A quiet French submarine on patrol.',
+          'cruiser:&Eacute;mile Bertin|A fast cruiser built to lay mines.',
+          'battleship:Richelieu|The most powerful battleship France ever completed.',
+          'carrier:B&eacute;arn|A converted battleship, the French aircraft carrier.'],
+  italy:['destroyer:Cacciatorpediniere|Italian destroyers of the Mediterranean fleet.',
+         'submarine:Sommergibile|Submarines hunting in the narrow seas.',
+         'cruiser:Zara|A heavy cruiser of the Regia Marina.',
+         'battleship:Vittorio Veneto|Italy&rsquo;s fast, heavily armed capital ship.',
+         'carrier:Aquila|A carrier converted from a liner, never truly ready.'],
+  ussr:['destroyer:Storozhevoy|Soviet destroyers of the northern and black sea fleets.',
+        'submarine:Shchuka|Soviet submarines, patient and numerous.',
+        'cruiser:Kirov|A Soviet light cruiser built before the war.',
+        'battleship:Gangut|An old battleship, still the largest gun in the Baltic.'],
+  usa:['destroyer:Destroyer|The destroyers that screened every convoy.',
+       'submarine:Submarine|The silent service that strangled Japanese shipping.',
+       'cruiser:Cruiser|A fast, well-armed cruiser of the US Navy.',
+       'battleship:Battleship|The big gun ships that ended the naval war.',
+       'carrier:Aircraft Carrier|The carrier became the capital ship of the war.']
+};
+var EU_SHIP_DEFAULT=['destroyer:Destroyer|A fast escort for the coastal fleet.',
+  'submarine:Submarine|A small boat with a dangerous punch.',
+  'cruiser:Cruiser|A tough, well-armed ship for the open sea.',
+  'battleship:Battleship|The biggest gun afloat, and worth every coin.',
+  'carrier:Aircraft Carrier|Strikes far beyond the horizon.'];
+var SEA_ZONES=[];
+function buildNBY(){
+  NBY={};
+  [].concat(NATIONS,REGIONS,SEA_ZONES||[]).forEach(function(n){ NBY[n.id]=n; });
+  if(SEA_ZONES&&SEA_ZONES.length) NBY.sea={id:'sea',name:'Open Sea',flag:'&#127754;',color:'#122b3d',bloc:'Sea',nb:[]};
+}
 
 /* =======================================================================
    2b. SECTORS - the big countries are cut into pieces, so a front can
@@ -1031,8 +1156,8 @@ function linkSector(a,b){
 function buildSectors(){
   SECTORS=[]; NAT_SECTORS={};
   var had={};
-  [].concat(NATIONS,REGIONS).forEach(function(n){
-    var polys=GEO[n.id]||[];
+  [].concat(NATIONS,REGIONS,SEA_ZONES||[]).forEach(function(n){
+    var polys=n.polys||GEO[n.id]||[];
     var sp=SPLITS[n.id];
     var pieces=(sp && polys.length) ? splitEqual(polys,sp.axis,sp.n) : [polys];
     if(pieces.length<2) pieces=[polys];
@@ -1042,7 +1167,8 @@ function buildSectors(){
       var sid = pieces.length>1 ? (n.id+'#'+i) : n.id;
       var nm  = pieces.length>1 ? (n.name+' ('+((sp&&sp.lab[i])||('sector '+(i+1)))+')') : n.name;
       var sec={ id:sid, nat:n.id, name:nm, flag:n.flag, color:n.color, bloc:n.bloc,
-                nb:(n.nb||[]).slice(), snb:[], polys:ps, playable:false, owner:n.owner||undefined };
+                nb:(n.nb||[]).slice(), snb:[], polys:ps, playable:false, owner:n.sea?'sea':(n.owner||undefined),
+                 sea:!!n.sea, lab:n.lab||null };
       SECTORS.push(sec); NAT_SECTORS[n.id].push(sid); NBY[sid]=sec;
     });
     if(!NAT_SECTORS[n.id].length){
@@ -1081,7 +1207,7 @@ function buildSectors(){
     }); });
   });
   /* a declared frontier that the outlines did not prove gets every-to-every */
-  [].concat(NATIONS,REGIONS).forEach(function(n){
+  [].concat(NATIONS,REGIONS,SEA_ZONES||[]).forEach(function(n){
     (n.nb||[]).forEach(function(m){
       if(had[n.id+'>'+m]) return;
       (NAT_SECTORS[n.id]||[]).forEach(function(a){
@@ -1117,7 +1243,13 @@ var EU_UNITS = {
   dive     :{key:'dive'     ,name:'Dive bomber',    code:'DIV',cost:170,hp:65,atk:24,def:1.2,up:2,col:'#d58a5a',air:true,blurb:'Flies: dives onto one target with terrible, lethal precision.'},
   bomber   :{key:'bomber'   ,name:'Bomber',         code:'BMB',cost:200,hp:70,atk:30,def:1.1,up:3,col:'#d05a5a',air:true,blurb:'Flies: strike any enemy border province, then returns home.'},
   rocket   :{key:'rocket'   ,name:'Rocket bomber',  code:'RKT',cost:230,hp:60,atk:38,def:1.0,up:4,col:'#c55a5a',air:true,blurb:'Flies: salvos of rockets. Terrifying, wildly inaccurate, ruinously costly.'},
-  hnky     :{key:'hnky'     ,name:'Advanced aircraft',code:'ADV',cost:300,hp:80,atk:46,def:1.3,up:5,col:'#a06ad5',air:true,blurb:'Flies: an engineering wonder only a handful of nations can field.'}
+  hnky     :{key:'hnky'     ,name:'Advanced aircraft',code:'ADV',cost:300,hp:80,atk:46,def:1.3,up:5,col:'#a06ad5',air:true,blurb:'Flies: an engineering wonder only a handful of nations can field.'},
+  /* ================= NAVY (Europe only) ================= */
+  destroyer:{key:'destroyer',name:'Destroyer',code:'DD',cost:70,hp:58,atk:15,def:1.0,up:1,col:'#6fb3c4',navy:true,blurb:'Fast escort. Screens the fleet and hunts submarines.'},
+  submarine:{key:'submarine',name:'Submarine',code:'SS',cost:95,hp:52,atk:24,def:0.9,up:1,col:'#4f8299',navy:true,blurb:'Strikes from below. Deadly to big ships, fragile once found.'},
+  cruiser  :{key:'cruiser'  ,name:'Cruiser',code:'CA',cost:150,hp:95,atk:24,def:1.2,up:2,col:'#94b2c2',navy:true,blurb:'Fast, well armed and tough. The workhorse of every fleet.'},
+  battleship:{key:'battleship',name:'Battleship',code:'BB',cost:270,hp:170,atk:37,def:1.4,up:4,col:'#b6c0c8',navy:true,blurb:'The biggest guns afloat. Slow, dear, decisive in a fleet action.'},
+  carrier  :{key:'carrier'  ,name:'Aircraft Carrier',code:'CV',cost:330,hp:115,atk:44,def:1.0,up:5,col:'#a89ad0',navy:true,carrier:true,blurb:'Strikes far beyond the horizon with its own aircraft.'}
 };
 
 /* ---------- per-nation combat doctrine ----------
@@ -1135,26 +1267,36 @@ var EU_STATS = {
     tank:{atk:31,hp:150,cost:115}, artillery:{atk:18,hp:100,def:2.1},
     heavy:{cost:900,hp:750,atk:150,def:3.2,up:18},
     fighter:{atk:19,hp:74}, dive:{atk:29,hp:68}, bomber:{atk:35,hp:74},
-    rocket:{atk:44,hp:64}, hnky:{atk:52,hp:84,def:1.4} }},
+    rocket:{atk:44,hp:64}, hnky:{atk:52,hp:84,def:1.4},
+    destroyer:{atk:16,hp:60}, submarine:{atk:26}, cruiser:{atk:26,hp:100},
+    battleship:{atk:40,hp:180}, carrier:{atk:48,hp:120} }},
   ussr:{ gold:70, mine:5, start:5, cm:0.8, u:{
     infantry:{atk:7,hp:62,cost:8}, motor:{atk:10,hp:90,cost:55}, assault:{atk:13,hp:86,cost:36},
     antitank:{atk:16,hp:56}, tank:{atk:25,hp:145,cost:90}, artillery:{atk:16,hp:100},
     heavy:{atk:38,hp:230,cost:200}, fighter:{atk:15,hp:72}, dive:{atk:23,hp:66},
-    bomber:{atk:30,hp:74}, rocket:{atk:40,hp:62} }},
+    bomber:{atk:30,hp:74}, rocket:{atk:40,hp:62},
+    destroyer:{atk:14,hp:54}, submarine:{atk:25,hp:54}, cruiser:{atk:23,hp:92},
+    battleship:{atk:35,hp:165} }},
   uk:{ gold:85, mine:5, start:3, cm:0.9, u:{
     infantry:{atk:9,hp:62}, motor:{atk:12,hp:86}, assault:{atk:15,hp:82},
     antitank:{atk:19,hp:58}, tank:{atk:27,hp:140}, artillery:{atk:17,hp:98,def:2.1},
     heavy:{atk:42,hp:210}, fighter:{atk:21,hp:76}, dive:{atk:27,hp:66},
-    bomber:{atk:36,hp:78}, rocket:{atk:42,hp:64}, hnky:{atk:50,hp:84} }},
+    bomber:{atk:36,hp:78}, rocket:{atk:42,hp:64}, hnky:{atk:50,hp:84},
+    destroyer:{atk:17,hp:62}, submarine:{atk:27}, cruiser:{atk:27,hp:105},
+    battleship:{atk:42,hp:185}, carrier:{atk:52,hp:125} }},
   /* ================= GREAT POWERS ================= */
   france:{ gold:70, mine:4, start:4, cm:0.95, u:{
     infantry:{atk:9,hp:62,def:1.75}, assault:{atk:15,hp:80}, antitank:{atk:20,hp:56},
     tank:{atk:30,hp:155,def:1.5}, artillery:{atk:16,hp:98,def:2.1}, heavy:{atk:42,hp:210},
-    fighter:{atk:18,hp:72}, bomber:{atk:32,hp:74} }},
+    fighter:{atk:18,hp:72}, bomber:{atk:32,hp:74},
+    destroyer:{atk:15,hp:60}, submarine:{atk:24}, cruiser:{atk:24,hp:98},
+    battleship:{atk:38,hp:175}, carrier:{atk:46} }},
   italy:{ gold:60, mine:4, start:3, cm:1.05, u:{
     infantry:{atk:7,hp:58}, motor:{atk:10,hp:82}, assault:{atk:12,hp:78},
     tank:{atk:22,hp:120}, artillery:{atk:14,hp:92,def:1.95}, heavy:{atk:36,hp:195},
-    fighter:{atk:18,hp:72}, bomber:{atk:29,hp:70} }},
+    fighter:{atk:18,hp:72}, bomber:{atk:29,hp:70},
+    destroyer:{atk:16,hp:60}, submarine:{atk:25}, cruiser:{atk:25,hp:98},
+    battleship:{atk:38,hp:170}, carrier:{atk:45} }},
   /* ================= REGIONAL POWERS ================= */
   poland:{ gold:50, mine:4, start:3, cm:1.1, u:{
     infantry:{atk:8,hp:60}, antitank:{atk:19,hp:54}, tank:{atk:20,hp:110},
@@ -1468,13 +1610,171 @@ var EU_ARSENAL = {
     'rocket:Junkers Ju 87|German dive bombers never overflew Turkey in anger.',
     'hnky:Supermarine Spitfire|Spitfires were delivered in 1941 and did real work over the Straits.']}
 };
+
+/* ---------- each nation's tanks ----------
+   Same format as the arsenal above: chassis:DisplayName|blurb. The chassis
+   definitions are generated below from a handful of archetypes, so every
+   historical vehicle gets its own statistics while each nation keeps its own
+   names. A nation absent from this table fields no tanks, and the Shop hides
+   the Tanks tab for it.                                                      */
+var EU_TANKS = {
+  germany:[
+    'pz2:Panzer II|The light scout tank of the Blitzkrieg. Fast, thinly armoured, and everywhere in 1940.',
+    'pz38:Panzer 38(t)|A Czech design pressed into German service. Reliable and cheap to build.',
+    'pz3:Panzer III|The original anti-tank panzer. Outgunned by 1942, but it carried the desert war.',
+    'pz4:Panzer IV|The workhorse of the panzer divisions. Upgunned again and again, it fought to the end.',
+    'stug3:StuG III|A turretless assault gun. Low, hard to hit, and lethal from ambush.',
+    'panther:Panther|The best all-round tank of the war: fast, hard-hitting, and mechanically fragile.',
+    'tiger:Tiger I|A heavy tank built to terrify. It did, until it broke down.',
+    'tiger2:Tiger II|Seventy tons of armour and gun. Almost unbeatable, and almost impossible to keep running.'],
+  ussr:[
+    't26:T-26|The most numerous Soviet tank of 1941. Light, cheap, and hopelessly outmatched.',
+    'bt7:BT-7|A fast cavalry tank on Christie suspension. It could run rings around the invaders.',
+    't34:T-34|The great equaliser. Sloped armour, a good gun, and built in tens of thousands.',
+    't34_85:T-34-85|The T-34 with the gun it always deserved. A match for anything Germany fielded.',
+    'kv1:KV-1|A mobile fortress. German anti-tank guns simply bounced off it in 1941.',
+    'kv2:KV-2|A KV-1 carrying a huge howitzer. Slow, top-heavy, and terrifying in a street.',
+    'su85:SU-85|A T-34 hull with a tank-killing gun. No turret, and no mercy.',
+    'is2:IS-2|The Soviet answer to the Tiger. A 122 mm gun that ended arguments.'],
+  uk:[
+    'matilda:Matilda II|The Queen of the Desert. Slow, but almost immune to Italian guns.',
+    'valentine:Valentine|A reliable infantry tank, sent in huge numbers to the Soviet Union.',
+    'crusader:Crusader|The fast cruiser tank of the desert war. Elegant, and mechanically tired.',
+    'cromwell:Cromwell|The cruiser tank that carried the Normandy breakout. Fast and dependable.',
+    'churchill:Churchill VII|An infantry tank built like a trench. Slow, and nearly impossible to kill head-on.',
+    'firefly:Sherman Firefly|A Sherman with the 17-pounder. The best tank-killer in the west.',
+    'comet:Comet|The best British tank of the war. Fast, well-armed, and too late for most of it.'],
+  france:[
+    'ft:Renault FT|The grandfather of every tank. Still in service in 1940, in a few places.',
+    'r35:Renault R35|A well-armoured light tank with a weak gun. France built thousands.',
+    'h39:Hotchkiss H39|A nimble light tank. Good hull, poor turret, and no radio.',
+    'somua:SOMUA S35|The best French tank of 1940. Fast, well-armed, and far too few.',
+    'b1:Char B1 bis|A rolling fortress with a hull gun and a turret gun. Terrifying when it worked.',
+    'arl44:ARL 44|A post-war heavy tank built from pre-war parts. France\'s last word on armour.'],
+  italy:[
+    'l3:L3/35|A tankette with machine guns. Brave crews, hopeless machines.',
+    'm11:M11/39|Italy\'s first medium tank. A good gun in a hull mount, and no turret.',
+    'm13:M13/40|The standard Italian medium. Reasonable armour, and a gun that could not keep up.',
+    'm14:M14/41|A slightly better M13. More power, same thin armour.',
+    'semovente:Semovente 75/18|A self-propelled gun on a tank hull. Italy\'s best armoured vehicle.',
+    'p40:P26/40|Italy\'s heavy tank. Well-armed and well-armoured, and almost none were built.'],
+  poland:[
+    'tks:TKS|A tiny tankette with a machine gun. It still frightened German infantry.',
+    '7tp:7TP|A genuine light tank with a Bofors gun. Poland\'s best, and far too few.',
+    '4tp:4TP|A modern light tank design that never reached the troops in time.'],
+  czechoslovakia:[
+    'lt35:LT vz. 35|A solid light tank, better than most of its neighbours\' armour.',
+    'lt38:LT vz. 38|One of the best light tanks in the world in 1939. Germany took the factory.',
+    'st1:ST vz. 39|A medium tank design cut short by the occupation. On paper, a match for the Panzer III.'],
+  hungary:[
+    'toldi:38M Toldi|A light tank built on a Swedish design. Fast, and outgunned by 1942.',
+    'turan:40M Turan|A medium tank based on the Skoda T-21. The backbone of Hungarian armour.',
+    'zrinyi:Zrinyi II|A 105 mm assault gun. Hungary\'s best armoured vehicle of the war.',
+    'tas:44M Tas|A heavy tank prototype. It never saw service, but it could have changed the balance.'],
+  romania:[
+    'r1:R-1|A Czech light tank bought before the war. Obsolete by 1941.',
+    'r2:R-2|A licence-built Panzer 38(t). The best tank Romania had in numbers.',
+    'r35_ro:R35|French light tanks bought in 1939. Brave crews, weak guns.',
+    't3:T-3|A Panzer III in Romanian service. Reliable, and always too few.',
+    't4:T-4|A Panzer IV in Romanian markings. The heaviest armour Romania fielded.'],
+  yugoslavia:[
+    't15:Skoda T-15|A Czech light tank bought for the Yugoslav army. Good, and rare.',
+    'm3:M3 Stuart|American light tanks delivered in 1941. Fast, and thinly armoured.',
+    't32:Skoda T-32|A Czech medium tank design. Yugoslavia wanted it; history did not wait.'],
+  finland:[
+    'vickers6:Vickers 6-ton|A British light tank bought in the 1930s. The base for Finland\'s armour.',
+    't26_fi:T-26|Captured Soviet light tanks, pressed into Finnish service.',
+    'bt42:BT-42|A captured BT-7 hull with a British howitzer. Strange, and surprisingly effective.',
+    'stug3_fi:StuG III G|German assault guns that gave Finland a real anti-tank punch.'],
+  bulgaria:[
+    'pz38_bg:Panzer 38(t)|German-supplied light tanks. The core of Bulgarian armour.',
+    'pz4_bg:Panzer IV|German medium tanks, handed over as the war turned.',
+    'stug3_bg:StuG III|Assault guns that gave Bulgarian crews a chance against Soviet armour.'],
+  greece:[
+    'vickers6_gr:Vickers 6-ton|A handful of British light tanks. They fought, and were lost, in 1941.',
+    'ft_gr:Renault FT|First World War veterans, still on the Greek order of battle.'],
+  turkey:[
+    'vickers6_tr:Vickers 6-ton|British light tanks bought to modernise a neutral army.',
+    'm3_tr:M3 Stuart|American light tanks delivered in 1942. Turkey never fired them in anger.'],
+  belgium:[
+    't13:T-13|A Belgian tank destroyer on a light-tank chassis. Its 47 mm gun was genuinely dangerous.',
+    't15_be:T-15|A Belgian light tank, fast and thinly armoured. It met the Blitzkrieg in 1940.'],
+  netherlands:[
+    'vickers6_nl:Vickers 6-ton|The Dutch army\'s only real tanks, and only a handful of them.',
+    'm36:Marmon-Herrington CTLS|A light American tankette. Useful in the East Indies, not in Europe.'],
+  sweden:[
+    'strv_m39:Strv m/39|A Swedish light tank. Neutral, well-built, and never tested in a real war.',
+    'strv_m42:Strv m/42|A medium tank with a good gun. Sweden kept it at home, and that was the point.'],
+  spain:[
+    'panzer1:Panzer I|German light tanks that fought in Spain. Machine guns only, and enough.',
+    't26_es:T-26|Soviet light tanks sent to Spain. A generation ahead of what they faced.'],
+  switzerland:[
+    'lth:Panzerwagen 39|A Swiss light tank built for a war that never came. It was ready anyway.']
+};
+
+/* tank chassis archetypes: light -> super-heavy.  The role table below maps
+   every historical key to one archetype, so the chassis statistics live in
+   one place and every tank still has a unique type key for saves and the net. */
+var TANK_KEYS={};
+(function(){
+  var roles={
+    light:  {code:'LT' ,cost:85 ,hp:100,atk:17,def:1.30,up:1,col:'#8aa86a'},
+    light2: {code:'LT2',cost:95 ,hp:112,atk:20,def:1.35,up:1,col:'#7f9e5f'},
+    medium: {code:'MT' ,cost:120,hp:140,atk:26,def:1.45,up:2,col:'#6f9a5a'},
+    medium2:{code:'MT2',cost:140,hp:155,atk:30,def:1.50,up:2,col:'#5f8a4a'},
+    heavy:  {code:'HV' ,cost:180,hp:190,atk:36,def:1.75,up:3,col:'#4f7a3a'},
+    heavy2: {code:'HV2',cost:210,hp:215,atk:42,def:1.90,up:4,col:'#3f6a2a'},
+    td:     {code:'TD' ,cost:125,hp:115,atk:33,def:1.25,up:2,col:'#8a7a4a'},
+    spg:    {code:'SPG',cost:150,hp:150,atk:31,def:1.55,up:3,col:'#7a6a3a'},
+    super:  {code:'SUP',cost:240,hp:235,atk:46,def:2.00,up:5,col:'#2f5a1a'}
+  };
+  var role={
+    pz2:'light', pz38:'light2', pz3:'medium', pz4:'medium2', stug3:'spg',
+    panther:'heavy', tiger:'heavy2', tiger2:'super',
+    t26:'light', bt7:'light2', t34:'medium2', t34_85:'heavy', kv1:'heavy',
+    kv2:'heavy2', su85:'td', is2:'super',
+    matilda:'heavy', valentine:'medium', crusader:'medium', cromwell:'medium2',
+    churchill:'heavy2', firefly:'td', comet:'heavy',
+    ft:'light', r35:'light', h39:'light2', somua:'medium2', b1:'heavy', arl44:'heavy2',
+    l3:'light', m11:'light2', m13:'medium', m14:'medium2', semovente:'spg', p40:'heavy',
+    tks:'light', '7tp':'light2', '4tp':'light2',
+    lt35:'light2', lt38:'medium', st1:'medium2',
+    toldi:'light2', turan:'medium', zrinyi:'spg', tas:'heavy',
+    r1:'light', r2:'light2', r35_ro:'light', t3:'medium', t4:'heavy',
+    t15:'light2', m3:'light2', t32:'medium',
+    vickers6:'light', t26_fi:'light2', bt42:'medium', stug3_fi:'spg',
+    pz38_bg:'light2', pz4_bg:'medium', stug3_bg:'spg',
+    vickers6_gr:'light', ft_gr:'light',
+    vickers6_tr:'light', m3_tr:'light2',
+    t13:'td', t15_be:'light2',
+    vickers6_nl:'light', m36:'light',
+    strv_m39:'light2', strv_m42:'medium',
+    panzer1:'light', t26_es:'light2',
+    lth:'light2'
+  };
+  for(var key in role){
+    var r=roles[role[key]];
+    EU_UNITS[key]={key:key,name:key,code:r.code,cost:r.cost,hp:r.hp,atk:r.atk,
+                   def:r.def,up:r.up,col:r.col,blurb:'Armoured fighting vehicle.'};
+    TANK_KEYS[key]=1;
+  }
+  /* the old generic tank/heavy chassis also belong in the Tanks tab */
+  TANK_KEYS.tank=1; TANK_KEYS.heavy=1;
+  for(var nat in EU_ARSENAL){
+    if(EU_TANKS[nat]) EU_ARSENAL[nat].tanks=EU_TANKS[nat];
+  }
+  for(var nat2 in EU_TANKS){
+    if(!EU_ARSENAL[nat2]) EU_ARSENAL[nat2]={army:[],air:[],tanks:EU_TANKS[nat2]};
+  }
+})();
+
 /* historical names per nation+chassis, harvested from ARSENAL.
    Rebuilt per map by buildNatName(). */
 function buildNatName(){
   NAT_NAME={};
   for(var nat in (ARSENAL||{})){
     NAT_NAME[nat]={};
-    ['army','air'].forEach(function(k){
+    ['army','air','tanks','navy'].forEach(function(k){
       (ARSENAL[nat][k]||[]).forEach(function(s){
         var i=s.indexOf(':'), j=s.indexOf('|');
         NAT_NAME[nat][s.slice(0,i)]=s.slice(i+1,j);
@@ -1518,10 +1818,16 @@ function mineGold(c){ var p=NATION_STATS[c]; return (p&&p.mine!=null)?p.mine:MIN
 function arsenal(nat,kind){
   var a=ARSENAL&&ARSENAL[nat];
   if(!a || !a[kind] || !a[kind].length) return null;
-  return a[kind].map(function(s){
+  var list=a[kind];
+  /* armour lives in the Tanks tab, never in the Army list */
+  if(kind==='army') list=list.filter(function(s){
+    return !TANK_KEYS[s.slice(0,s.indexOf(':'))];
+  });
+  if(!list.length) return null;
+  return list.map(function(s){
     var i=s.indexOf(':'), j=s.indexOf('|');
     var key=s.slice(0,i), name=s.slice(i+1,j), blurb=s.slice(j+1);
-    var t=U(nat,key)||UNITS[kind==='army'?'infantry':'fighter'];
+    var t=U(nat,key)||UNITS[kind==='air'?'fighter':(kind==='navy'?'destroyer':(kind==='tanks'?'tank':'infantry'))];
     return {type:key,name:name,blurb:blurb,col:t.col,code:t.code,cost:t.cost,hp:t.hp,
             atk:t.atk,def:t.def,up:t.up,mines:!!t.mines,air:!!t.air};
   });
@@ -1569,7 +1875,7 @@ function buildMap(){
   unitG=el('g',{}); g.appendChild(unitG);
   fxG=el('g',{}); g.appendChild(fxG);
 
-  SECTORS.slice().sort(function(a,b){ return (a.nat==='ussr'?-1:0)-(b.nat==='ussr'?-1:0); })
+  SECTORS.filter(function(s){ return !s.sea; }).sort(function(a,b){ return (a.nat==='ussr'?-1:0)-(b.nat==='ussr'?-1:0); })
   .forEach(function(sec){
     /* a fat same-colour stroke drawn under every land path fills the hairline
        gaps between adjacent pieces, so the map reads as one continent */
@@ -1579,7 +1885,30 @@ function buildMap(){
     });
   });
 
-  SECTORS.slice().sort(function(a,b){ return (a.nat==='ussr'?-1:0)-(b.nat==='ussr'?-1:0); })
+  /* SEA ZONES are painted first; the continents are laid over them below, so
+     coastlines stay crisp and every rectangle reads as water. */
+  SECTORS.filter(function(s){ return !!s.sea; }).forEach(function(sec){
+    var x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+    PP[sec.id]=[];
+    sec.polys.forEach(function(p){
+      var flat=[];
+      landG.appendChild(el('path',{d:polyD(p),fill:sec.color,class:'land seaZone','data-id':sec.id}));
+      p.forEach(function(q){
+        var x=px(q[0]), y=py(q[1]);
+        flat.push(x,y);
+        if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y;
+      });
+      PP[sec.id].push(flat);
+    });
+    if(x0>x1){ x0=0; y0=0; x1=W; y1=H; }
+    markEl[sec.id]={x:(x0+x1)/2,y:(y0+y1)/2};
+    if(sec.lab){
+      var sl=el('text',{x:px(sec.lab[0]).toFixed(1),y:py(sec.lab[1]).toFixed(1),class:'seaLbl'});
+      sl.textContent=sec.name.toUpperCase(); unitG.appendChild(sl);
+    }
+  });
+
+  SECTORS.filter(function(s){ return !s.sea; }).sort(function(a,b){ return (a.nat==='ussr'?-1:0)-(b.nat==='ussr'?-1:0); })
   .forEach(function(sec){
     var x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
     PP[sec.id]=[];
@@ -1672,7 +2001,7 @@ function newGame(player){
       brokeSet:new Set(), mail:[], pact:new Set(), mood:{}, mailSeq:0, nextDispatchDay:0, nextMailDay:2 };
   SECTORS.forEach(function(sec){
     var nat=NBY[sec.nat];
-    var home=(sec.nat!=='iceland' && !nat.owner);
+    var home=(!sec.sea && sec.nat!=='iceland' && !nat.owner);
     var first=(sectorsOf(sec.nat)[0]===sec.id);
     S.prov[sec.id]={ id:sec.id, nat:sec.nat, owner:(nat.owner||sec.nat), units:[],
                      mines:(home&&first)?2:0, mineBy:(home&&first)?sec.nat:null, mineT:5, pend:0 };
@@ -1700,6 +2029,20 @@ function newGame(player){
       spawn('infantry', sid, S.prov[sid].owner);
     }
   });
+  /* opening squadrons: each coastal nation has a home sea to sail from */
+  if(SEA_ZONES.length){
+    var majors={uk:1,germany:1,italy:1,france:1,ussr:1};
+    Object.keys(EU_HOME_SEA).forEach(function(n){
+      var z=EU_HOME_SEA[n];
+      if(!S.prov[z]) return;
+      var cnt=majors[n]?2:1;
+      for(var q=0;q<cnt;q++){
+        var kd=q===0?'destroyer':((n==='uk'||n==='germany')?'cruiser':'destroyer');
+        spawn(kd,z,n);
+      }
+    });
+    log('Fleets have put to sea - '+SEA_ZONES.length+' naval zones are now open.');
+  }
   S.pick.clear();
   invalidateWars();
   selectProv(firstSector(player));
@@ -1717,7 +2060,7 @@ function spawn(type,loc,owner){
   return u;
 }
 function unitsAt(id){ return S.units.filter(function(u){ return u.loc===id && u.hp>0; }); }
-function landOf(c){ var n=0; for(var k in S.prov) if(S.prov[k].owner===c) n++; return n; }
+function landOf(c){ var n=0; for(var k in S.prov) if(S.prov[k].owner===c && !isSea(k)) n++; return n; }
 function unitsOf(c){ return S.units.filter(function(u){ return u.owner===c && u.hp>0; }); }
 function upkeep(c){ return unitsOf(c).reduce(function(s,u){ return s+U(u.owner,u.type).up; },0); }
 function mineCount(c){ var t=0; for(var id in S.prov) if(S.prov[id].owner===c) t+=S.prov[id].mines; return t; }
@@ -1743,7 +2086,9 @@ function areaOf(c){
    them holds an extra regiment. NAT_CAP sizes every nation's army to what it
    actually fielded in the war, so a micro-state can never out-muscle a power.
    Anything not listed falls back to area size. */
-var EU_SEC_CAP = {'ussr#0':4, 'ussr#1':4, 'ussr#2':5};
+var EU_SEC_CAP = {'ussr#0':4, 'ussr#1':4, 'ussr#2':5,
+  nsea:9, baltic:8, norwsea:7, atlantic:7, chan:7, irishsea:5, iberia:6,
+  wmed:7, cmed:7, aegean:6, blacksea:7, barents:6};
 var EU_NAT_CAP = {
   germany:14, ussr:13, uk:11, france:10, italy:9,
   poland:7, czechoslovakia:7, finland:6, hungary:6, romania:7,
@@ -1884,10 +2229,10 @@ var MAPS={
     stats:function(){ return EU_STATS; }, arsenal:function(){ return EU_ARSENAL; },
     units:function(){ return EU_UNITS; }, fallback:function(){ return EU_FALLBACK; },
     secCap:function(){ return EU_SEC_CAP; }, natCap:function(){ return EU_NAT_CAP; },
-    proj:function(){ return EU_PROJ; },
+    proj:function(){ return EU_PROJ; }, sea:function(){ return EU_SEA; },
     blocs:['Axis','Allies','Other','Neutral'],
     defaultPlayer:'germany', tabAir:'&#9992; Air Force', newsName:'THE CONTINENTAL',
-    rules:'Nations that fought in the Second World War are on the map. Each begins with its own treasury, riflemen and two mine fields at home &mdash; a major power far more than a micro-state.<br>There is <b>no daily income</b> &mdash; <b>mine fields are the only gold</b> in the game, mined at each nation\u2019s own rate. Buy mine cars to lay more, and take countries to grow your yield.<br>Click a country to open its sheet: a small map of the country with the units standing in it. Recruit in your own territory, then order units into a neighbouring country. Every front is a real front &mdash; the AI nations fight each other too, so a war can be won without fighting the whole continent.<br>Units fight at their best on friendly soil, and hardest of all in their homeland. Tanks, artillery and bombers cost upkeep every day, so a huge army can bankrupt you.<br>Army sizes follow real history: micro-states like <b>Albania</b> or <b>Denmark</b> hold just <b>2&ndash;3</b> units, while a major power fields up to <b>14</b>. The Soviet Union is split into three fronts &mdash; <b>South 4</b>, <b>Centre 4</b>, <b>North 5</b> &mdash; and a weak state buys only basic rifles, guns and fighters: no tanks, heavy armour or bomber fleets.<br>Send your men at a front and they <b>hold the ground until the country falls</b> &mdash; only then do the survivors march back home to rearm. Only <b>one territory on the whole map</b> changes hands each day.<br>You win by holding <b>every</b> territory. You lose if you hold none.'
+    rules:'Nations that fought in the Second World War are on the map. Each begins with its own treasury, riflemen and two mine fields at home &mdash; a major power far more than a micro-state.<br>There is <b>no daily income</b> &mdash; <b>mine fields are the only gold</b> in the game, mined at each nation\u2019s own rate. Buy mine cars to lay more, and take countries to grow your yield.<br>Once you have chosen a nation, the Shop&rsquo;s <b>Tanks</b> tab lists that nation&rsquo;s own historical armour.<br>Click a country to open its sheet: a small map of the country with the units standing in it. Recruit in your own territory, then order units into a neighbouring country. Every front is a real front &mdash; the AI nations fight each other too, so a war can be won without fighting the whole continent.<br>Units fight at their best on friendly soil, and hardest of all in their homeland. Tanks, artillery and bombers cost upkeep every day, so a huge army can bankrupt you.<br>Army sizes follow real history: micro-states like <b>Albania</b> or <b>Denmark</b> hold just <b>2&ndash;3</b> units, while a major power fields up to <b>14</b>. The Soviet Union is split into three fronts &mdash; <b>South 4</b>, <b>Centre 4</b>, <b>North 5</b> &mdash; and a weak state buys only basic rifles, guns and fighters: no tanks, heavy armour or bomber fleets.<br>Send your men at a front and they <b>hold the ground until the country falls</b> &mdash; only then do the survivors march back home to rearm. Only <b>one territory on the whole map</b> changes hands each day.<br>The <b>Navy</b> tab builds ships in any coastal nation: destroyers, submarines, cruisers, battleships and carriers. Twelve <b>sea zones</b> are painted on the ocean &mdash; sail into them to contest them, control them to open deeper water, and storm enemy coastlines from the sea. Only ships can enter a sea zone, and landlocked nations cannot build a fleet.<br>You win by holding <b>every</b> land territory. You lose if you hold none.'
   },
   china:{
     id:'china', title:'CHINA &middot; THE PROVINCES', tag:'Choosing your province',
@@ -1916,6 +2261,7 @@ function useMap(name){
   if(!MAPS[name]) name='europe';
   MAP=name;
   var P=MAPS[name];
+  SEA_ZONES=(P.sea&&P.sea())||[];
   GEO=P.geo(); NATIONS=P.nations(); REGIONS=P.regions(); SPLITS=P.splits();
   NATION_STATS=P.stats(); ARSENAL=P.arsenal(); UNITS=P.units(); FALLBACK=P.fallback();
   SEC_CAP=P.secCap(); NAT_CAP=P.natCap();
@@ -1926,7 +2272,16 @@ function useMap(name){
   buildNBY(); buildNatName(); buildSectors();
   REGION_IDS=REGIONS.map(function(r){ return r.id; });
   ALL=[].concat(NATIONS,REGIONS);
-  WIN_NEED=SECTORS.filter(function(s){ return REGION_IDS.indexOf(s.nat)<0; }).length;
+  WIN_NEED=SECTORS.filter(function(s){ return !s.sea && REGION_IDS.indexOf(s.nat)<0; }).length;
+  /* Europe's coastal nations keep their own historical ship names. */
+  if(SEA_ZONES.length && ARSENAL){
+    Object.keys(ARSENAL).forEach(function(n){
+      if(!hasCoast(n)) return;
+      ARSENAL[n]=ARSENAL[n]||{army:[],air:[],tanks:[]};
+      if(!(ARSENAL[n].navy&&ARSENAL[n].navy.length))
+        ARSENAL[n].navy=(EU_SHIP_NAMES[n]||EU_SHIP_DEFAULT).slice();
+    });
+  }
 }
 function power(u,loc){
   var t=U(u.owner,u.type), m=(S.prov[loc].owner===u.owner)?t.def:1;
@@ -2150,6 +2505,7 @@ function tick(){
   checkEnd();
   achTick();
   render();
+  autoSave();
 }
 
 function checkEnd(){
@@ -2250,6 +2606,7 @@ function renderAchList(){
 }
 function exportBackup(){
   try{
+    if(S && !S.over){ try{ saveGame(true); }catch(e){} }   /* export the latest turn */
     var b={ app:'europe-ww2-map-game', v:1, exported:Date.now(),
             ach:ACH_SAVE||{},
             save:localStorage.getItem('e1939_save')||null,
@@ -2307,19 +2664,39 @@ function aiTurn(){
     /* --- recruit: with whatever this nation's own arsenal offers --- */
     if(gold>=10){
       var choice=null;
-      var ar=shopList('army',n.id), air=shopList('air',n.id);
+      var ar=shopList('army',n.id), air=shopList('air',n.id), tk=shopList('tanks',n.id);
+      var nav=shopList('navy',n.id);
       var cars=unitsOf(n.id).filter(function(u){ return U(u.owner,u.type).mines; }).length;
       var mineU=ar.filter(function(u){return u.mines;})[0]||ar[0];
       var artU =ar.filter(function(u){return u.def>=1.9;})[0]||ar[0];
-      var tankU=ar.filter(function(u){return u.atk>=20&&u.def<1.9;})[0]||ar[ar.length-2]||ar[0];
+      var affordable=tk.filter(function(u){return u.cost<=gold;});
+      var tankU=affordable.length
+        ? affordable[Math.min(affordable.length-1, Math.random()*affordable.length|0)]
+        : (tk[0]||ar[ar.length-2]||ar[0]);
       var bombU=air.filter(function(u){return u.atk>=28;})[0]||air[0];
-      if(gold>=mineU.cost && cars<2 && Math.random()<0.7) choice=mineU.type;   /* mines are the economy */
+      if(gold>=mineU.cost && cars<2 && Math.random()<0.65) choice=mineU.type;   /* mines are the economy */
+      else if(nav.length && gold>=nav[0].cost && Math.random()<0.55){
+        var aff=nav.filter(function(x){ return U(n.id,x.type).cost<=gold; });
+        choice=aff[aff.length-1].type;                 /* build the biggest fleet ship it can afford */
+      }
       else if(gold>=bombU.cost && terr>=3 && Math.random()<0.18) choice=bombU.type;
       else if(gold>=artU.cost && (threat||Math.random()<0.3)) choice=artU.type;
       else if(gold>=tankU.cost && (threat || Math.random()<0.35)) choice=tankU.type;
       else choice=ar[0].type;
+      var shipChoice=isShipType(choice);
       var spot=pickRecruit(n.id);
-      if(spot && U(n.id,choice).cost<=gold && unitsAt(spot).length<capacity(spot)){
+      if(shipChoice){
+        var hz=EU_HOME_SEA[n.id], spots=[];
+        if(hz && S.prov[hz] && unitsAt(hz).length<capacity(hz)) spots.push(hz);
+        SEA_ZONES.forEach(function(z){
+          if((z.nb||[]).indexOf(n.id)>=0 && S.prov[z.id] &&
+             unitsAt(z.id).length<capacity(z.id) && spots.indexOf(z.id)<0) spots.push(z.id);
+        });
+        if(spots.length && U(n.id,choice).cost<=gold){
+          spawn(choice,spots[0],n.id); S.gold[n.id]-=U(n.id,choice).cost;
+          if(SHOWCASE[choice]) newsUnveil(n.id,choice,spots[0]);
+        }
+      } else if(spot && U(n.id,choice).cost<=gold && unitsAt(spot).length<capacity(spot)){
           spawn(choice,spot,n.id);
           S.gold[n.id]-=U(n.id,choice).cost;
           if(SHOWCASE[choice]) newsUnveil(n.id,choice,spot);
@@ -2357,8 +2734,25 @@ function aiTurn(){
       break;   /* one offensive action per turn */
     }
     }
+    /* --- fleet manoeuvres: ships contest the sea and storm enemy coasts --- */
+    unitsOf(n.id).filter(isShip).forEach(function(u){
+      if(u.moving || u.air || u.hp<=0) return;
+      var here=u.loc, best=null;
+      (NBY[here].snb||[]).forEach(function(m){
+        if(best || !S.prov[m]) return;
+        var oo=S.prov[m].owner;
+        if(oo===n.id) return;
+        if(isSea(m)){ if(oo!=='sea' && !atWar(n.id,oo)) return; }
+        else if(!atWar(n.id,oo)) return;
+        if(unitsAt(m).length>=capacity(m)) return;
+        if(totalPower(m) > power(u,here)*aggro) return;
+        best=m;
+      });
+      if(best) u.moving={to:best,t:1,from:here,assault:true};
+    });
   });
 }
+function isShipType(t){ var d=UNITS[t]; return !!(d&&d.navy); }
 function pickRecruit(c){
   var best=null,bestScore=-1e9;
   for(var id in S.prov){
@@ -2398,19 +2792,23 @@ function known(id){
 }
 function moveTo(dst){
   if(!S.prov[dst]) return flash('No such front.');
-  if(!atWar(S.player,S.prov[dst].owner)) return flash('You are not at war with '+NBY[S.prov[dst].owner].name+'.');
+  var own=S.prov[dst].owner, sea=isSea(dst);
+  if(own!==S.player && own!=='sea' && !atWar(S.player,own))
+    return flash('You are not at war with '+NBY[own].name+'.');
   var ids=[],n=0;
   unitsOf(S.player).forEach(function(u){
     if(!S.pick.has(u.id)) return;                                 /* only selected units */
     if((NBY[u.loc].snb||[]).indexOf(dst)<0) return;                 /* must border the target */
+    if(sea && !isShip(u)) return;                                  /* armies cannot walk on water */
     ids.push(u.id);
-    if(U(u.owner,u.type).air && S.prov[dst].owner!==S.player) u.air=dst;
-    else u.moving={to:dst,t:1,from:u.loc,assault:(S.prov[dst].owner!==S.player)};
+    if(U(u.owner,u.type).air && own!==S.player) u.air=dst;
+    else u.moving={to:dst,t:1,from:u.loc,assault:(own!==S.player)};
     n++;
   });
   if(!n){
     if(!S.pick.size) flash('No units selected - click units in the list or on the country sheet first.');
-    else flash('None of the selected units border '+NBY[dst].name+'.');
+    else flash(sea? 'None of the selected ships border '+NBY[dst].name+'.'
+                  : 'None of the selected units border '+NBY[dst].name+'.');
     return;
   }
   if(NET && NET.mode===2) netPubRoom('cmd',JSON.stringify({p:NET.pid,k:'m',dst:dst,ids:ids}));
@@ -2423,6 +2821,9 @@ function recruit(type){
   var id=S.sel;
   var u=U(S.player,type);
   if(!S.prov[id] || S.prov[id].owner!==S.player){ flash('Select one of your own territories to recruit.'); return; }
+  if(u.navy && isSea(id)){ flash('Build ships in a coastal port, then sail them out.'); return; }
+  if(u.navy && !hasCoast(natOf(id))){ flash('Only coastal nations can build ships.'); return; }
+  if(!u.navy && isSea(id)){ flash('Only ships can be built at sea.'); return; }
   if(unitsAt(id).length>=capacity(id)){ flash('Garrison is full ('+capacity(id)+' units).'); return; }
   if((S.gold[S.player]||0)<u.cost){ flash('Not enough gold for a '+u.name.toLowerCase()+' ('+u.cost+').'); return; }
   S.gold[S.player]-=u.cost;
@@ -2467,11 +2868,12 @@ function closePage(){ showPage(null); }
 var SHOP_TAB='army';
 function shopList(kind,nat){
   nat=nat||S.player;
+  if(kind==='navy' && !hasCoast(nat)) return [];
   var a=arsenal(nat,kind), src=(a&&a.length)?a.map(function(u){return u;}):null;
   if(src) return src;
   var keys=(FALLBACK&&FALLBACK[kind])||[];
   return keys.map(function(key){
-    var t=U(nat,key)||UNITS[kind==='army'?'infantry':'fighter'];
+    var t=U(nat,key)||UNITS[kind==='air'?'fighter':(kind==='navy'?'destroyer':(kind==='tanks'?'tank':'infantry'))];
     return {type:key,name:t.name,blurb:t.blurb,col:t.col,code:t.code,cost:t.cost,
             hp:t.hp,atk:t.atk,def:t.def,up:t.up,mines:!!t.mines,air:!!t.air};
   });
@@ -2487,13 +2889,24 @@ function paintShop(el, provId){
   if(!el) return;
   var na=document.getElementById('shopWho');
   if(na) na.innerHTML=NBY[S.player].flag+' '+NBY[S.player].name+' arsenal';
-  var tA=document.getElementById('tabArmy'), tB=document.getElementById('tabAir');
-  if(tA&&tB){
+  var tA=document.getElementById('tabArmy'), tB=document.getElementById('tabAir'),
+      tT=document.getElementById('tabTanks'), tN=document.getElementById('tabNavy');
+  var hasTanks=shopList('tanks',S.player).length>0;
+  var hasNavy=shopList('navy',S.player).length>0;
+  if(!hasTanks && SHOP_TAB==='tanks') SHOP_TAB='army';
+  if(!hasNavy && SHOP_TAB==='navy') SHOP_TAB='army';
+  if(tT) tT.style.display=hasTanks?'':'none';
+  if(tN) tN.style.display=hasNavy?'':'none';
+  if(tA&&tB&&tT){
     tA.className='tab'+(SHOP_TAB==='army'?' on':'');
     tB.className='tab'+(SHOP_TAB==='air'?' on':'');
+    tT.className='tab'+(SHOP_TAB==='tanks'?' on':'');
+    if(tN) tN.className='tab'+(SHOP_TAB==='navy'?' on':'');
     if(!tA.onclick){
-      tA.onclick=function(){ SHOP_TAB='army'; paintShop(document.getElementById('shop'),S.sel); };
-      tB.onclick=function(){ SHOP_TAB='air';  paintShop(document.getElementById('shop'),S.sel); };
+      tA.onclick=function(){ SHOP_TAB='army';  paintShop(document.getElementById('shop'),S.sel); };
+      tB.onclick=function(){ SHOP_TAB='air';   paintShop(document.getElementById('shop'),S.sel); };
+      tT.onclick=function(){ SHOP_TAB='tanks'; paintShop(document.getElementById('shop'),S.sel); };
+      if(tN) tN.onclick=function(){ SHOP_TAB='navy'; paintShop(document.getElementById('shop'),S.sel); };
     }
   }
   var need=(SHOP_TAB+'|'+S.player);
@@ -2590,6 +3003,7 @@ function renderMini(id){
 
   /* the country itself */
   var col=p.owner? NBY[p.owner].color : '#2a2f3a';
+  if(isSea(id) && p.owner!=='sea') col=seaTint(col);
   own.forEach(function(a){
     svg.appendChild(el('path',{d:flatD(a),fill:col,stroke:'#0b0e14','stroke-width':(vw*0.008).toFixed(2)}));
   });
@@ -2669,17 +3083,27 @@ function renderBorderGarrisons(id, me){
   });
 }
 function computeTargets(){
-  /* every front the selected units can actually walk to, wherever they stand */
+  /* every front the selected units can actually reach, on land or at sea */
   var from=pickedOrigins();
   if(!from.length){
     var p=S.prov[S.sel];
     if(p && p.owner===S.player) from=[S.sel];
   }
+  var picked=unitsOf(S.player).filter(function(u){ return S.pick.has(u.id); });
+  var hasShip=picked.some(isShip), hasLand=picked.some(function(u){ return !isShip(u); });
+  if(!picked.length && S.sel && S.prov[S.sel] && S.prov[S.sel].owner===S.player) hasLand=true;
   var out={};
   from.forEach(function(f){
     (NBY[f].snb||[]).forEach(function(m){
       if(!S.prov[m]) return;
-      if(!atWar(S.player,S.prov[m].owner)) return;
+      var own=S.prov[m].owner===S.player;
+      if(isSea(m)){
+        if(!hasShip) return;                       /* only fleets can enter open water */
+        if(!own && S.prov[m].owner!=='sea' && !atWar(S.player,S.prov[m].owner)) return;
+      } else {
+        if(own && !hasShip) return;                /* no point marching into your own land */
+        if(!own && !atWar(S.player,S.prov[m].owner)) return;
+      }
       out[m]=1;
     });
   });
@@ -2731,14 +3155,15 @@ function render(){
   for(var id in S.prov){
     var p=S.prov[id], n=NBY[id];
     var color=p.owner? NBY[p.owner].color : '#2a2f3a';
+    if(isSea(id) && p.owner!=='sea') color=seaTint(color);
     var paths=landG.querySelectorAll('[data-id="'+id+'"]');
     for(var i=0;i<paths.length;i++){
       if(paths[i].getAttribute('data-bridge')){
         paths[i].setAttribute('stroke', color);
       } else {
         paths[i].setAttribute('fill', color);
-        paths[i].setAttribute('class','land'+(id===S.sel?' sel':'')+(S.targets.indexOf(id)>=0?' tgt':'')+
-          (warAround(id)?' war':''));
+        paths[i].setAttribute('class','land'+(isSea(id)?' seaZone':'')+(id===S.sel?' sel':'')+
+          (S.targets.indexOf(id)>=0?' tgt':'')+(warAround(id)?' war':''));
       }
     }
   }
@@ -2831,7 +3256,7 @@ function renderPanel(){
          '<span class="code" style="background:'+t.col+'">'+t.code+'</span>'+
          '<span class="bar"><i style="width:'+Math.max(0,Math.round(100*u.hp/t.hp))+'%;background:'+
            (u.hp>t.hp*0.6?'#57b567':u.hp>t.hp*0.3?'#e2b13c':'#d64545')+'"></i></span>'+
-         '<span class="hp">'+Math.max(0,Math.ceil(u.hp))+'/'+t.hp+(u.moving?' &rarr;':'')+(u.air?' &#9992;':'')+'</span></div>';
+         '<span class="hp">'+Math.max(0,Math.ceil(u.hp))+'/'+t.hp+(u.moving?' &rarr;':'')+(u.air?' &#9992;':'')+(isShip(u)?' &#9875;':'')+'</span></div>';
     });
     var l=document.getElementById('uList');
     l.innerHTML=h;
@@ -2960,7 +3385,9 @@ function wireTop(){
     unitsOf(S.player).forEach(function(u){
       var ns=NBY[u.loc].snb||[];
       for(var i=0;i<ns.length;i++){
-        if(S.prov[ns[i]] && atWar(S.player,S.prov[ns[i]].owner)){ S.pick.add(u.id); n++; return; }
+        if(!S.prov[ns[i]]) continue;
+        var oo=S.prov[ns[i]].owner;
+        if(atWar(S.player,oo) || (isSea(ns[i]) && oo==='sea')){ S.pick.add(u.id); n++; return; }
       }
     });
     flash(n? n+' unit'+(n>1?'s':'')+' selected on your fronts.' : 'No unit of yours stands on a front.');
@@ -3001,13 +3428,15 @@ function wireTop(){
   };
   document.addEventListener('keydown',function(e){
     if(e.target.tagName==='BUTTON' && (e.code==='Space'||e.code==='Enter')) return;
+    if(e.target && (e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||
+                    e.target.tagName==='SELECT'||e.target.isContentEditable)) return;
     if(e.code==='Space'){
   e.preventDefault();
   if(spd===0 && UI_PAUSED){ flash(uiPauseHint()); return; }
   setSpeed(spd===0?1:0); return;
 }
-    if(e.key==='s'||e.key==='S'){ e.preventDefault(); showPage('shop'); return; }
-    if(e.key==='b'||e.key==='B'){ e.preventDefault(); showPage('battle'); return; }
+    if(e.key==='e'||e.key==='E'){ e.preventDefault(); if(document.getElementById('start').style.display!=='none') return; showPage('shop'); return; }
+    if(e.key==='b'||e.key==='B'){ e.preventDefault(); if(document.getElementById('start').style.display!=='none') return; showPage('battle'); return; }
     if(e.key==='n'||e.key==='N'){ e.preventDefault(); document.getElementById('bNews').click(); return; }
     if(e.key==='m'||e.key==='M'){ e.preventDefault(); if(document.getElementById('bMail')) document.getElementById('bMail').click(); return; }
     if(e.key==='Escape'){ closePage(); return; }
@@ -3092,6 +3521,8 @@ function applyMapUI(){
   if(r) r.innerHTML=P.rules;
   var ta=document.getElementById('tabAir');
   if(ta) ta.innerHTML=P.tabAir;
+  var tn=document.getElementById('tabNavy');
+  if(tn) tn.style.display=(S && shopList('navy',S.player).length)?'':'none';
   var np=document.getElementById('newsNamePanel');
   if(np) np.textContent=P.newsName;
   var nm=document.getElementById('newsNameModal');
@@ -3144,6 +3575,8 @@ applyMapUI();
 achBadge();
 showPage(null);
 setSpeed(0);
+/* ask the browser not to evict our progress when storage runs low */
+try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist(); }catch(e){}
 
 /* bookmarkable auto start:  ...#play=germany or ...#play=beijing */
 (function(){
@@ -3584,7 +4017,8 @@ function applyNetState(o){
 }
 
 /* ---------- save / load campaign (localStorage) ---------- */
-function saveGame(){
+var SAVE_T=0;
+function saveGame(silent){
   var wars=[]; S.wars.forEach(function(w){ wars.push(w); });
   var prov={};
   for(var k in S.prov){ var p=S.prov[k]; prov[k]={o:p.owner,m:p.mines,mb:p.mineBy,mt:p.mineT,pend:p.pend}; }
@@ -3600,10 +4034,24 @@ function saveGame(){
             broke:Array.prototype.slice.call(S.brokeSet||[]),
             mail:S.mail.slice(-60), pact:Array.prototype.slice.call(S.pact||[]),
             mailSeq:S.mailSeq, nextDispatchDay:S.nextDispatchDay, nextMailDay:S.nextMailDay, over:S.over};
-  try{ localStorage.setItem('e1939_save', JSON.stringify(data)); flash('War saved.'); }
-  catch(e){ flash('Could not save (storage unavailable).'); }
+  try{ localStorage.setItem('e1939_save', JSON.stringify(data)); SAVE_T=Date.now();
+       if(!silent) flash('War saved.'); return true; }
+  catch(e){ if(!silent) flash('Could not save (storage unavailable).'); return false; }
+}
+/* keep the campaign on disk without the player having to press Save */
+function autoSave(){
+  if(!S || S.over) return;
+  if(Date.now()-SAVE_T<4000) return;
+  saveGame(true);
 }
 function hasSave(){ try{ return !!localStorage.getItem('e1939_save'); }catch(e){ return false; } }
+/* closing the tab or shutting the computer down should not lose the war */
+try{
+  window.addEventListener('pagehide',function(){ if(S && !S.over) saveGame(true); });
+  document.addEventListener('visibilitychange',function(){
+    if(document.visibilityState==='hidden' && S && !S.over) saveGame(true);
+  });
+}catch(e){}
 function loadGame(){
   var o; try{ o=JSON.parse(localStorage.getItem('e1939_save')||'null'); }catch(e){ o=null; }
   if(!o || o.v!==1){ flash('No saved war found.'); return; }
@@ -3619,6 +4067,10 @@ function loadGame(){
       aiT:o.aiT||{}, orderMode:true, gold:o.gold||{}, news:o.news||[], elimSet:new Set(o.elim||[]),
       capSet:new Set(o.cap||[]), brokeSet:new Set(o.broke||[]), mail:o.mail||[], pact:new Set(o.pact||[]),
       mood:o.mood||{}, mailSeq:o.mailSeq||0, nextDispatchDay:o.nextDispatchDay||0, nextMailDay:o.nextMailDay||2 };
+  /* an older save may predate the sea map - seed it before restoring ownership */
+  if(SEA_ZONES.length) SEA_ZONES.forEach(function(z){
+    if(!S.prov[z.id]) S.prov[z.id]={id:z.id,nat:z.id,owner:'sea',units:[],mines:0,mineBy:null,mineT:0,pend:0};
+  });
   for(var k in o.prov){ var p=o.prov[k]; S.prov[k]={id:k, owner:p.o, units:[], mines:p.m, mineBy:p.mb, mineT:p.mt, pend:p.pend||0}; }
   S.units=(o.units||[]).map(function(x){
     var u={id:x.id, type:x.type, loc:x.loc, owner:x.owner, hp:x.hp, moving:null, air:null,
@@ -3750,7 +4202,7 @@ document.getElementById('netName').onkeydown=function(e){ if(e.key==='Enter'){ t
    the broadcast state, so the whole room shares the same front page.
    ======================================================================= */
 var NEWS_SEEN_DAY=-1;
-var SHOWCASE={heavy:1, rocket:1, hnky:1};
+var SHOWCASE={heavy:1, rocket:1, hnky:1, carrier:1, battleship:1};
 var N_MONTH=['January','February','March','April','May','June','July','August','September','October','November','December'];
 var NEWS_INTERVAL=10;
 function dayFull(d){
@@ -3779,13 +4231,15 @@ function news(h,b,cap){
   S.news.push({d:S.day, h:h, b:b, cap:!!cap});
 }
 function unitFancy(nid,type){
-  var a=arsenal(nid,'army')||[], b=arsenal(nid,'air')||[], e=null,i;
+  var a=arsenal(nid,'army')||[], b=arsenal(nid,'air')||[], c=arsenal(nid,'navy')||[], e=null,i;
   for(i=0;i<a.length;i++) if(a[i].type===type) e=a[i];
   if(!e) for(i=0;i<b.length;i++) if(b[i].type===type) e=b[i];
+  if(!e) for(i=0;i<c.length;i++) if(c[i].type===type) e=c[i];
   return e? e.name : U(nid,type).name;
 }
 /* how newsworthy a machine is - the heaviest thing on the field leads the story */
-var RENOWN={'hnky':6,'heavy':6,'rocket':5,'bomber':5,'dive':4,'tank':4,'fighter':3,'artillery':3,'assault':3,
+var RENOWN={'hnky':6,'heavy':6,'carrier':6,'battleship':6,'rocket':5,'bomber':5,'cruiser':5,'dive':4,'tank':4,
+            'submarine':4,'fighter':3,'artillery':3,'assault':3,'destroyer':3,
             'antitank':2,'flak':2,'engineer':2,'motor':2,'infantry':1,'mine':0};
 function unitLead(prov,taker){
   var best=null,bs=0;
@@ -3819,10 +4273,12 @@ function newsCaptures(evs){
               tn+' sweeps into '+list,
               tn+' seizes '+list]);
     var verb=pick(['occupied','overran','swept across','seized']);
-    var body='On '+dayFull(first.d)+', the army of <b>'+tn+'</b> '+verb+' <b>'+list+'</b>. ';
+    var bySea=!!(lead && isShip(lead));
+    var body='On '+dayFull(first.d)+', the '+(bySea?'fleet':'army')+' of <b>'+tn+'</b> '+verb+' <b>'+list+'</b>. ';
     if(ln){
       var t=U(lead.owner,lead.type);
-      if(t.air) body+=pickT(
+      if(t.navy) body+='The <b>'+ln+'</b> stand-off shelled the shore while the landing parties went in. ';
+      else if(t.air) body+=pickT(
         ['Squadrons of the <b>'+ln+'</b> burned the roads ahead of the columns. '],
         ['Riders and engines of the <b>'+ln+'</b> swept the roads ahead of the columns. ']);
       else if(t.atk>=20) body+='The assault was led by the <b>'+ln+'</b>; nothing in the garrison was heavy enough to stop it. ';
@@ -3857,7 +4313,13 @@ function newsUnveil(nid,type,loc){
   var tn=Nname(nid);
   var ln=unitFancy(nid,type);
   var t=U(nid,type);
-  var detail=t.air
+  var detail=t.navy
+    ? pickT(
+        ['Shipyards worked through the night; the keel of the <b>'+ln+'</b> was laid in secret.',
+         'Admirals say the <b>'+ln+'</b> will settle the argument over who commands the sea.'],
+        ['The harbour masters have been told to make room for the <b>'+ln+'</b>.',
+         'The <b>'+ln+'</b> is said to be the largest thing ever to put to sea.'])
+    : t.air
     ? pickT(
         ['Design bureaux across the continent have been told to answer it before the snow clears.',
          'The airfields that can fly it count their mechanics carefully; there will be no spares.'],
@@ -4361,7 +4823,10 @@ document.getElementById('bHelp').onclick=openTutorial;
              var s=document.getElementById('bAchStart'); if(s) s.onclick=openAchModal;
              var ex=document.getElementById('bExport'); if(ex) ex.onclick=exportBackup;
              var im=document.getElementById('bImport'); if(im) im.onclick=function(){ var f=document.getElementById('bImportFile'); if(f) f.click(); };
-             var fi=document.getElementById('bImportFile'); if(fi) fi.onchange=function(){ importBackup(fi.files&&fi.files[0]); fi.value=''; }; })();
+             var fi=document.getElementById('bImportFile'); if(fi) fi.onchange=function(){ importBackup(fi.files&&fi.files[0]); fi.value=''; };
+             var exs=document.getElementById('bExportStart'); if(exs) exs.onclick=exportBackup;
+             var ims=document.getElementById('bImportStart'); if(ims) ims.onclick=function(){ var f=document.getElementById('bImportFileStart'); if(f) f.click(); };
+             var fis=document.getElementById('bImportFileStart'); if(fis) fis.onchange=function(){ importBackup(fis.files&&fis.files[0]); fis.value=''; }; })();
 document.getElementById('bSound').onclick=function(){
   sndInit(); sndToggle();
   document.getElementById('bSound').innerHTML=SND.on?'&#128266; Sound':'&#128263; Sound';
