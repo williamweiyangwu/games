@@ -2670,13 +2670,13 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
   }
 
   function openHangar() {
-    releasePointer();
-    firing = false;
     if (state === "playing") hangarReturn = "paused";
     else if (state === "dead") hangarReturn = "dead";
     else if (state === "paused") hangarReturn = "paused";
     else hangarReturn = "idle";
     state = "hangar";
+    releasePointer();
+    firing = false;
     showOverlay("hangar");
   }
 
@@ -2868,12 +2868,8 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
   function beginPlayerCrash(kind) {
     if (playerCrash.active || state !== "playing") return;
     firing = false;
-    releasePointer();
-    wrap.classList.remove("boost");
-    wrap.classList.add("crash");
-    hitFlash = 0.2;
-    respawnFlash = 0;
-    shake = Math.max(shake, 0.9);
+    // Set the crash flag before unlocking the pointer so the lock-change
+    // handler does not mistake the intentional unlock for a player pause.
     playerCrash = {
       active: true,
       kind,
@@ -2887,6 +2883,12 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
       spinZ: rand(-3.4, 3.4),
       smokeT: 0
     };
+    releasePointer();
+    wrap.classList.remove("boost");
+    wrap.classList.add("crash");
+    hitFlash = 0.2;
+    respawnFlash = 0;
+    shake = Math.max(shake, 0.9);
     explode(player.position, 10, 0.85);
     updateHud();
   }
@@ -3516,7 +3518,9 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
   document.addEventListener("pointerlockchange", () => {
     locked = document.pointerLockElement === canvas;
     if (locked) { wasLocked = true; return; }
-    if (wasLocked && state === "playing") pauseGame();
+    // Intentional unlocks (crash sequence, hangar, ad, death) change state or
+    // set playerCrash first, so only a real lost lock pauses live play.
+    if (wasLocked && state === "playing" && !playerCrash.active) pauseGame();
     wasLocked = false;
   });
 
