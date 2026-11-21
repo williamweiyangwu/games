@@ -557,14 +557,114 @@
   @keyframes k6pop { from { transform: scale(.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
   #log.flash { animation: k6fade .3s ease; }
   @keyframes k6fade { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ===== v34 — KARDS battlefield format ===== */
+  body { font-family: "Segoe UI", Arial, sans-serif; }
+  #fit { background: radial-gradient(ellipse at 50% 28%, #33422a, #090d07 78%); }
+  #stage {
+    background:
+      linear-gradient(180deg, rgba(0,0,0,.45) 0%, rgba(0,0,0,0) 13%, rgba(0,0,0,0) 87%, rgba(0,0,0,.5) 100%),
+      repeating-linear-gradient(118deg, rgba(255,255,255,.014) 0 3px, rgba(0,0,0,.02) 3px 8px),
+      radial-gradient(ellipse at 50% 42%, #475a3d 0%, #2c3a26 52%, #18210f 100%);
+    border: 3px solid #7b6c48; border-radius: 8px;
+    box-shadow: 0 0 0 3px #15180f, 0 10px 34px rgba(0,0,0,.85), inset 0 0 70px rgba(0,0,0,.5);
+    padding: 5px 9px 7px;
+  }
+  header { padding: 2px 0 1px; }
+  header h1 { font-size: 12px; letter-spacing: 3px; color: #a8ac8c; text-shadow: 1px 1px 0 #000; }
+  #turnbar { margin-top: 2px; padding: 2px 14px; font-size: 11px; letter-spacing: 2px; background: rgba(10,14,8,.78); border-color: #9a8a5a; }
+  #log { margin: 2px auto; min-height: 22px; padding: 2px 10px; font-size: 10px; color: #b6c2a6; }
+  #menu { gap: 4px; padding: 3px 0 2px; }
+  #menu .mgroup { gap: 5px; }
+  .btn.mmode { padding: 4px 12px; font-size: 10px; }
+  .panel { position: relative; }
+
+  /* the three battlefield lines */
+  #panelTop {
+    background: linear-gradient(180deg, rgba(120,45,40,.22), rgba(0,0,0,0) 72%);
+    border-bottom: 2px solid rgba(231,140,140,.38);
+    padding: 2px 0 4px;
+  }
+  #panelMid {
+    background: linear-gradient(180deg, rgba(0,0,0,.10), rgba(201,180,88,.14), rgba(0,0,0,.10));
+    border-top: 1px dashed rgba(255,217,94,.55);
+    border-bottom: 1px dashed rgba(255,217,94,.55);
+    padding: 4px 0;
+  }
+  #panelBottom {
+    background: linear-gradient(0deg, rgba(45,110,55,.22), rgba(0,0,0,0) 72%);
+    border-top: 2px solid rgba(143,224,143,.38);
+    padding: 4px 0 2px;
+  }
+  .lineLabel { font-size: 8px; letter-spacing: 3px; color: #9aa07f; margin: 0 0 1px; }
+  .frontbar { font-size: 9px; letter-spacing: 2px; padding: 2px 0; margin: 0 0 3px; }
+  .boardrow { min-height: 118px; padding: 2px 4px; gap: 8px; }
+  .frontbar + .boardrow { min-height: 112px; }
+
+  /* prow = kredits on the left, deck on the right */
+  .prow { width: 100%; max-width: none; padding: 0 6px; }
+  .kredits { display: flex; align-items: center; gap: 7px; font-size: 10px; letter-spacing: 1px; color: #9fd4ff; }
+  .kredits .kpip {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #4d7fb8, #16345c);
+    border: 2px solid #9fd4ff; color: #fff; font-size: 12px; font-weight: bold;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 8px rgba(159,212,255,.4);
+  }
+  .deckpile { display: flex; align-items: center; gap: 6px; font-size: 10px; color: #b9c4a8; letter-spacing: 1px; }
+  .deckpile .stackcard { width: 28px; height: 38px; }
+
+  /* HQ lives inside the support line, like the real game */
+  .cardwrap { width: 88px; }
+  .hqslot { width: 88px; }
+  .hqslot .hqcard {
+    width: 84px; height: 116px; margin: 0 auto;
+    background: linear-gradient(160deg, #3c4438, #1d2419);
+    border: 3px solid #c9b458; border-radius: 7px;
+    box-shadow: 0 3px 8px rgba(0,0,0,.7), inset 0 0 0 2px rgba(0,0,0,.4);
+  }
+  .hqslot .hqcard .star { top: 8px; font-size: 10px; letter-spacing: 1px; }
+  .hqslot .hqcard .hpnum { position: absolute; top: 36%; left: 0; right: 0; font-size: 30px; color: #fff; text-shadow: 2px 2px 0 #000; }
+  .hqslot .hqcard .hqlabel { position: absolute; top: 60%; left: 0; right: 0; text-align: center; font-size: 9px; letter-spacing: 2px; color: #c9b458; }
+
+  /* fanned hands */
+  .hand { min-height: 132px; padding: 12px 0 0; gap: 0; align-items: flex-end; }
+  .hand .cardwrap { margin: 0 -9px; transform-origin: bottom center; }
+  .hand .cardwrap:hover { z-index: 6; }
+  .hand.foehand { min-height: 64px; padding: 0 0 4px; }
+  .hand.foehand .cardback { width: 48px; height: 64px; }
+  .hand.foehand .cardwrap { margin: 0 -13px; }
+
+  /* KARDS-style card frames */
+  .card {
+    width: 88px; height: 120px;
+    border: 2px solid #0b0d09; border-radius: 6px;
+    background: linear-gradient(170deg, #3d443f, #222823 62%, #191d18);
+    color: #eee9d2;
+    box-shadow: 0 3px 8px rgba(0,0,0,.7), inset 0 0 0 2px rgba(201,180,88,.28);
+  }
+  .card .cname { color: #f4eed4; font-weight: bold; text-shadow: 1px 1px 0 #000; }
+  .card .art { background: linear-gradient(160deg, #4b5a48, #273026); color: #d8d2a8; border: 1px solid rgba(201,180,88,.25); }
+  .card .utext, .card .otext { color: #d8d4b8; }
+  .card .cost { background: #101210; border: 2px solid #c9b458; color: #ffd95e; }
+  .card.unplayable .cost { border-color: #5a5a52; color: #9a9a8c; }
+  .card.order { background: linear-gradient(170deg, #4a3d2a, #2a2318); border-color: #0b0d09; }
+  .card.order .art { background: linear-gradient(160deg, #6b552f, #3a2f18); color: #f0d898; }
+  .card.n-usa { box-shadow: 0 3px 8px rgba(0,0,0,.7), inset 0 3px 0 #4d7fc7, inset 0 0 0 2px rgba(201,180,88,.28); }
+  .card.n-uk { box-shadow: 0 3px 8px rgba(0,0,0,.7), inset 0 3px 0 #8f5fc7, inset 0 0 0 2px rgba(201,180,88,.28); }
+  .card.n-germany { box-shadow: 0 3px 8px rgba(0,0,0,.7), inset 0 3px 0 #8a8c9c, inset 0 0 0 2px rgba(201,180,88,.28); }
+  .card.n-ussr { box-shadow: 0 3px 8px rgba(0,0,0,.7), inset 0 3px 0 #c05050, inset 0 0 0 2px rgba(201,180,88,.28); }
+  .card.n-japan { box-shadow: 0 3px 8px rgba(0,0,0,.7), inset 0 3px 0 #c79a44, inset 0 0 0 2px rgba(201,180,88,.28); }
+
+  footer { padding: 6px 0 8px; gap: 12px; }
+  .btn { font-size: 11px; padding: 6px 18px; }
 </style>
 </head>
 <body>
-<a href="../" title="Back to Arcade" aria-label="Back to Arcade" style="position:fixed;top:10px;left:10px;z-index:999999;padding:6px 11px;border:1px solid #3d4c74;border-radius:999px;background:rgba(10,13,20,.85);color:#eef2fb;font:600 12px/1.2 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.4)">&#8592; Arcade</a>
   <div id="fit">
     <div id="stage">
       <header>
-        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v33</span></h1>
+        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v34</span></h1>
         <div id="turnbar">Player 1's Turn</div>
       </header>
 
@@ -2890,14 +2990,17 @@ function handHTML(pl, isActive, cnt) {
   var html = "";
   var n = isActive ? pl.hand.length : (cnt || 0);
   var interactive = canAct();
+  var mid = (n - 1) / 2;
   for (var i = 0; i < n; i++) {
     var inst = isActive ? pl.hand[i] : null;
+    var off = i - mid;
+    var fan = ' style="transform:rotate(' + (off * 3).toFixed(1) + 'deg) translateY(' + (off * off * 1.4).toFixed(1) + 'px)"';
     if (isActive) {
       var foeUnits = S.players[other(S.cur)].board.length;
       var playable = interactive && inst.cost <= pl.res && (inst.type === "order" ? (!orderNeedsTarget(inst.key) || foeUnits > 0) : supportCount(pl) < MAX_BOARD);
       var skillTxt = (inst.type !== "order" && DEFS[inst.key].fx) ? DEFS[inst.key].text : "";
       var hasskill = (inst.type !== "order" && DEFS[inst.key].fx) ? " hasskill" : "";
-      html += '<div class="cardwrap"><div class="card ' + (playable ? "playable" : "unplayable") + (inst.type === "order" ? " order" : "") + hasskill + '" title="' + DEFS[inst.key].text + '" onclick="play(' + i + ')">' +
+      html += '<div class="cardwrap"' + fan + '><div class="card n-' + DEFS[inst.key].f + ' ' + (playable ? "playable" : "unplayable") + (inst.type === "order" ? " order" : "") + hasskill + '" title="' + DEFS[inst.key].text + '" onclick="play(' + i + ')">' +
         '<div class="cost">' + inst.cost + '</div>' +
         '<div class="cname"' + cnameStyle(inst.name) + '>' + inst.name + '</div>' +
         '<div class="art">' + DEFS[inst.key].art + '</div>' +
@@ -2906,7 +3009,7 @@ function handHTML(pl, isActive, cnt) {
           : '<div class="utext">' + skillTxt + '</div><div class="atk">' + inst.atk + '</div><div class="hp">' + inst.hp + '</div>') +
         '</div></div>';
     } else {
-      html += '<div class="cardwrap"><div class="cardback"></div></div>';
+      html += '<div class="cardwrap"' + fan + '><div class="cardback"></div></div>';
     }
   }
   return html;
@@ -2921,7 +3024,7 @@ function boardHTML(pl, role, lineFilter, ownerP) {
   for (var i = 0; i < pl.board.length; i++) {
     var inst = pl.board[i];
     if (lineFilter && (inst.line === "front") !== (lineFilter === "front")) continue;
-    var cls = "card";
+    var cls = "card n-" + DEFS[inst.key].f;
     var attm = '';
 
     if (mine) {
@@ -3001,19 +3104,22 @@ function render() {
     setTurnBar("Player " + (cur + 1));
   }
 
-  // top = opponent HQ, hand and support line
+  // top = enemy hand, kredits/deck, and the enemy support line with its HQ
   var topHTML = '<div class="prow">' +
-      '<div class="stackbox"><div class="stackcard"></div><span>DECK ' + S.pub.deck[foe] + '</span><span>RES ' + en.res + '</span></div>' +
-      '<div class="hqbox"><div class="hqcard' + hqTgtCls + '"' + hqOnt + '>' +
+      '<div class="kredits"><div class="kpip">' + en.res + '</div><span>KREDITS ' + en.res + '/' + MAX_RES + '</span></div>' +
+      '<div class="deckpile"><div class="stackcard"></div><span>DECK ' + S.pub.deck[foe] + '</span></div>' +
+    '</div>' +
+    '<div class="hand foehand">' + handHTML(en, false, S.pub.hand[foe]) + '</div>' +
+    '<div class="lineLabel">ENEMY SUPPORT LINE</div>' +
+    '<div class="boardrow">' +
+      '<div class="cardwrap hqslot"><div class="hqcard' + hqTgtCls + '"' + hqOnt + '>' +
         '<div class="star">' + factionLabel(en) + '</div>' +
         '<div class="hpnum">' + Math.max(0, en.hq) + '</div>' +
+        '<div class="hqlabel">HQ</div>' +
         '<div class="hpbar-wrap"><div class="hpbar' + (en.hq <= 5 ? ' low' : '') + '" style="width:' + Math.min(100, Math.round(en.hq / 20 * 100)) + '%"></div></div>' +
       '</div></div>' +
-      '<div class="stackbox"><div class="stackcard"></div><span></span><span></span></div>' +
-    '</div>' +
-    '<div class="hand">' + handHTML(en, false, S.pub.hand[foe]) + '</div>' +
-    '<div class="lineLabel">ENEMY SUPPORT LINE</div>' +
-    '<div class="boardrow">' + boardHTML(en, 'foe', 'support', foe) + '</div>';
+      boardHTML(en, 'foe', 'support', foe) +
+    '</div>';
   document.getElementById("panelTop").innerHTML = topHTML;
 
   // middle = the shared frontline
@@ -3031,17 +3137,20 @@ function render() {
     '<div class="boardrow">' + (frontUnits || '<div class="frontempty">Advance a unit to seize the frontline.</div>') + '</div>';
   document.getElementById("panelMid").innerHTML = midHTML;
 
-  // bottom = my support line, HQ and hand
+  // bottom = my support line with HQ, kredits/deck, and my fanned hand
   var myHq = '<div class="lineLabel">YOUR SUPPORT LINE</div>' +
-    '<div class="boardrow">' + boardHTML(my, 'mine', 'support', cur) + '</div>' +
-    '<div class="prow">' +
-      '<div class="stackbox"><div class="stackcard"></div><span>DECK ' + S.pub.deck[cur] + '</span><span>RES ' + my.res + '</span></div>' +
-      '<div class="hqbox"><div class="hqcard">' +
+    '<div class="boardrow">' +
+      '<div class="cardwrap hqslot"><div class="hqcard">' +
         '<div class="star">' + factionLabel(my) + '</div>' +
         '<div class="hpnum">' + Math.max(0, my.hq) + '</div>' +
+        '<div class="hqlabel">HQ</div>' +
         '<div class="hpbar-wrap"><div class="hpbar' + (my.hq <= 5 ? ' low' : '') + '" style="width:' + Math.min(100, Math.round(my.hq / 20 * 100)) + '%"></div></div>' +
       '</div></div>' +
-      '<div class="stackbox"><div class="stackcard"></div><span></span><span></span></div>' +
+      boardHTML(my, 'mine', 'support', cur) +
+    '</div>' +
+    '<div class="prow">' +
+      '<div class="kredits"><div class="kpip">' + my.res + '</div><span>KREDITS ' + my.res + '/' + MAX_RES + '</span></div>' +
+      '<div class="deckpile"><div class="stackcard"></div><span>DECK ' + S.pub.deck[cur] + '</span></div>' +
     '</div>' +
     '<div class="hand">' + handHTML(my, true, 0) + '</div>';
   document.getElementById("panelBottom").innerHTML = myHq;
@@ -3071,7 +3180,7 @@ document.getElementById("newBtn").onclick = function () { newGame(); };
 
 // ---------------- Tutorial ----------------
 var TUT_STEPS = [
-  { t: "1. THE GOAL", h: "<p>Each player commands an <b>HQ with 20 HP</b> \u2014 the enemy HQ is at the top, yours at the bottom.</p><p>Reduce the enemy HQ to <b>0 HP</b> and you win. If your HQ hits 0 first, you lose.</p>" },
+  { t: "1. THE GOAL", h: "<p>The battlefield has <b>three lines</b> like KARDS: your <b>SUPPORT LINE</b> at the bottom, the shared <b>FRONTLINE</b> in the middle, and the enemy <b>SUPPORT LINE</b> at the top. Your <b>HQ</b> sits in your support line; the enemy HQ sits in theirs.</p><p>Each HQ starts with <b>20 defense</b>. Reduce the enemy HQ to <b>0</b> and you win; if yours hits 0 first, you lose. Your <b>KREDITS</b> show on the left, your <b>DECK</b> on the right, and your hand is fanned along the bottom.</p>" },
   { t: "2. RESOURCES & TURNS", h: "<ul><li>Every turn you gain <b>+1 resource</b> (up to 12), so bigger cards unlock as the game goes on.</li><li>Cards you can afford <b>glow gold</b> \u2014 click one to play it. Cards you can't pay for look dark.</li><li><b>END TURN</b> passes play \u2014 in LOCAL the other player takes the screen, in VS AI the computer acts, in ONLINE you wait for your opponent.</li></ul>" },
   { t: "3. NATIONS", h: "<p>There are <b>5 nations</b>, each with its own <b>exclusive deck</b> of cards based on its real WW2 weapons. There are <b>no national buffs</b> \u2014 a nation is defined purely by its cards. Pick yours with the <b>NATION</b> button.</p><ul><li><b>USA</b> \u2605 \u2014 industrial might: Shermans, P-51s, B-17s, Marines.</li><li><b>UK</b> \u265b \u2014 Commonwealth: Spitfires, Commandos, radar, steady Guards.</li><li><b>GERMANY</b> \u2720 \u2014 Blitzkrieg: fast Panzers, Stukas, heavy Tigers.</li><li><b>USSR</b> \u262d \u2014 endless numbers: T-34s, Katyusha rockets, human waves.</li><li><b>JAPAN</b> \u2600 \u2014 aggressive air: cheap Zeros, banzai, kamikaze.</li></ul>" },
   { t: "4. UNITS & ACTION COST", h: "<p>Units are deployed into your <b>support line</b> (max 4). The blue circle in hand is the <b>deployment cost</b>. Once on the field the circle turns amber and shows the unit's <b>action cost</b> \u2014 the extra resource you pay every time it <b>moves or attacks</b>.</p><ul><li><b>Blitz</b> \u2014 can attack the turn it is played.</li><li><b>Guard</b> \u2014 enemies must fight it first; it shields your HQ and support line.</li><li><b>Air</b> \u2014 ignores Guard, ignores the frontline and can always strike the HQ.</li><li><b>Battlecries</b> \u2014 many units have an effect on play: healing your HQ, damaging the enemy HQ or their units, drawing cards, or giving your other units +1 attack.</li></ul>" },
