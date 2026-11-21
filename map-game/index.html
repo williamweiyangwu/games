@@ -421,7 +421,6 @@
 </style>
 </head>
 <body>
-<a href="../" title="Back to Arcade" aria-label="Back to Arcade" style="position:fixed;top:10px;left:10px;z-index:999999;padding:6px 11px;border:1px solid #3d4c74;border-radius:999px;background:rgba(10,13,20,.85);color:#eef2fb;font:600 12px/1.2 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.4)">&#8592; Arcade</a>
 
 <div id="top">
   <div id="brand">EUROPE 1939<small>MAP GAME &middot; WORLD WAR II</small></div>
@@ -704,7 +703,7 @@
         <div class="tutN">7</div>
         <div>
           <h4>War at sea</h4>
-          <p>Coastal nations can build <b>ships</b> in the <b>Navy</b> tab. The twelve blue <b>sea zones</b>
+          <p>Coastal nations can build <b>ships</b> in the <b>Navy</b> tab. The eighteen blue <b>sea zones</b>
           are real ground: select a fleet in port, then click an adjacent sea zone to sail there. Fleets
           fight enemy ships in the same zone, and a lone fleet takes control of the zone. From a sea zone
           you can <b>storm an enemy coast</b> &mdash; an amphibious landing. Only ships may enter the sea.</p>
@@ -1015,47 +1014,70 @@ var EU_REGIONS = [
 ];
 /* =======================================================================
    2a-EU. EUROPE SEA ZONES   (Europe map only - China has no navy)
-   Water is real geography here: twelve capturable sea zones painted over
-   the ocean, linked to coastal nations and to one another. Fleets sail
-   between them, contest them, and land troops on enemy shores.
+   Eighteen real, named seas and straits carved up the water: Barents and
+   Norwegian Seas, the North Sea, the Kattegat, the three arms of the Baltic,
+   the Atlantic approaches, the Channel and Bay of Biscay, the Gulf of Cádiz,
+   and the Mediterranean subdivided into the Western, Tyrrhenian, Adriatic,
+   Ionian and Aegean Seas. Land is painted over the water, so every coast
+   follows the real outline and only the narrows divide one sea from the next.
+   Fleets sail between them, contest them, and land troops on enemy shores.
    ======================================================================= */
 function seaBox(a,b,c,d){ return [[[a,c],[b,c],[b,d],[a,d]]]; }
 var EU_SEA = [
-  {id:'nsea', name:'North Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[3.4,55.1],
-   polys:seaBox(1,8,51.6,58.4),
-   nb:['uk','netherlands','belgium','germany','denmark','norway','norwsea','baltic','chan','irishsea']},
-  {id:'baltic', name:'Baltic Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[19.3,60.2],
-   polys:seaBox(12.5,25.5,54,65.5),
-   nb:['germany','denmark','sweden','finland','poland','estonia','latvia','lithuania','ussr','nsea']},
-  {id:'norwsea', name:'Norwegian Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[4.2,63.4],
-   polys:seaBox(-6,16,58.5,68),
-   nb:['uk','norway','nsea','barents','atlantic']},
-  {id:'barents', name:'Barents Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[31,69.7],
-   polys:seaBox(16,46,68.1,71.1),
-   nb:['norway','ussr','norwsea']},
   {id:'atlantic', name:'North Atlantic', flag:'&#127754;', color:'#16394f', sea:true, lab:[-17,50.2],
-   polys:seaBox(-27,-6.2,40,59.9),
-   nb:['ireland','uk','france','spain','portugal','norwsea','chan','iberia','irishsea']},
-  {id:'chan', name:'English Channel', flag:'&#127754;', color:'#16394f', sea:true, lab:[-5.0,48.4],
-   polys:seaBox(-12,2,44,51.5),
-   nb:['uk','france','belgium','netherlands','spain','nsea','atlantic','iberia','irishsea']},
-  {id:'irishsea', name:'Irish Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[-4.6,53.2],
-   polys:seaBox(-6.1,-3,51.2,55),
-   nb:['uk','ireland','atlantic','chan','nsea']},
-  {id:'iberia', name:'Iberian Waters', flag:'&#127754;', color:'#16394f', sea:true, lab:[-9.3,40.0],
-   polys:seaBox(-12,-5.2,36,43.9),
-   nb:['spain','portugal','france','atlantic','chan','wmed']},
-  {id:'wmed', name:'Western Mediterranean', flag:'&#127754;', color:'#16394f', sea:true, lab:[2.6,39.6],
-   polys:seaBox(-5.1,12,36,43.9),
-   nb:['france','spain','italy','iberia','cmed']},
-  {id:'cmed', name:'Central Mediterranean', flag:'&#127754;', color:'#16394f', sea:true, lab:[17.1,38.4],
-   polys:seaBox(12.1,23,35.6,41.9),
-   nb:['italy','yugoslavia','albania','greece','wmed','aegean']},
-  {id:'aegean', name:'Aegean Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[26.3,38.2],
-   polys:seaBox(23.1,30,35.6,40.9),
-   nb:['greece','turkey','bulgaria','cmed','blacksea']},
+   polys:seaBox(-27,-6,36,60),
+   nb:['ireland','uk','france','spain','portugal','iceland','norwsea','chan','irishsea','biscay','iberia']},
+  {id:'barents', name:'Barents Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[31,70.0],
+   polys:seaBox(16,46,68.4,71.2),
+   nb:['norway','ussr','norwsea']},
+  {id:'norwsea', name:'Norwegian Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[1,64.2],
+   polys:seaBox(-13,16,58.9,68.4),
+   nb:['uk','norway','iceland','nsea','barents','atlantic','kattegat']},
+  {id:'nsea', name:'North Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[3.4,55.1],
+   polys:seaBox(-1,8.5,51,58.9),
+   nb:['uk','netherlands','belgium','germany','denmark','norway','norwsea','kattegat','chan','irishsea']},
+  {id:'kattegat', name:'Kattegat &amp; Skagerrak', flag:'&#127754;', color:'#16394f', sea:true, lab:[9.7,58.4],
+   polys:seaBox(8.5,13,55.5,58.9),
+   nb:['denmark','norway','sweden','nsea','norwsea','baltic']},
+  {id:'baltic', name:'Baltic Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[17,56.8],
+   polys:seaBox(12.5,21,54,60),
+   nb:['germany','denmark','sweden','finland','poland','estonia','latvia','lithuania','ussr',
+       'kattegat','bothnia','gofin']},
+  {id:'bothnia', name:'Gulf of Bothnia', flag:'&#127754;', color:'#16394f', sea:true, lab:[21,62.8],
+   polys:seaBox(17,25.5,60,65.7),
+   nb:['sweden','finland','baltic']},
+  {id:'gofin', name:'Gulf of Finland', flag:'&#127754;', color:'#16394f', sea:true, lab:[26,59.8],
+   polys:seaBox(21,30,59.2,60.5),
+   nb:['finland','estonia','ussr','baltic']},
+  {id:'irishsea', name:'Irish Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[-5.4,52.6],
+   polys:seaBox(-6,-3,51.3,55.5),
+   nb:['uk','ireland','atlantic','chan']},
+  {id:'chan', name:'English Channel', flag:'&#127754;', color:'#16394f', sea:true, lab:[-1.5,49.9],
+   polys:seaBox(-6,1.5,48,51.3),
+   nb:['uk','france','belgium','netherlands','nsea','atlantic','irishsea','biscay']},
+  {id:'biscay', name:'Bay of Biscay', flag:'&#127754;', color:'#16394f', sea:true, lab:[-5.5,45.8],
+   polys:seaBox(-10.5,-1.8,43.4,48),
+   nb:['france','spain','atlantic','chan','iberia']},
+  {id:'iberia', name:'Gulf of C&aacute;diz', flag:'&#127754;', color:'#16394f', sea:true, lab:[-7.2,36.6],
+   polys:seaBox(-9.5,-5.3,36,43.4),
+   nb:['spain','portugal','france','atlantic','biscay','wmed']},
+  {id:'wmed', name:'Western Mediterranean', flag:'&#127754;', color:'#16394f', sea:true, lab:[1.5,40],
+   polys:seaBox(-5.3,8,36,43.5),
+   nb:['france','spain','italy','iberia','tyrrhenian']},
+  {id:'tyrrhenian', name:'Tyrrhenian Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[12,41],
+   polys:seaBox(8,15.5,37.5,44),
+   nb:['italy','france','wmed','adriatic','ionian']},
+  {id:'adriatic', name:'Adriatic Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[16.5,42.5],
+   polys:seaBox(15.5,20,40,45.8),
+   nb:['italy','yugoslavia','albania','tyrrhenian','ionian']},
+  {id:'ionian', name:'Ionian Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[19,38],
+   polys:seaBox(15.5,23.2,35.6,40),
+   nb:['italy','albania','greece','tyrrhenian','adriatic','aegean']},
+  {id:'aegean', name:'Aegean Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[26,38.5],
+   polys:seaBox(23.2,29,35.6,41.5),
+   nb:['greece','turkey','bulgaria','ionian','blacksea']},
   {id:'blacksea', name:'Black Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[34.4,44.1],
-   polys:seaBox(28,41,41.1,46.8),
+   polys:seaBox(27.5,41.5,41,46.8),
    nb:['turkey','bulgaria','romania','ussr','aegean']}
 ];
 /* =======================================================================
@@ -1070,36 +1092,36 @@ function resPoly(cx,cy,dx,dy){ return [[[cx-dx,cy-dy],[cx+dx,cy-dy],[cx+dx,cy+dy
 var EU_AIR = [
   {id:'airnorth', name:'Northern Skies', flag:'&#9992;', color:'#9a86cf', air:true, lab:[7,62.5],
    polys:airBox(-2,26,56,68),
-   nb:['norwsea','nsea','baltic','barents','norway','sweden','finland','ussr','uk','denmark',
-       'airwest','aircentre','aireast']},
+   nb:['norwsea','nsea','baltic','barents','kattegat','bothnia','gofin','norway','sweden','finland',
+       'ussr','uk','denmark','airwest','aircentre','aireast']},
   {id:'airwest', name:'Western Front', flag:'&#9992;', color:'#8e7ac6', air:true, lab:[-1,49.6],
    polys:airBox(-11,9,45,55),
-   nb:['atlantic','chan','nsea','irishsea','uk','france','belgium','netherlands','germany','ireland',
-       'airnorth','aircentre','airatlantic']},
+   nb:['atlantic','chan','nsea','irishsea','biscay','uk','france','belgium','netherlands','germany',
+       'ireland','airnorth','aircentre','airatlantic']},
   {id:'aircentre', name:'Central Front', flag:'&#9992;', color:'#a48fd6', air:true, lab:[14.5,51],
    polys:airBox(7,22,47,55.5),
-   nb:['nsea','baltic','germany','poland','czechoslovakia','hungary','austria','netherlands','belgium',
-       'switzerland','airnorth','airwest','aireast','airsouth']},
+   nb:['nsea','baltic','kattegat','gofin','germany','poland','czechoslovakia','hungary','austria',
+       'netherlands','belgium','switzerland','airnorth','airwest','aireast','airsouth']},
   {id:'aireast', name:'Eastern Front', flag:'&#9992;', color:'#9382cc', air:true, lab:[31,55.5],
    polys:airBox(22,43,48,66),
-   nb:['baltic','blacksea','barents','ussr','poland','finland','estonia','latvia','lithuania','romania',
-       'airnorth','aircentre','airbalkans']},
+   nb:['baltic','bothnia','gofin','blacksea','barents','ussr','poland','finland','estonia','latvia',
+       'lithuania','romania','airnorth','aircentre','airbalkans']},
   {id:'airsouth', name:'Southern Front', flag:'&#9992;', color:'#9f8ad2', air:true, lab:[16,44],
    polys:airBox(6,24,40,48),
-   nb:['wmed','cmed','italy','yugoslavia','austria','hungary','switzerland','france','albania','greece',
-       'aircentre','airmed','airbalkans']},
+   nb:['wmed','tyrrhenian','adriatic','ionian','italy','yugoslavia','austria','hungary','switzerland',
+       'france','albania','greece','aircentre','airmed','airbalkans']},
   {id:'airbalkans', name:'Balkan Front', flag:'&#9992;', color:'#8a79c2', air:true, lab:[26,43.5],
    polys:airBox(23,42,40,49),
-   nb:['aegean','blacksea','cmed','greece','turkey','bulgaria','romania','yugoslavia','albania','ussr',
-       'aireast','airsouth','airmed']},
+   nb:['aegean','blacksea','ionian','adriatic','greece','turkey','bulgaria','romania','yugoslavia',
+       'albania','ussr','aireast','airsouth','airmed']},
   {id:'airatlantic', name:'Atlantic Patrol', flag:'&#9992;', color:'#8474ba', air:true, lab:[-18,45],
    polys:airBox(-28,-11,38,52),
-   nb:['atlantic','irishsea','chan','iberia','uk','ireland','france','spain','portugal',
-       'airwest','airmed']},
+   nb:['atlantic','irishsea','chan','biscay','iberia','uk','ireland','france','spain',
+       'portugal','airwest','airmed']},
   {id:'airmed', name:'Mediterranean Air', flag:'&#9992;', color:'#a18cd4', air:true, lab:[16,36],
    polys:airBox(-5,30,33,42),
-   nb:['wmed','cmed','aegean','iberia','italy','greece','turkey','spain','france','albania',
-       'airsouth','airbalkans','airatlantic']}
+   nb:['wmed','tyrrhenian','adriatic','ionian','aegean','iberia','italy','greece','turkey','spain',
+       'france','albania','airsouth','airbalkans','airatlantic']}
 ];
 /* =======================================================================
     2a-RES. EUROPE OIL FIELDS & GRAIN FARMS
@@ -1135,10 +1157,10 @@ var EU_RES = [
 ];
 var AIR_ZONES=[];
 /* where each coastal nation's first squadrons put to sea */
-var EU_HOME_SEA={uk:'nsea', germany:'nsea', netherlands:'nsea', denmark:'baltic',
-  poland:'baltic', sweden:'baltic', finland:'baltic', estonia:'baltic', latvia:'baltic',
-  lithuania:'baltic', norway:'norwsea', ireland:'irishsea', france:'chan', belgium:'chan',
-  spain:'iberia', portugal:'iberia', italy:'cmed', yugoslavia:'cmed', albania:'cmed',
+var EU_HOME_SEA={uk:'nsea', germany:'nsea', netherlands:'nsea', denmark:'kattegat',
+  poland:'baltic', sweden:'baltic', finland:'gofin', estonia:'gofin', latvia:'baltic',
+  lithuania:'baltic', norway:'norwsea', ireland:'irishsea', france:'chan', belgium:'nsea',
+  spain:'iberia', portugal:'iberia', italy:'tyrrhenian', yugoslavia:'adriatic', albania:'adriatic',
   greece:'aegean', turkey:'blacksea', bulgaria:'blacksea', romania:'blacksea', ussr:'blacksea'};
 /* only these nations are landlocked - everyone else can build ships */
 var EU_LANDLOCKED={czechoslovakia:1,hungary:1,switzerland:1,austria:1,iceland:1};
@@ -2373,8 +2395,9 @@ function areaOf(c){
    actually fielded in the war, so a micro-state can never out-muscle a power.
    Anything not listed falls back to area size. */
 var EU_SEC_CAP = {'ussr#0':4, 'ussr#1':4, 'ussr#2':5,
-  nsea:9, baltic:8, norwsea:7, atlantic:7, chan:7, irishsea:5, iberia:6,
-  wmed:7, cmed:7, aegean:6, blacksea:7, barents:6};
+  nsea:9, baltic:7, norwsea:7, atlantic:7, chan:6, irishsea:5, iberia:5,
+  barents:5, kattegat:5, bothnia:5, gofin:5, biscay:6,
+  wmed:6, tyrrhenian:6, adriatic:6, ionian:6, aegean:6, blacksea:7};
 var EU_NAT_CAP = {
   germany:14, ussr:13, uk:11, france:10, italy:9,
   poland:7, czechoslovakia:7, finland:6, hungary:6, romania:7,
@@ -2581,7 +2604,7 @@ var MAPS={
     res:function(){ return EU_RES; },
     blocs:['Axis','Allies','Other','Neutral'],
     defaultPlayer:'germany', tabAir:'&#9992; Air Force', newsName:'THE CONTINENTAL',
-    rules:'Nations that fought in the Second World War are on the map. Each begins with its own treasury, riflemen and two mine fields at home &mdash; a major power far more than a micro-state.<br>There is <b>no daily income</b> &mdash; <b>mine fields are the only gold</b> in the game, mined at each nation\u2019s own rate. Buy mine cars to lay more, and take countries to grow your yield.<br>Once you have chosen a nation, the Shop&rsquo;s <b>Tanks</b> tab lists that nation&rsquo;s own historical armour.<br>Click a country to open its sheet: a small map of the country with the units standing in it. Recruit in your own territory, then order units into a neighbouring country. Every front is a real front &mdash; the AI nations fight each other too, so a war can be won without fighting the whole continent.<br>Units fight at their best on friendly soil, and hardest of all in their homeland. Tanks, artillery and bombers cost upkeep every day, so a huge army can bankrupt you.<br>Army sizes follow real history: micro-states like <b>Albania</b> or <b>Denmark</b> hold just <b>2&ndash;3</b> units, while a major power fields up to <b>14</b>. The Soviet Union is split into three fronts &mdash; <b>South 4</b>, <b>Centre 4</b>, <b>North 5</b> &mdash; and a weak state buys only basic rifles, guns and fighters: no tanks, heavy armour or bomber fleets.<br>Send your men at a front and they <b>hold the ground until the country falls</b> &mdash; only then do the survivors march back home to rearm. Only <b>one territory on the whole map</b> changes hands each day.<br>The <b>Navy</b> tab builds ships in any coastal nation: destroyers, submarines, cruisers, battleships and carriers. Twelve <b>sea zones</b> are painted on the ocean &mdash; sail into them to contest them, control them to open deeper water, and storm enemy coastlines from the sea. Only ships can enter a sea zone, and landlocked nations cannot build a fleet.<br>Eight purple <b>air zones</b> hang over the continent: select your aircraft and click a neighbouring zone to fly in and contest it. Every zone you hold adds <b>+5% power</b> to every land and sea unit you own. On the ground you can <b>entrench</b> any province you own (or leave engineers there) for up to <b>+45% defence</b>; forts are lost when the province falls.<br>The gold-marked <b>oil fields</b> and green-marked <b>grain farms</b> are a second economy: march a ground unit onto one to seize it, and every site held pays oil or food each day. Every unit eats food; tanks, aircraft and ships burn oil. Empty stores weaken formations and, after three days, disband the costliest one.<br>You win by holding <b>every</b> land territory. You lose if you hold none.'
+    rules:'Nations that fought in the Second World War are on the map. Each begins with its own treasury, riflemen and two mine fields at home &mdash; a major power far more than a micro-state.<br>There is <b>no daily income</b> &mdash; <b>mine fields are the only gold</b> in the game, mined at each nation\u2019s own rate. Buy mine cars to lay more, and take countries to grow your yield.<br>Once you have chosen a nation, the Shop&rsquo;s <b>Tanks</b> tab lists that nation&rsquo;s own historical armour.<br>Click a country to open its sheet: a small map of the country with the units standing in it. Recruit in your own territory, then order units into a neighbouring country. Every front is a real front &mdash; the AI nations fight each other too, so a war can be won without fighting the whole continent.<br>Units fight at their best on friendly soil, and hardest of all in their homeland. Tanks, artillery and bombers cost upkeep every day, so a huge army can bankrupt you.<br>Army sizes follow real history: micro-states like <b>Albania</b> or <b>Denmark</b> hold just <b>2&ndash;3</b> units, while a major power fields up to <b>14</b>. The Soviet Union is split into three fronts &mdash; <b>South 4</b>, <b>Centre 4</b>, <b>North 5</b> &mdash; and a weak state buys only basic rifles, guns and fighters: no tanks, heavy armour or bomber fleets.<br>Send your men at a front and they <b>hold the ground until the country falls</b> &mdash; only then do the survivors march back home to rearm. Only <b>one territory on the whole map</b> changes hands each day.<br>The <b>Navy</b> tab builds ships in any coastal nation: destroyers, submarines, cruisers, battleships and carriers. Eighteen real <b>sea zones</b> &mdash; the North and Baltic Seas, the Kattegat, the Atlantic approaches, the Channel and Bay of Biscay, and the Mediterranean&rsquo;s six seas &mdash; are painted on the ocean &mdash; sail into them to contest them, control them to open deeper water, and storm enemy coastlines from the sea. Only ships can enter a sea zone, and landlocked nations cannot build a fleet.<br>Eight purple <b>air zones</b> hang over the continent: select your aircraft and click a neighbouring zone to fly in and contest it. Every zone you hold adds <b>+5% power</b> to every land and sea unit you own. On the ground you can <b>entrench</b> any province you own (or leave engineers there) for up to <b>+45% defence</b>; forts are lost when the province falls.<br>The gold-marked <b>oil fields</b> and green-marked <b>grain farms</b> are a second economy: march a ground unit onto one to seize it, and every site held pays oil or food each day. Every unit eats food; tanks, aircraft and ships burn oil. Empty stores weaken formations and, after three days, disband the costliest one.<br>You win by holding <b>every</b> land territory. You lose if you hold none.'
   },
   china:{
     id:'china', title:'CHINA &middot; THE PROVINCES', tag:'Choosing your province',
