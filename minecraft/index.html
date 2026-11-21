@@ -237,7 +237,7 @@
   <div id="bar"></div>
   <div id="dbg"></div>
   <div id="toast"></div>
-  <div id="ver">v2.3 build 1</div>
+  <div id="ver">v2.3 build 2</div>
 </div>
 
 <div id="inv" class="hide">
@@ -4245,9 +4245,8 @@ function frame(now) {
         if (mineT >= 1) { mineT = 0; edit(hit, true); }
       }
     } else if (!mining) mineT = 0;
-  } else {
-    cam.yaw += dt * 0.05;
   }
+  /* the camera never turns on its own - only mouse look changes the view */
   stepAnimals(dt);
   stepWater();
   stepHostiles(dt);
