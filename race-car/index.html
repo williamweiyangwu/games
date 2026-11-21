@@ -107,6 +107,17 @@
   #boostTag.on{opacity:1}
   #boostBox.using #boostTrack{box-shadow:0 0 12px rgba(55,201,255,.95)}
   #boostBox.using #boostPct{color:#37c9ff;text-shadow:0 0 8px rgba(55,201,255,.7)}
+  /* bottom-right tyre condition gauge */
+  #tyreStatus{position:fixed;right:14px;bottom:32px;width:190px;padding:9px 11px;z-index:20;pointer-events:none;
+    border:1px solid rgba(255,255,255,.18);border-radius:10px;background:rgba(10,16,28,.86);color:#fff}
+  #tyreStatus .tsHead{display:flex;justify-content:space-between;align-items:baseline;font-size:10px;letter-spacing:.16em;opacity:.75}
+  #tyreStatus .tsComp{font-size:13px;font-weight:800;letter-spacing:.08em;opacity:1}
+  #tyreStatus .tsCond{font-size:23px;font-weight:800;line-height:1.15;margin-top:2px}
+  #tyreStatus .tsBar{height:7px;border-radius:5px;background:rgba(255,255,255,.16);overflow:hidden;margin-top:6px}
+  #tyreStatus .tsFill{height:100%;width:100%;border-radius:5px;transition:width .2s}
+  #tyreStatus .tsWarn{margin-top:6px;font-size:10px;letter-spacing:.1em;color:#ff9a5c;display:none}
+  #tyreStatus.warn .tsWarn{display:block}
+  #tyreStatus.warn{border-color:rgba(255,120,60,.6)}
   
 #lights{position:fixed;left:50%;top:14%;transform:translateX(-50%);display:flex;gap:14px;z-index:15;background:rgba(20,20,25,.9);padding:14px 22px;border-radius:12px;border:2px solid rgba(255,255,255,.18);pointer-events:none}
 #lights.hidden{display:none!important}
@@ -142,7 +153,6 @@
 </style>
 </head>
 <body>
-<a href="../" title="Back to Arcade" aria-label="Back to Arcade" style="position:fixed;top:10px;left:10px;z-index:999999;padding:6px 11px;border:1px solid #3d4c74;border-radius:999px;background:rgba(10,13,20,.85);color:#eef2fb;font:600 12px/1.2 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.4)">&#8592; Arcade</a>
 <div id="hud" class="hidden">
   <div id="speedBox"><b id="speed">0</b><span>KM/H</span></div>
   <div class="stat"><b id="lap">1/2</b><span>LAP</span></div>
@@ -153,21 +163,27 @@
   <div class="stat" id="tyreBox"><b id="tyreWear">0%</b><span>TYRE WEAR</span></div>
   <div class="stat" id="boostBox"><b id="boostPct">35%</b><span>NITRO</span>
     <div id="boostTrack"><div id="boostFill" style="width:35%"></div></div>
-    <div id="driftTag">甩尾 DRIFT</div><div id="boostTag">BOOST</div></div>
+    <div id="driftTag">DRIFT</div><div id="boostTag">BOOST</div></div>
+  <div id="tyreStatus">
+    <div class="tsHead"><span>TYRE CONDITION</span><span class="tsComp" id="tsCompound">M</span></div>
+    <div class="tsCond" id="tsCond">100%</div>
+    <div class="tsBar"><div class="tsFill" id="tsFill"></div></div>
+    <div class="tsWarn">TYRES CRITICAL — PIT NOW</div>
+  </div>
 </div>
 <div id="standings" class="hidden"></div>
 <div id="banner" class="hidden"></div>
 <div id="lights" class="hidden"><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div></div>
-  <div id="verTag">v2.28</div>
+  <div id="verTag">v2.29</div>
   <button id="achBtn" class="ghost">ACHIEVEMENTS</button>
   <div id="achPanel"><b style="letter-spacing:.12em">ACHIEVEMENTS</b><div id="achList" style="margin-top:8px"></div></div>
   <div id="pitMsg"></div>
 
 <div id="pitMenu" class="overlay hidden">
   <h1>PIT STOP</h1>
-  <p class="pitNote">Your car is driving itself through the pit lane. Choose fresh tyres and any repairs below, then confirm to rejoin the race.</p>
+  <p class="pitNote">Your car is driving itself to the pit box at the 80 km/h limit. Choose fresh tyres and repairs, then confirm. The stop takes about 2.6 s (plus 1.2 s for repairs) once the car is jacked up.</p>
   <div class="pitRow"><div class="pickLabel">TYRES</div><div id="pitTyrePick" class="cards"></div></div>
-  <div id="pitRepairRow" class="sel"><span id="pitRepairMark">&#9745;</span> REPAIR DAMAGE &mdash; FREE</div>
+  <div id="pitRepairRow" class="sel"><span id="pitRepairMark">&#9745;</span> REPAIR DAMAGE &mdash; +1.2s STOP TIME</div>
   <div class="menuBtns"><button id="pitConfirmBtn">CONFIRM &amp; REJOIN</button></div>
 </div>
 
@@ -209,9 +225,9 @@
 <div class="keys">
     <b>W</b>/<b>↑</b> throttle &nbsp;·&nbsp; <b>S</b>/<b>↓</b> brake / reverse &nbsp;·&nbsp; 
     <b>A</b><b>D</b>/<b>←</b><b>→</b> steer<br>
-    <b>SPACE</b> nitro boost &nbsp;·&nbsp; <b>SHIFT</b> 甩尾 handbrake drift &nbsp;·&nbsp; 
+    <b>SPACE</b> nitro boost &nbsp;·&nbsp; <b>SHIFT</b> handbrake drift &nbsp;·&nbsp; 
     <b>C</b> camera &nbsp;·&nbsp; <b>R</b> restart &nbsp;·&nbsp; <b>M</b> sound &nbsp;·&nbsp; <b>P</b> automatic pit stop &nbsp;·&nbsp; <b>ESC</b> pause<br>
-    22-DRIVER F1 GRID &nbsp;·&nbsp; REAL GPS CIRCUIT LAYOUTS &nbsp;·&nbsp; 5 RED LIGHTS &nbsp;·&nbsp; SELF-DRIVING PIT LANE
+    22-DRIVER F1 GRID &nbsp;·&nbsp; REAL GPS CIRCUITS &nbsp;·&nbsp; 5 RED LIGHTS &nbsp;·&nbsp; REAL PIT STOPS &amp; 80 KM/H LIMIT &nbsp;·&nbsp; RAIN &amp; WEAR
   </div>
 </div>
 
@@ -1397,6 +1413,57 @@
 
   var camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.5, 4000);
 
+  /* ---------------------------------- rain -------------------------- *
+   *  Falling streaks that travel with the camera. Selecting LIGHT RAIN or
+   *  HEAVY RAIN in the menu now puts real rain on screen during the race,
+   *  not just a darker sky.                                             */
+  var RAIN_MAX = 1700;
+  var rainPos = new Float32Array(RAIN_MAX * 6);
+  var rainData = [];
+  function resetDrop(i, top) {
+    var x = (Math.random() - 0.5) * 160;
+    var z = (Math.random() - 0.5) * 160;
+    var y = top ? 58 + Math.random() * 22 : Math.random() * 80;
+    var len = 1.1 + Math.random() * 1.5;
+    var o = i * 6;
+    rainPos[o] = x; rainPos[o + 1] = y; rainPos[o + 2] = z;
+    rainPos[o + 3] = x - 0.3; rainPos[o + 4] = Math.max(0.1, y - len); rainPos[o + 5] = z;
+    rainData[i] = { x: x, z: z, y: y, len: len };
+  }
+  for (var ri = 0; ri < RAIN_MAX; ri++) resetDrop(ri, false);
+  var rainGeo = new THREE.BufferGeometry();
+  rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPos, 3));
+  var rainMat = new THREE.LineBasicMaterial({
+    color: 0xc2d9ff, transparent: true, opacity: 0.42, depthWrite: false, fog: false
+  });
+  var rainMesh = new THREE.LineSegments(rainGeo, rainMat);
+  rainMesh.frustumCulled = false;
+  rainMesh.visible = false;
+  scene.add(rainMesh);
+  function updateRain(dt) {
+    var raining = started && (selectedWeather === 2 || selectedWeather === 3) && !paused && !raceOver;
+    rainMesh.visible = raining;
+    if (!raining) return;
+    var heavy = selectedWeather === 3;
+    var count = heavy ? RAIN_MAX : 720;
+    rainGeo.setDrawRange(0, count * 2);
+    rainMat.opacity = heavy ? 0.55 : 0.30;
+    var fall = (heavy ? 52 : 28) * dt;
+    for (var i = 0; i < count; i++) {
+      var d = rainData[i];
+      d.y -= fall;
+      if (d.y < 0.2) { resetDrop(i, true); d = rainData[i]; }
+      var slant = (60 - d.y) * 0.035;
+      var o = i * 6;
+      rainPos[o] = d.x + slant;
+      rainPos[o + 1] = d.y;
+      rainPos[o + 3] = d.x - 0.3 + slant;
+      rainPos[o + 4] = Math.max(0.1, d.y - d.len);
+    }
+    rainGeo.attributes.position.needsUpdate = true;
+    rainMesh.position.set(camera.position.x, 0, camera.position.z);
+  }
+
   /* ---------------------------------- sunlight ---------------------- */
   var sunDir = new THREE.Vector3(0.42, 0.78, 0.46).normalize();
   var sun = new THREE.DirectionalLight(0xfff3d0, 2.0);
@@ -1622,7 +1689,8 @@
     world.add(grass);
 
     var edge = [0.95, 0.95, 0.95];
-    world.add(ribbon(-HALF_W, HALF_W, 0.0, P.road, 0, LEN, 900));            // asphalt
+    roadMesh = ribbon(-HALF_W, HALF_W, 0.0, P.road, 0, LEN, 900);            // asphalt
+    world.add(roadMesh);
     // grass run-off between the kerb and the barrier, like a modern F1 circuit
     world.add(ribbon(-RUNOFF_LAT, -HALF_W - KERB_W, 0.006, P.runoff, 0, LEN, 700));
     world.add(ribbon(HALF_W + KERB_W, RUNOFF_LAT, 0.006, P.runoff, 0, LEN, 700));
@@ -1850,6 +1918,7 @@
     ambient.color = amb; ambient.intensity = P.ambientI;
     sun.color = new THREE.Color(P.sun); sun.intensity = P.sunI;
     buildWorld(def);
+    applyWeather();   // keep the chosen rain / fog look when switching circuits
   }
 
   /* ---------------------------------- cars -------------------------- */
@@ -2073,9 +2142,10 @@
       lapStart: 0, best: Infinity, finished: false, finishTime: 0,
       wheelSpin: 0, wobble: 0,
       remote: false, hidden: false, id: null,
-      tyre: 1, tyreWear: 0, damage: 0, damageState: 0, retired: false, exploded: false,
+      tyre: 1, tyreWear: 0, damage: 0, damageState: 0, retired: false, exploded: false, wrecked: false,
       inPits: false, pitPhase: 0, pitT: 0, pitted: false, jumpStart: false,
-      pitCount: 0, lastPitLap: -1, penalty: 0, lightPenalty: 0, pos: 0, gridSlot: -1
+      pitCount: 0, lastPitLap: -1, penalty: 0, lightPenalty: 0, pos: 0, gridSlot: -1,
+      aiPit: 0, aiPitT: 0, aiPitTyre: 1, pitSpeedWarned: false
     };
     c.body = c.mesh.getObjectByName('body');
     c.cockpit = c.mesh.getObjectByName('cockpit');
@@ -2149,6 +2219,7 @@
   var currentTrackDef = TRACKS[0];   // live circuit definition
   var lightsPhase = 0, lightsTimer = 0, lightsOut = false;
   var worldWet = 0;
+  var roadMesh = null;   // asphalt surface, tinted when it rains
 
   var trackCountChoice = 1; // index of the selected real circuit
   function seededRand(seed) {
@@ -2284,12 +2355,23 @@
     });
   }
   function applyWeather() {
-    var w = WEATHERS[selectedWeather];
+    var w = WEATHERS[selectedWeather] || WEATHERS[0];
     var pal = currentTrackDef.palette;
     scene.fog.far = (pal.fogFar || 1700) * w.fog;
     scene.fog.near = Math.max(40, (pal.fogNear || 420) * w.fog);
     ambient.intensity = (pal.ambientI || 0.55) * w.light;
     sun.intensity = (pal.sunI || 2.0) * w.light;
+    var wet = w.wetness || 0;
+    worldWet = wet;
+    // Wet races get a darker, heavier sky and a darker, slicker road surface.
+    var sky = new THREE.Color(pal.sky);
+    sky.multiplyScalar(w.tint || 1);
+    scene.fog.color.copy(sky);
+    if (scene.background && scene.background.isColor) scene.background.copy(sky);
+    if (roadMesh) {
+      var k = 1 - 0.46 * wet;
+      roadMesh.material.color.setRGB(k * (1 - 0.02 * wet), k * (1 - 0.02 * wet), k * (1 + 0.06 * wet));
+    }
   }
 
   function updateMenuText() {
@@ -2310,7 +2392,9 @@
       c.damageState = 0;
       c.retired = false;
       c.exploded = false;
+      c.wrecked = false;
       c.inPits = false;
+      c.aiPit = 0; c.aiPitT = 0; c.pitSpeedWarned = false;
       c.pitPhase = 0;
       c.pitT = 0;
       c.pitted = false;
@@ -2403,8 +2487,8 @@
       c.best = Infinity; c.finished = false; c.finishTime = 0;
       c.lapStart = 0; c.wobble = 0; c.halfPassed = false; c.stuck = 0;
       c.rev = 0; c.revDist = 0; c.revLock = 0; c.driftPulse = 0; c.driftWait = 0;
-      c.penalty = 0; c.lightPenalty = 0; c.inPits = false; c.pitPhase = 0; c.pitT = 0;
-      c.retired = false; c.exploded = false; c.jumpStart = false;
+      c.penalty = 0; c.lightPenalty = 0; c.inPits = false; c.aiPit = 0; c.aiPitT = 0; c.pitSpeedWarned = false; c.pitPhase = 0; c.pitT = 0;
+      c.retired = false; c.exploded = false; c.wrecked = false; c.jumpStart = false;
       c.i = -1;
       var pr = projectTrack(c.x, c.z, -1);
       c.s = pr.s; c.prevS = pr.s; c.lat = pr.lat; c.i = pr.i;
@@ -2438,7 +2522,10 @@
         c.damageState = 0;
         c.retired = false;
         c.exploded = false;
+        c.wrecked = false;
+      c.wrecked = false;
         c.inPits = false;
+      c.aiPit = 0; c.aiPitT = 0; c.pitSpeedWarned = false;
         c.pitPhase = 0;
         c.pitT = 0;
         c.pitted = false;
@@ -2487,7 +2574,7 @@
     // only when physics demands it, so straights are taken flat out and corners
     // are entered at a speed the tyres can actually hold. Difficulty then caps
     // the whole profile, so a harder race is genuinely faster everywhere.
-    var vTop = 64 * c.skill;
+    var vTop = 52 * c.skill;   // matches the lowered physical top speed
     var gripBudget = surface.aiGrip * aiDiffGrip;
     var target = vTop;
     var kk0 = kappaAt(c.s);
@@ -2682,8 +2769,15 @@
      * grippy asphalt the tyres kill sideways velocity almost instantly, on ice
      * the car keeps travelling the way it was going and slides wide. `grip` is
      * the per-second rate at which that sideways velocity is bled off.         */
-    var BASE_ACCEL = 15.5, BRAKE = 26, DRAG = 0.0026, ROLL = 1.35, TOP = 74;
+    var BASE_ACCEL = 13.2, BRAKE = 26, DRAG = 0.0026, ROLL = 1.35, TOP = 58;
     var surf = surface;
+
+    // A wrecked car is out of the race: no throttle, no steering, no recovery.
+    if (c.wrecked) {
+      c.vx = 0; c.vz = 0; c.speed = 0; c.boosting = false; c.drifting = false;
+      syncMesh(c);
+      return;
+    }
 
     var fw = { x: Math.sin(c.yaw), z: Math.cos(c.yaw) };
     var rt = { x: -fw.z, z: fw.x };
@@ -2695,10 +2789,10 @@
     // asking the tyres for something they cannot deliver.
     if (c !== player) { gripRate *= aiDiffPhys; top *= aiDiffPhys; }
     c.boosting = !c.finished && !!input.boost && c.boost > 0.02;
-    if (input.handbrake) gripRate *= 0.10;     // handbrake breaks lateral grip -> 甩尾: the tail steps out and holds the slide
+    if (input.handbrake) gripRate *= 0.10;     // handbrake breaks lateral grip -> Drift: the tail steps out and holds the slide
 
     if (!c.finished) {
-      if (c.boosting) { accel *= 2.1; top += 20; }
+      if (c.boosting) { accel *= 2.1; top += 14; }
       var vF = c.vx * fw.x + c.vz * fw.z;
       var dV = input.throttle * accel * dt
              - input.brake * BRAKE * dt
@@ -2723,7 +2817,7 @@
     var steerAuthority = 2.3 * c.handling / (1 + Math.abs(vSteer) * 0.045);
     c.steer += (input.steer - c.steer) * Math.min(1, dt * 9);
     var yawRate = c.steer * steerAuthority * Math.min(1, Math.abs(vSteer) / 7) * Math.sign(vSteer || 1);
-    if (input.handbrake) yawRate *= 1.85;      // 甩尾: the tail swings out sharply while the handbrake is held
+    if (input.handbrake) yawRate *= 1.85;      // Drift: the tail swings out sharply while the handbrake is held
     c.yaw += yawRate * dt;                     // heading turns, velocity lags -> slip
 
     c.x += c.vx * dt;
@@ -2759,6 +2853,13 @@ var pr = projectTrack(c.x, c.z, c.i);
       var sp0 = Math.hypot(c.vx, c.vz);
       if (sp0 > 1e-4) { var kk = Math.max(0, 1 - offBrake * dt / sp0); c.vx *= kk; c.vz *= kk; }
     }
+    // Leaving the asphalt costs bodywork: grass scratches, gravel hammers the
+    // floor and suspension. Damage now builds up noticeably on every excursion.
+    if (c.damage !== undefined && off > KERB_W) {
+      var spOff = Math.hypot(c.vx, c.vz);
+      var offDmg = (inGravel(c.s, alat) ? 0.42 : 0.14) * spOff * dt;
+      if (offDmg > 0.005) c.damage = Math.min(100, c.damage + offDmg);
+    }
 
     collideSolids(c);
     pr = projectTrack(c.x, c.z, c.i);
@@ -2782,7 +2883,7 @@ var pr = projectTrack(c.x, c.z, c.i);
         // Barrier impacts now dent the car: a graze costs little, a square hit
         // at speed does real damage. This is why damage used to barely move.
         if (c.damage !== undefined) {
-          c.damage = Math.min(100, (c.damage || 0) + Math.max(0, vn - 2) * 2.5 * dt + (vn > 12 ? (vn - 12) * 0.4 : 0));
+          c.damage = Math.min(100, (c.damage || 0) + Math.max(0, vn - 1.5) * 6.5 * dt + (vn > 8 ? (vn - 8) * 1.2 : 0));
         }
         var sp1 = Math.hypot(c.vx, c.vz);
         c.vx -= NV.x * vn * side;                    // remove the inward component
@@ -2888,7 +2989,7 @@ var pr = projectTrack(c.x, c.z, c.i);
   function syncMesh(c) {
     c.mesh.position.set(c.x, 0, c.z);
     c.mesh.rotation.y = c.yaw;
-    // 甩尾: lean the body into the slide so the tail visibly hangs out.
+    // Drift: lean the body into the slide so the tail visibly hangs out.
     var velYaw = Math.atan2(c.vx, c.vz);
     var slip = wrapPi(velYaw - c.yaw);
     var targetRoll = c.drifting ? Math.max(-0.14, Math.min(0.14, -slip * 0.4)) : 0;
@@ -2938,8 +3039,8 @@ var pr = projectTrack(c.x, c.z, c.i);
           b.vx += imp * nx; b.vz += imp * nz;
           // Apply damage on collision
           var impactForce = Math.abs(vn);
-          if (a.damage !== undefined) a.damage = Math.min(100, a.damage + impactForce * 0.3);
-          if (b.damage !== undefined) b.damage = Math.min(100, b.damage + impactForce * 0.3);
+          if (a.damage !== undefined) a.damage = Math.min(100, a.damage + impactForce * 0.9);
+          if (b.damage !== undefined) b.damage = Math.min(100, b.damage + impactForce * 0.9);
           var crush = 0.4 * (1 - d / MIN);
           a.vx *= (1 - crush); a.vz *= (1 - crush);
           b.vx *= (1 - crush); b.vz *= (1 - crush);
@@ -3060,26 +3161,27 @@ var pr = projectTrack(c.x, c.z, c.i);
   var smokeGeo = new THREE.SphereGeometry(0.45, 6, 6);
   var smokes = [];
   var SMOKE_CAP = 220;
-  function spawnSmoke(c) {
+  function spawnSmoke(c, dark) {
     if (smokes.length >= SMOKE_CAP) return;
+    dark = !!dark;
     var fw = yawToForward(c.yaw);
     var rt = rightOf(fw);
-    var side = (Math.random() - 0.5) * 1.1;
+    var side = (Math.random() - 0.5) * (dark ? 1.8 : 1.1);
     var m = new THREE.Mesh(smokeGeo, new THREE.MeshBasicMaterial({
-      color: 0xffffff, transparent: true, opacity: 0.72, depthWrite: false
+      color: dark ? 0x232428 : 0xffffff, transparent: true, opacity: 0.72, depthWrite: false
     }));
     m.position.set(
-      c.x - fw.x * 2.35 + rt.x * side,
-      0.55 + Math.random() * 0.25,
-      c.z - fw.z * 2.35 + rt.z * side
+      c.x - fw.x * (dark ? 0.6 : 2.35) + rt.x * side,
+      0.55 + Math.random() * (dark ? 0.8 : 0.25),
+      c.z - fw.z * (dark ? 0.6 : 2.35) + rt.z * side
     );
-    m.scale.setScalar(0.55 + Math.random() * 0.35);
+    m.scale.setScalar(dark ? (1.0 + Math.random() * 0.7) : (0.55 + Math.random() * 0.35));
     scene.add(m);
     smokes.push({
-      mesh: m, life: 0.65, max: 0.65,
-      vx: -fw.x * 3 + (Math.random() - 0.5) * 1.4,
-      vy: 0.9 + Math.random() * 0.7,
-      vz: -fw.z * 3 + (Math.random() - 0.5) * 1.4
+      mesh: m, life: dark ? 1.8 : 0.65, max: dark ? 1.8 : 0.65, dark: dark,
+      vx: dark ? (Math.random() - 0.5) * 1.6 : -fw.x * 3 + (Math.random() - 0.5) * 1.4,
+      vy: dark ? 1.5 + Math.random() * 1.1 : 0.9 + Math.random() * 0.7,
+      vz: dark ? (Math.random() - 0.5) * 1.6 : -fw.z * 3 + (Math.random() - 0.5) * 1.4
     });
   }
   function updateSmoke(dt) {
@@ -3096,8 +3198,8 @@ var pr = projectTrack(c.x, c.z, c.i);
       s.mesh.position.x += s.vx * dt;
       s.mesh.position.y += s.vy * dt;
       s.mesh.position.z += s.vz * dt;
-      s.mesh.scale.multiplyScalar(1 + 1.7 * dt);
-      s.mesh.material.opacity = 0.72 * t;
+      s.mesh.scale.multiplyScalar(1 + (s.dark ? 0.85 : 1.7) * dt);
+      s.mesh.material.opacity = (s.dark ? 0.68 : 0.72) * t;
     }
   }
   function clearSmoke() {
@@ -3946,7 +4048,9 @@ var pr = projectTrack(c.x, c.z, c.i);
         // While the pit autopilot is engaged the car drives itself; the service
         // menu is open so the player can choose tyres and repairs meanwhile.
         var pin = pitAuto ? pitDrive(player, dt) : readPlayer();
+        if (player.wrecked) pin = { throttle: 0, brake: 1, steer: 0, handbrake: false, boost: false };
         if (!player.finished) stepCar(player, pin, dt); else stepCar(player, { throttle: 0, brake: 1, steer: 0, handbrake: false }, dt);
+        checkPitSpeed(player);
         updateAudio(player.speed, pin.throttle);
         if (netRace) {
           netTickRemotes(dt);
@@ -3956,8 +4060,13 @@ var pr = projectTrack(c.x, c.z, c.i);
             var c = cars[i];
             if (c === player) continue;
             if (c.finished) { stepCar(c, { throttle: 0, brake: 1, steer: 0 }, dt); continue; }
-            c.wobble = Math.sin(clock * 0.55 + i * 1.7) * 0.7;
-            stepCar(c, aiDrive(c, dt), dt);
+            if (!c.aiPit && !c.wrecked && !c.retired && c.lap >= 1 && nearPitApproach(c) &&
+                ((c.tyreWear || 0) > 0.62 || (c.damage || 0) > 42) && Math.random() < 0.014) {
+              c.aiPit = 1; c.aiPitT = 0; c.aiPitTyre = aiTyreChoice();
+            }
+            c.wobble = c.aiPit ? 0 : Math.sin(clock * 0.55 + i * 1.7) * 0.7;
+            stepCar(c, c.aiPit ? aiPitDrive(c, dt) : aiDrive(c, dt), dt);
+            checkPitSpeed(c);
           }
           collideCars();
         }
@@ -3967,6 +4076,7 @@ var pr = projectTrack(c.x, c.z, c.i);
           cars.forEach(function(c){
             if (!c || c.hidden || c.retired) return;
             if (c.boosting || c.drifting) spawnSmoke(c);
+            if (c.wrecked && Math.random() < 0.45) spawnSmoke(c, true);
           });
         }
         updateSmoke(dt);
@@ -3995,6 +4105,21 @@ var pr = projectTrack(c.x, c.z, c.i);
         document.getElementById('driftTag').classList.toggle('on', player.drifting);
         if (document.getElementById('damagePct')) document.getElementById('damagePct').textContent = Math.round(player.damage || 0) + '%';
         if (document.getElementById('tyreWear')) document.getElementById('tyreWear').textContent = Math.round((player.tyreWear || 0) * 100) + '%';
+        // Bottom-right tyre condition gauge: compound + remaining life.
+        (function () {
+          var ts = document.getElementById('tyreStatus');
+          if (!ts) return;
+          var ty = TYRES[player.tyre || 1] || TYRES[1];
+          var cond = Math.max(0, Math.round((1 - (player.tyreWear || 0)) * 100));
+          var col = '#' + new THREE.Color(ty.color).getHexString();
+          document.getElementById('tsCompound').textContent = ty.short + ' · ' + ty.label;
+          document.getElementById('tsCompound').style.color = col;
+          document.getElementById('tsCond').textContent = cond + '%';
+          var fill = document.getElementById('tsFill');
+          fill.style.width = cond + '%';
+          fill.style.background = cond > 45 ? col : (cond > 20 ? '#ffb43c' : '#ff4d4d');
+          ts.classList.toggle('warn', cond <= 20);
+        })();
       }
     }
 
@@ -4006,6 +4131,7 @@ var pr = projectTrack(c.x, c.z, c.i);
       camera.position.set(Math.sin(a) * orad, 120 + TRACK_R * 0.35, -Math.cos(a) * orad);
       camera.lookAt(0, 0, 0);
     }
+    updateRain(dt);
     renderer.render(scene, camera);
   }
 
@@ -4126,13 +4252,24 @@ var pr = projectTrack(c.x, c.z, c.i);
   var PIT_LAT = -(HALF_W + 3.2);        // centre of the physical pit lane
   var PIT_LAT_MIN = -HALF_W - 4.8;
   var PIT_LAT_MAX = -HALF_W - 1.2;
-  var PIT_SPEED = 11;                   // pit-lane speed limit (~40 km/h), m/s
+  var PIT_SPEED = 20;                   // autopilot cruise speed (~72 km/h)
+  var PIT_LIMIT = 22.2;                 // F1 pit-lane speed limit: 80 km/h
+  var PIT_STOP_SECONDS = 2.6;           // realistic tyre-change stationary time
+  var PIT_REPAIR_SECONDS = 1.2;         // extra time for bodywork repairs
   var pitAuto = false;                  // autopilot is driving the player car
-  var pitPhase = 0;                     // 0 idle / 1 in pit + menu / 2 rejoining
-  var pitServiceTime = 0;               // autopilot elapsed time (reset on restart)
+  var pitPhase = 0;                     // 0 idle / 1 to box / 3 service / 2 rejoin
+  var pitServiceTime = 0;               // autopilot / service elapsed time
   var pitChosenTyre = 1;
   var pitDoRepair = true;
+  var pitMenuConfirmed = false;
   var pitMenuEl = document.getElementById('pitMenu');
+  function pitBoxS() { return wrapS(LEN - 49); }   // middle pit box
+  function dS(a, b) { var d = Math.abs(a - b); return Math.min(d, LEN - d); }
+  function aiTyreChoice() {
+    if (selectedWeather === 3) return 4;           // full wet
+    if (selectedWeather === 2) return 3;           // intermediate
+    return 1;                                      // medium
+  }
 
   function inPitArea(c) {
     var s = wrapS(c.s);
@@ -4144,25 +4281,63 @@ var pr = projectTrack(c.x, c.z, c.i);
     return (s > wrapS(LEN - 130) || s < 40);
   }
 
-  /* Pure-pursuit autopilot. It follows the pit-lane centre at low speed, then
-   * blends back to the racing line on rejoin. Returns the same input object
-   * shape as readPlayer(), so the frame loop can simply swap it in. */
-  function pitDrive(c, dt) {
-    var s = wrapS(c.s);
-    var rejoining = (pitPhase === 2);
-    var targetLat = rejoining ? 0 : PIT_LAT;
-    var aim = offsetPos(c.s + (rejoining ? 12 : 7), targetLat);
+  /* Pure-pursuit path follower shared by the player autopilot and the AI.
+   * `targetLat` is the lane to follow, `targetSpeed` the speed to hold. */
+  function pitFollow(c, targetLat, targetSpeed) {
+    var aim = offsetPos(c.s + (targetLat === 0 ? 12 : 7), targetLat);
     var desired = Math.atan2(aim.x - c.x, aim.z - c.z);
     var err = wrapPi(desired - c.yaw);
     var steer = Math.max(-1, Math.min(1, err * 4.5));
-    // Hold at the pit exit while the menu is open so the car never drives off
-    // before the driver has picked a service.
-    var hold = !rejoining && (s > wrapS(LEN - 14) || s < wrapS(4));
-    var target = hold ? 0 : (rejoining ? 18 : PIT_SPEED);
     var throttle = 0, brake = 0;
-    if (c.speed < target - 0.4) throttle = Math.min(1, (target - c.speed) / 4 + 0.25);
-    else brake = Math.min(1, (c.speed - target) / 5);
+    if (c.speed < targetSpeed - 0.4) throttle = Math.min(1, (targetSpeed - c.speed) / 4 + 0.25);
+    else brake = Math.min(1, (c.speed - targetSpeed) / 5);
     return { throttle: throttle, brake: brake, steer: steer, handbrake: false, boost: false };
+  }
+  // Ease down to a stop as the car approaches its pit box.
+  function pitApproachSpeed(c) {
+    var dist = dS(wrapS(c.s), pitBoxS());
+    return dist > 12 ? PIT_SPEED : Math.max(0, (dist - 2.5) * 1.8);
+  }
+  function pitDrive(c, dt) {
+    if (pitPhase === 2) return pitFollow(c, 0, 18);       // rejoin the racing line
+    return pitFollow(c, PIT_LAT, pitApproachSpeed(c));    // drive into the box
+  }
+  /* AI pit stops: the field now really pits for worn tyres / damage, using
+   * the same pit lane, stationary service time and speed limit as the player. */
+  function aiPitDrive(c, dt) {
+    var s = wrapS(c.s);
+    if (c.aiPit === 1) {
+      var inp = pitFollow(c, PIT_LAT, pitApproachSpeed(c));
+      if (dS(s, pitBoxS()) < 3.5 && Math.abs(c.speed) < 1.2) { c.aiPit = 2; c.aiPitT = 0; }
+      return inp;
+    }
+    if (c.aiPit === 2) {
+      c.aiPitT += dt;
+      var need = PIT_STOP_SECONDS + ((c.damage || 0) > 25 ? PIT_REPAIR_SECONDS : 0);
+      if (c.aiPitT >= need) {
+        c.tyre = c.aiPitTyre; c.tyreWear = 0;
+        if (c.damage > 25) c.damage *= 0.35;
+        c.pitCount = (c.pitCount || 0) + 1;
+        c.aiPit = 3; c.aiPitT = 0;
+      }
+      return { throttle: 0, brake: 1, steer: 0, handbrake: false, boost: false };
+    }
+    if (c.aiPit === 3) {
+      var clear = !(s > wrapS(LEN - 90) || s < 12);
+      if ((Math.abs(c.lat) < 3 && clear) || c.aiPitT > 18) c.aiPit = 0;
+      else c.aiPitT += dt;
+      return pitFollow(c, 0, 18);
+    }
+    return aiDrive(c, dt);
+  }
+  function checkPitSpeed(c) {
+    if (inPitArea(c)) {
+      if (Math.abs(c.speed) > PIT_LIMIT && !c.pitSpeedWarned) {
+        c.pitSpeedWarned = true;
+        c.penalty = (c.penalty || 0) + 5;
+        if (c === player) flash('PIT LANE SPEEDING — +5s PENALTY');
+      }
+    } else c.pitSpeedWarned = false;
   }
 
   function renderPitTyres() {
@@ -4187,26 +4362,32 @@ var pr = projectTrack(c.x, c.z, c.i);
 
   function beginPit() {
     if (pitAuto || !player || player.finished || player.retired) return;
-    pitAuto = true; pitPhase = 1; pitServiceTime = 0;
+    pitAuto = true; pitPhase = 1; pitServiceTime = 0; pitMenuConfirmed = false;
     player.inPits = true;
-    pitChosenTyre = player.tyre || 1;
-    pitDoRepair = true;
+    // Default to the correct compound for the conditions, like a real pit wall.
+    pitChosenTyre = aiTyreChoice();
+    pitDoRepair = (player.damage || 0) > 15;
     renderPitTyres(); renderPitRepair();
     if (pitMenuEl) pitMenuEl.classList.remove('hidden');
-    flash('PIT LANE — AUTOPILOT ENGAGED');
+    flash('PIT LANE — AUTOPILOT ENGAGED · 80 KM/H LIMIT');
   }
 
+  // The menu only chooses the service; the work happens once the car is jacked
+  // up in its box, with a fixed stationary time like a real F1 stop.
   function confirmPit(applyService) {
-    if (!pitAuto || pitPhase !== 1) return;
-    if (applyService !== false) {
-      player.tyre = pitChosenTyre;
-      player.tyreWear = 0;
-      if (pitDoRepair) player.damage = 0;
-      player.pitCount = (player.pitCount || 0) + 1;
-    }
+    if (!pitAuto) return;
+    pitMenuConfirmed = true;
+    if (applyService === false) pitDoRepair = false;
+    if (pitMenuEl) pitMenuEl.classList.add('hidden');
+  }
+
+  function completeService() {
+    player.tyre = pitChosenTyre;
+    player.tyreWear = 0;
+    if (pitDoRepair) player.damage = 0;
+    player.pitCount = (player.pitCount || 0) + 1;
     player.inPits = false;
     pitPhase = 2; pitServiceTime = 0;
-    if (pitMenuEl) pitMenuEl.classList.add('hidden');
     flash('PIT STOP COMPLETE — REJOINING');
   }
 
@@ -4220,8 +4401,26 @@ var pr = projectTrack(c.x, c.z, c.i);
     if (pitAuto) {
       pitServiceTime += dt;
       if (pitPhase === 1) {
-        if (msg) { msg.style.display='block'; msg.style.background='rgba(20,60,30,.9)'; msg.textContent='PIT AUTOPILOT — choose tyres & service in the menu'; }
-        if (pitServiceTime > 40) confirmPit(true);  // safety: never trap the race
+        var atBox = dS(wrapS(player.s), pitBoxS()) < 3.5 && Math.abs(player.speed) < 1.2;
+        if (atBox || pitServiceTime > 45) {
+          pitPhase = 3; pitServiceTime = 0;
+          if (pitMenuEl) pitMenuEl.classList.add('hidden');
+          flash('PIT STOP — JACK UP, TYRES OFF');
+        }
+        if (msg) {
+          msg.style.display = 'block';
+          msg.style.background = 'rgba(20,60,30,.9)';
+          msg.textContent = atBox ? 'PIT STOP IN PROGRESS' : 'PIT AUTOPILOT — IN TO THE BOX · 80 KM/H LIMIT';
+        }
+      } else if (pitPhase === 3) {
+        var need = PIT_STOP_SECONDS + (pitDoRepair ? PIT_REPAIR_SECONDS : 0);
+        var left = Math.max(0, need - pitServiceTime);
+        if (msg) {
+          msg.style.display = 'block';
+          msg.style.background = 'rgba(20,60,30,.92)';
+          msg.textContent = 'PIT STOP — ' + left.toFixed(1) + 's · ' + (pitDoRepair ? 'TYRES + REPAIR' : 'TYRES ONLY');
+        }
+        if (pitServiceTime >= need) completeService();
       } else if (pitPhase === 2) {
         if (msg) { msg.style.display='block'; msg.style.background='rgba(0,0,0,.75)'; msg.textContent='LEAVING PIT LANE...'; }
         var s2 = wrapS(player.s);
@@ -4233,9 +4432,8 @@ var pr = projectTrack(c.x, c.z, c.i);
       }
       return;
     }
-    var s = wrapS(player.s);
     if (nearPitApproach(player)) {
-      if (msg) { msg.style.display='block'; msg.style.background='rgba(0,0,0,.75)'; msg.textContent='PIT LANE AHEAD — press P for an automatic pit stop'; }
+      if (msg) { msg.style.display='block'; msg.style.background='rgba(0,0,0,.75)'; msg.textContent='PIT LANE AHEAD — press P · 80 KM/H SPEED LIMIT'; }
       // Entering the pit lane physically also hands control to the autopilot.
       if (inPitArea(player) && Math.abs(player.speed) < 14) beginPit();
     } else if (msg) msg.style.display = 'none';
@@ -4304,7 +4502,10 @@ var pr = projectTrack(c.x, c.z, c.i);
       if (c.retired || c.finished) return;
       var sp = Math.abs(c.speed);
       c.tyreWear = Math.min(1, (c.tyreWear||0) + sp * 0.000004 * dt * (TYRES[c.tyre||1]?TYRES[c.tyre||1].wear:1));
-      if (c.damage >= 100 && !c.retired) { c.retired = true; c.speed = 0; c.vx=0; c.vz=0; }
+      if (c.damage >= 100 && !c.retired) {
+        c.retired = true; c.wrecked = true; c.speed = 0; c.vx = 0; c.vz = 0;
+        if (c === player) flash('CAR WRECKED — RETIRED FROM THE RACE');
+      }
     });
     if (player && player.boosting) { if(!_achNitro){ _achNitro=true; unlockAch('nitro_user'); } }
     if (player && player.drifting) { if(!_achDrift){ _achDrift=true; unlockAch('drifter'); } }
@@ -4338,7 +4539,7 @@ var pr = projectTrack(c.x, c.z, c.i);
     <p style="line-height:1.6;opacity:0.9">
       <b>CONTROLS:</b><br>
       W / ↑ — Throttle &nbsp;|&nbsp; S / ↓ — Brake/Reverse<br>
-      A/D / ←/→ — Steering &nbsp;|&nbsp; SHIFT — 甩尾 Handbrake Drift<br>
+      A/D / ←/→ — Steering &nbsp;|&nbsp; SHIFT — Handbrake Drift<br>
       SPACE — Nitro Boost &nbsp;|&nbsp; C — Camera &nbsp;|&nbsp; R — Restart<br>
       M — Mute &nbsp;|&nbsp; ESC — Pause &nbsp;|&nbsp; Touch buttons on mobile
     </p>
@@ -4361,7 +4562,7 @@ var pr = projectTrack(c.x, c.z, c.i);
       <b>RACE START:</b> 5 red lights illuminate, then all go out — accelerate on lights out. Accelerating early = jump start (+10s penalty).
     </p>
     <p style="line-height:1.7;opacity:0.9;margin-top:8px">
-      <b>PIT STOPS:</b> Press <b>P</b> near the start/finish straight — the car drives itself into the pit lane and a menu opens so you can choose tyres and repairs while it drives.
+      <b>PIT STOPS:</b> Press <b>P</b> on approach — the car obeys the 80 km/h pit limit, drives to its box and stops for a real ~2.6 s tyre change (+1.2 s with repairs). Choose your compound in the menu. The AI pits too when tyres wear or damage builds.
     </p>
     <p style="line-height:1.7;opacity:0.9;margin-top:8px">
       <b>LAPS ROLLER:</b> Drag the LAPS slider in the menu to set the race length from 1 to 50 laps. Pick your real F1 circuit from the TRACK cards above.
