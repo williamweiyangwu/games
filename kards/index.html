@@ -470,79 +470,112 @@
   .cocell .copre { position: absolute; bottom: 2px; left: 4px; font-size: 8px; letter-spacing: 1px; color: #9fd4ff; }
   .btn#colToggle.active { background: rgba(77,127,184,.35); color: #cfeaff; border-color: #9fd4ff; }
 
-  /* lobby page */
-  /* lobby hub */
-  #lobbyPage { display: none; position: fixed; inset: 0; background: radial-gradient(ellipse at top, #2b3320, #0c0f08 72%); align-items: center; justify-content: center; z-index: 68; }
+  /* lobby page — KARDS home-screen format */
+  #lobbyPage { display: none; position: fixed; inset: 0; background: radial-gradient(ellipse at 50% 0%, #2e3b25 0%, #121a0e 60%, #070b06 100%); align-items: center; justify-content: center; z-index: 68; }
   #lobbyPage.show { display: flex; }
+  #lobbyPage:before { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(90deg, rgba(255,255,255,.012) 0 1px, transparent 1px 60px), repeating-linear-gradient(0deg, rgba(255,255,255,.012) 0 1px, transparent 1px 60px); }
   .lobbyShell {
-    width: 960px; max-width: 96vw; max-height: 94vh; overflow: auto;
-    display: flex; flex-direction: column; gap: 10px; padding: 16px 20px;
-    border: 3px solid #c9b458; border-radius: 14px; background: linear-gradient(160deg, #343a22, #171b0e);
-    box-shadow: 0 12px 40px rgba(0,0,0,.7);
+    position: relative; width: 1180px; max-width: 97vw; max-height: 96vh; overflow: auto;
+    display: flex; flex-direction: column; gap: 9px; padding: 0 0 9px;
+    border: 2px solid #8f7c4e; border-radius: 6px;
+    background: linear-gradient(160deg, #2c3520, #12170c);
+    box-shadow: 0 16px 50px rgba(0,0,0,.85), inset 0 0 0 3px rgba(0,0,0,.4);
   }
-  .lobbyHeader { display: flex; align-items: center; gap: 16px; padding-bottom: 10px; border-bottom: 2px solid #4a5033; }
-  .lobbyLogoMain { font-size: 25px; letter-spacing: 4px; color: #c9b458; font-weight: bold; }
-  .lobbyLogoMain span { font-size: 12px; color: #9fd4ff; letter-spacing: 2px; vertical-align: top; }
-  .lobbyLogoSub { font-size: 9px; letter-spacing: 3px; color: #8a917c; }
-  .lobbyCommander { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 10px; letter-spacing: 2px; color: #8a917c; }
-  .lobbyCommander input {
-    font-family: inherit; font-size: 12px; padding: 5px 9px; width: 130px;
-    background: rgba(0,0,0,.4); color: #f0e6c8; border: 2px solid #6f6040; border-radius: 8px; outline: none;
-  }
+  /* top bar */
+  .lobbyHeader { display: flex; align-items: center; gap: 12px; padding: 9px 18px; background: linear-gradient(180deg, rgba(0,0,0,.6), rgba(0,0,0,.15)); border-bottom: 2px solid #8f7c4e; }
+  .lpHomeMark { width: 34px; height: 34px; line-height: 31px; text-align: center; font-size: 18px; color: #10140b; font-weight: bold; background: linear-gradient(160deg, #e0c76e, #9a8238); border: 2px solid #ffd95e; border-radius: 4px; }
+  .lobbyLogoMain { font-size: 20px; letter-spacing: 4px; color: #d8c273; font-weight: bold; line-height: 1.1; }
+  .lobbyLogoMain span { font-size: 10px; color: #9fd4ff; letter-spacing: 2px; vertical-align: top; }
+  .lobbyLogoSub { font-size: 8px; letter-spacing: 3px; color: #8a917c; }
+  .lpTopRight { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+  .lobbyCommander { display: flex; align-items: center; gap: 7px; font-size: 9px; letter-spacing: 2px; color: #8a917c; }
+  .lpRankChip { padding: 3px 7px; font-size: 9px; color: #10140b; background: linear-gradient(160deg, #c9b458, #8a7738); border-radius: 3px; font-weight: bold; letter-spacing: 1px; }
+  .lobbyCommander input { font-family: inherit; font-size: 11px; padding: 5px 9px; width: 120px; background: rgba(0,0,0,.5); color: #f0e6c8; border: 1px solid #6f6040; border-radius: 3px; outline: none; }
   .lobbyCommander input:focus { border-color: #c9b458; }
-  .lobbyCurrency { font-size: 15px; color: #9fd4ff; font-weight: bold; }
-  .lobbyNav { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
-  .lobbyNav .btn { padding: 5px 11px; font-size: 10px; letter-spacing: 1px; }
-  .lobbyBody { display: grid; grid-template-columns: 1fr 300px; gap: 14px; }
-  .lobbyModes { display: flex; flex-direction: column; gap: 8px; }
-  .lobbyMode {
-    display: flex; align-items: center; gap: 12px; padding: 12px 14px;
-    border: 2px solid #4a5033; border-radius: 10px; background: rgba(0,0,0,.25); cursor: pointer;
-    transition: border-color .15s, background .15s;
-  }
-  .lobbyMode:hover { border-color: #9fd4ff; background: rgba(77,127,184,.15); }
-  .lobbyMode.active { border-color: #ffd95e; background: rgba(201,180,88,.18); box-shadow: 0 0 14px rgba(255,217,94,.25); }
-  .lobbyMode .lmIcon { font-size: 25px; width: 34px; text-align: center; color: #c9b458; }
-  .lobbyMode .lmName { font-size: 14px; letter-spacing: 2px; color: #f0e6c8; min-width: 80px; }
-  .lobbyMode .lmDesc { font-size: 10px; color: #8a917c; line-height: 1.4; }
-  .lobbySide { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 2px solid #4a5033; border-radius: 10px; background: rgba(0,0,0,.3); }
-  .lpDecoTitle { font-size: 13px; letter-spacing: 2px; color: #c9b458; text-align: center; }
-  .lpDecoText { font-size: 10px; color: #b9c4a8; line-height: 1.5; min-height: 44px; }
-  .lpAiRow { display: flex; align-items: center; justify-content: space-between; font-size: 10px; letter-spacing: 1px; color: #8a917c; }
-  .lpAiRow .btn { padding: 4px 10px; font-size: 10px; }
-  .lpLoadout { display: flex; flex-direction: column; gap: 4px; padding: 8px 0; border-top: 1px solid #3a4030; border-bottom: 1px solid #3a4030; }
-  .lplRow { display: flex; justify-content: space-between; font-size: 11px; color: #e6e9d5; }
+  .lobbyCurrency { font-size: 14px; color: #9fd4ff; font-weight: bold; letter-spacing: 1px; }
+  .lpTopIcon { width: 30px; height: 30px; line-height: 27px; text-align: center; font-size: 14px; color: #b9c4a8; border: 1px solid #6f6040; border-radius: 3px; cursor: pointer; background: rgba(0,0,0,.35); }
+  .lpTopIcon:hover { color: #ffd95e; border-color: #c9b458; }
+  /* main menu */
+  .lobbyNav { display: flex; flex-direction: column; gap: 6px; padding: 10px 18px 0; }
+  .lpMainMenu { display: flex; gap: 10px; justify-content: center; }
+  .lpMainBtn { min-width: 180px; padding: 12px 20px; font-size: 14px; letter-spacing: 4px; border-radius: 4px; border: 2px solid #9a8a5a; background: linear-gradient(180deg, #4c5936, #252e1a); box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 4px 10px rgba(0,0,0,.5); }
+  .lpMainBtn:hover { border-color: #ffd95e; background: linear-gradient(180deg, #5e6e40, #333f21); }
+  .lpMainBtn.lpPlayMain { background: linear-gradient(180deg, #937128, #58431a); border-color: #ffd95e; color: #fff6d0; }
+  .lpMainBtn.lpPlayMain:hover { background: linear-gradient(180deg, #b18b34, #6c5220); }
+  .lpSubMenu { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+  .lpSubMenu .btn { padding: 4px 11px; font-size: 10px; letter-spacing: 1px; }
+  /* content carousel + mode list */
+  .lobbyBody { display: grid; grid-template-columns: minmax(0,1fr) 300px; gap: 12px; padding: 4px 18px 0; }
+  .lpFeatured { display: flex; flex-direction: column; gap: 9px; min-width: 0; }
+  .lpCarousel { position: relative; height: 168px; overflow: hidden; border: 2px solid #8f7c4e; border-radius: 5px; background: radial-gradient(ellipse at 30% 40%, #3c5032, #171f12 80%); box-shadow: inset 0 0 40px rgba(0,0,0,.6); }
+  .lpSlide { position: absolute; inset: 0; display: flex; align-items: center; gap: 20px; padding: 0 28px; opacity: 0; animation: lpCarousel 15s infinite; }
+  .lpSlide:nth-child(1) { animation-delay: 0s; }
+  .lpSlide:nth-child(2) { animation-delay: 5s; }
+  .lpSlide:nth-child(3) { animation-delay: 10s; }
+  @keyframes lpCarousel { 0%, 28% { opacity: 1; } 33%, 95% { opacity: 0; } 100% { opacity: 1; } }
+  .lpSlideFlag { font-size: 52px; color: #c9b458; text-shadow: 0 3px 10px #000; min-width: 66px; text-align: center; }
+  .lpSlideTag { display: inline-block; font-size: 9px; letter-spacing: 2px; color: #10140b; background: #c9b458; padding: 2px 7px; border-radius: 2px; margin-bottom: 6px; }
+  .lpSlideTitle { font-size: 19px; letter-spacing: 3px; color: #f0e6c8; text-shadow: 2px 2px 0 #000; }
+  .lpSlideText { font-size: 11px; color: #b9c4a8; margin-top: 5px; line-height: 1.4; }
+  .lpModeHead { font-size: 9px; letter-spacing: 3px; color: #c9b458; padding: 2px 2px 0; }
+  .lobbyModes { display: flex; flex-direction: column; gap: 6px; }
+  .lobbyMode { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid #4a5033; border-radius: 4px; background: rgba(0,0,0,.28); cursor: pointer; transition: border-color .15s, background .15s; }
+  .lobbyMode:hover { border-color: #9fd4ff; background: rgba(77,127,184,.14); }
+  .lobbyMode.active { border-color: #ffd95e; background: linear-gradient(90deg, rgba(201,180,88,.22), rgba(201,180,88,.06)); box-shadow: inset 3px 0 0 #ffd95e; }
+  .lobbyMode.lpFocus { animation: lpFocusPulse .7s ease 2; }
+  @keyframes lpFocusPulse { 50% { box-shadow: inset 3px 0 0 #ffd95e, 0 0 18px rgba(255,217,94,.5); } }
+  .lobbyMode .lmIcon { font-size: 20px; width: 28px; text-align: center; color: #c9b458; }
+  .lobbyMode .lmName { font-size: 12px; letter-spacing: 2px; color: #f0e6c8; min-width: 72px; }
+  .lobbyMode .lmDesc { font-size: 9px; color: #8a917c; line-height: 1.35; }
+  /* right side */
+  .lobbySide { display: flex; flex-direction: column; gap: 7px; padding: 10px; border: 1px solid #4a5033; border-radius: 5px; background: rgba(0,0,0,.34); }
+  .lpSideFeature { padding: 9px 10px; border: 1px solid #9a8a5a; border-radius: 4px; background: linear-gradient(140deg, rgba(77,127,184,.2), rgba(201,180,88,.1)); cursor: pointer; }
+  .lpSideFeature:hover { border-color: #ffd95e; }
+  .lpsfTag { font-size: 8px; letter-spacing: 2px; color: #9fd4ff; }
+  .lpsfTitle { font-size: 14px; letter-spacing: 2px; color: #f0e6c8; margin: 2px 0; }
+  .lpsfText { font-size: 9px; color: #8a917c; line-height: 1.35; }
+  .lpDecoTitle { font-size: 12px; letter-spacing: 2px; color: #c9b458; text-align: center; border-top: 1px solid #3a4030; padding-top: 7px; }
+  .lpDecoText { font-size: 9px; color: #b9c4a8; line-height: 1.45; min-height: 38px; }
+  .lpAiRow { display: flex; align-items: center; justify-content: space-between; font-size: 9px; letter-spacing: 1px; color: #8a917c; }
+  .lpAiRow .btn { padding: 3px 9px; font-size: 9px; }
+  .lpLoadout { display: flex; flex-direction: column; gap: 3px; padding: 6px 0; border-top: 1px solid #3a4030; border-bottom: 1px solid #3a4030; }
+  .lplRow { display: flex; justify-content: space-between; font-size: 10px; color: #e6e9d5; }
   .lplRow .lbl { color: #8a917c; }
-  .playBtn { padding: 10px; font-size: 14px; letter-spacing: 3px; background: rgba(201,180,88,.3); border-color: #ffd95e; }
-  .playBtn:hover { background: rgba(201,180,88,.5); }
-  .lobbyOnline { display: none; flex-direction: column; gap: 6px; padding: 10px 12px; border: 2px solid #4a5033; border-radius: 10px; background: rgba(0,0,0,.25); }
+  .lpLoadout .btn { padding: 4px; font-size: 9px; }
+  .playBtn { padding: 9px; font-size: 13px; letter-spacing: 3px; background: linear-gradient(180deg, #937128, #58431a); border-color: #ffd95e; border-radius: 4px; }
+  .playBtn:hover { background: linear-gradient(180deg, #b18b34, #6c5220); }
+  /* online matchmaking */
+  .lobbyOnline { display: none; flex-direction: column; gap: 6px; margin: 0 18px; padding: 9px 12px; border: 1px solid #4a5033; border-radius: 5px; background: rgba(0,0,0,.3); }
   .lobbyOnline.show { display: flex; }
-  .lobbySectionTitle { display: flex; align-items: center; justify-content: space-between; font-size: 11px; letter-spacing: 2px; color: #c9b458; }
-  .lobbySectionTitle .btn { padding: 3px 10px; font-size: 10px; letter-spacing: 1px; }
+  .lobbySectionTitle { display: flex; align-items: center; justify-content: space-between; font-size: 10px; letter-spacing: 2px; color: #c9b458; }
+  .lobbySectionTitle .btn { padding: 3px 9px; font-size: 9px; letter-spacing: 1px; }
   .lobbyActions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
-  .lobbyActions .btn { padding: 6px 12px; font-size: 11px; }
-  .lobbyActions input {
-    font-family: inherit; font-size: 12px; padding: 6px 10px; width: 130px;
-    background: rgba(0,0,0,.4); color: #f0e6c8; border: 2px solid #6f6040; border-radius: 8px; outline: none;
-  }
+  .lobbyActions .btn { padding: 5px 11px; font-size: 10px; }
+  .lobbyActions input { font-family: inherit; font-size: 11px; padding: 5px 9px; width: 120px; background: rgba(0,0,0,.45); color: #f0e6c8; border: 1px solid #6f6040; border-radius: 3px; outline: none; }
   .lobbyActions input:focus { border-color: #c9b458; }
-  #lpRoomStatus { display: none; flex-direction: column; gap: 4px; padding: 8px 10px; border: 1px solid #6f6040; border-radius: 8px; background: rgba(0,0,0,.3); }
+  #lpRoomStatus { display: none; flex-direction: column; gap: 4px; padding: 7px 10px; border: 1px solid #6f6040; border-radius: 4px; background: rgba(0,0,0,.3); }
   #lpRoomStatus.show { display: flex; }
-  #lpRoomStatus .lpRow { display: flex; justify-content: space-between; font-size: 11px; color: #e6e9d5; }
+  #lpRoomStatus .lpRow { display: flex; justify-content: space-between; font-size: 10px; color: #e6e9d5; }
   #lpRoomStatus .lpRow .lbl { color: #8a917c; }
-  #lpRoomStatus .lpCode { color: #c9b458; font-size: 14px; letter-spacing: 2px; font-weight: bold; }
-  #lpRoomStatus .lpWait { font-size: 10px; color: #b9c4a8; text-align: center; }
-  #lpRoomStatus .lpStartBtn { margin-top: 4px; align-self: center; }
+  #lpRoomStatus .lpCode { color: #c9b458; font-size: 13px; letter-spacing: 2px; font-weight: bold; }
+  #lpRoomStatus .lpWait { font-size: 9px; color: #b9c4a8; text-align: center; }
+  #lpRoomStatus .lpStartBtn { margin-top: 3px; align-self: center; }
   #lpRoomStatus .lpStartBtn[disabled] { opacity: .4; }
-  #lpRoomStatus .lpLeave { font-size: 10px; color: #e08a8a; text-align: center; cursor: pointer; text-decoration: underline; }
-  .lobbyRoomRows { max-height: 22vh; overflow: auto; border: 1px solid #3a4030; border-radius: 6px; padding: 2px 8px; }
-  .lobbyRoomRows .rrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid #3a4030; font-size: 11px; color: #e6e9d5; }
+  #lpRoomStatus .lpLeave { font-size: 9px; color: #e08a8a; text-align: center; cursor: pointer; text-decoration: underline; }
+  .lobbyRoomRows { max-height: 18vh; overflow: auto; border: 1px solid #3a4030; border-radius: 4px; padding: 2px 8px; }
+  .lobbyRoomRows .rrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 0; border-bottom: 1px solid #3a4030; font-size: 10px; color: #e6e9d5; }
   .lobbyRoomRows .rrow:last-child { border-bottom: 0; }
   .lobbyRoomRows .rrow .rrowc { color: #c9b458; letter-spacing: 1px; font-weight: bold; }
-  .lobbyRoomRows .rrow .btn { padding: 3px 10px; font-size: 10px; }
-  .lobbyHint { font-size: 10px; color: #8a917c; text-align: center; }
-  .lobbyFooter { display: flex; align-items: center; justify-content: space-between; padding-top: 8px; border-top: 2px solid #4a5033; font-size: 10px; color: #8a917c; }
-  .lobbyFooter .btn { padding: 5px 12px; font-size: 10px; }
+  .lobbyRoomRows .rrow .btn { padding: 3px 9px; font-size: 9px; }
+  .lobbyHint { font-size: 9px; color: #8a917c; text-align: center; }
+  /* bottom national progress line */
+  .lpProgress { display: flex; align-items: center; gap: 10px; margin: 0 18px; padding-top: 7px; border-top: 1px solid #4a5033; }
+  .lpProgNation { font-size: 9px; letter-spacing: 1px; color: #b9c4a8; min-width: 90px; }
+  .lpProgressBar { flex: 1; height: 7px; background: rgba(0,0,0,.5); border: 1px solid #4a5033; border-radius: 4px; overflow: hidden; }
+  .lpProgressFill { height: 100%; width: 0; background: linear-gradient(90deg, #9fd4ff, #c9b458); }
+  .lpProgress .btn { padding: 3px 10px; font-size: 9px; }
+  .lobbyFooter { display: flex; align-items: center; justify-content: space-between; margin: 0 18px; padding-top: 6px; border-top: 1px solid #3a4030; font-size: 9px; color: #8a917c; }
+  .lobbyFooter .btn { padding: 4px 10px; font-size: 9px; }
 
   /* effects */
   #fit.shake { animation: k6shake .25s; }
@@ -703,7 +736,7 @@
   <div id="fit">
     <div id="stage">
       <header>
-        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v35</span></h1>
+        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v36</span></h1>
         <div id="turnbar">Player 1's Turn</div>
       </header>
 
@@ -907,48 +940,92 @@
   <div id="lobbyPage">
     <div class="lobbyShell">
       <div class="lobbyHeader">
+        <div class="lpHomeMark">K</div>
         <div>
           <div class="lobbyLogoMain">KARDS <span>LITE</span></div>
           <div class="lobbyLogoSub">COMMANDER HEADQUARTERS</div>
         </div>
-        <div class="lobbyCommander">
-          <span>COMMANDER</span>
-          <input id="lpNameIn" maxlength="12" value="Player#1">
+        <div class="lpTopRight">
+          <div class="lobbyCommander">
+            <span class="lpRankChip">CMD</span>
+            <input id="lpNameIn" maxlength="12" value="Player#1">
+          </div>
+          <div class="lobbyCurrency" id="lpGems">◈ 120</div>
+          <div class="lpTopIcon" onclick="closeLobbyPage();openStats()" title="Profile &amp; Stats">☰</div>
         </div>
-        <div class="lobbyCurrency" id="lpGems">◈ 120</div>
       </div>
 
       <div class="lobbyNav">
-        <button class="btn" onclick="closeLobbyPage();openCollection()">COLLECTION</button>
-        <button class="btn" onclick="closeLobbyPage();openDeckEdit()">DECK</button>
-        <button class="btn" onclick="openDeckSelect()">CHOOSE DECK</button>
-        <button class="btn" onclick="closeLobbyPage();openMissions()">MISSIONS</button>
-        <button class="btn" onclick="closeLobbyPage();openPacks()">PACKS</button>
-        <button class="btn" onclick="closeLobbyPage();openStore()">STORE</button>
-        <button class="btn" onclick="closeLobbyPage();openStats()">STATS</button>
-        <button class="btn" onclick="openTutorial()">TUTORIAL</button>
+        <div class="lpMainMenu">
+          <button class="btn lpMainBtn" onclick="closeLobbyPage();openStore()">SHOP</button>
+          <button class="btn lpMainBtn" onclick="closeLobbyPage();openCollection()">CARDS</button>
+          <button class="btn lpMainBtn lpPlayMain" onclick="lpFocusPlay()">PLAY</button>
+        </div>
+        <div class="lpSubMenu">
+          <button class="btn" onclick="closeLobbyPage();openCollection()">COLLECTION</button>
+          <button class="btn" onclick="closeLobbyPage();openDeckEdit()">DECK</button>
+          <button class="btn" onclick="openDeckSelect()">CHOOSE DECK</button>
+          <button class="btn" onclick="closeLobbyPage();openMissions()">MISSIONS</button>
+          <button class="btn" onclick="closeLobbyPage();openPacks()">PACKS</button>
+          <button class="btn" onclick="closeLobbyPage();openStats()">STATS</button>
+          <button class="btn" onclick="openTutorial()">TUTORIAL</button>
+        </div>
       </div>
 
       <div class="lobbyBody">
-        <div class="lobbyModes">
-          <div class="lobbyMode" id="lpModeLocal" onclick="lpSelectMode('local')">
-            <div class="lmIcon">⚔</div>
-            <div class="lmName">LOCAL</div>
-            <div class="lmDesc">Two commanders, one screen. A hot-seat duel with both nations selectable.</div>
+        <div class="lpFeatured">
+          <div class="lpCarousel">
+            <div class="lpSlide">
+              <div class="lpSlideFlag">★</div>
+              <div>
+                <div class="lpSlideTag">KARDS LITE</div>
+                <div class="lpSlideTitle">WWII CARD WARFARE</div>
+                <div class="lpSlideText">Five nations, three battle lines, one HQ to defend. Command the field.</div>
+              </div>
+            </div>
+            <div class="lpSlide">
+              <div class="lpSlideFlag">✠</div>
+              <div>
+                <div class="lpSlideTag">NEW</div>
+                <div class="lpSlideTitle">CHOOSE YOUR DECK</div>
+                <div class="lpSlideText">Pick STANDARD or CUSTOM for every nation before the battle begins.</div>
+              </div>
+            </div>
+            <div class="lpSlide">
+              <div class="lpSlideFlag">◈</div>
+              <div>
+                <div class="lpSlideTag">DAILY MISSIONS</div>
+                <div class="lpSlideTitle">EARN DIAMONDS</div>
+                <div class="lpSlideText">Complete goals, unlock premium cards and expand your arsenal.</div>
+              </div>
+            </div>
           </div>
-          <div class="lobbyMode" id="lpModeAi" onclick="lpSelectMode('ai')">
-            <div class="lmIcon">⚙</div>
-            <div class="lmName">VS AI</div>
-            <div class="lmDesc">Battle the computer commander. Pick its skill level before you play.</div>
-          </div>
-          <div class="lobbyMode" id="lpModeOnline" onclick="lpSelectMode('online')">
-            <div class="lmIcon">🌐</div>
-            <div class="lmName">ONLINE</div>
-            <div class="lmDesc">Host a room and share the code, or join another commander by code.</div>
+          <div class="lobbyModes" id="lpModeList">
+            <div class="lpModeHead">SELECT A GAME MODE</div>
+            <div class="lobbyMode" id="lpModeLocal" onclick="lpSelectMode('local')">
+              <div class="lmIcon">⚔</div>
+              <div class="lmName">LOCAL</div>
+              <div class="lmDesc">Two commanders, one screen. A hot-seat duel with both nations selectable.</div>
+            </div>
+            <div class="lobbyMode" id="lpModeAi" onclick="lpSelectMode('ai')">
+              <div class="lmIcon">⚙</div>
+              <div class="lmName">VS AI</div>
+              <div class="lmDesc">Battle the computer commander. Pick its skill level before you play.</div>
+            </div>
+            <div class="lobbyMode" id="lpModeOnline" onclick="lpSelectMode('online')">
+              <div class="lmIcon">🌐</div>
+              <div class="lmName">ONLINE</div>
+              <div class="lmDesc">Host a room and share the code, or join another commander by code.</div>
+            </div>
           </div>
         </div>
 
         <div class="lobbySide">
+          <div class="lpSideFeature" onclick="openDeckSelect()">
+            <div class="lpsfTag">READY FOR BATTLE</div>
+            <div class="lpsfTitle">SELECT DECK</div>
+            <div class="lpsfText">Choose the deck you will play before the battle begins.</div>
+          </div>
           <div class="lpDecoTitle" id="lpModeTitle">LOCAL DUEL</div>
           <div class="lpDecoText" id="lpModeText">Two players share one screen. Choose both nations in the game menu.</div>
           <div class="lpAiRow" id="lpAiRow">
@@ -976,6 +1053,12 @@
         <div class="lobbySectionTitle">OPEN ROOMS <button class="btn" onclick="refreshRooms()">REFRESH</button></div>
         <div id="lpRoomRows" class="lobbyRoomRows"></div>
         <div id="lpRoomHint" class="lobbyHint">No rooms open right now. Host a game to create one.</div>
+      </div>
+
+      <div class="lpProgress">
+        <span class="lpProgNation" id="lpProgNation">★ USA</span>
+        <div class="lpProgressBar"><div class="lpProgressFill" id="lpProgFill"></div></div>
+        <button class="btn" onclick="closeLobbyPage();openMissions()">MISSIONS</button>
       </div>
 
       <div class="lobbyFooter">
@@ -1503,7 +1586,7 @@ function saveFaction() {
   saveProfile();
 }
 
-var MAX_HAND = 5;
+var MAX_HAND = 9;
 var MAX_BOARD = 4;   // support line capacity (plus HQ)
 var MAX_FRONT = 5;   // shared frontline capacity
 var MAX_RES = 12;
@@ -1701,8 +1784,10 @@ function shakeFX() {
 }
 
 // ---------------- Turn flow ----------------
+// KARDS mulligan: the first player starts with 4, the second with 5.
+// The first player also skips the start-of-turn draw on turn 1.
 function drawStarting(p) {
-  draw(p, 4);
+  draw(p, S.players.indexOf(p) === 0 ? 4 : 5);
 }
 
 function newGame(f0, f1) {
@@ -1734,7 +1819,7 @@ function beginTurn(p) {
   pl.turnNum++;
   pl.res = Math.min(pl.turnNum, MAX_RES);
   pl.board.forEach(function (u) { u.canAttack = true; u.acted = false; });
-  draw(pl, 1);
+  if (p !== 0 || pl.turnNum > 1) draw(pl, 1);
   S.cur = p;
   setTurnBar("Player " + (p + 1));
   render();
@@ -2292,8 +2377,15 @@ function openLobbyPage() {
   lobbyPageRender();
 }
 
+function lpFocusPlay() {
+  var list = document.getElementById("lpModeList");
+  if (list) { list.classList.add("lpFocus"); if (list.scrollIntoView) list.scrollIntoView({ block: "nearest" }); }
+}
+
 function lpSelectMode(m) {
   LOBBY_MODE = m;
+  var list = document.getElementById("lpModeList");
+  if (list) list.classList.remove("lpFocus");
   if (m === "online" && !BROWSE) startRoomWatch();
   lobbyPageRender();
 }
@@ -2337,6 +2429,14 @@ function lobbyPageRender() {
   if (nationEl && FACTIONS[FACTION]) nationEl.textContent = FACTIONS[FACTION].flag + " " + FACTIONS[FACTION].name;
   var deckEl = document.getElementById("lpDeck"); if (deckEl) deckEl.textContent = buildDeck(FACTION).length + " / " + DECK_SIZE;
   var gemsEl = document.getElementById("lpGems"); if (gemsEl) gemsEl.textContent = "\u25c6 " + (PROFILE.gems || 0);
+  var progNation = document.getElementById("lpProgNation");
+  if (progNation && FACTIONS[FACTION]) progNation.textContent = FACTIONS[FACTION].flag + " " + FACTIONS[FACTION].name;
+  var progFill = document.getElementById("lpProgFill");
+  if (progFill) {
+    var keys = factionCardKeys(FACTION), have = 0;
+    keys.forEach(function (k) { if (cardOwned(k) > 0) have++; });
+    progFill.style.width = (keys.length ? Math.round(have / keys.length * 100) : 0) + "%";
+  }
   var metaEl = document.getElementById("lpMeta");
   if (metaEl) metaEl.textContent = "Earn diamonds from MISSIONS, unlock cards in the STORE, open PACKS, and build your DECK.";
 
@@ -2580,7 +2680,7 @@ function onlineBeginMyTurn() {
   pl.turnNum++;
   pl.res = Math.min(pl.turnNum, MAX_RES);
   pl.board.forEach(function (u) { u.canAttack = true; u.acted = false; });
-  draw(pl, 1);
+  if (p !== 0 || pl.turnNum > 1) draw(pl, 1);
   S.turn = p;
   render();
   publish();
@@ -3252,7 +3352,7 @@ document.getElementById("newBtn").onclick = function () { newGame(); };
 // ---------------- Tutorial ----------------
 var TUT_STEPS = [
   { t: "1. THE GOAL", h: "<p>The battlefield has <b>three lines</b> like KARDS: your <b>SUPPORT LINE</b> at the bottom, the shared <b>FRONTLINE</b> in the middle, and the enemy <b>SUPPORT LINE</b> at the top. Your <b>HQ</b> sits in your support line; the enemy HQ sits in theirs.</p><p>Each HQ starts with <b>20 defense</b>. Reduce the enemy HQ to <b>0</b> and you win; if yours hits 0 first, you lose. Your <b>KREDITS</b> show on the left, your <b>DECK</b> on the right, and your hand is fanned along the bottom.</p>" },
-  { t: "2. RESOURCES & TURNS", h: "<ul><li>Every turn you gain <b>+1 resource</b> (up to 12), so bigger cards unlock as the game goes on.</li><li>Cards you can afford <b>glow gold</b> \u2014 click one to play it. Cards you can't pay for look dark.</li><li><b>END TURN</b> passes play \u2014 in LOCAL the other player takes the screen, in VS AI the computer acts, in ONLINE you wait for your opponent.</li></ul>" },
+  { t: "2. RESOURCES & TURNS", h: "<ul><li>The <b>first player</b> starts with <b>4 cards</b> and does <b>not</b> draw on their first turn; the <b>second player</b> starts with <b>5</b> and draws one on their first turn.</li><li>Your hand can hold up to <b>9 cards</b> \u2014 further draws are discarded. Every turn you gain <b>+1 resource</b> (up to 12), so bigger cards unlock as the game goes on.</li><li>Cards you can afford <b>glow gold</b> \u2014 click one to play it. Cards you can't pay for look dark.</li><li><b>END TURN</b> passes play \u2014 in LOCAL the other player takes the screen, in VS AI the computer acts, in ONLINE you wait for your opponent.</li></ul>" },
   { t: "3. NATIONS", h: "<p>There are <b>5 nations</b>, each with its own <b>exclusive deck</b> of cards based on its real WW2 weapons. There are <b>no national buffs</b> \u2014 a nation is defined purely by its cards. Pick yours with the <b>NATION</b> button.</p><ul><li><b>USA</b> \u2605 \u2014 industrial might: Shermans, P-51s, B-17s, Marines.</li><li><b>UK</b> \u265b \u2014 Commonwealth: Spitfires, Commandos, radar, steady Guards.</li><li><b>GERMANY</b> \u2720 \u2014 Blitzkrieg: fast Panzers, Stukas, heavy Tigers.</li><li><b>USSR</b> \u262d \u2014 endless numbers: T-34s, Katyusha rockets, human waves.</li><li><b>JAPAN</b> \u2600 \u2014 aggressive air: cheap Zeros, banzai, kamikaze.</li></ul>" },
   { t: "4. UNITS & ACTION COST", h: "<p>Units are deployed into your <b>support line</b> (max 4). The blue circle in hand is the <b>deployment cost</b>. Once on the field the circle turns amber and shows the unit's <b>action cost</b> \u2014 the extra resource you pay every time it <b>moves or attacks</b>.</p><ul><li><b>Blitz</b> \u2014 can attack the turn it is played.</li><li><b>Guard</b> \u2014 enemies must fight it first; it shields your HQ and support line.</li><li><b>Air</b> \u2014 ignores Guard, ignores the frontline and can always strike the HQ.</li><li><b>Battlecries</b> \u2014 many units have an effect on play: healing your HQ, damaging the enemy HQ or their units, drawing cards, or giving your other units +1 attack.</li></ul>" },
   { t: "5. THE FRONTLINE", h: "<p>The battlefield has three zones: <b>your support line</b>, the shared <b>frontline</b>, and the <b>enemy support line</b>. Newly deployed units always arrive in your support line.</p><ul><li>Only <b>one side can hold the frontline</b> at a time (max 5 units). To take it, destroy any enemy frontline units first.</li><li>Click the <b>\u25b2 button</b> on one of your support units (or just click the unit card) to advance it. It costs that unit's <b>action cost</b> and uses its action for the turn. A unit <b>can advance on the very turn it is deployed</b>.</li><li>While you hold the frontline, your enemy cannot advance \u2014 and your frontline units can hit their support line and HQ.</li></ul>" },
