@@ -260,7 +260,7 @@
   @keyframes pop { from { transform: scale(.6); opacity: .2; } to { transform: scale(1); opacity: 1; } }
   .card.pop { animation: pop .18s ease; }
 
-  #factionpick, #deckedit { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75); align-items: center; justify-content: center; z-index: 60; }
+  #factionpick, #deckedit { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75); align-items: center; justify-content: center; z-index: 74; }
   #factionpick.show, #deckedit.show { display: flex; }
   .fbox, .dbox {
     width: 500px; max-width: 92vw; max-height: 84vh; overflow: auto;
@@ -658,13 +658,52 @@
 
   footer { padding: 6px 0 8px; gap: 12px; }
   .btn { font-size: 11px; padding: 6px 18px; }
+
+  /* pre-game deck selection */
+  #deckselect { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.8); align-items: center; justify-content: center; z-index: 72; }
+  #deckselect.show { display: flex; }
+  #deckselect .dsbox {
+    position: relative; width: 940px; max-width: 96vw; max-height: 92vh; overflow: auto;
+    padding: 16px 20px 18px; border: 3px solid #c9b458; border-radius: 12px;
+    background: linear-gradient(160deg, #333b24, #161b0e);
+    box-shadow: 0 12px 40px rgba(0,0,0,.8);
+  }
+  #deckselect h2 { text-align: center; font-size: 16px; letter-spacing: 3px; color: #c9b458; margin-bottom: 10px; }
+  #deckselect .tclose {
+    position: absolute; top: 8px; right: 12px; width: 28px; height: 28px; line-height: 26px;
+    text-align: center; font-size: 15px; color: #c9b458; cursor: pointer;
+    border: 2px solid #6f6040; border-radius: 50%; background: rgba(0,0,0,.35);
+  }
+  #deckselect .tclose:hover { background: rgba(201,180,88,.3); color: #fff; }
+  #deckselect .dswhich { display: flex; gap: 8px; justify-content: center; margin-bottom: 6px; }
+  #deckselect .dswhich .btn { padding: 5px 18px; font-size: 11px; }
+  #deckselect .dswhich .btn.active { background: rgba(201,180,88,.35); border-color: #ffd95e; color: #fff; }
+  #deckselect .dscurrent { text-align: center; font-size: 11px; color: #9fd4ff; letter-spacing: 1px; margin-bottom: 10px; min-height: 16px; }
+  #deckselect .dsgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 340px)); justify-content: center; gap: 12px; }
+  #deckselect .dscard {
+    padding: 9px 8px; border: 2px solid #4a5033; border-radius: 8px;
+    background: rgba(0,0,0,.3); cursor: pointer; text-align: center;
+    transition: border-color .15s, background .15s;
+  }
+  #deckselect .dscard:hover { border-color: #9fd4ff; background: rgba(77,127,184,.14); }
+  #deckselect .dscard.sel { border-color: #ffd95e; background: rgba(201,180,88,.2); box-shadow: 0 0 12px rgba(255,217,94,.3); }
+  #deckselect .dscard.empty { opacity: .5; }
+  #deckselect .dsflag { font-size: 18px; color: #c9b458; }
+  #deckselect .dsnation { font-size: 12px; letter-spacing: 2px; color: #f0e6c8; margin: 2px 0; }
+  #deckselect .dstype { font-size: 9px; letter-spacing: 2px; color: #9fd4ff; }
+  #deckselect .dstype.custom { color: #ffd95e; }
+  #deckselect .dscount { font-size: 10px; color: #b9c4a8; margin-top: 5px; }
+  #deckselect .dsstats { font-size: 9px; color: #8a917c; line-height: 1.4; margin-top: 4px; }
+  #deckselect .dspreview { font-size: 8px; color: #7d865f; line-height: 1.35; margin-top: 5px; border-top: 1px solid #3a4030; padding-top: 4px; }
+  #deckselect .dbtns { margin-top: 12px; }
+  #deckselect .dsplay { background: rgba(201,180,88,.3); border-color: #ffd95e; font-size: 13px; padding: 8px 22px; }
 </style>
 </head>
 <body>
   <div id="fit">
     <div id="stage">
       <header>
-        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v34</span></h1>
+        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v35</span></h1>
         <div id="turnbar">Player 1's Turn</div>
       </header>
 
@@ -680,7 +719,7 @@
         </div>
         <div class="mgroup">
           <button class="btn mmode" onclick="openFactionPick()">NATION</button>
-          <button class="btn mmode" onclick="openDeckEdit()">DECK</button>
+          <button class="btn mmode" onclick="openDeckSelect()">PICK DECK</button>
           <button class="btn mmode" onclick="openCollection()">COLLECTION</button>
           <button class="btn mmode" id="missionBtn" onclick="openMissions()">MISSIONS</button>
           <button class="btn mmode" id="packBtn" onclick="openPacks()">PACKS</button>
@@ -786,6 +825,24 @@
     </div>
   </div>
 
+  <div id="deckselect">
+    <div class="dsbox">
+      <div class="tclose" onclick="closeDeckSelect()">✕</div>
+      <h2>CHOOSE YOUR DECK</h2>
+      <div class="dswhich" id="dsWhich">
+        <button class="btn" id="dsw1" onclick="dsSetWhich(1)">PLAYER 1</button>
+        <button class="btn" id="dsw2" onclick="dsSetWhich(2)">PLAYER 2</button>
+      </div>
+      <div class="dscurrent" id="dsCurrent"></div>
+      <div class="dsgrid" id="dsGrid"></div>
+      <div class="dbtns">
+        <button class="btn" onclick="dsEdit()">EDIT DECK</button>
+        <button class="btn dsplay" onclick="dsPlay()">PLAY WITH THIS DECK</button>
+        <button class="btn" onclick="closeDeckSelect()">CANCEL</button>
+      </div>
+    </div>
+  </div>
+
   <div id="stats">
     <div class="abox">
       <div class="tclose" onclick="closeStats()">✕</div>
@@ -864,6 +921,7 @@
       <div class="lobbyNav">
         <button class="btn" onclick="closeLobbyPage();openCollection()">COLLECTION</button>
         <button class="btn" onclick="closeLobbyPage();openDeckEdit()">DECK</button>
+        <button class="btn" onclick="openDeckSelect()">CHOOSE DECK</button>
         <button class="btn" onclick="closeLobbyPage();openMissions()">MISSIONS</button>
         <button class="btn" onclick="closeLobbyPage();openPacks()">PACKS</button>
         <button class="btn" onclick="closeLobbyPage();openStore()">STORE</button>
@@ -900,7 +958,7 @@
           <div class="lpLoadout">
             <div class="lplRow"><span class="lbl">NATION</span><span id="lpNation">USA</span></div>
             <div class="lplRow"><span class="lbl">DECK</span><span id="lpDeck">40 / 40</span></div>
-            <button class="btn" onclick="closeLobbyPage();openDeckEdit()">EDIT DECK</button>
+            <button class="btn" onclick="openDeckSelect()">CHOOSE DECK</button>
           </div>
           <button class="btn playBtn" id="lpPlayBtn" onclick="lpPlay()">PLAY LOCAL</button>
         </div>
@@ -1057,6 +1115,7 @@ function defaultProfile() {
   return {
     fact1: "usa", fact2: "germany",
     decks: {},
+    deckMode: {},
     gems: 120,
     cards: {},
     missions: null,
@@ -1095,6 +1154,7 @@ function loadProfile() {
   }
   if (!p || typeof p !== "object") p = migrateProfile();
   p.decks = p.decks || {};
+  p.deckMode = p.deckMode || {};
   p.stats = p.stats || {};
   p.stats.byFaction = p.stats.byFaction || {};
   if (typeof p.gems !== "number" || p.gems < 0) p.gems = 120;
@@ -1521,9 +1581,20 @@ var DECK_COMPS = {
   japan:   [["jp_infantry",3],["jp_zero",3],["jp_kneemortar",3],["jp_banzai",3],["jp_type95",3],["jp_navalair",2],["jp_kamikaze",3],["jp_officer",2],["jp_island",3],["jp_battleship",1],["jp_banzaiorder",3],["jp_torpedo",3],["jp_divebomb",2],["jp_mobilize",2],["jp_recon",2],["jp_airstrike",2]]
 };
 
+// Deck choice per nation: "auto" (legacy: custom if saved), "standard", or "custom".
+function deckUsesCustom(faction) {
+  var mode = (PROFILE.deckMode && PROFILE.deckMode[faction]) || "auto";
+  return mode !== "standard" && validCustomDeck(faction);
+}
+function dsEffectiveMode(faction) {
+  var mode = (PROFILE.deckMode && PROFILE.deckMode[faction]) || "auto";
+  if (mode === "standard" || mode === "custom") return mode;
+  return validCustomDeck(faction) ? "custom" : "standard";
+}
+
 function buildDeck(faction) {
   var list = [];
-  var counts = validCustomDeck(faction) ? PROFILE.decks[faction] : deckDefaultCounts(faction);
+  var counts = deckUsesCustom(faction) ? PROFILE.decks[faction] : deckDefaultCounts(faction);
   Object.keys(counts).forEach(function (k) {
     if (!DEFS[k] || DEFS[k].f !== faction) return;
     var n = Math.min(counts[k] || 0, MAX_COPIES);
@@ -3187,8 +3258,8 @@ var TUT_STEPS = [
   { t: "5. THE FRONTLINE", h: "<p>The battlefield has three zones: <b>your support line</b>, the shared <b>frontline</b>, and the <b>enemy support line</b>. Newly deployed units always arrive in your support line.</p><ul><li>Only <b>one side can hold the frontline</b> at a time (max 5 units). To take it, destroy any enemy frontline units first.</li><li>Click the <b>\u25b2 button</b> on one of your support units (or just click the unit card) to advance it. It costs that unit's <b>action cost</b> and uses its action for the turn. A unit <b>can advance on the very turn it is deployed</b>.</li><li>While you hold the frontline, your enemy cannot advance \u2014 and your frontline units can hit their support line and HQ.</li></ul>" },
   { t: "6. ATTACKING", h: "<ul><li>Click your unit, then click an enemy unit or the enemy HQ. Every attack costs the unit's <b>action cost</b>.</li><li>Each unit acts <b>once per turn</b> (move <i>or</i> attack). When two units fight, <b>both</b> deal their attack to each other.</li><li><b>Support-line units</b> can only reach the enemy <b>frontline</b>. <b>Frontline units</b> can reach the enemy <b>support line and HQ</b>.</li><li><b>Guard</b> units must be fought first. <b>Air</b> units ignore Guard and can always hit the HQ.</li><li>A newly deployed unit cannot <b>attack</b> that turn unless it has <b>Blitz</b> \u2014 but any unit may <b>advance to the frontline</b> immediately (that uses its action for the turn).</li></ul>" },
   { t: "7. ORDERS", h: "<p>Orders are one-shot cards \u2014 they resolve, then vanish. A played order is shown in the box on the left for <b>2 seconds</b> before its effect takes place. Orders ignore the frontline and can strike any enemy unit. Each nation has its own orders. The shared effects are:</p><ul><li><b>Damage a unit</b> \u2014 click the order, then pick an enemy unit.</li><li><b>Damage the enemy HQ</b> \u2014 a direct strike.</li><li><b>Damage all enemy units</b> \u2014 a sweeping barrage (hits the HQ if their board is empty).</li><li><b>Heal your HQ</b> \u2014 recover hit points.</li><li><b>Draw cards</b> \u2014 refill your hand.</li><li><b>Gain resource</b> \u2014 bank energy for bigger plays.</li><li><b>Rally</b> \u2014 all your units can attack again.</li></ul>" },
-  { t: "8. YOUR COLLECTION", h: "<ul><li>Open <b>DECK</b> to build your deck right from the <b>card collection</b> \u2014 click a card (or its <b>+</b>) to add a copy, right-click (or <b>-</b>) to remove one. A <b>gold border</b> means it's in your deck.</li><li>Each card tile shows <b>deploy cost</b>, <b>action cost</b> and <b>attack/HP</b>. Each nation keeps its <b>own saved deck</b>; in LOCAL use the <b>PLAYER 1 / PLAYER 2</b> toggle.</li><li>A deck needs <b>exactly 40 cards</b>, at most <b>3 copies</b> each. <b>USE DEFAULT</b> restores the starter deck, <b>SAVE</b> keeps changes.</li><li>Cards marked <b>\u25c6 PREMIUM</b> are locked until you unlock them in the <b>STORE</b> with diamonds.</li></ul>" },
-  { t: "9. PLAY & MENU", h: "<ul><li><b>LOCAL</b> \u2014 two players share one screen (hot-seat); choose <b>both</b> players' nations.</li><li><b>VS AI</b> \u2014 battle the computer; use <b>AI: EASY/NORMAL/HARD</b> to set its skill.</li><li><b>ONLINE</b> \u2014 HOST gives you a room code to share, or press <b>ROOMS</b> to join a waiting game. <b>LOBBY</b> \u2014 the screen you see when the game opens. Pick <b>LOCAL</b>, <b>VS AI</b> or <b>ONLINE</b>, then press <b>PLAY</b>. In ONLINE you can host, join by code, or browse open rooms.</li><li><b>NATION</b> \u2014 choose your nation. <b>DECK</b> \u2014 build your deck from your collection.</li><li><b>MISSIONS</b> \u2014 complete daily goals (win battles, deploy units, attack, advance, play orders) to earn <b>diamonds \u25c6</b>. <b>STORE</b> \u2014 spend diamonds on Recruit Packs, War Chests, the Grand Arsenal (5 packs), nation packs that guarantee a faction's card, or any of the 10 premium cards. <b>PACKS</b> \u2014 open your sealed packs to reveal the cards inside; a queued nation pack is marked NEXT. <b>COLLECTION</b> \u2014 see every card you own; use <b>SHOW UNPOSSESSED</b> to reveal the ones you have not unlocked yet.</li><li><b>STATS</b> \u2014 track wins, losses and records. Use <b>EXPORT SAVE</b> to back up your progress before clearing browser data.</li><li><b>TUTORIAL</b> reopens this guide, <b>SOUND</b> toggles audio.</li></ul><p>Good luck, Commander!</p>" }
+  { t: "8. YOUR COLLECTION", h: "<p>Before a battle, open <b>CHOOSE DECK</b> (or <b>PICK DECK</b>) to select which deck each player will use: the nation's <b>STANDARD</b> deck or your saved <b>CUSTOM</b> deck. Your choice is remembered for that nation. In <b>LOCAL</b> mode use the <b>PLAYER 1 / PLAYER 2</b> toggle to set both decks.</p><ul><li>Open <b>DECK</b> to build your deck right from the <b>card collection</b> \u2014 click a card (or its <b>+</b>) to add a copy, right-click (or <b>-</b>) to remove one. A <b>gold border</b> means it's in your deck.</li><li>Each card tile shows <b>deploy cost</b>, <b>action cost</b> and <b>attack/HP</b>. Each nation keeps its <b>own saved deck</b>; in LOCAL use the <b>PLAYER 1 / PLAYER 2</b> toggle.</li><li>A deck needs <b>exactly 40 cards</b>, at most <b>3 copies</b> each. <b>USE DEFAULT</b> restores the starter deck, <b>SAVE</b> keeps changes.</li><li>Cards marked <b>\u25c6 PREMIUM</b> are locked until you unlock them in the <b>STORE</b> with diamonds.</li></ul>" },
+  { t: "9. PLAY & MENU", h: "<ul><li><b>LOCAL</b> \u2014 two players share one screen (hot-seat); choose <b>both</b> players' nations.</li><li><b>VS AI</b> \u2014 battle the computer; use <b>AI: EASY/NORMAL/HARD</b> to set its skill.</li><li><b>ONLINE</b> \u2014 HOST gives you a room code to share, or press <b>ROOMS</b> to join a waiting game. <b>LOBBY</b> \u2014 the screen you see when the game opens. Pick <b>LOCAL</b>, <b>VS AI</b> or <b>ONLINE</b>, then press <b>PLAY</b>. In ONLINE you can host, join by code, or browse open rooms.</li><li><b>NATION</b> \u2014 choose your nation. <b>CHOOSE DECK</b> \u2014 pick the STANDARD or CUSTOM deck to play before the battle. <b>DECK</b> \u2014 build your deck from your collection.</li><li><b>MISSIONS</b> \u2014 complete daily goals (win battles, deploy units, attack, advance, play orders) to earn <b>diamonds \u25c6</b>. <b>STORE</b> \u2014 spend diamonds on Recruit Packs, War Chests, the Grand Arsenal (5 packs), nation packs that guarantee a faction's card, or any of the 10 premium cards. <b>PACKS</b> \u2014 open your sealed packs to reveal the cards inside; a queued nation pack is marked NEXT. <b>COLLECTION</b> \u2014 see every card you own; use <b>SHOW UNPOSSESSED</b> to reveal the ones you have not unlocked yet.</li><li><b>STATS</b> \u2014 track wins, losses and records. Use <b>EXPORT SAVE</b> to back up your progress before clearing browser data.</li><li><b>TUTORIAL</b> reopens this guide, <b>SOUND</b> toggles audio.</li></ul><p>Good luck, Commander!</p>" }
 ];
 var TUT_PAGE = 0;
 
@@ -3276,7 +3347,7 @@ function openDeckEdit(which) {
   DECK_WHICH = (which === 2) ? 2 : 1;
   DECK_FAC = deckEditFaction();
   DECK_WORK = {};
-  var src = validCustomDeck(DECK_FAC) ? PROFILE.decks[DECK_FAC] : deckDefaultCounts(DECK_FAC);
+  var src = deckUsesCustom(DECK_FAC) ? PROFILE.decks[DECK_FAC] : deckDefaultCounts(DECK_FAC);
   factionCardKeys(DECK_FAC).forEach(function (k) { DECK_WORK[k] = src[k] || 0; });
   document.querySelector("#deckedit h2").textContent = "DECK BUILDER \u2014 " + FACTIONS[DECK_FAC].name;
   var whichEl = document.getElementById("deckWhich");
@@ -3312,9 +3383,12 @@ function deckSave() {
     return;
   }
   PROFILE.decks[DECK_FAC] = DECK_WORK; DECK_WORK = null;
+  PROFILE.deckMode = PROFILE.deckMode || {};
+  PROFILE.deckMode[DECK_FAC] = "custom";
   saveProfile();
   track("decksSaved");
   document.getElementById("deckedit").classList.remove("show");
+  if (DECK_FROM_SELECT) { DECK_FROM_SELECT = false; openDeckSelect(DS_WHICH); return; }
   if (MODE === "local" || MODE === "ai") newGame();
 }
 
@@ -3348,6 +3422,112 @@ function renderDeckRows() {
   document.getElementById("deckRows").innerHTML = '<div class="dlegend">CLICK A CARD TO ADD \u00b7 RIGHT-CLICK OR \u2212 TO REMOVE \u00b7 GOLD BORDER = IN DECK \u00b7 \u25c6 CARDS COME FROM THE STORE</div><div class="dgrid">' + html + '</div>';
   var t = deckTotalWork();
   document.getElementById("deckInfo").textContent = "TOTAL: " + t + " / " + DECK_SIZE + " cards" + (t === DECK_SIZE ? "  \u2713" : "  (need exactly " + DECK_SIZE + ")");
+}
+
+// ---------------- Pre-game deck selection ----------------
+var DS_WHICH = 1;
+var DECK_FROM_SELECT = false;
+
+function dsFaction() { return DS_WHICH === 2 ? FACTION2 : FACTION; }
+
+function dsDeckStats(faction, mode) {
+  var counts = (mode === "custom")
+    ? (validCustomDeck(faction) ? PROFILE.decks[faction] : {})
+    : deckDefaultCounts(faction);
+  var total = 0, units = 0, orders = 0, air = 0, guard = 0, premium = 0, top = [];
+  Object.keys(counts).forEach(function (k) {
+    var n = counts[k] || 0;
+    if (n <= 0 || !DEFS[k] || DEFS[k].f !== faction) return;
+    var d = DEFS[k];
+    total += n;
+    if (d.type === "order") orders += n;
+    else { units += n; if (d.air) air += n; if (d.guard) guard += n; }
+    if (d.premium) premium += n;
+    top.push([d.name, n, d.cost]);
+  });
+  top.sort(function (a, b) { return (b[2] - a[2]) || a[0].localeCompare(b[0]); });
+  return { total: total, units: units, orders: orders, air: air, guard: guard, premium: premium, top: top.slice(0, 4) };
+}
+
+function openDeckSelect(which) {
+  DS_WHICH = (which === 2) ? 2 : 1;
+  dsRender();
+  document.getElementById("deckselect").classList.add("show");
+}
+
+function closeDeckSelect() { document.getElementById("deckselect").classList.remove("show"); }
+
+function dsSetWhich(w) { DS_WHICH = (w === 2) ? 2 : 1; dsRender(); }
+
+function dsSelect(mode) {
+  var fac = dsFaction();
+  if (mode === "custom" && !validCustomDeck(fac)) {
+    log("No finished custom deck for " + FACTIONS[fac].name + " \u2014 use EDIT DECK to build a 40-card deck.");
+    return;
+  }
+  PROFILE.deckMode = PROFILE.deckMode || {};
+  PROFILE.deckMode[fac] = mode;
+  saveProfile();
+  dsRender();
+  if (LOBBY_OPEN) lobbyPageRender();
+}
+
+function dsRender() {
+  var dual = (MODE === "local") || (LOBBY_OPEN && LOBBY_MODE === "local");
+  var whichEl = document.getElementById("dsWhich");
+  if (whichEl) whichEl.style.display = dual ? "flex" : "none";
+  var b1 = document.getElementById("dsw1"), b2 = document.getElementById("dsw2");
+  if (b1) b1.classList.toggle("active", DS_WHICH === 1);
+  if (b2) b2.classList.toggle("active", DS_WHICH === 2);
+
+  var fac = dsFaction(), f = FACTIONS[fac];
+  var h2 = document.querySelector("#deckselect h2");
+  if (h2) h2.textContent = "CHOOSE YOUR DECK \u2014 " + f.name + (dual ? " \u00b7 PLAYER " + DS_WHICH : "");
+  var cur = dsEffectiveMode(fac);
+  var ready = validCustomDeck(fac);
+  var curEl = document.getElementById("dsCurrent");
+  if (curEl) curEl.textContent = "SELECTED: " + (cur === "custom" ? "CUSTOM SAVED DECK" : "STANDARD DECK") +
+    " \u00b7 " + buildDeck(fac).length + " / " + DECK_SIZE + " cards \u00b7 saved automatically";
+  var opts = [
+    { key: "standard", name: "STANDARD", type: "BUILT-IN DECK", ok: true },
+    { key: "custom", name: "CUSTOM", type: ready ? "YOUR SAVED DECK" : "NOT READY", ok: ready }
+  ];
+  var html = opts.map(function (o) {
+    var s = dsDeckStats(fac, o.key);
+    var preview = s.top.length
+      ? s.top.map(function (t) { return t[1] + "\u00d7 " + t[0] + " \u00b7 " + t[2] + "c"; }).join("<br>")
+      : "Save a 40-card deck in EDIT DECK to unlock this option.";
+    return '<div class="dscard' + (cur === o.key ? " sel" : "") + (o.ok ? "" : " empty") + '" onclick="dsSelect(\'' + o.key + '\')">' +
+      '<div class="dsflag">' + f.flag + '</div>' +
+      '<div class="dsnation">' + o.name + '</div>' +
+      '<div class="dstype' + (o.key === "custom" ? " custom" : "") + '">' + o.type + '</div>' +
+      '<div class="dscount">' + s.total + ' cards \u00b7 ' + s.units + ' units \u00b7 ' + s.orders + ' orders</div>' +
+      '<div class="dsstats">AIR ' + s.air + ' \u00b7 GUARD ' + s.guard + (s.premium ? ' \u00b7 \u25c6 PREMIUM ' + s.premium : '') + '</div>' +
+      '<div class="dspreview">' + preview + '</div>' +
+      '</div>';
+  }).join("");
+  document.getElementById("dsGrid").innerHTML = html;
+  var play = document.querySelector("#deckselect .dsplay");
+  if (play) play.textContent = (LOBBY_OPEN && LOBBY_MODE === "online") ? "SAVE & RETURN TO LOBBY" : "PLAY WITH THIS DECK";
+}
+
+function dsEdit() {
+  var which = DS_WHICH;
+  closeDeckSelect();
+  DECK_FROM_SELECT = true;
+  openDeckEdit(which);
+}
+
+function dsPlay() {
+  var m = (LOBBY_OPEN && LOBBY_MODE) ? LOBBY_MODE : MODE;
+  closeDeckSelect();
+  closeLobbyPage();
+  if (m === "local" || m === "ai") {
+    if (m !== MODE) setMode(m);
+    else newGame();
+  } else {
+    openLobbyPage();
+  }
 }
 
 // ---------------- Helpers ----------------
