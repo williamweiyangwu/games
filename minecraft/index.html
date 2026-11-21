@@ -88,7 +88,6 @@
   #stats.show{display:flex}
   #stats .bar2{display:flex;gap:1px;height:14px}
   #hearts{justify-content:flex-start}
-  #armorbar{justify-content:flex-start;height:9px}
   #food{justify-content:flex-end}
   .ic{
     width:15px;height:14px;flex:none;background:#e83b2f;
@@ -99,8 +98,6 @@
     background:#c98a3d;
     clip-path:polygon(52% 4%,66% 20%,84% 14%,88% 36%,100% 54%,70% 58%,76% 82%,50% 68%,32% 90%,28% 60%,4% 58%,20% 38%,2% 20%,30% 24%)
   }
-  .ic.shield{background:#a8c0d6;height:9px;
-    clip-path:polygon(50% 0,100% 18%,100% 58%,50% 100%,0 58%,0 18%)}
   .ic.empty{background:rgba(20,24,32,.72)}
   .slot .cnt{position:absolute;right:3px;bottom:0;font:10px/1 monospace;color:#fff;text-shadow:0 1px 0 #000}
 
@@ -121,9 +118,6 @@
   #craftout{width:54px;height:54px}
   #craftout.out{border-color:rgba(255,224,138,.4)}
   #craftout.has{border-color:rgba(120,255,150,.75);box-shadow:0 0 0 1px rgba(120,255,150,.35)}
-  #armorlabel{margin:0 0 5px;font-size:10px;letter-spacing:1px;color:var(--dim);text-align:center}
-  #armorslots{display:flex;justify-content:center;gap:5px;margin-bottom:10px}
-  #armorslots .islot{width:52px;height:52px}
   #invgrid{display:grid;grid-template-columns:repeat(9,1fr);gap:5px;max-height:46vh;overflow-y:auto;align-content:start;padding-right:2px}
   .islot{position:relative;aspect-ratio:1;border-radius:6px;background:rgba(255,255,255,.05);border:1px solid var(--line);display:grid;place-items:center;cursor:pointer}
   .islot:hover{background:rgba(255,255,255,.12)}
@@ -220,6 +214,7 @@
 </style>
 </head>
 <body>
+<a href="../" title="Back to Arcade" aria-label="Back to Arcade" style="position:fixed;top:10px;left:10px;z-index:999999;padding:6px 11px;border:1px solid #3d4c74;border-radius:999px;background:rgba(10,13,20,.85);color:#eef2fb;font:600 12px/1.2 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.4)">&#8592; Arcade</a>
 
 <canvas id="view"></canvas>
 <div id="tint"></div>
@@ -230,13 +225,12 @@
   <div id="hint">LMB attack / break &middot; RMB place / eat / furnace / ignite portals &middot; walk into a portal to travel &middot; E inventory &middot; Q drop &middot; F fly &middot; F3 stats</div>
   <div id="stats">
     <div id="hearts" class="bar2"></div>
-    <div id="armorbar" class="bar2"></div>
     <div id="food" class="bar2"></div>
   </div>
   <div id="bar"></div>
   <div id="dbg"></div>
   <div id="toast"></div>
-  <div id="ver">v2.2 build 1</div>
+  <div id="ver">v2.1 build 1</div>
 </div>
 
 <div id="inv" class="hide">
@@ -248,8 +242,6 @@
       <div class="carrow">&#8594;</div>
       <div id="craftout" class="islot out"></div>
     </div>
-    <div id="armorlabel">Armor</div>
-    <div id="armorslots"></div>
     <div id="invgrid"></div>
     <button id="giveAll" class="hide">Get All Items</button>
     <div class="invfoot">LMB pick / swap &middot; RMB split half &middot; Q drop (Ctrl+Q all) &middot; <b>E</b> / <b>Esc</b> close</div>
@@ -677,6 +669,10 @@ const BLK = [
   { n: 'Diamond Block',t: [T.DIAMOND_BLOCK, T.DIAMOND_BLOCK, T.DIAMOND_BLOCK], solid: 1, opaque: 1, cull: 0, a: 1 },
   { n: 'Sandstone',    t: [T.SANDSTONE, T.SANDSTONE, T.SANDSTONE],        solid: 1, opaque: 1, cull: 0, a: 1 }
 ];
+const CREATIVE_PALETTE = [[GRASS, 64], [DIRT, 64], [STONE, 64], [COBBLE, 64], [PLANKS, 64], [LOG, 64], [LEAVES, 64], [GLASS, 64], [BRICK, 64], [FURNACE, 8], [SNOW, 64],
+  [OBSIDIAN, 32], [PORTAL, 16], [NETHERRACK, 64], [SOUL_SAND, 64], [GLOWSTONE, 64], [NETHER_BRICK, 64], [END_STONE, 64], [END_PORTAL, 16], [END_FRAME, 32], [LAVA, 16],
+  [CRAFT_TABLE, 16], [CHEST, 16], [STONE_BRICK, 64], [IRON_BLOCK, 16], [GOLD_BLOCK, 16], [DIAMOND_BLOCK, 16], [SANDSTONE, 64]];
+
 /* ------------------------------------------------- items & survival */
 const IT = { BEEF: 100, PORK: 101, MUTTON: 102, CHICKEN: 103, LEATHER: 104, WOOL: 105,
              FEATHER: 106, BONE: 107, STRING: 108, GUNPOWDER: 109, ROTTEN: 110, ARROW: 111,
@@ -690,44 +686,7 @@ const IT = { BEEF: 100, PORK: 101, MUTTON: 102, CHICKEN: 103, LEATHER: 104, WOOL
              GPICK: 144, GAXE: 145, GSHOVEL: 146, GSWORD: 147,
               CBEET: 148, CPORK: 149, CMUTTON: 150, CCHICKEN: 151,
              FLINT_STEEL: 152, ENDER_PEARL: 153, ENDER_EYE: 154,
-             TORCH: 155, SHEARS: 156, FLINT: 157, BONE_MEAL: 158,
-             LHELM: 159, LCHEST: 160, LLEGS: 161, LBOOTS: 162,
-             GHELM: 163, GCHEST: 164, GLEGS: 165, GBOOTS: 166,
-             IHELM: 167, ICHEST: 168, ILEGS: 169, IBOOTS: 170,
-             DHELM: 171, DCHEST: 172, DLEGS: 173, DBOOTS: 174 };
-/* ------------------------------------------------------------- armor */
-/* slot 0 helmet, 1 chestplate, 2 leggings, 3 boots */
-const ARMOR_SLOTS = ['Helmet', 'Chestplate', 'Leggings', 'Boots'];
-const ARMOR_SETS = [
-  { key: 'leather', name: 'Leather', col: [150, 104, 58],  pts: [1, 2, 3, 1] },
-  { key: 'gold',    name: 'Gold',    col: [240, 200, 52],  pts: [2, 5, 3, 1] },
-  { key: 'iron',    name: 'Iron',    col: [200, 200, 205], pts: [2, 6, 5, 2] },
-  { key: 'diamond', name: 'Diamond', col: [71, 208, 200],  pts: [3, 8, 6, 3] }
-];
-const ARMOR_IDS = {
-  leather: [IT.LHELM, IT.LCHEST, IT.LLEGS, IT.LBOOTS],
-  gold:    [IT.GHELM, IT.GCHEST, IT.GLEGS, IT.GBOOTS],
-  iron:    [IT.IHELM, IT.ICHEST, IT.ILEGS, IT.IBOOTS],
-  diamond: [IT.DHELM, IT.DCHEST, IT.DLEGS, IT.DBOOTS]
-};
-const ARMOR = [null, null, null, null];
-const ARMOR_BY_ID = {};
-for (const s of ARMOR_SETS) ARMOR_IDS[s.key].forEach((id, slot) => {
-  ARMOR_BY_ID[id] = { id, slot, set: s.key, pts: s.pts[slot] };
-});
-function armorPoints() {
-  let p = 0;
-  for (const a of ARMOR) if (a && ARMOR_BY_ID[a.id]) p += ARMOR_BY_ID[a.id].pts;
-  return p;
-}
-function armorReduction() { return Math.min(0.8, armorPoints() * 0.04); }
-function armorColor(slot) {
-  const a = ARMOR[slot]; if (!a) return null;
-  const def = ARMOR_BY_ID[a.id];
-  const set = def && ARMOR_SETS.find(s => s.key === def.set);
-  return set ? set.col : null;
-}
-
+             TORCH: 155, SHEARS: 156, FLINT: 157, BONE_MEAL: 158 };
 const ITEM = {};
 function rect(g, x, y, w, h, c) { g.fillStyle = c; g.fillRect(x, y, w, h); }
 function toolIcon(kind, c1, c2) {
@@ -744,25 +703,6 @@ function toolIcon(kind, c1, c2) {
     } else {
       rect(g, 13, 3, 6, 15, c1); rect(g, 13, 3, 2, 15, c2);
       rect(g, 9, 18, 14, 3, '#6b4a2a'); rect(g, 13, 21, 6, 7, '#6b4a2a'); rect(g, 13, 21, 2, 7, '#8a6238');
-    }
-  };
-}
-function armorIcon(kind, c1, c2) {
-  return g => {
-    if (kind === 'helm') {
-      rect(g, 7, 6, 18, 16, c1); rect(g, 7, 6, 18, 4, c2);
-      rect(g, 7, 14, 18, 4, '#26262a'); rect(g, 9, 19, 14, 3, c1);
-    } else if (kind === 'chest') {
-      rect(g, 7, 5, 18, 20, c1); rect(g, 7, 5, 18, 4, c2);
-      rect(g, 4, 8, 4, 12, c1); rect(g, 24, 8, 4, 12, c1);
-      rect(g, 14, 5, 4, 20, c2);
-    } else if (kind === 'legs') {
-      rect(g, 7, 4, 18, 8, c1); rect(g, 8, 12, 7, 15, c1); rect(g, 17, 12, 7, 15, c1);
-      rect(g, 8, 12, 7, 3, c2); rect(g, 17, 12, 7, 3, c2);
-    } else {
-      rect(g, 7, 7, 8, 14, c1); rect(g, 17, 7, 8, 14, c1);
-      rect(g, 6, 18, 10, 7, c1); rect(g, 16, 18, 10, 7, c1);
-      rect(g, 6, 18, 10, 3, c2); rect(g, 16, 18, 10, 3, c2);
     }
   };
 }
@@ -852,16 +792,6 @@ function defineItems() {
     rect(g, 7, 20, 18, 5, '#e6e4d6'); rect(g, 10, 16, 13, 5, '#f2f0e4'); rect(g, 13, 12, 8, 5, '#fbf9ee');
     rect(g, 9, 21, 3, 3, '#cfcdbd'); rect(g, 20, 22, 3, 2, '#cfcdbd');
   });
-  const armorParts = ['helm', 'chest', 'legs', 'boots'];
-  const armorNames = ['Helmet', 'Chestplate', 'Leggings', 'Boots'];
-  ARMOR_SETS.forEach(s => {
-    const c = s.col;
-    const c1 = 'rgb(' + c.join(',') + ')';
-    const c2 = 'rgb(' + c.map(v => Math.min(255, v + 34)).join(',') + ')';
-    const hex = (c[0] << 16) | (c[1] << 8) | c[2];
-    ARMOR_IDS[s.key].forEach((id, i) =>
-      R(id, s.name + ' ' + armorNames[i], hex, 0, armorIcon(armorParts[i], c1, c2)));
-  });
 }
 const DROPBLK = {}; DROPBLK[GRASS] = DIRT; DROPBLK[STONE] = COBBLE; DROPBLK[LEAVES] = 0; DROPBLK[GLASS] = 0; DROPBLK[BEDROCK] = 0;
 DROPBLK[COAL_ORE] = IT.COAL; DROPBLK[IRON_ORE] = IT.IRON; DROPBLK[GOLD_ORE] = IT.GOLD; DROPBLK[DIAMOND_ORE] = IT.DIAMOND;
@@ -949,24 +879,7 @@ const RECIPES = [
   { out: [IT.ARROW, 4], shape: [[0, IT.FLINT, 0], [0, IT.STICK, 0], [0, IT.FEATHER, 0]] },
   { out: [IT.IRON, 9], shape: [[IRON_BLOCK, 0, 0], [0, 0, 0], [0, 0, 0]] },
   { out: [IT.GOLD, 9], shape: [[GOLD_BLOCK, 0, 0], [0, 0, 0], [0, 0, 0]] },
-  { out: [IT.DIAMOND, 9], shape: [[DIAMOND_BLOCK, 0, 0], [0, 0, 0], [0, 0, 0]] },
-  /* ---- armor sets (Crafting Table only) ---- */
-  { out: [IT.LHELM, 1], shape: [[IT.LEATHER, IT.LEATHER, IT.LEATHER], [IT.LEATHER, 0, IT.LEATHER], [0, 0, 0]] },
-  { out: [IT.LCHEST, 1], shape: [[IT.LEATHER, 0, IT.LEATHER], [IT.LEATHER, IT.LEATHER, IT.LEATHER], [IT.LEATHER, IT.LEATHER, IT.LEATHER]] },
-  { out: [IT.LLEGS, 1], shape: [[IT.LEATHER, IT.LEATHER, IT.LEATHER], [IT.LEATHER, 0, IT.LEATHER], [IT.LEATHER, 0, IT.LEATHER]] },
-  { out: [IT.LBOOTS, 1], shape: [[0, 0, 0], [IT.LEATHER, 0, IT.LEATHER], [IT.LEATHER, 0, IT.LEATHER]] },
-  { out: [IT.GHELM, 1], shape: [[IT.GOLD, IT.GOLD, IT.GOLD], [IT.GOLD, 0, IT.GOLD], [0, 0, 0]] },
-  { out: [IT.GCHEST, 1], shape: [[IT.GOLD, 0, IT.GOLD], [IT.GOLD, IT.GOLD, IT.GOLD], [IT.GOLD, IT.GOLD, IT.GOLD]] },
-  { out: [IT.GLEGS, 1], shape: [[IT.GOLD, IT.GOLD, IT.GOLD], [IT.GOLD, 0, IT.GOLD], [IT.GOLD, 0, IT.GOLD]] },
-  { out: [IT.GBOOTS, 1], shape: [[0, 0, 0], [IT.GOLD, 0, IT.GOLD], [IT.GOLD, 0, IT.GOLD]] },
-  { out: [IT.IHELM, 1], shape: [[IT.IRON, IT.IRON, IT.IRON], [IT.IRON, 0, IT.IRON], [0, 0, 0]] },
-  { out: [IT.ICHEST, 1], shape: [[IT.IRON, 0, IT.IRON], [IT.IRON, IT.IRON, IT.IRON], [IT.IRON, IT.IRON, IT.IRON]] },
-  { out: [IT.ILEGS, 1], shape: [[IT.IRON, IT.IRON, IT.IRON], [IT.IRON, 0, IT.IRON], [IT.IRON, 0, IT.IRON]] },
-  { out: [IT.IBOOTS, 1], shape: [[0, 0, 0], [IT.IRON, 0, IT.IRON], [IT.IRON, 0, IT.IRON]] },
-  { out: [IT.DHELM, 1], shape: [[IT.DIAMOND, IT.DIAMOND, IT.DIAMOND], [IT.DIAMOND, 0, IT.DIAMOND], [0, 0, 0]] },
-  { out: [IT.DCHEST, 1], shape: [[IT.DIAMOND, 0, IT.DIAMOND], [IT.DIAMOND, IT.DIAMOND, IT.DIAMOND], [IT.DIAMOND, IT.DIAMOND, IT.DIAMOND]] },
-  { out: [IT.DLEGS, 1], shape: [[IT.DIAMOND, IT.DIAMOND, IT.DIAMOND], [IT.DIAMOND, 0, IT.DIAMOND], [IT.DIAMOND, 0, IT.DIAMOND]] },
-  { out: [IT.DBOOTS, 1], shape: [[0, 0, 0], [IT.DIAMOND, 0, IT.DIAMOND], [IT.DIAMOND, 0, IT.DIAMOND]] }
+  { out: [IT.DIAMOND, 9], shape: [[DIAMOND_BLOCK, 0, 0], [0, 0, 0], [0, 0, 0]] }
 ];
 function trimShape(rows) {
   let minR = 3, maxR = -1, minC = 3, maxC = -1;
@@ -2125,18 +2038,12 @@ function drawPlayer() {
   const sway = Math.abs(Math.sin(pl.bob)) * 0.05;
   const sR = r * skin | 0, sG = g * skin | 0, sB = b * skin | 0;
   const dR = r * dark | 0, dG = g * dark | 0, dB = b * dark | 0;
-  const HC = armorColor(0), CC = armorColor(1), LC = armorColor(2), BC = armorColor(3);
-  const headC = HC || [r, g, b], bodyC = CC || [sR, sG, sB], legC = LC || [dR, dG, dB];
-  boxFaces(pl.x, pl.y + 1.52, pl.z, 0.5, 0.5, 0.5, headC[0], headC[1], headC[2]);    /* head */
-  boxFaces(pl.x, pl.y + 1.02 + sway, pl.z, 0.62, 0.62, 0.34, bodyC[0], bodyC[1], bodyC[2]); /* torso */
-  boxFaces(pl.x + rx * 0.40 + fx * sw * 0.10, pl.y + 1.00 + sway, pl.z + rz * 0.40 + fz * sw * 0.10, 0.18, 0.52, 0.18, bodyC[0], bodyC[1], bodyC[2]); /* arm */
-  boxFaces(pl.x - rx * 0.40 - fx * sw * 0.10, pl.y + 1.00 + sway, pl.z - rz * 0.40 - fz * sw * 0.10, 0.18, 0.52, 0.18, bodyC[0], bodyC[1], bodyC[2]); /* arm */
-  boxFaces(pl.x + rx * 0.16 + fx * sw * 0.18, pl.y + 0.34, pl.z + rz * 0.16 + fz * sw * 0.18, 0.24, 0.68, 0.24, legC[0], legC[1], legC[2]); /* leg */
-  boxFaces(pl.x - rx * 0.16 - fx * sw * 0.18, pl.y + 0.34, pl.z - rz * 0.16 - fz * sw * 0.18, 0.24, 0.68, 0.24, legC[0], legC[1], legC[2]); /* leg */
-  if (BC) {
-    boxFaces(pl.x + rx * 0.16 + fx * sw * 0.18, pl.y + 0.10, pl.z + rz * 0.16 + fz * sw * 0.18, 0.26, 0.20, 0.26, BC[0], BC[1], BC[2]);
-    boxFaces(pl.x - rx * 0.16 - fx * sw * 0.18, pl.y + 0.10, pl.z - rz * 0.16 - fz * sw * 0.18, 0.26, 0.20, 0.26, BC[0], BC[1], BC[2]);
-  }
+  boxFaces(pl.x, pl.y + 1.52, pl.z, 0.5, 0.5, 0.5, r, g, b);                         /* head */
+  boxFaces(pl.x, pl.y + 1.02 + sway, pl.z, 0.62, 0.62, 0.34, sR, sG, sB);            /* torso */
+  boxFaces(pl.x + rx * 0.40 + fx * sw * 0.10, pl.y + 1.00 + sway, pl.z + rz * 0.40 + fz * sw * 0.10, 0.18, 0.52, 0.18, sR, sG, sB); /* arm */
+  boxFaces(pl.x - rx * 0.40 - fx * sw * 0.10, pl.y + 1.00 + sway, pl.z - rz * 0.40 - fz * sw * 0.10, 0.18, 0.52, 0.18, sR, sG, sB); /* arm */
+  boxFaces(pl.x + rx * 0.16 + fx * sw * 0.18, pl.y + 0.34, pl.z + rz * 0.16 + fz * sw * 0.18, 0.24, 0.68, 0.24, dR, dG, dB); /* leg */
+  boxFaces(pl.x - rx * 0.16 - fx * sw * 0.18, pl.y + 0.34, pl.z - rz * 0.16 - fz * sw * 0.18, 0.24, 0.68, 0.24, dR, dG, dB); /* leg */
 }
 
 /* --------------------------------------------------------- animals */
@@ -2784,7 +2691,7 @@ function explode(x, y, z, power) {
 /* ------------------------------------------------------ damage + death */
 function hurt(dmg, sx, sz) {
   if (mode === 'creative' || dead || dmg <= 0 || hurtT > 0) return;
-  hp -= Math.max(0.5, dmg * (1 - armorReduction())); hurtT = 0.5;
+  hp -= dmg; hurtT = 0.5;
   if (sx || sz) { pl.vx += sx; pl.vz += sz; pl.vy = Math.max(pl.vy, 3.5); }
   sfx(150, 0.18, 'sawtooth');
   if (hp <= 0) { hp = 0; die(); }
@@ -3124,7 +3031,6 @@ const menu = document.getElementById('menu');
 const loadEl = document.getElementById('load');
 const invEl = document.getElementById('inv');
 const invGrid = document.getElementById('invgrid');
-const armorSlotsEl = document.getElementById('armorslots');
 const craftGridEl = document.getElementById('craftgrid');
 const craftOutEl = document.getElementById('craftout');
 const craftLabelEl = document.getElementById('craftlabel');
@@ -3137,7 +3043,6 @@ const fBarEl = document.getElementById('fbar');
 const deathEl = document.getElementById('death');
 const statsEl = document.getElementById('stats');
 const heartsEl = document.getElementById('hearts');
-const armorBarEl = document.getElementById('armorbar');
 const foodEl = document.getElementById('food');
 let toastT = 0, nameFade = 0;
 
@@ -3170,7 +3075,7 @@ function select(i) {
 }
 
 /* --------------------------------------------------- survival HUD */
-let hudHp = -1, hudFood = -1, hudArmor = -1, hudMode = '';
+let hudHp = -1, hudFood = -1, hudMode = '';
 function renderBar(el, val, cls) {
   el.innerHTML = '';
   for (let i = 0; i < 10; i++) {
@@ -3183,9 +3088,6 @@ function updateHUD() {
   if (mode !== hudMode) { statsEl.classList.toggle('show', mode === 'survival'); hudMode = mode; hudHp = hudFood = -1; }
   if (mode !== 'survival') return;
   if (hp !== hudHp) { renderBar(heartsEl, hp, 'ic'); hudHp = hp; }
-  var ap = armorPoints();
-  armorBarEl.style.display = ap > 0 ? 'flex' : 'none';
-  if (ap !== hudArmor) { renderBar(armorBarEl, ap, 'ic shield'); hudArmor = ap; }
   if (food !== hudFood) { renderBar(foodEl, food, 'ic hunger'); hudFood = food; }
 }
 
@@ -3211,21 +3113,8 @@ function renderInv() {
     if (i < 9) { const l = document.createElement('span'); l.className = 'ilab'; l.textContent = i + 1; d.appendChild(l); }
     invGrid.appendChild(d);
   }
-  renderArmor();
   renderCraft();
   renderCursor();
-}
-function renderArmor() {
-  armorSlotsEl.innerHTML = '';
-  for (let i = 0; i < 4; i++) {
-    const d = document.createElement('div');
-    d.className = 'islot';
-    d.setAttribute('data-a', i);
-    const s = ARMOR[i];
-    if (s) { d.appendChild(slotIconEl(s.id)); d.title = itemName(s.id); }
-    else d.title = 'Empty ' + ARMOR_SLOTS[i].toLowerCase();
-    armorSlotsEl.appendChild(d);
-  }
 }
 function craftResult() {
   const grid = craftSlots.map(s => s ? s.id : 0);
@@ -3484,17 +3373,6 @@ invGrid.addEventListener('mouseover', e => {
 craftGridEl.addEventListener('mouseover', e => {
   const d = e.target.closest('.islot'); if (!d) return;
   hoverSlot = { arr: craftSlots, i: +d.getAttribute('data-c') };
-});
-armorSlotsEl.addEventListener('click', e => {
-  const d = e.target.closest('.islot'); if (!d) return;
-  const i = +d.getAttribute('data-a');
-  if (cursor && !ARMOR_BY_ID[cursor.id]) return;    /* only armor can be equipped */
-  slotSwap(ARMOR, i);
-  updateHUD(); refreshHotbar(); renderInv(); saveDirty = 1;
-});
-armorSlotsEl.addEventListener('mouseover', e => {
-  const d = e.target.closest('.islot'); if (!d) return;
-  hoverSlot = { arr: ARMOR, i: +d.getAttribute('data-a') };
 });
 invEl.addEventListener('mouseleave', () => { hoverSlot = null; });
 furnaceEl.addEventListener('click', e => {
@@ -3784,7 +3662,6 @@ function saveWorld() {
       v: 5, H, seed: worldSeed, dayT, dim,
       px: pl.x, py: pl.y, pz: pl.z, yaw: cam.yaw, pitch: cam.pitch, sel,
       m: mode, hp, food, inv: INV.map(s => s ? [s.id, s.n] : 0),
-      ar: ARMOR.map(s => s ? [s.id, s.n] : 0),
       sp: [spawnPt.x, spawnPt.y, spawnPt.z],
       dp: dimPos, ds: dimSpawn,
       e, f, fu: furn, at: Date.now()
@@ -3815,7 +3692,6 @@ function loadWorld(o) {
   wq.length = 0;
   clearWorldChunks();
   clearFurnaces();
-  ARMOR.fill(null);
   dimPos = Array.isArray(o.dp) ? o.dp.slice(0, 3).map(p => p ? { x: p.x, y: p.y, z: p.z } : null) : [null, null, null];
   dimSpawn = Array.isArray(o.ds) ? o.ds.slice(0, 3).map(p => p ? { x: p.x, y: p.y, z: p.z } : null) : [null, null, null];
   portalCd = 0;
@@ -3868,10 +3744,6 @@ function loadWorld(o) {
       const s = o.inv[i];
       if (s && s[1] > 0) INV[i] = { id: s[0], n: s[1] };
     }
-    if (Array.isArray(o.ar)) for (let i = 0; i < 4 && i < o.ar.length; i++) {
-      const s = o.ar[i];
-      if (s && ARMOR_BY_ID[s[0]]) ARMOR[i] = { id: s[0], n: 1 };
-    }
     if (Array.isArray(o.sp)) spawnPt = { x: o.sp[0], y: o.sp[1], z: o.sp[2] };
     if (dimSpawn[dim]) spawnPt = dimSpawn[dim];
   } else {
@@ -3881,7 +3753,7 @@ function loadWorld(o) {
   resetCraft();
   fallY = pl.y;
   pl.fly = 0;
-  hudMode = ''; hudArmor = -1; refreshHotbar(); select(o.sel || 0); updateHUD();
+  hudMode = ''; refreshHotbar(); select(o.sel || 0); updateHUD();
   updateChunks(true);
   populateDimension();
   parts.length = 0;
@@ -3971,7 +3843,7 @@ function newWorld(seed, m) {
   pl.x = 0.5; pl.y = 20; pl.z = 0.5;
   mode = (m === 'creative') ? 'creative' : 'survival';
   hp = MAXHP; food = MAXFOOD; INV = new Array(mode === 'creative' ? INV_CREATIVE : INV_BASE).fill(null); resetCraft();
-  ARMOR.fill(null); hudArmor = -1;
+  if (mode === 'creative') for (let i = 0; i < CREATIVE_PALETTE.length && i < 36; i++) INV[i] = { id: CREATIVE_PALETTE[i][0], n: CREATIVE_PALETTE[i][1] };
   hostiles = []; arrows = []; drops = []; dead = 0; hurtT = 0; regenT = 0; starveT = 0; drownT = 0; fallY = 0;
   updateChunks(true);
   populateDimension();
