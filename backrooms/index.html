@@ -615,7 +615,6 @@ body.touch #cross{opacity:.35}
 </style>
 </head>
 <body>
-<a href="../" title="Back to Arcade" aria-label="Back to Arcade" style="position:fixed;top:10px;left:10px;z-index:999999;padding:6px 11px;border:1px solid #3d4c74;border-radius:999px;background:rgba(10,13,20,.85);color:#eef2fb;font:600 12px/1.2 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.4)">&#8592; Arcade</a>
 <div id="scene"></div>
 
 <div id="vig"></div>
@@ -2129,6 +2128,8 @@ function normalizeMaze(M){
     tops:M.tops||null,
     rooms:M.rooms||null,
     deck:M.deck||null,
+    spawnCell:M.spawnCell||null,
+    spawn:M.spawn||null,
     mode:M.mode||((M.kinds&&M.kinds.length)?'city':'maze')
   };
 }
@@ -3240,11 +3241,12 @@ function buildCity(lv,th,isFactory){
   else buildStreetDetail(th,C);
 }
 
-function buildLevel(lv,mz){
+function buildLevel(lv,mz,fromNet){
   const th=LEVELS[lv]||LEVELS[0];
   const M=mz?normalizeMaze(mz):ensureMaze(lv);
   let mode=M?M.mode:levelMode(lv);
   let restored=restoreMaze(M);
+  sharedSpawn=fromNet&&mz&&mz.spawn?{x:mz.spawn[0],z:mz.spawn[1],cell:mz.spawnCell||null}:null;
   if(!restored){
     const fresh=makeMaze(lv);
     restoreMaze(fresh);
@@ -5101,6 +5103,7 @@ function updateChests(dt){
    WORLD POPULATION
    ══════════════════════════════════════════════════════════════ */
 let spawnCell=[1,1];
+let sharedSpawn=null;   // host-authored spawn for a hosted room
 function populate(){
   const{dist}=bfs(spawnCell[0],spawnCell[1]);
   const far=[];
@@ -8012,9 +8015,12 @@ const NET=(()=>{
       kinds:cellKind?Array.from(cellKind):null,
       tops:cellTop?Array.from(cellTop).map(v=>Math.round(v*10)/10):null,
       deck:deckY?Array.from(deckY).map(v=>Math.round(v*100)/100):null,
+      spawnCell:spawnCell.slice(),
+      spawn:[r1(player.pos.x),r1(player.pos.z)],
       rooms:rooms.map(r=>({i:r.i,j:r.j,dirs:r.dirs,walls:r.walls,door:r.door,theme:r.theme}))
     };
     st.mapKey='k'+Date.now();
+    st.spawnAt=[player.pos.x,player.pos.z];
     st.mapMsg={t:'map',k:st.mapKey,lv:level,maze,go:st.started?1:0};
     send(topic('map'),st.mapMsg,true);
   }
@@ -8073,9 +8079,33 @@ const NET=(()=>{
   const r1=v=>Math.round(v*10)/10, r2=v=>Math.round(v*100)/100;
 
   /* ---------- client ---------- */
+  /* Everyone in a hosted room begins on the host's spawn: the host holds
+     slot 0, guests take the next slots in the roster. The sideways step is
+     small enough to stay inside the corridor but keeps models from overlapping. */
+  function formUp(){
+    if(!st.role)return;
+    const hostId=st.role==='host'?st.id:(st.hostId||[...st.peers.keys()][0]);
+    const ids=[hostId,...st.peers.keys(),st.id].filter((v,i,a)=>a.indexOf(v)===i);
+    const slot=st.role==='host'?0:(st.slot==null?Math.max(0,ids.indexOf(st.id)):Math.min(st.slot,2));
+    const base=st.spawnAt||[player.pos.x,player.pos.z];
+    st.slot=slot;
+    player.pos.set(base[0],0,base[1]);
+    if(slot>0){
+      const yaw=st.hostYaw||0,rx=Math.cos(yaw),rz=-Math.sin(yaw),side=slot===1?1:-1;
+      let placed=false;
+      for(const d of [1.5,1.1,.8]){
+        const x=base[0]+rx*d*side,z=base[1]+rz*d*side;
+        if(solidAt(x,z))continue;
+        player.pos.set(x,0,z);placed=true;break;
+      }
+      if(!placed)player.pos.set(base[0],0,base[1]);
+    }
+    camera.position.set(player.pos.x,1.62,player.pos.z);
+  }
   function beginTogether(){
     if(st.started)return;
     st.started=true;st.inRoom=false;st.allReady=true;ev('go');
+    formUp();
     renderReady();
     startGame();
   }
@@ -8094,6 +8124,7 @@ const NET=(()=>{
     if(st.role!=='client'||!m.maze)return;
     if(st.mapKey===m.k&&(st.started||st.inRoom))return;
     st.mapKey=m.k;st.level=m.lv|0;ev('map');
+    if(m.maze&&m.maze.spawn)st.spawnAt=m.maze.spawn.slice();
     loadLevel(st.level,{netMap:m.maze});
     // the host owns the monsters; a client keeps none of its own
     for(const g of monsters)scene.remove(g.mesh);
@@ -8103,10 +8134,8 @@ const NET=(()=>{
       if(m.go)beginTogether();
       else{st.inRoom=true;setState('room');renderReady();}
     }
-    /* the map can land after the first state packet, and building it puts
-       the player down again — so step clear here, once the dust settles */
-    st.spawnClear=false;
-    if(st.peers.size){st.spawnClear=true;nudgeOffPeers();}
+    /* The host's spawn cell travels with the map, so building it already put
+       every client on the same spot; formUp() spreads them at game start. */
   }
   function onState(m){
     // the host telling us the room is over, while it can still be heard
@@ -8124,6 +8153,12 @@ const NET=(()=>{
     }
     if(!st.stateSeen){st.stateSeen=true;ev('state');}
     st.lastStateAt=Date.now();
+    if(m.pl&&m.pl[0]){
+      if(!st.hostId)st.hostId=m.pl[0].i;
+      if(m.pl[0].a!=null)st.hostYaw=m.pl[0].a;
+      /* the host's roster order is authoritative: index 0 host, then guests */
+      for(let k=0;k<m.pl.length;k++)if(m.pl[k].i===st.id){st.slot=k;break;}
+    }
     st.stallRetry=0;
     if(m.go&&st.mapKey&&!st.started)beginTogether();
     /* state can beat the retained map through. Keep asking for the layout
@@ -8143,7 +8178,6 @@ const NET=(()=>{
       if(p.i===st.id)continue;
       st.peers.set(p.i,{id:p.i,name:p.n||'PLAYER',x:p.x,z:p.z,a:p.a,h:p.h,ready:!!p.r,ts:Date.now()});
     }
-    if(!st.spawnClear&&st.peers.size){st.spawnClear=true;nudgeOffPeers();}
     if(m.mo)syncGhosts(m.mo);
     if(m.it){
       const keep=new Set(m.it);
@@ -8218,35 +8252,6 @@ const NET=(()=>{
     }
   }
 
-  /* Both sides spawn near the same seed cell, so a joining player can land
-     inside the host's model and open the game looking at the inside of a
-     capsule. Step clear the first time we learn where everyone is. */
-  function nudgeOffPeers(){
-    /* three players spawn around the same seed cell, so the second guest has
-       two bodies to step around, not one: pick a spot clear of all of them */
-    const clearAt=(x,z)=>{
-      if(solidAt(x,z))return false;
-      for(const p of st.peers.values())
-        if(Math.hypot(p.x-x,p.z-z)<1.8)return false;
-      return true;
-    };
-    let crowded=false;
-    for(const p of st.peers.values())
-      if(Math.hypot(p.x-player.pos.x,p.z-player.pos.z)<2.2){crowded=true;break;}
-    if(!crowded)return;
-    const ox=player.pos.x,oz=player.pos.z;
-    for(let r=2.6;r<=8;r+=1.2){
-      for(let k=0;k<24;k++){
-        const a=k/24*TAU;
-        const x=ox+Math.cos(a)*r, z=oz+Math.sin(a)*r;
-        if(!clearAt(x,z))continue;
-        player.pos.x=x;player.pos.z=z;
-        camera.position.set(x,1.62,z);
-        return;
-      }
-    }
-  }
-
   /* The room is over for us. Say why, then put the player back in the lobby
      rather than leaving them in a world whose monsters have quietly stopped
      moving — the ghosts keep rendering, so a dead session looks alive. */
@@ -8284,6 +8289,7 @@ const NET=(()=>{
       avatars:st.avatars.size,refused:st.refused||0,
       ready:!!st.ready,inRoom:!!st.inRoom,allReady:!!st.allReady,
       readyFlags:[...st.peers.values()].map(p=>p.ready?1:0),
+      spawnAt:st.spawnAt||null,slot:st.slot==null?null:st.slot,
       live:liveClients().length,connected:anyLive(),
       started:!!st.started,tx:st.tx||0,rooms:[...st.rooms.keys()],
       seen:st.seen.size,mapKey:st.mapKey,mapRx:st.mapRx||0,
@@ -8319,7 +8325,7 @@ const NET=(()=>{
       if(!await ensureClient())return false;
       st.role='host';st.code=rid(4);st.level=lv|0;st.peers.clear();
       st.started=false;st.ready=false;st.inRoom=false;st.allReady=false;
-      st.mapKey=null;st.seen.clear();
+      st.mapKey=null;st.seen.clear();st.spawnAt=null;st.hostId=null;st.hostYaw=st.slot=null;
       st.ended=false;st.lastStateAt=0;
       sub(topic('in'));
       st.recover=()=>{if(st.role==='host'){publishMap();publishBeat();}};
@@ -8343,6 +8349,7 @@ const NET=(()=>{
          attempt carries a generation so an old give-up cannot cancel it */
       const gen=st.joinGen=(st.joinGen||0)+1;
       st.role='client';st.code=code;st.started=false;st.mapKey=null;
+      st.spawnAt=null;st.hostId=null;st.hostYaw=st.slot=null;
       st.ready=false;st.inRoom=false;st.allReady=false;
       st.joinAt=Date.now();st.stateSeen=false;ev('join '+code);
       st.peers.clear();clearGhosts();st.seen.clear();
@@ -8545,13 +8552,18 @@ function placePlayer(){
   const s=citySeed();
   const{dist}=bfs(s[0],s[1]);
   let bestCell=s,bd=-1;
-  for(let i=0;i<GX;i++)for(let j=0;j<GZ;j++){
-    const d=dist[i+j*GX];
-    if(navMode==='factory'&&deckY&&deckY[i+j*GX]>0)continue;  // start downstairs
-    if(d>0&&d<7&&Math.random()<.5&&d>bd){bd=d;bestCell=[i,j];}
-  }
+  /* A hosted floor is identical on every machine, so the spawn must be too:
+     otherwise furniture clears a ring around the wrong cell on some clients. */
+  if(!(sharedSpawn&&sharedSpawn.cell)){
+    for(let i=0;i<GX;i++)for(let j=0;j<GZ;j++){
+      const d=dist[i+j*GX];
+      if(navMode==='factory'&&deckY&&deckY[i+j*GX]>0)continue;  // start downstairs
+      if(d>0&&d<7&&Math.random()<.5&&d>bd){bd=d;bestCell=[i,j];}
+    }
+  }else bestCell=sharedSpawn.cell;
   spawnCell=bestCell;
   player.pos.set(cx(spawnCell[0]),0,cz(spawnCell[1]));
+  if(sharedSpawn)player.pos.set(sharedSpawn.x,0,sharedSpawn.z);
 
   // face the longest open corridor
   let bestYaw=rand(0,TAU),bestD=-1;
@@ -8603,7 +8615,7 @@ function loadLevel(lv,sv){
   level=clamp(lv,0,LAST_LEVEL);
   applyTheme(level);
   const netMap=sv&&sv.netMap?sv.netMap:null;
-  buildLevel(level,netMap||(sv&&sv.maze?sv.maze:null));
+  buildLevel(level,netMap||(sv&&sv.maze?sv.maze:null),!!netMap);
   if(sv&&!netMap){
     applySave(sv);
     spawnProps(level);
