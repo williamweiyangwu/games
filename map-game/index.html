@@ -182,10 +182,10 @@
   .seaZone.tgt{stroke:#7fe08a;stroke-width:2.2;stroke-dasharray:5 3}
   .seaLbl{font:italic 700 10.5px "Segoe UI",sans-serif;fill:#9bd4ee;paint-order:stroke;stroke:#06121c;stroke-width:3.2px;text-anchor:middle;pointer-events:none;user-select:none;letter-spacing:.7px}
   .airBadge{pointer-events:auto;cursor:pointer}
-  .airBadge rect{stroke:#0d0a13;stroke-width:.9;rx:3}
+  .airBadge rect{stroke:#0d0a13;stroke-width:.9;rx:8;opacity:.92}
   .airBadge.sel rect{stroke:#ffd75e;stroke-width:2.2}
   .airBadge.tgt rect{stroke:#7fe08a;stroke-width:2.2}
-  .airBadge text{font:700 8.5px "Segoe UI",sans-serif;fill:#fff;paint-order:stroke;stroke:#000b;stroke-width:2.4px;text-anchor:middle;pointer-events:none;user-select:none;letter-spacing:.2px}
+  .airBadge text{font:700 9px "Segoe UI",sans-serif;fill:#fff;paint-order:stroke;stroke:#000b;stroke-width:2.2px;text-anchor:middle;pointer-events:none;user-select:none}
   .resBadge{pointer-events:auto;cursor:pointer}
   .resBadge rect{stroke:#e2b13c;stroke-width:1.1;rx:3}
   .resBadge.food rect{stroke:#7fe08a}
@@ -2155,12 +2155,12 @@ function buildMap(){
   SECTORS.filter(function(s){ return !!s.air; }).forEach(function(sec){
     var x=px(sec.lab?sec.lab[0]:0), y=py(sec.lab?sec.lab[1]:0);
     markEl[sec.id]={x:x,y:y};
-    var w=Math.max(28, sec.name.length*4.9+16);
-    var g=el('g',{class:'airBadge','data-id':sec.id});
-    var rect=el('rect',{x:(x-w/2).toFixed(1),y:(y-7).toFixed(1),width:w.toFixed(1),height:14,fill:sec.color});
+    var g=el('g',{class:'airBadge','data-id':sec.id,'aria-label':sec.name});
+    var rect=el('rect',{x:(x-8).toFixed(1),y:(y-8).toFixed(1),width:16,height:16,rx:8,fill:sec.color});
     var tx=el('text',{x:x.toFixed(1),y:(y+3).toFixed(1)});
-    tx.textContent='\u2708 '+sec.name;
-    g.appendChild(rect); g.appendChild(tx); unitG.appendChild(g);
+    tx.textContent='\u2708';
+    var ttl=el('title',{}); ttl.textContent=sec.name;
+    g.appendChild(ttl); g.appendChild(rect); g.appendChild(tx); unitG.appendChild(g);
     airEl[sec.id]={g:g, rect:rect, text:tx};
   });
 
