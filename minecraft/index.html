@@ -237,7 +237,7 @@
   <div id="bar"></div>
   <div id="dbg"></div>
   <div id="toast"></div>
-  <div id="ver">v2.2 build 1</div>
+  <div id="ver">v2.3 build 1</div>
 </div>
 
 <div id="inv" class="hide">
@@ -364,7 +364,7 @@ function fbm(x, y, oct) {
 }
 
 /* ---------------------------------------------------------- textures */
-const TS = 16, TN = 39;
+const TS = 16, TN = 42;
 const TEX = new Uint32Array(TS * TS * TN);
 const tileCanvas = new Array(TN);
 
@@ -617,6 +617,27 @@ function paintPortal(st) {
   /* 38 sandstone */
   fillTile(38, [222, 206, 148]); speckle(38, [222, 206, 148], 14, 190);
   for (let x = 0; x < 16; x++) { putc(38, x, 0, [196, 178, 120]); putc(38, x, 15, [196, 178, 120]); }
+  /* 39 bookshelf: rows of colourful book spines between wooden shelves */
+  fillTile(39, [122, 82, 44]);
+  for (let y = 0; y < 16; y++) {
+    if (y === 0 || y === 7 || y === 15) { for (let x = 0; x < 16; x++) putc(39, x, y, [92, 60, 30]); continue; }
+    for (let x = 0; x < 16; x++) {
+      const pal = [[168, 52, 48], [206, 156, 44], [64, 118, 174], [86, 150, 86], [150, 82, 156], [196, 196, 188]];
+      const c = pal[(hash2(x, y * 3 + (y > 7 ? 1 : 0)) * 6) | 0];
+      putc(39, x, y, (x % 4 === 0) ? [228, 208, 140] : c);
+    }
+  }
+  /* 40 torch stick: wrapped brown wood */
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+    const band = (y % 4 === 1);
+    putc(40, x, y, band ? [104, 70, 36] : [146, 102, 52]);
+  }
+  /* 41 torch flame: bright flickering core */
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+    const d = Math.abs(x - 7.5) / 8 + Math.abs(y - 7.5) / 8;
+    const f = hash2(x * 3 + (y >> 2), y * 5) * 0.35;
+    putc(41, x, y, d + f < 0.7 ? [255, 246, 176] : (d + f < 1 ? [255, 168, 40] : [216, 96, 20]));
+  }
 }
 
 /* ------------------------------------------------------------ blocks */
@@ -627,14 +648,17 @@ const T = { GRASS_TOP: 0, GRASS_SIDE: 1, DIRT: 2, STONE: 3, SAND: 4, LOG_TOP: 5,
             SOUL_SAND: 24, GLOWSTONE: 25, NETHER_BRICK: 26, END_STONE: 27, END_PORTAL: 28,
             END_FRAME_TOP: 29, END_FRAME_SIDE: 30, LAVA: 31,
              CRAFT: 32, CHEST: 33, STONE_BRICK: 34, IRON_BLOCK: 35,
-             GOLD_BLOCK: 36, DIAMOND_BLOCK: 37, SANDSTONE: 38 };
+             GOLD_BLOCK: 36, DIAMOND_BLOCK: 37, SANDSTONE: 38,
+             BOOKSHELF: 39, TORCH_SIDE: 40, TORCH_FLAME: 41 };
 const AIR = 0, GRASS = 1, DIRT = 2, STONE = 3, SAND = 4, LOG = 5, LEAVES = 6,
       PLANKS = 7, COBBLE = 8, BRICK = 9, GLASS = 10, WATER = 11, BEDROCK = 12, GRAVEL = 13,
       COAL_ORE = 14, IRON_ORE = 15, GOLD_ORE = 16, DIAMOND_ORE = 17, SNOW = 18, FURNACE = 19,
       OBSIDIAN = 20, PORTAL = 21, NETHERRACK = 22, SOUL_SAND = 23, GLOWSTONE = 24,
       NETHER_BRICK = 25, END_STONE = 26, END_PORTAL = 27, END_FRAME = 28, END_FRAME_FILLED = 29,
       LAVA = 30, CRAFT_TABLE = 31, CHEST = 32, STONE_BRICK = 33,
-       IRON_BLOCK = 34, GOLD_BLOCK = 35, DIAMOND_BLOCK = 36, SANDSTONE = 37;
+       IRON_BLOCK = 34, GOLD_BLOCK = 35, DIAMOND_BLOCK = 36, SANDSTONE = 37,
+       SLAB = 38, WOOD_SLAB = 39, STAIRS = 40, WOOD_STAIRS = 41,
+       FENCE = 42, TORCH_BLOCK = 43, GLASS_PANE = 44, BOOKSHELF = 45;
 
 /* t: [top, side, bottom]   solid: collision   opaque: hides neighbour faces
    cull: drop faces between identical blocks   a: 1 = opaque pass, <1 = blended */
@@ -676,7 +700,71 @@ const BLK = [
   { n: 'Iron Block',   t: [T.IRON_BLOCK, T.IRON_BLOCK, T.IRON_BLOCK],     solid: 1, opaque: 1, cull: 0, a: 1 },
   { n: 'Gold Block',   t: [T.GOLD_BLOCK, T.GOLD_BLOCK, T.GOLD_BLOCK],     solid: 1, opaque: 1, cull: 0, a: 1 },
   { n: 'Diamond Block',t: [T.DIAMOND_BLOCK, T.DIAMOND_BLOCK, T.DIAMOND_BLOCK], solid: 1, opaque: 1, cull: 0, a: 1 },
-  { n: 'Sandstone',    t: [T.SANDSTONE, T.SANDSTONE, T.SANDSTONE],        solid: 1, opaque: 1, cull: 0, a: 1 }
+  { n: 'Sandstone',    t: [T.SANDSTONE, T.SANDSTONE, T.SANDSTONE],        solid: 1, opaque: 1, cull: 0, a: 1 },
+  { n: 'Stone Slab',   t: [T.STONE, T.STONE, T.STONE],                     solid: 1, opaque: 1, cull: 1, a: 1 },
+  { n: 'Wood Slab',    t: [T.PLANKS, T.PLANKS, T.PLANKS],                  solid: 1, opaque: 1, cull: 1, a: 1 },
+  { n: 'Stone Stairs', t: [T.STONE, T.STONE, T.STONE],                     solid: 1, opaque: 1, cull: 1, a: 1 },
+  { n: 'Wood Stairs',  t: [T.PLANKS, T.PLANKS, T.PLANKS],                  solid: 1, opaque: 1, cull: 1, a: 1 },
+  { n: 'Oak Fence',    t: [T.PLANKS, T.PLANKS, T.PLANKS],                  solid: 1, opaque: 0, cull: 1, a: 1 },
+  { n: 'Torch',        t: [T.TORCH_SIDE, T.TORCH_SIDE, T.TORCH_SIDE],      solid: 0, opaque: 0, cull: 1, a: 1 },
+  { n: 'Glass Pane',   t: [T.GLASS, T.GLASS, T.GLASS],                     solid: 1, opaque: 0, cull: 1, a: 0.3 },
+  { n: 'Bookshelf',    t: [T.PLANKS, T.BOOKSHELF, T.PLANKS],               solid: 1, opaque: 1, cull: 0, a: 1 }
+];
+
+/* ------------------------------------------------------- block models
+   Non-cube blocks are built from one or more small boxes in local 0..1
+   space. The mesher emits the faces of each box and hides faces shared by
+   two boxes in the same block, giving real 3D shapes (slabs, stairs, ...). */
+function bx(x0, y0, z0, x1, y1, z1, t, front) {
+  return { b: [x0, y0, z0, x1, y1, z1], t, front };
+}
+const FULL_BOX = [0, 0, 0, 1, 1, 1];
+function rotBoxY(b, q) {
+  let [x0, y0, z0, x1, y1, z1] = b;
+  for (let i = 0; i < (q & 3); i++) {
+    const nx0 = 1 - z1, nx1 = 1 - z0, nz0 = x0, nz1 = x1;
+    x0 = nx0; x1 = nx1; z0 = nz0; z1 = nz1;
+  }
+  return [x0, y0, z0, x1, y1, z1];
+}
+function stairBoxes(x, y, z, t) {
+  const q = (hash3(x * 3 + 1, y * 7 + 2, z * 5 + 3) * 4) | 0;
+  return [bx(...rotBoxY([0, 0, 0, 1, 0.5, 1], q), t),
+          bx(...rotBoxY([0, 0.5, 0.5, 1, 1, 1], q), t)];
+}
+function fenceBoxes(x, y, z, t) {
+  const b = [bx(0.375, 0, 0.375, 0.625, 1, 0.625, t)];
+  const ry0 = 0.52, ry1 = 0.68;
+  const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  let linked = false;
+  for (const [dx, dz] of dirs) {
+    const nb = get(x + dx, y, z + dz);
+    if (nb !== FENCE && nb !== GLASS_PANE) continue;
+    linked = true;
+    if (dx === 1) b.push(bx(0.5, ry0, 0.44, 1, ry1, 0.56, t));
+    else if (dx === -1) b.push(bx(0, ry0, 0.44, 0.5, ry1, 0.56, t));
+    else if (dz === 1) b.push(bx(0.44, ry0, 0.5, 0.56, ry1, 1, t));
+    else b.push(bx(0.44, ry0, 0, 0.56, ry1, 0.5, t));
+  }
+  if (!linked) {
+    b.push(bx(0, ry0, 0.44, 1, ry1, 0.56, t));
+    b.push(bx(0.44, ry0, 0, 0.56, ry1, 1, t));
+  }
+  return b;
+}
+BLK[SLAB].model = () => [bx(0, 0.5, 0, 1, 1, 1, BLK[SLAB].t)];
+BLK[WOOD_SLAB].model = () => [bx(0, 0.5, 0, 1, 1, 1, BLK[WOOD_SLAB].t)];
+BLK[STAIRS].model = (x, y, z) => stairBoxes(x, y, z, BLK[STAIRS].t);
+BLK[WOOD_STAIRS].model = (x, y, z) => stairBoxes(x, y, z, BLK[WOOD_STAIRS].t);
+BLK[FENCE].model = (x, y, z) => fenceBoxes(x, y, z, BLK[FENCE].t);
+BLK[TORCH_BLOCK].model = () => [
+  bx(0.44, 0, 0.44, 0.56, 0.62, 0.56, [T.TORCH_SIDE, T.TORCH_SIDE, T.TORCH_SIDE]),
+  bx(0.36, 0.62, 0.36, 0.64, 0.88, 0.64, [T.TORCH_FLAME, T.TORCH_FLAME, T.TORCH_FLAME])
+];
+BLK[GLASS_PANE].model = () => [bx(0.42, 0, 0, 0.58, 1, 1, BLK[GLASS_PANE].t)];
+BLK[CHEST].model = () => [
+  bx(0.06, 0, 0.06, 0.94, 0.72, 0.94, BLK[CHEST].t),
+  bx(0.04, 0.72, 0.04, 0.96, 0.92, 0.96, BLK[CHEST].t)
 ];
 /* ------------------------------------------------- items & survival */
 const IT = { BEEF: 100, PORK: 101, MUTTON: 102, CHICKEN: 103, LEATHER: 104, WOOL: 105,
@@ -695,7 +783,8 @@ const IT = { BEEF: 100, PORK: 101, MUTTON: 102, CHICKEN: 103, LEATHER: 104, WOOL
              LHELM: 159, LCHEST: 160, LLEGS: 161, LBOOTS: 162,
              GHELM: 163, GCHEST: 164, GLEGS: 165, GBOOTS: 166,
              IHELM: 167, ICHEST: 168, ILEGS: 169, IBOOTS: 170,
-             DHELM: 171, DCHEST: 172, DLEGS: 173, DBOOTS: 174 };
+             DHELM: 171, DCHEST: 172, DLEGS: 173, DBOOTS: 174,
+             BOOK: 175 };
 /* ------------------------------------------------------------- armor */
 /* slot 0 helmet, 1 chestplate, 2 leggings, 3 boots */
 const ARMOR_SLOTS = ['Helmet', 'Chestplate', 'Leggings', 'Boots'];
@@ -853,6 +942,11 @@ function defineItems() {
     rect(g, 7, 20, 18, 5, '#e6e4d6'); rect(g, 10, 16, 13, 5, '#f2f0e4'); rect(g, 13, 12, 8, 5, '#fbf9ee');
     rect(g, 9, 21, 3, 3, '#cfcdbd'); rect(g, 20, 22, 3, 2, '#cfcdbd');
   });
+  R(IT.BOOK, 'Book', 0x7a3f2c, 0, g => {
+    rect(g, 6, 6, 20, 20, '#7a3f2c'); rect(g, 8, 6, 17, 20, '#f2e6c8');
+    rect(g, 6, 6, 3, 20, '#5b2e20'); rect(g, 10, 9, 2, 14, '#c9b99a');
+    rect(g, 14, 10, 9, 2, '#8a6a4c'); rect(g, 14, 15, 7, 2, '#8a6a4c');
+  });
   const armorParts = ['helm', 'chest', 'legs', 'boots'];
   const armorNames = ['Helmet', 'Chestplate', 'Leggings', 'Boots'];
   ARMOR_SETS.forEach(s => {
@@ -869,6 +963,7 @@ DROPBLK[COAL_ORE] = IT.COAL; DROPBLK[IRON_ORE] = IT.IRON; DROPBLK[GOLD_ORE] = IT
 DROPBLK[SNOW] = SNOW; DROPBLK[FURNACE] = FURNACE;
 DROPBLK[PORTAL] = 0; DROPBLK[END_PORTAL] = 0; DROPBLK[LAVA] = 0;
 DROPBLK[END_FRAME_FILLED] = END_FRAME;
+DROPBLK[TORCH_BLOCK] = IT.TORCH; DROPBLK[GLASS_PANE] = 0;
 function blockDrop(id) { return (id in DROPBLK) ? DROPBLK[id] : id; }
 const HARD = {}; HARD[GRASS] = 0.55; HARD[DIRT] = 0.5; HARD[SAND] = 0.5; HARD[GRAVEL] = 0.6;
 HARD[STONE] = 1.7; HARD[COBBLE] = 1.7; HARD[BRICK] = 1.8; HARD[LOG] = 1.1; HARD[PLANKS] = 0.9;
@@ -880,6 +975,8 @@ HARD[GLOWSTONE] = 0.8; HARD[NETHER_BRICK] = 1.4; HARD[END_STONE] = 1.6;
 HARD[END_PORTAL] = 0.5; HARD[END_FRAME] = 2; HARD[END_FRAME_FILLED] = 2; HARD[LAVA] = 0.5;
 HARD[CRAFT_TABLE] = 1.2; HARD[CHEST] = 1.5; HARD[STONE_BRICK] = 1.8; HARD[SANDSTONE] = 0.8;
 HARD[IRON_BLOCK] = 3; HARD[GOLD_BLOCK] = 3; HARD[DIAMOND_BLOCK] = 4;
+HARD[SLAB] = 1; HARD[WOOD_SLAB] = 0.7; HARD[STAIRS] = 1; HARD[WOOD_STAIRS] = 0.7;
+HARD[FENCE] = 0.6; HARD[TORCH_BLOCK] = 0.1; HARD[GLASS_PANE] = 0.3; HARD[BOOKSHELF] = 1;
 function hardnessOf(id) { return HARD[id] !== undefined ? HARD[id] : 0.6; }
 /* stone-family + ores need a pickaxe; tier = minimum pickaxe tier to harvest */
 const ORE_TIER = {}; ORE_TIER[STONE] = 0; ORE_TIER[COBBLE] = 0; ORE_TIER[BRICK] = 0;
@@ -887,6 +984,7 @@ ORE_TIER[COAL_ORE] = 0; ORE_TIER[IRON_ORE] = 1; ORE_TIER[GOLD_ORE] = 2; ORE_TIER
 ORE_TIER[OBSIDIAN] = 3; ORE_TIER[NETHERRACK] = 0; ORE_TIER[NETHER_BRICK] = 0;
 ORE_TIER[GLOWSTONE] = 0; ORE_TIER[END_STONE] = 1; ORE_TIER[END_FRAME] = 1; ORE_TIER[END_FRAME_FILLED] = 1;
 ORE_TIER[STONE_BRICK] = 0; ORE_TIER[IRON_BLOCK] = 1; ORE_TIER[GOLD_BLOCK] = 2; ORE_TIER[DIAMOND_BLOCK] = 2;
+ORE_TIER[SLAB] = 0; ORE_TIER[STAIRS] = 0;
 const LOOT = {};
 LOOT.cow = [[IT.BEEF,1,3],[IT.LEATHER,0,2]];
 LOOT.pig = [[IT.PORK,1,3]];
@@ -967,7 +1065,16 @@ const RECIPES = [
   { out: [IT.DHELM, 1], shape: [[IT.DIAMOND, IT.DIAMOND, IT.DIAMOND], [IT.DIAMOND, 0, IT.DIAMOND], [0, 0, 0]] },
   { out: [IT.DCHEST, 1], shape: [[IT.DIAMOND, 0, IT.DIAMOND], [IT.DIAMOND, IT.DIAMOND, IT.DIAMOND], [IT.DIAMOND, IT.DIAMOND, IT.DIAMOND]] },
   { out: [IT.DLEGS, 1], shape: [[IT.DIAMOND, IT.DIAMOND, IT.DIAMOND], [IT.DIAMOND, 0, IT.DIAMOND], [IT.DIAMOND, 0, IT.DIAMOND]] },
-  { out: [IT.DBOOTS, 1], shape: [[0, 0, 0], [IT.DIAMOND, 0, IT.DIAMOND], [IT.DIAMOND, 0, IT.DIAMOND]] }
+  { out: [IT.DBOOTS, 1], shape: [[0, 0, 0], [IT.DIAMOND, 0, IT.DIAMOND], [IT.DIAMOND, 0, IT.DIAMOND]] },
+  /* ---- shaped blocks (real-MC geometry) ---- */
+  { out: [SLAB, 6], shape: [[STONE, STONE, STONE], [0, 0, 0], [0, 0, 0]] },
+  { out: [WOOD_SLAB, 6], shape: [[PLANKS, PLANKS, PLANKS], [0, 0, 0], [0, 0, 0]] },
+  { out: [STAIRS, 4], shape: [[STONE, 0, 0], [STONE, STONE, 0], [STONE, STONE, STONE]] },
+  { out: [WOOD_STAIRS, 4], shape: [[PLANKS, 0, 0], [PLANKS, PLANKS, 0], [PLANKS, PLANKS, PLANKS]] },
+  { out: [FENCE, 3], shape: [[PLANKS, PLANKS, 0], [IT.STICK, IT.STICK, 0], [0, 0, 0]] },
+  { out: [GLASS_PANE, 6], shape: [[GLASS, GLASS, GLASS], [0, 0, 0], [0, 0, 0]] },
+  { out: [IT.BOOK, 1], shape: [[IT.LEATHER, 0, 0], [PLANKS, PLANKS, 0], [0, 0, 0]] },
+  { out: [BOOKSHELF, 1], shape: [[IT.BOOK, IT.BOOK, IT.BOOK], [PLANKS, PLANKS, PLANKS], [0, 0, 0]] }
 ];
 function trimShape(rows) {
   let minR = 3, maxR = -1, minC = 3, maxC = -1;
@@ -1199,6 +1306,95 @@ function computeTop(ch) {
 }
 
 /* deterministic chunk generation - identical for every client/seed */
+/* ---- 3-D value noise, caves, ravines and generated structures ---- */
+function vnoise3(x, y, z) {
+  const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z);
+  const u = smooth(x - xi), v = smooth(y - yi), w = smooth(z - zi);
+  const a = lerp(hash3(xi, yi, zi), hash3(xi + 1, yi, zi), u);
+  const b = lerp(hash3(xi, yi + 1, zi), hash3(xi + 1, yi + 1, zi), u);
+  const c = lerp(hash3(xi, yi, zi + 1), hash3(xi + 1, yi, zi + 1), u);
+  const e = lerp(hash3(xi, yi + 1, zi + 1), hash3(xi + 1, yi + 1, zi + 1), u);
+  return lerp(lerp(a, b, v), lerp(c, e, v), w);
+}
+function carveCaves(ch) {
+  const d = ch.data, x0 = ch.ox, z0 = ch.oz;
+  for (let lz = 0; lz < CH; lz++) for (let lx = 0; lx < CH; lx++) {
+    const x = x0 + lx, z = z0 + lz, h = heightAt(x, z);
+    for (let y = 2; y < Math.min(h - 2, H - 3); y++) {
+      const i = ((y * CH + lz) * CH + lx), b = d[i];
+      if (b !== STONE && b !== DIRT && b !== COAL_ORE && b !== IRON_ORE) continue;
+      const n = vnoise3(x * 0.085, y * 0.14, z * 0.085) * 0.7 +
+                vnoise3(x * 0.045 + 31, y * 0.08 + 17, z * 0.045 + 53) * 0.3;
+      if (n > 0.655) d[i] = AIR;
+    }
+  }
+}
+function carveRavines(ch) {
+  const d = ch.data, x0 = ch.ox, z0 = ch.oz;
+  for (let lz = 0; lz < CH; lz++) for (let lx = 0; lx < CH; lx++) {
+    const x = x0 + lx, z = z0 + lz;
+    if (vnoise(z * 0.004, 41.7) < 0.58) continue;
+    const center = 42 * Math.sin(z * 0.012) + 18 * Math.sin(z * 0.031 + 2.3);
+    const width = 2 + 2.5 * vnoise(z * 0.04, 7.3);
+    if (Math.abs(x - center) > width) continue;
+    const h = heightAt(x, z), depth = 10 + 8 * vnoise(z * 0.03, 19.7);
+    for (let y = Math.max(2, h - depth); y <= h; y++) d[((y * CH + lz) * CH + lx)] = AIR;
+    if (h < SEA) for (let y = h + 1; y <= SEA; y++) d[((y * CH + lz) * CH + lx)] = WATER;
+  }
+}
+function putGen(ch, x, y, z, b) {
+  const lx = x - ch.ox, lz = z - ch.oz;
+  if (lx < 0 || lx >= CH || lz < 0 || lz >= CH || y < 1 || y >= H) return;
+  ch.data[((y * CH + lz) * CH + lx)] = b;
+}
+function genHouse(ch, x, y, z) {
+  const w = 7, d = 7, h = 4;
+  for (let dz = 0; dz < d; dz++) for (let dx = 0; dx < w; dx++) putGen(ch, x + dx, y, z + dz, PLANKS);
+  for (let yy = 1; yy <= h; yy++) for (let dz = 0; dz < d; dz++) for (let dx = 0; dx < w; dx++) {
+    if (dx > 0 && dx < w - 1 && dz > 0 && dz < d - 1) continue;
+    let b = COBBLE;
+    if (dz === 0 && dx === 3 && yy <= 2) b = AIR;
+    if ((dx === 2 || dx === 4) && (dz === 0 || dz === d - 1) && yy === 2) b = GLASS;
+    putGen(ch, x + dx, y + yy, z + dz, b);
+  }
+  for (let dz = -1; dz <= d; dz++) for (let dx = -1; dx <= w; dx++)
+    putGen(ch, x + dx, y + h + 1, z + dz, (dx === -1 || dx === w || dz === -1 || dz === d) ? WOOD_STAIRS : WOOD_SLAB);
+  putGen(ch, x + 3, y + 3, z + 3, TORCH_BLOCK);
+  putGen(ch, x + 5, y + 1, z + 5, CHEST);
+}
+function genDungeon(ch, x, y, z) {
+  for (let dy = 0; dy <= 4; dy++) for (let dz = -2; dz <= 2; dz++) for (let dx = -3; dx <= 3; dx++) {
+    const wall = dy === 0 || dy === 4 || Math.abs(dz) === 2 || Math.abs(dx) === 3;
+    putGen(ch, x + dx, y + dy, z + dz, wall ? COBBLE : AIR);
+  }
+  putGen(ch, x, y + 1, z - 2, TORCH_BLOCK);
+  putGen(ch, x, y + 1, z + 2, TORCH_BLOCK);
+  putGen(ch, x + 2, y + 1, z, CHEST);
+}
+function buildStructures(ch) {
+  const cs = 96;
+  for (let gz = Math.floor((ch.oz - 24) / cs); gz <= Math.floor((ch.oz + CH + 24) / cs); gz++)
+    for (let gx = Math.floor((ch.ox - 24) / cs); gx <= Math.floor((ch.ox + CH + 24) / cs); gx++) {
+      if (hash2(gx * 31 + 7, gz * 17 + 11) < 0.72) continue;
+      const vx = gx * cs + 24 + ((hash2(gx + 3, gz) * 20) | 0);
+      const vz = gz * cs + 24 + ((hash2(gx, gz + 5) * 20) | 0);
+      const gy = heightAt(vx, vz);
+      if (gy <= SEA + 1 || gy > H - 16) continue;
+      genHouse(ch, vx, gy, vz);
+      if (hash2(gx + 9, gz + 2) > 0.5) {
+        const wx = vx + 12, wz = vz + 2, wy = heightAt(wx, wz);
+        if (wy > SEA + 1 && wy <= H - 16) genHouse(ch, wx, wy, wz);
+      }
+    }
+  const ds = 112;
+  for (let gz = Math.floor(ch.oz / ds); gz <= Math.floor((ch.oz + CH) / ds); gz++)
+    for (let gx = Math.floor(ch.ox / ds); gx <= Math.floor((ch.ox + CH) / ds); gx++) {
+      if (hash2(gx * 19 + 3, gz * 23 + 13) < 0.5) continue;
+      genDungeon(ch, gx * ds + 40 + ((hash2(gx, gz) * 20) | 0),
+                 8 + ((hash2(gx + 7, gz + 3) * 16) | 0),
+                 gz * ds + 40 + ((hash2(gx + 2, gz + 9) * 20) | 0));
+    }
+}
 function genOverworldChunk(ch) {
   const d = ch.data, x0 = ch.ox, z0 = ch.oz;
   d.fill(0);
@@ -1217,6 +1413,7 @@ function genOverworldChunk(ch) {
       if (b) d[((y * CH + lz) * CH + lx)] = b;
     }
   }
+  carveCaves(ch); carveRavines(ch);
   /* trees - candidates in a small margin so canopies cross chunk borders */
   const gx0 = Math.floor((x0 - 6) / 4) * 4 + 3, gx1 = x0 + CH + 5;
   const gz0 = Math.floor((z0 - 6) / 4) * 4 + 3, gz1 = z0 + CH + 5;
@@ -1260,6 +1457,7 @@ function genOverworldChunk(ch) {
       else if (h > 0.965) d[i] = COAL_ORE;
     }
   }
+  buildStructures(ch);
   computeTop(ch);
 }
 
@@ -1563,6 +1761,24 @@ function stepWater() {
 }
 
 /* ----------------------------------------------------------- meshing */
+/* face helpers for sub-box models: FAX = normal axis in a local box,
+   FHI = 1 when the + side of that axis is used, FTAN = the two tangent axes */
+const FAX = [1, 1, 0, 0, 2, 2], FHI = [1, 0, 1, 0, 1, 0];
+const FTAN = [[0, 2], [0, 2], [1, 2], [1, 2], [0, 1], [0, 1]];
+function facePlane(b, f) { return b[FAX[f] + (FHI[f] ? 3 : 0)]; }
+/* is face f of box b fully covered by the opposite face of a sibling box? */
+function sharedFace(b, f, boxes) {
+  const p = facePlane(b, f), o = f ^ 1, t = FTAN[f];
+  for (const s of boxes) {
+    const ob = s.b;
+    if (ob === b || Math.abs(facePlane(ob, o) - p) > 1e-6) continue;
+    let covered = true;
+    for (const a of t)
+      if (Math.max(b[a], ob[a]) >= Math.min(b[a + 3], ob[a + 3]) - 1e-6) { covered = false; break; }
+    if (covered) return true;
+  }
+  return false;
+}
 function meshChunk(ch) {
   const out = [], wat = [];
   const x0 = ch.ox, z0 = ch.oz;
@@ -1572,33 +1788,42 @@ function meshChunk(ch) {
       const hi = Math.min(H - 1, ch.top[lz * CH + lx] + 1);
       for (let y = 0; y <= hi; y++) {
         const b = ch.data[(y * CH + lz) * CH + lx];
-        if (!b) continue;
+        if (!b || b >= BLK.length) continue;
         const def = BLK[b];
         const uo = ((hash3(x, y, z) * 16) | 0) & 15;
         const dst = def.a < 1 ? wat : out;
-        for (let f = 0; f < 6; f++) {
-          const F = FACE[f], n = F.n;
-          const nx = x + n[0], ny = y + n[1], nz = z + n[2];
-          const nb = get(nx, ny, nz);
-          if (BLK[nb].opaque) continue;
-          if (nb === b && def.cull) continue;
-          const tile = f === 0 ? def.t[0] : f === 1 ? def.t[2]
-                     : (f === 4 && def.front !== undefined) ? def.front : def.t[1];
-          const e1 = F.e1, e2 = F.e2;
-          const drop = (b === WATER && f === 0) ? 0.12 : 0;
-          for (let i = 0; i < 4; i++) {
-            const c = F.v[i];
-            const s1 = (i === 1 || i === 2) ? 1 : -1, s2 = (i === 2 || i === 3) ? 1 : -1;
-            const o1 = occAt(nx + e1[0] * s1, ny + e1[1] * s1, nz + e1[2] * s1);
-            const o2 = occAt(nx + e2[0] * s2, ny + e2[1] * s2, nz + e2[2] * s2);
-            const oc = (o1 && o2) ? 1 : occAt(nx + e1[0] * s1 + e2[0] * s2,
-                                              ny + e1[1] * s1 + e2[1] * s2,
-                                              nz + e1[2] * s1 + e2[2] * s2);
-            const ao = (o1 && o2) ? 0 : 3 - (o1 + o2 + oc);
-            dst.push(x + 0.5 + c[0], y + 0.5 + c[1] - drop, z + 0.5 + c[2],
-                     s1 > 0 ? 1 : 0, s2 > 0 ? 1 : 0, F.sh * (0.6 + 0.1333 * ao));
+        const parts = def.model ? def.model(x, y, z) : null;
+        const boxes = parts || [bx(0, 0, 0, 1, 1, 1, def.t, def.front)];
+        for (const part of boxes) {
+          const bb = part.b, tiles = part.t, frontTile = part.front;
+          for (let f = 0; f < 6; f++) {
+            const F = FACE[f], n = F.n;
+            const plane = facePlane(bb, f);
+            const outer = FHI[f] ? plane >= 1 - 1e-6 : plane <= 1e-6;
+            const nx = x + n[0], ny = y + n[1], nz = z + n[2];
+            const nb = outer ? get(nx, ny, nz) : 0;
+            if (outer && (BLK[nb].opaque || (nb === b && def.cull))) continue;
+            if (parts && sharedFace(bb, f, parts)) continue;
+            const tile = f === 0 ? tiles[0] : f === 1 ? tiles[2]
+                       : (f === 4 && frontTile !== undefined) ? frontTile : tiles[1];
+            const e1 = F.e1, e2 = F.e2;
+            const drop = (b === WATER && f === 0) ? 0.12 : 0;
+            for (let i = 0; i < 4; i++) {
+              const c = F.v[i];
+              const s1 = (i === 1 || i === 2) ? 1 : -1, s2 = (i === 2 || i === 3) ? 1 : -1;
+              const o1 = occAt(nx + e1[0] * s1, ny + e1[1] * s1, nz + e1[2] * s1);
+              const o2 = occAt(nx + e2[0] * s2, ny + e2[1] * s2, nz + e2[2] * s2);
+              const oc = (o1 && o2) ? 1 : occAt(nx + e1[0] * s1 + e2[0] * s2,
+                                                ny + e1[1] * s1 + e2[1] * s2,
+                                                nz + e1[2] * s1 + e2[2] * s2);
+              const ao = (o1 && o2) ? 0 : 3 - (o1 + o2 + oc);
+              dst.push(x + bb[0] + (c[0] + 0.5) * (bb[3] - bb[0]),
+                       y + bb[1] + (c[1] + 0.5) * (bb[4] - bb[1]) - drop,
+                       z + bb[2] + (c[2] + 0.5) * (bb[5] - bb[2]),
+                       s1 > 0 ? 1 : 0, s2 > 0 ? 1 : 0, F.sh * (0.6 + 0.1333 * ao));
+            }
+            dst.push(n[0], n[1], n[2], tile, uo, 0);
           }
-          dst.push(n[0], n[1], n[2], tile, uo, 0);
         }
       }
     }
@@ -3067,7 +3292,8 @@ function edit(p, remove) {
     const drop = blockDrop(p.id);
     if (drop) addItem(drop, 1);
   } else {
-    const b = heldId();
+    let b = heldId();
+    if (b === IT.TORCH) b = TORCH_BLOCK;
     if (!b || b >= 100) { if (mode === 'survival' && b) toast('cannot place ' + itemName(b)); return; }
     const nx = p.x + p.nx, ny = p.y + p.ny, nz = p.z + p.nz;
     if (ny < 0 || ny >= H) return;
