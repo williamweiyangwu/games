@@ -267,7 +267,7 @@
   .hangar-btn:hover { border-color: var(--gold); color: var(--gold); }
   .game-card.hangar { max-width: 780px; }
   .hangar-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 10px; }
-  .hangar-cash { color: var(--gold); font-weight: 800; font-size: 1.05rem; }
+  .hangar-coins { color: var(--gold); font-weight: 800; font-size: 1.05rem; }
   .hangar-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0; }
   .plane-card {
     text-align: left; background: var(--panel2); border: 2px solid var(--border); border-radius: 10px;
@@ -345,7 +345,6 @@
 </style>
 </head>
 <body>
-<a href="../" title="Back to Arcade" aria-label="Back to Arcade" style="position:fixed;top:10px;left:10px;z-index:999999;padding:6px 11px;border:1px solid #3d4c74;border-radius:999px;background:rgba(10,13,20,.85);color:#eef2fb;font:600 12px/1.2 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.4)">&#8592; Arcade</a>
 
 <div class="topbar">
   <div class="topbar-left">
@@ -424,14 +423,21 @@
     <p class="photo-credit">Photos via Wikimedia Commons, shown for educational illustration.</p>
   </section>
 
+  <section id="battles">
+    <h2 data-i18n="battlesTitle">Famous Battles of World War II</h2>
+    <p class="sub" data-i18n="battlesSub">Turning-point battles pinned to the same Europe map you fly over in the plane game.</p>
+    <div class="weapons" id="battlesList"></div>
+    <p class="photo-credit">Battle maps are drawn from the same Europe basemap used in the history section above.</p>
+  </section>
+
   <section id="fighter">
     <h2 data-i18n="fighterTitle">Plane Wars: Fly a WWII Fighter</h2>
-    <p class="sub" data-i18n="fighterSub">Fly over wartime Europe, where Allied and Axis squadrons dogfight above famous battle sites marked on the map. Steer with the mouse, hold left mouse button (or touch) to fire and hold Space to boost. Watch for crashes and burning wrecks, collect the cash Axis planes drop, upgrade in the hangar, and watch out for hills — Esc pauses.</p>
+    <p class="sub" data-i18n="fighterSub">Fly over wartime Europe, where Allied and Axis squadrons dogfight above famous battle sites marked on the map. Steer with the mouse, hold left mouse button (or touch) to fire and hold Space to boost. Watch for crashes and burning wrecks, earn one coin for every Axis plane you shoot down, upgrade in the hangar, and watch out for hills — Esc pauses.</p>
     <div class="game-wrap" id="gameWrap">
       <canvas id="fighterCanvas" width="900" height="560"></canvas>
       <div class="reticle" aria-hidden="true"></div>
       <div class="game-hud">
-        <span>$ <b id="gCash">0</b></span>
+        <span>Coins <b id="gCoins">0</b></span>
         <span>Hull <b id="gHealth">100</b></span>
         <span>Wave <b id="gWave">1</b></span>
         <span>Speed <b id="gSpeed">0</b></span>
@@ -487,6 +493,17 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="battleModal">
+  <div class="modal weapon-modal battle-modal">
+    <button class="modal-close" id="battleModalClose">&times;</button>
+    <div class="weapon-hero"><img id="battleModalImg" alt=""></div>
+    <div class="modal-name" id="battleModalName"></div>
+    <div class="modal-role" id="battleModalMeta"></div>
+    <div class="modal-detail" id="battleModalDetail"></div>
+    <div class="wspec" id="battleModalSpec"></div>
+  </div>
+</div>
+
 <footer data-i18n="footer">Data compiled from public historical sources for educational purposes; some figures are estimates.</footer>
 
 <script src="three.min.js"></script>
@@ -509,8 +526,10 @@ const WARS = {
     timelineTitle: "Timeline of Events", figuresTitle: "Key Figures", autoPlay: "Autoplay",
     weaponsTitle: "Weapons of World War II",
     weaponsSub: "The machines and guns that shaped the battlefield, from the Blitzkrieg to the V-2.",
+    battlesTitle: "Famous Battles of World War II",
+    battlesSub: "Turning-point battles pinned to the same Europe map you fly over in the plane game.",
     fighterTitle: "Plane Wars: Fly a WWII Fighter",
-    fighterSub: "Fly over wartime Europe, where Allied and Axis squadrons dogfight above famous battle sites marked on the map. Steer with the mouse, hold left mouse button (or touch) to fire and hold Space to boost. Watch for crashes and burning wrecks, collect the cash Axis planes drop, upgrade in the hangar, and watch out for hills — Esc pauses.",
+    fighterSub: "Fly over wartime Europe, where Allied and Axis squadrons dogfight above famous battle sites marked on the map. Steer with the mouse, hold left mouse button (or touch) to fire and hold Space to boost. Watch for crashes and burning wrecks, earn one coin for every Axis plane you shoot down, upgrade in the hangar, and watch out for hills — Esc pauses.",
     footer: "Data compiled from public historical sources for educational purposes; some figures are estimates.",
     statDuration: "Duration", statCountries: "Belligerent nations",
     statDeaths: "Fatalities (worldwide)", statCamps: "Major camps",
@@ -718,17 +737,57 @@ const WARS = {
   { name:{en:"Vienna"}, x:308, y:590 },
 ],
   battles: [
-  { name:{en:"Invasion of Poland"}, date:{en:"Sep 1939"}, x:352, y:538, at:0 },
-  { name:{en:"Norwegian Campaign"}, date:{en:"Apr 1940"}, x:330, y:368, at:1 },
-  { name:{en:"Dunkirk"}, date:{en:"May 1940"}, x:245, y:558, at:2 },
-  { name:{en:"Battle of Britain"}, date:{en:"Jul 1940"}, x:192, y:548, at:3 },
-  { name:{en:"Siege of Leningrad"}, date:{en:"Sep 1941"}, x:400, y:430, at:6 },
-  { name:{en:"Battle of Moscow"}, date:{en:"Dec 1941"}, x:487, y:440, at:7 },
-  { name:{en:"Stalingrad"}, date:{en:"Aug 1942"}, x:517, y:510, at:8 },
-  { name:{en:"Kursk"}, date:{en:"Jul 1943"}, x:458, y:492, at:10 },
-  { name:{en:"D-Day Normandy"}, date:{en:"Jun 1944"}, x:228, y:578, at:11 },
-  { name:{en:"Battle of Berlin"}, date:{en:"Apr 1945"}, x:284, y:534, at:15 },
-],
+  { name:{en:"Invasion of Poland"}, date:{en:"Sep 1939"}, x:352, y:538, at:0,
+    meta:"Germany · Poland · opening campaign",
+    desc:"Germany's Blitzkrieg shattered Polish defenses and opened WWII in Europe.",
+    result:"Germany and the USSR partitioned Poland within weeks.",
+    detail:"Germany attacked on 1 September 1939 with massed armour, aircraft and infantry. Britain and France declared war two days later but could not save Poland, which was divided between Nazi Germany and the Soviet Union under a secret protocol." },
+  { name:{en:"Norwegian Campaign"}, date:{en:"Apr 1940"}, x:330, y:368, at:1,
+    meta:"Denmark · Norway · Scandinavia",
+    desc:"Germany seized Denmark and Norway to secure iron ore and Atlantic bases.",
+    result:"Allied evacuation; Norway stayed occupied until 1945.",
+    detail:"Germany occupied Denmark in hours and landed in Norway in April 1940. Control of Norwegian ports and the iron-ore route mattered greatly; Allied forces landed in turn but withdrew after the fall of France." },
+  { name:{en:"Dunkirk"}, date:{en:"May 1940"}, x:245, y:558, at:2,
+    meta:"France · Belgium · evacuation",
+    desc:"British and French forces were evacuated from a shrinking beachhead.",
+    result:"Over 330,000 troops escaped; heavy equipment was abandoned.",
+    detail:"After German panzers broke through the Ardennes, Allied armies were trapped at Dunkirk. Operation Dynamo used warships, ferries and small civilian boats to lift more than 330,000 men to Britain in nine days." },
+  { name:{en:"Battle of Britain"}, date:{en:"Jul 1940"}, x:192, y:548, at:3,
+    meta:"United Kingdom · air campaign",
+    desc:"The RAF defeated the Luftwaffe's attempt to win air superiority.",
+    result:"Germany postponed invasion; a first major Axis defeat.",
+    detail:"From July to October 1940 the RAF defended British skies against the Luftwaffe. Radar, Spitfires and Hurricanes, and the decision to switch bombing from airfields to cities, helped Britain hold out and cancel invasion plans." },
+  { name:{en:"Siege of Leningrad"}, date:{en:"Sep 1941"}, x:400, y:430, at:6,
+    meta:"Soviet Union · Eastern Front · siege",
+    desc:"German and Finnish forces encircled the city in a starvation blockade.",
+    result:"The city held until January 1944; civilian losses were enormous.",
+    detail:"German Army Group North cut land access to Leningrad in September 1941. The siege lasted about 872 days; food deliveries across Lake Ladoga and a narrow land corridor kept the city alive until the blockade was finally broken." },
+  { name:{en:"Battle of Moscow"}, date:{en:"Dec 1941"}, x:487, y:440, at:7,
+    meta:"Soviet Union · Eastern Front · winter",
+    desc:"A Soviet winter counteroffensive drove German forces back from the capital.",
+    result:"The first major reversal of Barbarossa.",
+    detail:"German units reached the outskirts of Moscow in late 1941, but supply lines were stretched and winter had arrived. The Soviet counterattack of 5 December pushed Army Group Centre back and ended hopes of a quick victory in the East." },
+  { name:{en:"Stalingrad"}, date:{en:"Aug 1942"}, x:517, y:510, at:8,
+    meta:"Soviet Union · Eastern Front · turning point",
+    desc:"Urban fighting trapped the German 6th Army in the ruins of the city.",
+    result:"German surrender in February 1943; the Eastern Front turned.",
+    detail:"The battle for Stalingrad began in August 1942 and became brutal street fighting. Operation Uranus encircled the German 6th Army in November; cut off and freezing, it surrendered in February 1943." },
+  { name:{en:"Kursk"}, date:{en:"Jul 1943"}, x:458, y:492, at:10,
+    meta:"Soviet Union · Eastern Front · armour",
+    desc:"Germany's last major eastern offensive met deep Soviet defenses.",
+    result:"Soviet counteroffensives seized the initiative for good.",
+    detail:"Operation Citadel began on 5 July 1943 against the Kursk salient. Soviet anti-tank belts and artillery blunted the German attack; after heavy tank losses at Prokhorovka, Germany never again launched a major offensive in the East." },
+  { name:{en:"D-Day Normandy"}, date:{en:"Jun 1944"}, x:228, y:578, at:11,
+    meta:"France · Western Front · amphibious landing",
+    desc:"Allied forces landed on five beaches and opened the Western Front.",
+    result:"France was liberated and Germany fought on two fronts.",
+    detail:"On 6 June 1944 Allied troops landed at Utah, Omaha, Gold, Juno and Sword beaches, supported by airborne drops and a vast naval force. The Normandy bridgehead grew into the liberation of France and the drive toward Germany." },
+  { name:{en:"Battle of Berlin"}, date:{en:"Apr 1945"}, x:284, y:534, at:15,
+    meta:"Germany · final offensive",
+    desc:"Soviet forces stormed the Nazi capital in the final European offensive.",
+    result:"Hitler's death and Germany's surrender days later.",
+    detail:"The Red Army began its assault on Berlin in mid-April 1945 and closed in on the Reich Chancellery. Hitler killed himself on 30 April; the garrison surrendered on 2 May, and Germany signed a general surrender on 8 May." },
+  ],
   seaLabels: [
   {  en:"Atlantic Ocean", x:75, y:470 },
   {  en:"North Sea", x:235, y:478 },
@@ -887,6 +946,8 @@ const WARS = {
     timelineTitle: "Timeline of Events", figuresTitle: "Key Figures", autoPlay: "Autoplay",
     weaponsTitle: "Weapons of World War I",
     weaponsSub: "The guns, tanks, aircraft and submarines that defined the first industrial war.",
+    battlesTitle: "Famous Battles of World War I",
+    battlesSub: "The battles that broke the stalemate, from the Marne to the Hundred Days.",
     fighterTitle: "", fighterSub: "",
     footer: "Data compiled from public historical sources for educational purposes; some figures are estimates.",
     statDuration: "Duration", statCountries: "Belligerent nations",
@@ -1096,22 +1157,82 @@ const WARS = {
   { name:{en:"Constantinople"}, x:466, y:692 },
 ],
   battles: [
-  { name:{en:"Sarajevo"}, date:{en:"Jun 1914"}, x:322, y:630, at:0 },
-  { name:{en:"First Marne"}, date:{en:"Sep 1914"}, x:235, y:586, at:1 },
-  { name:{en:"Gallipoli"}, date:{en:"Apr 1915"}, x:420, y:674, at:3 },
-  { name:{en:"Gorlice–Tarnów"}, date:{en:"May 1915"}, x:352, y:548, at:3 },
-  { name:{en:"Verdun"}, date:{en:"Feb 1916"}, x:270, y:576, at:5 },
-  { name:{en:"Jutland"}, date:{en:"May 1916"}, x:272, y:508, at:5 },
-  { name:{en:"Somme"}, date:{en:"Jul 1916"}, x:248, y:566, at:6 },
-  { name:{en:"Brusilov Offensive"}, date:{en:"Jun 1916"}, x:398, y:540, at:6 },
-  { name:{en:"Passchendaele"}, date:{en:"Jul 1917"}, x:243, y:556, at:8 },
-  { name:{en:"Caporetto"}, date:{en:"Oct 1917"}, x:314, y:641, at:8 },
-  { name:{en:"Spring Offensive"}, date:{en:"Mar 1918"}, x:247, y:572, at:10 },
-  { name:{en:"Amiens"}, date:{en:"Aug 1918"}, x:234, y:566, at:11 },
-  { name:{en:"Meuse–Argonne"}, date:{en:"Sep 1918"}, x:266, y:580, at:11 },
-  { name:{en:"Vittorio Veneto"}, date:{en:"Oct 1918"}, x:310, y:646, at:12 },
-  { name:{en:"Armistice"}, date:{en:"Nov 1918"}, x:255, y:578, at:13 },
-],
+  { name:{en:"Sarajevo"}, date:{en:"Jun 1914"}, x:322, y:630, at:0,
+    meta:"Bosnia · July Crisis · assassination",
+    desc:"The assassination of Archduke Franz Ferdinand ignited the July Crisis.",
+    result:"Austria-Hungary's ultimatum triggered the war.",
+    detail:"Franz Ferdinand was killed in Sarajevo on 28 June 1914. Austria-Hungary blamed Serbia, issued an ultimatum, and declared war on 28 July; alliance systems quickly drew in the other European powers." },
+  { name:{en:"First Marne"}, date:{en:"Sep 1914"}, x:235, y:586, at:1,
+    meta:"France · Western Front · stalemate",
+    desc:"An Allied counterattack halted the German advance toward Paris.",
+    result:"The Western Front stabilized into trench warfare.",
+    detail:"German armies swept through Belgium and northern France in August 1914, but their advance faltered at the Marne in early September. Both sides then 'raced to the sea', digging the trench lines that would hold for four years." },
+  { name:{en:"Gallipoli"}, date:{en:"Apr 1915"}, x:420, y:674, at:3,
+    meta:"Ottoman Empire · Dardanelles · amphibious landing",
+    desc:"Allied troops landed on a peninsula to open a new front.",
+    result:"Evacuation in December 1915 after heavy losses.",
+    detail:"British, French, Australian and New Zealand forces landed at Gallipoli in April 1915 to force the Dardanelles. Ottoman defenses held the beaches and ridges; the Allies evacuated in December rather than endure another winter." },
+  { name:{en:"Gorlice–Tarnów"}, date:{en:"May 1915"}, x:352, y:548, at:3,
+    meta:"Galicia · Eastern Front · breakthrough",
+    desc:"A German and Austro-Hungarian offensive broke the Russian line.",
+    result:"Russia retreated and the Central Powers advanced eastward.",
+    detail:"The attack near Gorlice and Tarnów in May 1915 used concentrated artillery to smash the Russian front. Russia gave up much of Galicia and Poland in the Great Retreat, but the front did not collapse." },
+  { name:{en:"Verdun"}, date:{en:"Feb 1916"}, x:270, y:576, at:5,
+    meta:"France · Western Front · attrition",
+    desc:"A German offensive against Verdun became a grinding battle of attrition.",
+    result:"French lines held; roughly 700,000 casualties combined.",
+    detail:"Germany began the offensive on 21 February 1916, expecting to 'bleed France white'. French defenses under Pétain held, and the fighting continued until December, making Verdun a symbol of industrialised trench warfare." },
+  { name:{en:"Jutland"}, date:{en:"May 1916"}, x:272, y:508, at:5,
+    meta:"North Sea · naval battle",
+    desc:"The Royal Navy and the German High Seas Fleet clashed at sea.",
+    result:"Tactically indecisive; Britain retained naval dominance.",
+    detail:"Jutland on 31 May–1 June 1916 was the largest fleet battle of the war. Both sides claimed success: Germany inflicted heavier losses, but the British fleet remained strong enough to maintain the blockade." },
+  { name:{en:"Somme"}, date:{en:"Jul 1916"}, x:248, y:566, at:6,
+    meta:"France · Western Front · offensive",
+    desc:"A British-led offensive began with a huge artillery barrage and tanks' debut.",
+    result:"Limited gains at a cost of about one million casualties.",
+    detail:"The Somme offensive opened on 1 July 1916 after a week-long bombardment. British, French and Commonwealth troops advanced only a few kilometres in months of fighting; tanks were used for the first time in September." },
+  { name:{en:"Brusilov Offensive"}, date:{en:"Jun 1916"}, x:398, y:540, at:6,
+    meta:"Ukraine · Eastern Front · Russian offensive",
+    desc:"A Russian attack shattered Austrian lines across a wide front.",
+    result:"The largest Russian offensive, with huge losses on both sides.",
+    detail:"General Brusilov attacked in June 1916 using surprise and dispersed assault troops. Austro-Hungarian lines collapsed in places, but Russian reserves could not exploit the success and casualties mounted into the millions." },
+  { name:{en:"Passchendaele"}, date:{en:"Jul 1917"}, x:243, y:556, at:8,
+    meta:"Belgium · Western Front · Flanders",
+    desc:"British forces fought through mud-soaked Flanders ridges.",
+    result:"A costly capture of a small ridge in November 1917.",
+    detail:"Also called the Third Battle of Ypres, Passchendaele began in July 1917. Shellfire destroyed drainage, turning the battlefield into mud; the ridge was taken in November at terrible cost." },
+  { name:{en:"Caporetto"}, date:{en:"Oct 1917"}, x:314, y:641, at:8,
+    meta:"Italy · Austro-Italian Front · retreat",
+    desc:"An Austro-German offensive broke through the Italian front.",
+    result:"Italy retreated to the Piave and recovered by mid-1918.",
+    detail:"Caporetto began on 24 October 1917 with infiltration tactics and a swift breakthrough. Italy lost territory and morale, but reorganised behind the Piave River and later launched the final offensive at Vittorio Veneto." },
+  { name:{en:"Spring Offensive"}, date:{en:"Mar 1918"}, x:247, y:572, at:10,
+    meta:"France · Western Front · German offensive",
+    desc:"Germany launched its final western push after Russia left the war.",
+    result:"The advance stalled and Allied counterattacks followed.",
+    detail:"Operation Michael began on 21 March 1918 with stormtroopers and artillery. Early gains were impressive, but the offensives outran supplies and failed to break the Allied line; Germany had spent its last reserve." },
+  { name:{en:"Amiens"}, date:{en:"Aug 1918"}, x:234, y:566, at:11,
+    meta:"France · Western Front · Hundred Days",
+    desc:"An Allied offensive used tanks and aircraft to break German lines.",
+    result:"The start of the Hundred Days that ended the war.",
+    detail:"Amiens opened on 8 August 1918 with hundreds of tanks and coordinated air support. German resistance collapsed locally; the Allied advance continued almost without pause until the armistice." },
+  { name:{en:"Meuse–Argonne"}, date:{en:"Sep 1918"}, x:266, y:580, at:11,
+    meta:"France · Western Front · American offensive",
+    desc:"The largest US offensive of the war attacked in northeast France.",
+    result:"Helped break the Hindenburg Line; about 120,000 US casualties.",
+    detail:"The Meuse–Argonne offensive began on 26 September 1918 and was the largest battle fought by the American Expeditionary Forces. It took the Hindenburg Line's key positions and helped force Germany to seek an armistice." },
+  { name:{en:"Vittorio Veneto"}, date:{en:"Oct 1918"}, x:310, y:646, at:12,
+    meta:"Italy · final offensive",
+    desc:"An Italian offensive collapsed the Austro-Hungarian Army.",
+    result:"Austria-Hungary signed an armistice days later.",
+    detail:"Italy attacked on 24 October 1918 and drove through the weakening Austro-Hungarian lines. The empire unravelled rapidly, signing the Armistice of Villa Giusti on 3 November." },
+  { name:{en:"Armistice"}, date:{en:"Nov 1918"}, x:255, y:578, at:13,
+    meta:"Western Front · end of fighting",
+    desc:"Fighting stopped on the Western Front at eleven o'clock on 11 November.",
+    result:"The Compiègne armistice ended the war; treaties followed in 1919.",
+    detail:"Germany signed the armistice in a railway carriage at Compiègne on 11 November 1918. The guns fell silent at 11 a.m.; the Paris Peace Conference and the Treaty of Versailles followed in 1919." },
+  ],
   seaLabels: [
   {  en:"Atlantic Ocean", x:75, y:470 },
   {  en:"North Sea", x:235, y:478 },
@@ -1730,6 +1851,132 @@ document.getElementById("weaponsList").addEventListener("keydown", ev => {
 document.getElementById("weaponModalClose").addEventListener("click", closeWeapon);
 weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) closeWeapon(); });
 
+// ================= Famous battles: gallery and detail modal =================
+function battleEsc(value) {
+  return String(value).replace(/[&<>"']/g, ch => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+  }[ch]));
+}
+const battleArtCache = Object.create(null);
+function battleArt(b, i) {
+  const key = WAR_ID + ":" + i;
+  if (battleArtCache[key]) return battleArtCache[key];
+  const name = tt(b.name), date = tt(b.date);
+  if (!window.Path2D || !window.EUROPE_GEO) {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400"><defs><linearGradient id="g" x2="1" y2="1"><stop stop-color="#17354d"/><stop offset="1" stop-color="#603426"/></linearGradient></defs><rect width="640" height="400" fill="url(#g)"/><path d="M0 330 L130 245 260 295 380 185 520 265 640 215 640 400 0 400Z" fill="#102533" opacity=".8"/><text x="24" y="70" fill="#ffd78a" font-family="Arial" font-size="25" font-weight="700">${battleEsc(date)}</text><text x="24" y="112" fill="#fff" font-family="Arial" font-size="31" font-weight="700">${battleEsc(name)}</text></svg>`;
+    battleArtCache[key] = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+    return battleArtCache[key];
+  }
+  const c = document.createElement("canvas");
+  c.width = 640; c.height = 400;
+  const g = c.getContext("2d");
+  const bc = (v, a, z) => Math.max(a, Math.min(z, v));
+  const cw = 400, ch = 250;
+  const sx = bc(b.x - cw / 2, 0, 800 - cw);
+  const sy = bc(b.y - ch / 2, 0, 766 - ch);
+  g.fillStyle = "#10293d";
+  g.fillRect(0, 0, c.width, c.height);
+  g.save();
+  g.scale(c.width / cw, c.height / ch);
+  g.translate(-sx, -sy);
+  g.strokeStyle = "rgba(160,200,225,0.10)";
+  g.lineWidth = 0.7;
+  for (let x = 0; x <= 800; x += 40) {
+    g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 766); g.stroke();
+  }
+  for (let y = 0; y <= 766; y += 40) {
+    g.beginPath(); g.moveTo(0, y); g.lineTo(800, y); g.stroke();
+  }
+  const snap = periods[bc(b.at || 0, 0, periods.length - 1)].control;
+  Object.keys(EUROPE_GEO).forEach(code => {
+    const grp = codeToGroup[code];
+    const state = grp ? (snap[grp.id] || "neutral") : "neutral";
+    const path = new Path2D(EUROPE_GEO[code]);
+    g.fillStyle = STATE_COLORS[state] || STATE_COLORS.neutral;
+    g.fill(path);
+    g.strokeStyle = "rgba(235,244,252,0.45)";
+    g.lineWidth = 0.8;
+    g.stroke(path);
+  });
+  g.restore();
+  const mx = (b.x - sx) * c.width / cw;
+  const my = (b.y - sy) * c.height / ch;
+  g.save();
+  g.strokeStyle = "#ffd166";
+  g.fillStyle = "rgba(255,209,102,0.22)";
+  g.lineWidth = 2.5;
+  g.beginPath(); g.arc(mx, my, 18, 0, Math.PI * 2); g.fill(); g.stroke();
+  g.beginPath();
+  g.moveTo(mx - 30, my); g.lineTo(mx - 23, my);
+  g.moveTo(mx + 23, my); g.lineTo(mx + 30, my);
+  g.moveTo(mx, my - 30); g.lineTo(mx, my - 23);
+  g.moveTo(mx, my + 23); g.lineTo(mx, my + 30);
+  g.stroke();
+  g.fillStyle = "#ffd166";
+  g.beginPath(); g.arc(mx, my, 3.5, 0, Math.PI * 2); g.fill();
+  g.restore();
+  const shade = g.createLinearGradient(0, 245, 0, 400);
+  shade.addColorStop(0, "rgba(5,10,16,0)");
+  shade.addColorStop(1, "rgba(5,10,16,0.93)");
+  g.fillStyle = shade;
+  g.fillRect(0, 245, c.width, 155);
+  g.textAlign = "left";
+  g.textBaseline = "alphabetic";
+  g.fillStyle = "#ffd78a";
+  g.font = "bold 15px Arial";
+  g.fillText(date, 22, 337);
+  g.fillStyle = "#ffffff";
+  g.font = "bold 27px Arial";
+  g.fillText(name, 22, 372);
+  battleArtCache[key] = c.toDataURL("image/png");
+  return battleArtCache[key];
+}
+
+function renderBattles() {
+  const list = document.getElementById("battlesList");
+  if (!list) return;
+  list.innerHTML = battles.map((b, i) => `
+    <article class="weapon battle" role="button" tabindex="0" data-index="${i}" aria-label="${battleEsc(tt(b.name))} — click for details">
+      <div class="wphoto"><img src="${battleArt(b, i)}" alt="Map of ${battleEsc(tt(b.name))}"></div>
+      <div class="wbody">
+        <div class="wname">${battleEsc(tt(b.name))}</div>
+        <div class="wmeta">${battleEsc(tt(b.date))} · ${battleEsc(b.meta || "")}</div>
+        <div class="wdesc">${battleEsc(b.desc || "")}</div>
+        <div class="wspec">${battleEsc(b.result || "")}</div>
+        <div class="whint">Click for details</div>
+      </div>
+    </article>`).join("");
+}
+
+const battleModal = document.getElementById("battleModal");
+function openBattle(index) {
+  const b = battles[index];
+  if (!b) return;
+  document.getElementById("battleModalImg").src = battleArt(b, index);
+  document.getElementById("battleModalImg").alt = "Map of " + tt(b.name);
+  document.getElementById("battleModalName").textContent = tt(b.name);
+  document.getElementById("battleModalMeta").textContent = tt(b.date) + " · " + (b.meta || "");
+  document.getElementById("battleModalDetail").textContent = b.detail || b.desc || "";
+  document.getElementById("battleModalSpec").textContent = b.result || "";
+  battleModal.classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+function closeBattle() {
+  battleModal.classList.remove("open");
+  document.body.style.overflow = "";
+}
+document.getElementById("battlesList").addEventListener("click", ev => {
+  const card = ev.target.closest(".battle");
+  if (card) openBattle(Number(card.dataset.index));
+});
+document.getElementById("battlesList").addEventListener("keydown", ev => {
+  if (ev.key !== "Enter" && ev.key !== " ") return;
+  const card = ev.target.closest(".battle");
+  if (card) { ev.preventDefault(); openBattle(Number(card.dataset.index)); }
+});
+document.getElementById("battleModalClose").addEventListener("click", closeBattle);
+battleModal.addEventListener("click", ev => { if (ev.target === battleModal) closeBattle(); });
+
 // ================= Fighter mini-game (Three.js, third person) =================
 (function fighterGame(){
   const canvas = document.getElementById("fighterCanvas");
@@ -1738,7 +1985,7 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
   const overlay = document.getElementById("gameOverlay");
   const adOverlay = document.getElementById("adOverlay");
   const els = {
-    cash: document.getElementById("gCash"),
+    coins: document.getElementById("gCoins"),
     wave: document.getElementById("gWave"),
     health: document.getElementById("gHealth"),
     speed: document.getElementById("gSpeed"),
@@ -1767,22 +2014,23 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
   const PLANES = [
     { id:"spitfire", name:"Spitfire Mk V", cost:0, health:100, speed:1, damage:1, rate:0.115,
       desc:"The balanced RAF classic. Free to fly.",
-      paints:[{ name:"RAF green", body:0x627554, wing:0x87957d, cost:0 }, { name:"Desert tan", body:0x9a8458, wing:0xc0ab7d, cost:250 }] },
-    { id:"mustang", name:"P-51 Mustang", cost:800, health:125, speed:1.12, damage:1.12, rate:0.105,
+      paints:[{ name:"RAF green", body:0x627554, wing:0x87957d, cost:0 }, { name:"Desert tan", body:0x9a8458, wing:0xc0ab7d, cost:1 }] },
+    { id:"mustang", name:"P-51 Mustang", cost:3, health:125, speed:1.12, damage:1.12, rate:0.105,
       desc:"Faster and tougher, with a longer burst.",
-      paints:[{ name:"Bare metal", body:0x9aa4ad, wing:0xc9d1d8, cost:0 }, { name:"Blue nose", body:0x46618f, wing:0xaebbd0, cost:300 }] },
-    { id:"lightning", name:"P-38 Lightning", cost:1800, health:155, speed:1.2, damage:1.28, rate:0.095,
+      paints:[{ name:"Bare metal", body:0x9aa4ad, wing:0xc9d1d8, cost:0 }, { name:"Blue nose", body:0x46618f, wing:0xaebbd0, cost:2 }] },
+    { id:"lightning", name:"P-38 Lightning", cost:7, health:155, speed:1.2, damage:1.28, rate:0.095,
       desc:"Twin-engine heavy fighter. Heavy hitter.",
-      paints:[{ name:"Olive drab", body:0x6f7a5e, wing:0x9aa386, cost:0 }, { name:"Night fighter", body:0x30363f, wing:0x555d69, cost:400 }] },
-    { id:"me262", name:"Me 262", cost:3400, health:135, speed:1.36, damage:1.45, rate:0.08,
+      paints:[{ name:"Olive drab", body:0x6f7a5e, wing:0x9aa386, cost:0 }, { name:"Night fighter", body:0x30363f, wing:0x555d69, cost:3 }] },
+    { id:"me262", name:"Me 262", cost:12, health:135, speed:1.36, damage:1.45, rate:0.08,
       desc:"Jet-powered. The fastest plane in the hangar.",
-      paints:[{ name:"Luftwaffe grey", body:0x5b6470, wing:0x8a95a1, cost:0 }, { name:"Night owl", body:0x2c313a, wing:0x4b5260, cost:500 }] }
+      paints:[{ name:"Luftwaffe grey", body:0x5b6470, wing:0x8a95a1, cost:0 }, { name:"Night owl", body:0x2c313a, wing:0x4b5260, cost:4 }] }
   ];
   const planeById = id => PLANES.find(p => p.id === id) || PLANES[0];
+  const coinLabel = n => n + (n === 1 ? " coin" : " coins");
 
-  let cash = store.get("cash", 0);
+  let coins = store.get("coins", 0);
   let best = store.get("best", 0);
-  let leaderboard = store.get("leaderboard", []);
+  let leaderboard = (store.get("leaderboard", []) || []).map(r => ({ coins: r.coins || 0, wave: r.wave || 1 }));
   let unlocked = store.get("unlocked", ["spitfire"]);
   let selectedId = store.get("selected", "spitfire");
   if (!unlocked.includes("spitfire")) unlocked.push("spitfire");
@@ -1793,7 +2041,7 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
   let paintIndex = Math.min(paintSel[selectedId] || 0, plane.paints.length - 1);
 
   let state = "idle";
-  let score = 0, wave = 1, firing = false;
+  let wave = 1, firing = false;
   let adTimerId = null, adEnds = 0;
   let visible = true;
   let cameraSnap = true;
@@ -2222,49 +2470,7 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     player.scale.setScalar(plane.id === "lightning" ? 1.12 : plane.id === "me262" ? 1.05 : 1);
   }
 
-  // ---- Cash pickups dropped by destroyed aircraft ----
-  function makeCashTexture() {
-    const c = document.createElement("canvas");
-    c.width = c.height = 128;
-    const g = c.getContext("2d");
-    g.fillStyle = "rgba(0,0,0,0)";
-    g.fillRect(0, 0, 128, 128);
-    g.save();
-    g.translate(64, 64);
-    g.rotate(-0.1);
-    g.fillStyle = "#1f6b3a";
-    g.strokeStyle = "#a9e7b8";
-    g.lineWidth = 4;
-    g.beginPath();
-    g.roundRect(-46, -28, 92, 56, 8);
-    g.fill(); g.stroke();
-    g.fillStyle = "#d6f5dc";
-    g.font = "bold 46px Arial";
-    g.textAlign = "center";
-    g.textBaseline = "middle";
-    g.fillText("$", 0, 2);
-    g.restore();
-    const t = new THREE.CanvasTexture(c);
-    if ("colorSpace" in t) t.colorSpace = THREE.SRGBColorSpace;
-    return t;
-  }
-  const cashTex = makeCashTexture();
-  const cashMat = new THREE.SpriteMaterial({ map: cashTex, transparent: true, depthWrite: false });
-  let bundles = [];
-
-  function spawnBundle(pos, value) {
-    const s = new THREE.Sprite(cashMat.clone());
-    s.position.copy(pos);
-    const sc = 4.2 + Math.min(2.2, value / 40);
-    s.scale.set(sc, sc, 1);
-    s.userData = {
-      value,
-      vx: rand(-7, 7), vy: rand(-2, 8), vz: rand(3, 12),
-      life: 16, max: 16
-    };
-    scene.add(s);
-    bundles.push(s);
-  }
+  // Coins are awarded directly when an Axis aircraft is destroyed; there are no pickups.
 
   // ---- Bullets, effects ----
   const playerBulletGeo = new THREE.BoxGeometry(0.22, 0.22, 5.6);
@@ -2350,7 +2556,7 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
   let targetX = 0, targetY = 30;
   let roll = 0, pitch = 0;
   let health = 100, healthMax = 100;
-  let runCash = 0, runRecorded = false;
+  let runCoins = 0, runRecorded = false;
   let spawnT = 0, allyT = 0, fireT = 0, waveT = 0, invuln = 0;
   let shake = 0, hitFlash = 0, idleT = 0, hudT = 0, saveT = 0;
   let hangarMsg = "";
@@ -2553,8 +2759,6 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     bullets = [];
     enemyBullets.forEach(b => scene.remove(b));
     enemyBullets = [];
-    bundles.forEach(b => { scene.remove(b); b.material.dispose(); });
-    bundles = [];
     fx.forEach(removeFx);
     fx = [];
     wrecks.forEach(removeWreck);
@@ -2568,7 +2772,7 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
   }
 
   function updateHud() {
-    els.cash.textContent = cash;
+    els.coins.textContent = coins;
     els.wave.textContent = wave;
     els.health.textContent = Math.max(0, Math.ceil(health));
     els.speed.textContent = Math.round((290 + wave * 12) * plane.speed * (keys.Space && state === "playing" ? 1.55 : 1)) + " km/h";
@@ -2576,7 +2780,7 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
   }
 
   function saveProgress() {
-    store.set("cash", cash);
+    store.set("coins", coins);
     store.set("best", best);
     store.set("leaderboard", leaderboard);
     store.set("unlocked", unlocked);
@@ -2588,17 +2792,17 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
   function recordRun() {
     if (runRecorded) return;
     runRecorded = true;
-    if (runCash > best) best = runCash;
-    leaderboard = leaderboard.concat([{ cash: runCash, wave: wave }])
-      .sort((a, b) => (b.cash || 0) - (a.cash || 0)).slice(0, 5);
+    if (runCoins > best) best = runCoins;
+    leaderboard = leaderboard.concat([{ coins: runCoins, wave: wave }])
+      .sort((a, b) => (b.coins || 0) - (a.coins || 0)).slice(0, 5);
     saveProgress();
   }
 
   function leaderboardHtml() {
     const rows = leaderboard.slice(0, 5);
     return `<div class="leaderboard">
-      <div><span>Personal best (single run)</span><b>$${best}</b></div>
-      ${rows.length ? rows.map((r, i) => `<div><span>#${i + 1} · Wave ${r.wave || 1}</span><b>$${r.cash || 0}</b></div>`).join("") : `<div><span>No runs logged yet</span><b>—</b></div>`}
+      <div><span>Personal best (single run)</span><b>${coinLabel(best)}</b></div>
+      ${rows.length ? rows.map((r, i) => `<div><span>#${i + 1} · Wave ${r.wave || 1}</span><b>${coinLabel(r.coins || 0)}</b></div>`).join("") : `<div><span>No runs logged yet</span><b>—</b></div>`}
     </div>`;
   }
 
@@ -2610,17 +2814,17 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     return PLANES.map(p => {
       const owned = unlocked.includes(p.id);
       const selected = p.id === selectedId;
-      const canBuy = cash >= p.cost;
+      const canBuy = coins >= p.cost;
       const label = owned
         ? (selected ? "In service" : "Tap to select")
-        : (canBuy ? "Buy for $" + p.cost : "Need $" + (p.cost - cash) + " more");
+        : (canBuy ? "Buy for " + coinLabel(p.cost) : "Need " + coinLabel(p.cost - coins) + " more");
       const swatches = p.paints.map((pt, i) => {
         const paintOwned = i === 0 || !!paintUnlocked[p.id + ":" + i];
         const active = selected && i === paintIndex;
-        return `<button type="button" data-plane-paint="${p.id}" data-paint="${i}" class="${active ? "active" : ""}" title="${pt.name}${paintOwned ? "" : " · $" + pt.cost}" style="background:#${pt.body.toString(16).padStart(6, "0")}"></button>`;
+        return `<button type="button" data-plane-paint="${p.id}" data-paint="${i}" class="${active ? "active" : ""}" title="${pt.name}${paintOwned ? "" : " · " + coinLabel(pt.cost)}" style="background:#${pt.body.toString(16).padStart(6, "0")}"></button>`;
       }).join("");
       return `<div class="plane-card${selected ? " selected" : ""}${owned ? "" : " locked"}" data-plane="${p.id}">
-        <div class="pc-name"><span>${p.name}</span><span>${owned ? "OWNED" : "$" + p.cost}</span></div>
+        <div class="pc-name"><span>${p.name}</span><span>${owned ? "OWNED" : coinLabel(p.cost)}</span></div>
         <div class="pc-desc">${p.desc}</div>
         ${planeStatsHtml(p)}
         <div class="pc-swatch">${swatches}</div>
@@ -2633,12 +2837,12 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     const p = planeById(id);
     hangarMsg = "";
     if (!unlocked.includes(id)) {
-      if (cash < p.cost) {
-        hangarMsg = "Not enough cash for the " + p.name + " — you need $" + (p.cost - cash) + " more.";
+      if (coins < p.cost) {
+        hangarMsg = "Not enough coins for the " + p.name + " — you need " + coinLabel(p.cost - coins) + " more.";
         showOverlay("hangar");
         return;
       }
-      cash -= p.cost;
+      coins -= p.cost;
       unlocked.push(id);
     }
     selectedId = id;
@@ -2655,12 +2859,12 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     hangarMsg = "";
     const key = id + ":" + idx;
     if (idx > 0 && !paintUnlocked[key]) {
-      if (cash < pt.cost) {
-        hangarMsg = "That paint job costs $" + pt.cost + " — you need $" + (pt.cost - cash) + " more.";
+      if (coins < pt.cost) {
+        hangarMsg = "That paint job costs " + coinLabel(pt.cost) + " — you need " + coinLabel(pt.cost - coins) + " more.";
         showOverlay("hangar");
         return;
       }
-      cash -= pt.cost;
+      coins -= pt.cost;
       paintUnlocked[key] = true;
     }
     paintSel[id] = idx;
@@ -2701,8 +2905,8 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
       overlay.innerHTML = `
         <div class="game-card">
           <h3>Plane Wars: WWII</h3>
-          <p>Take off over wartime Europe. Allied and Axis squadrons are already dogfighting below — join the melee, hunt Axis fighters and bombers, and fly through the cash bundles they drop. Spend your earnings in the hangar on faster, tougher aircraft and new paint jobs.</p>
-          <p class="score">Cash $${cash} · Best run $${best} · Flying the ${plane.name}</p>
+          <p>Take off over wartime Europe. Allied and Axis squadrons are already dogfighting below — join the melee and shoot down Axis fighters and bombers. Every Axis kill earns one coin to spend in the hangar on faster, tougher aircraft and new paint jobs.</p>
+          <p class="score">Coins ${coins} · Best run ${coinLabel(best)} · Flying the ${plane.name}</p>
           <div class="game-btns">
             <button class="btn primary" id="gameStart">Take off</button>
             <button class="btn" id="gameHangar">Hangar</button>
@@ -2716,8 +2920,8 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
       overlay.innerHTML = `
         <div class="game-card">
           <h3>Paused</h3>
-          <p>Mission on hold over occupied Europe. Cash you have picked up is safely banked.</p>
-          <p class="score">Cash $${cash} · Wave ${wave} · Hull ${Math.max(0, Math.ceil(health))}</p>
+          <p>Mission on hold over occupied Europe. Coins you have earned are safely banked.</p>
+          <p class="score">Coins ${coins} · Wave ${wave} · Hull ${Math.max(0, Math.ceil(health))}</p>
           <div class="game-btns">
             <button class="btn primary" id="gameResume">Resume</button>
             <button class="btn" id="gameHangarPause">Hangar</button>
@@ -2733,7 +2937,7 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
         <div class="game-card">
           <h3>Shot down</h3>
           <p>Your ${plane.name} went down over Europe.</p>
-          <p class="score">Run earnings $${runCash} · Wave ${wave} · Bank $${cash}</p>
+          <p class="score">Run earnings ${coinLabel(runCoins)} · Wave ${wave} · Bank ${coinLabel(coins)}</p>
           ${leaderboardHtml()}
           <div class="game-btns">
             <button class="btn primary" id="gameRestart">Restart</button>
@@ -2748,8 +2952,8 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     } else if (kind === "hangar") {
       overlay.innerHTML = `
         <div class="game-card hangar">
-          <div class="hangar-top"><h3>Hangar</h3><span class="hangar-cash">$${cash}</span></div>
-          <p>Shoot down aircraft and collect the cash they drop, then buy a better plane. Every aircraft flies differently — pick the one that suits you.</p>
+          <div class="hangar-top"><h3>Hangar</h3><span class="hangar-coins">${coinLabel(coins)}</span></div>
+          <p>Every Axis plane you shoot down earns one coin. Spend coins on a better plane or a new paint job — every aircraft flies differently.</p>
           <div class="hangar-grid">${hangarCardsHtml()}</div>
           ${hangarMsg ? `<p class="game-tip" style="color:#e5867f">${hangarMsg}</p>` : ""}
           <div class="game-btns">
@@ -2812,10 +3016,20 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     lockPointer();
   }
 
+  function clearSpawnZone() {
+    for (const h of terrain) {
+      if (Math.abs(h.z) < h.radius + 80 && Math.abs(h.x) < h.radius + 70) {
+        h.x = (h.x < 0 ? -1 : 1) * rand(150, 380);
+        h.z = rand(-1050, -260);
+        h.group.position.set(h.x, 0, h.z);
+      }
+    }
+  }
+
   function resetWorld() {
     clearWorldObjects();
-    score = 0;
-    runCash = 0;
+    clearSpawnZone();
+    runCoins = 0;
     runRecorded = false;
     wave = 1;
     healthMax = plane.health;
@@ -2825,7 +3039,8 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     allyT = 1.8;
     fireT = 0;
     waveT = 0;
-    invuln = 0;
+    // Short spawn protection prevents a hill at the spawn point causing an instant crash.
+    invuln = 1.5;
     shake = 0;
     hitFlash = 0;
     respawnFlash = 0;
@@ -2967,6 +3182,7 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
   function resumeAfterAd() {
     health = healthMax;
     playerCrash = { active: false };
+    clearSpawnZone();
     targetX = 0;
     targetY = 30;
     player.position.set(0, 30, 0);
@@ -3078,10 +3294,11 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     const ud = e.userData;
     explode(e.position, ud.type === "bomber" ? 24 : 16, ud.type === "bomber" ? 1.5 : 1.05);
     spawnSmoke(e.position, ud.type === "bomber" ? 1.3 : 0.95);
-    const bounty = killer === player
-      ? (ud.type === "bomber" ? rand(48, 82) : rand(16, 34))
-      : (ud.team === "axis" ? rand(6, 14) : 0);
-    if (bounty > 0) spawnBundle(e.position.clone(), Math.round(bounty));
+    if (killer === player && ud.team === "axis") {
+      coins += 1;
+      runCoins += 1;
+      updateHud();
+    }
     makeWreck(e);
     enemies.splice(index, 1);
   }
@@ -3224,45 +3441,6 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
       if (hit) {
         scene.remove(b);
         bullets.splice(i, 1);
-      }
-    }
-  }
-
-  function updateBundles(dt, worldSpeed) {
-    for (let i = bundles.length - 1; i >= 0; i--) {
-      const b = bundles[i];
-      const ud = b.userData;
-      ud.life -= dt;
-      b.position.z += (worldSpeed * 0.28 + ud.vz) * dt;
-      b.position.x += ud.vx * dt;
-      b.position.y += ud.vy * dt;
-      ud.vx *= Math.max(0, 1 - 0.9 * dt);
-      ud.vy *= Math.max(0, 1 - 0.9 * dt);
-      ud.vz *= Math.max(0, 1 - 0.9 * dt);
-      const dx = player.position.x - b.position.x;
-      const dy = player.position.y - b.position.y;
-      const dz = -b.position.z;
-      const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
-      if (dist < 150) {
-        const pull = (1 - dist / 150) * 90;
-        b.position.x += (dx / dist) * pull * dt;
-        b.position.y += (dy / dist) * pull * dt;
-        b.position.z += (dz / dist) * pull * dt;
-      }
-      if (dist < 7.5) {
-        cash += ud.value;
-        runCash += ud.value;
-        score = runCash;
-        scene.remove(b);
-        b.material.dispose();
-        bundles.splice(i, 1);
-        updateHud();
-        continue;
-      }
-      if (ud.life <= 0 || b.position.z > 45) {
-        scene.remove(b);
-        b.material.dispose();
-        bundles.splice(i, 1);
       }
     }
   }
@@ -3457,7 +3635,6 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     updateBullets(dt);
     updateEnemyBullets(dt);
     if (playerCrash.active || state !== "playing") return;
-    updateBundles(dt, worldSpeed);
     updateFx(dt);
     updateCrashEffects(dt, worldSpeed);
     moveScenery(dt, worldSpeed);
@@ -3601,14 +3778,11 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
   window.fighterGame = {
     start: startGame,
     hit: (n = 100) => { invuln = 0; damage(n); return health; },
-    cash: (n = 100) => { cash += n; runCash += n; updateHud(); saveProgress(); },
+    coins: (n = 1) => { coins += n; runCoins += n; updateHud(); saveProgress(); },
     teleport: (x, y, z = 0) => {
       player.position.set(x, y, z);
       playerPos.copy(player.position);
       targetX = x; targetY = y;
-    },
-    dropCash: (value = 50) => {
-      spawnBundle(new THREE.Vector3(player.position.x, player.position.y, -16), value);
     },
     hills: () => terrain.map(h => ({
       x: Math.round(h.group.position.x), z: Math.round(h.group.position.z),
@@ -3619,7 +3793,12 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     spawnAxis: () => { spawnPlane("axis"); return enemies.length; },
     spawnAlly: () => { spawnPlane("allied"); return enemies.length; },
     crash: (kind = "shot") => { beginPlayerCrash(kind); return playerCrash.active; },
-    downPlane: () => { if (enemies.length) killPlaneAt(0, player); return wrecks.length; },
+    downPlane: () => {
+      let idx = enemies.findIndex(p => p.userData.team === "axis" && !p.userData.dead);
+      if (idx < 0) { spawnPlane("axis"); idx = enemies.length - 1; }
+      killPlaneAt(idx, player);
+      return wrecks.length;
+    },
     setFiring: v => { firing = !!v; return firing; },
     key: (code, down) => { keys[code] = !!down; if (state === "playing") updateHud(); return !!keys[code]; },
     planes: () => enemies.map(p => ({
@@ -3659,8 +3838,8 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
     },
     status: () => ({
       state,
-      score: runCash,
-      cash,
+      coins,
+      runCoins,
       best,
       wave,
       plane: plane.id,
@@ -3679,7 +3858,6 @@ weaponModal.addEventListener("click", ev => { if (ev.target === weaponModal) clo
       speed: els.speed.textContent,
       bullets: bullets.length,
       enemyBullets: enemyBullets.length,
-      bundles: bundles.length,
       crash: playerCrash.active,
       crashKind: playerCrash.active ? playerCrash.kind : null,
       wrecks: wrecks.length,
@@ -3729,6 +3907,8 @@ function applyI18n() {
   renderMap();
   renderFigures();
   renderWeapons();
+  closeBattle();
+  renderBattles();
   if (tlPlaying) { timelinePlayToggle(); }
 }
 
@@ -3791,7 +3971,7 @@ document.getElementById("timelinePlay").addEventListener("click", timelinePlayTo
   // Figure detail modal
 document.getElementById("modalClose").addEventListener("click", closeFigure);
 document.getElementById("figureModal").addEventListener("click", e => { if (e.target === e.currentTarget) closeFigure(); });
-document.addEventListener("keydown", e => { if (e.key === "Escape") { closeFigure(); closeWeapon(); } });
+document.addEventListener("keydown", e => { if (e.key === "Escape") { closeFigure(); closeWeapon(); closeBattle(); } });
 
 document.querySelectorAll(".war-tab").forEach(b => {
   b.addEventListener("click", () => setWarData(b.dataset.war));
