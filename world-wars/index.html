@@ -60,6 +60,21 @@
   section > h2 { font-size: 1.5rem; margin-bottom: 6px; padding-left: 14px; border-left: 4px solid var(--axis); }
   .sub { color: var(--muted); margin: 0 0 20px 14px; font-size: 0.95rem; }
 
+  /* Rich section introductions */
+  .section-intro {
+    display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(210px, .85fr);
+    gap: 18px; margin: 10px 0 22px 14px;
+  }
+  .intro-copy { max-width: 720px; }
+  .intro-lead { color: var(--text); font-size: 1.02rem; line-height: 1.75; margin: 0 0 8px; }
+  .intro-detail { color: var(--muted); font-size: 0.9rem; line-height: 1.65; margin: 0; }
+  .intro-aside { border-left: 2px solid var(--border); padding: 2px 0 2px 18px; }
+  .intro-kicker {
+    color: var(--gold); font-size: 0.72rem; font-weight: 800;
+    letter-spacing: 1.4px; text-transform: uppercase; margin-bottom: 6px;
+  }
+  .intro-aside p { color: var(--muted); font-size: 0.85rem; line-height: 1.6; margin: 0; }
+
   .btn {
     background: var(--panel); color: var(--text);
     border: 1px solid var(--border); border-radius: 8px;
@@ -314,6 +329,8 @@
     .game-hud span:nth-child(4), .game-hud span:nth-child(5) { display: none; }
     .hangar-btn { top: 30px; right: 9px; font-size: 0.68rem; padding: 4px 8px; }
     .hangar-grid { grid-template-columns: 1fr 1fr; }
+    .section-intro { grid-template-columns: 1fr; gap: 12px; }
+    .intro-aside { border-left: none; border-top: 1px solid var(--border); padding: 12px 0 0; }
     .weapons { grid-template-columns: 1fr 1fr; gap: 10px; }
     .wbody { padding: 11px 12px 12px; }
     .weapon .wdesc { display: none; }
@@ -413,19 +430,47 @@
 
   <section id="figures">
     <h2 data-i18n="figuresTitle">Key Figures</h2>
+    <div class="section-intro">
+      <div class="intro-copy">
+        <p class="intro-lead" data-i18n="figuresLead">History is shaped by people as much as by plans. This gallery follows the leaders, dictators and commanders who started the war, directed its armies, and decided how it would end.</p>
+        <p class="intro-detail" data-i18n="figuresDetail">Each card pairs a portrait with a short explanation of why the person mattered. Open a card for a fuller biography and a timeline of the choices that put them at the centre of the conflict.</p>
+      </div>
+      <aside class="intro-aside">
+        <div class="intro-kicker">At a glance</div>
+        <p data-i18n="figuresAside">Political leaders · battlefield commanders · Allied and Axis decision-makers</p>
+      </aside>
+    </div>
     <div class="figures" id="figuresList"></div>
   </section>
 
   <section id="weapons">
     <h2 data-i18n="weaponsTitle">Weapons of World War II</h2>
-    <p class="sub" data-i18n="weaponsSub">The machines and guns that shaped the battlefield, from the Blitzkrieg to the V-2.</p>
+    <div class="section-intro">
+      <div class="intro-copy">
+        <p class="intro-lead" data-i18n="weaponsLead">World War II was industrial warfare. Tanks, aircraft, submarines and rockets were no longer just equipment: they became the measure of a nation's ability to design, build and supply an army.</p>
+        <p class="intro-detail" data-i18n="weaponsDetail">The cards below trace the machines that changed how armies fought, from the Blitzkrieg tanks of 1939 to the jet aircraft and ballistic missiles of 1945. Open any card for its specifications and the story behind it.</p>
+      </div>
+      <aside class="intro-aside">
+        <div class="intro-kicker">At a glance</div>
+        <p data-i18n="weaponsAside">Land · sea · air · rockets · mass production</p>
+      </aside>
+    </div>
     <div class="weapons" id="weaponsList"></div>
     <p class="photo-credit">Photos via Wikimedia Commons, shown for educational illustration.</p>
   </section>
 
   <section id="battles">
     <h2 data-i18n="battlesTitle">Famous Battles of World War II</h2>
-    <p class="sub" data-i18n="battlesSub">Turning-point battles pinned to the same Europe map you fly over in the plane game.</p>
+    <div class="section-intro">
+      <div class="intro-copy">
+        <p class="intro-lead" data-i18n="battlesLead">Battles are where strategy met geography. These engagements decided who held a city, a coastline or a stretch of frontier, and each one changed the course of the wider war.</p>
+        <p class="intro-detail" data-i18n="battlesDetail">Every battle is pinned to the same Europe map used above and marked on the ground in the plane game. Open a card to see the date, the result and why that patch of ground mattered.</p>
+      </div>
+      <aside class="intro-aside">
+        <div class="intro-kicker">At a glance</div>
+        <p data-i18n="battlesAside">Turning points · fronts · sieges · air and naval campaigns</p>
+      </aside>
+    </div>
     <div class="weapons" id="battlesList"></div>
     <p class="photo-credit">Battle maps are drawn from the same Europe basemap used in the history section above.</p>
   </section>
@@ -524,10 +569,17 @@ const WARS = {
     mapTitle: "Territorial Control of Europe",
     mapSub: "Drag or play through 1939–1945 to see how Axis and Allied control, plus key battles, evolved.",
     timelineTitle: "Timeline of Events", figuresTitle: "Key Figures", autoPlay: "Autoplay",
+    figuresLead: "History is shaped by people as much as by plans. This gallery follows the leaders, dictators and commanders who started the war, directed its armies, and decided how it would end.",
+    figuresDetail: "Each card pairs a portrait with a short explanation of why the person mattered. Open a card for a fuller biography and a timeline of the choices that put them at the centre of the conflict.",
+    figuresAside: "Political leaders · battlefield commanders · Allied and Axis decision-makers",
     weaponsTitle: "Weapons of World War II",
-    weaponsSub: "The machines and guns that shaped the battlefield, from the Blitzkrieg to the V-2.",
+    weaponsLead: "World War II was industrial warfare. Tanks, aircraft, submarines and rockets were no longer just equipment: they became the measure of a nation's ability to design, build and supply an army.",
+    weaponsDetail: "The cards below trace the machines that changed how armies fought, from the Blitzkrieg tanks of 1939 to the jet aircraft and ballistic missiles of 1945. Open any card for its specifications and the story behind it.",
+    weaponsAside: "Land · sea · air · rockets · mass production",
     battlesTitle: "Famous Battles of World War II",
-    battlesSub: "Turning-point battles pinned to the same Europe map you fly over in the plane game.",
+    battlesLead: "Battles are where strategy met geography. These engagements decided who held a city, a coastline or a stretch of frontier, and each one changed the course of the wider war.",
+    battlesDetail: "Every battle is pinned to the same Europe map used above and marked on the ground in the plane game. Open a card to see the date, the result and why that patch of ground mattered.",
+    battlesAside: "Turning points · fronts · sieges · air and naval campaigns",
     fighterTitle: "Plane Wars: Fly a WWII Fighter",
     fighterSub: "Fly over wartime Europe, where Allied and Axis squadrons dogfight above famous battle sites marked on the map. Steer with the mouse, hold left mouse button (or touch) to fire and hold Space to boost. Watch for crashes and burning wrecks, earn one coin for every Axis plane you shoot down, upgrade in the hangar, and watch out for hills — Esc pauses.",
     footer: "Data compiled from public historical sources for educational purposes; some figures are estimates.",
@@ -944,10 +996,17 @@ const WARS = {
     mapTitle: "Territorial Control of Europe",
     mapSub: "Drag or play through 1914–1918 to see how the Central Powers and Entente lines, plus key battles, moved.",
     timelineTitle: "Timeline of Events", figuresTitle: "Key Figures", autoPlay: "Autoplay",
+    figuresLead: "The First World War was fought by empires, but directed by individuals. This gallery introduces the monarchs, premiers and generals whose decisions carried Europe from a Balkan crisis into four years of total war.",
+    figuresDetail: "Each card pairs a portrait with a concise account of the person's role. Open a card for a fuller biography and the key moments that shaped their wartime reputation.",
+    figuresAside: "Emperors · prime ministers · generals · Allied and Central Powers",
     weaponsTitle: "Weapons of World War I",
-    weaponsSub: "The guns, tanks, aircraft and submarines that defined the first industrial war.",
+    weaponsLead: "World War I forced industry into the trenches. Machine guns, artillery, tanks, aircraft and submarines turned the conflict into the first industrial war, where production mattered as much as courage.",
+    weaponsDetail: "These cards show the weapons that changed the battlefield, from the first tanks and fighter aircraft to the U-boats that challenged Britain's sea supply lines. Open a card for specifications and context.",
+    weaponsAside: "Trenches · artillery · tanks · aircraft · submarines",
     battlesTitle: "Famous Battles of World War I",
-    battlesSub: "The battles that broke the stalemate, from the Marne to the Hundred Days.",
+    battlesLead: "The Western Front became famous for stalemate, but the war was decided in many places at once. These battles show how offensives, sieges and collapses redrew the map year by year.",
+    battlesDetail: "Each engagement is plotted on the same Europe map used above and carried into the timeline. Open a card for its date, outcome and the reason historians still study it.",
+    battlesAside: "Western Front · Eastern Front · Italy · the seas · the final offensives",
     fighterTitle: "", fighterSub: "",
     footer: "Data compiled from public historical sources for educational purposes; some figures are estimates.",
     statDuration: "Duration", statCountries: "Belligerent nations",
@@ -3017,10 +3076,12 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
   }
 
   function clearSpawnZone() {
+    // Hills travel toward the player at roughly 70 units/second. Clear a lane
+    // far enough ahead that none can enter the spawn point after the shield ends.
     for (const h of terrain) {
-      if (Math.abs(h.z) < h.radius + 80 && Math.abs(h.x) < h.radius + 70) {
-        h.x = (h.x < 0 ? -1 : 1) * rand(150, 380);
-        h.z = rand(-1050, -260);
+      if (h.z > -560 && h.z < h.radius + 120 && Math.abs(h.x) < h.radius + 150) {
+        h.x = (h.x < 0 ? -1 : 1) * rand(190, 420);
+        h.z = rand(-1100, -650);
         h.group.position.set(h.x, 0, h.z);
       }
     }
@@ -3139,7 +3200,8 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
     player.visible = false;
     wrap.classList.remove("crash");
     if (health <= 0) { die(); return; }
-    // A survivable terrain strike pulls out above the hills and resumes the fight.
+    // A survivable terrain strike pulls out above a freshly cleared lane.
+    clearSpawnZone();
     targetX = 0;
     targetY = 44;
     player.position.set(0, 44, 0);
