@@ -4814,7 +4814,7 @@ var pr = projectTrack(c.x, c.z, c.i);
     </p>
     <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
       <button id="closeTutorial">CLOSE</button>
-      <button id="toggleRaceLineBtn" class="ghost">RACING LINE ARROWS: ON</button>
+      <button id="toggleRaceLineBtn" class="ghost">RACING LINE + BRAKE BOARDS: ON</button>
     </div>
   </div>
 </div>
@@ -4828,10 +4828,10 @@ var pr = projectTrack(c.x, c.z, c.i);
     if (ct) ct.onclick = function() { if (tut) tut.classList.add('hidden'); };
     var rtl = document.getElementById('toggleRaceLineBtn');
     if (rtl) {
-      rtl.textContent = 'RACING LINE ARROWS: ON';
+      rtl.textContent = 'RACING LINE + BRAKE BOARDS: ON';
       rtl.onclick = function () {
         var on = window.toggleRaceLine ? window.toggleRaceLine() : false;
-        rtl.textContent = 'RACING LINE ARROWS: ' + (on ? 'ON' : 'OFF');
+        rtl.textContent = 'RACING LINE + BRAKE BOARDS: ' + (on ? 'ON' : 'OFF');
       };
     }
   }, 200);
