@@ -107,17 +107,21 @@
   #boostTag.on{opacity:1}
   #boostBox.using #boostTrack{box-shadow:0 0 12px rgba(55,201,255,.95)}
   #boostBox.using #boostPct{color:#37c9ff;text-shadow:0 0 8px rgba(55,201,255,.7)}
-  /* bottom-right tyre condition gauge */
-  #tyreStatus{position:fixed;right:14px;bottom:32px;width:190px;padding:9px 11px;z-index:20;pointer-events:none;
-    border:1px solid rgba(255,255,255,.18);border-radius:10px;background:rgba(10,16,28,.86);color:#fff}
-  #tyreStatus .tsHead{display:flex;justify-content:space-between;align-items:baseline;font-size:10px;letter-spacing:.16em;opacity:.75}
-  #tyreStatus .tsComp{font-size:13px;font-weight:800;letter-spacing:.08em;opacity:1}
-  #tyreStatus .tsCond{font-size:23px;font-weight:800;line-height:1.15;margin-top:2px}
-  #tyreStatus .tsBar{height:7px;border-radius:5px;background:rgba(255,255,255,.16);overflow:hidden;margin-top:6px}
-  #tyreStatus .tsFill{height:100%;width:100%;border-radius:5px;transition:width .2s}
-  #tyreStatus .tsWarn{margin-top:6px;font-size:10px;letter-spacing:.1em;color:#ff9a5c;display:none}
-  #tyreStatus.warn .tsWarn{display:block}
-  #tyreStatus.warn{border-color:rgba(255,120,60,.6)}
+  /* bottom-right status dock: car damage + wheel/tyre condition */
+  #statusDock{position:fixed;right:14px;bottom:32px;z-index:20;pointer-events:none;display:flex;gap:8px}
+  .sdCell{display:flex;align-items:center;gap:9px;width:198px;padding:8px 10px;color:#fff;
+    border:1px solid rgba(255,255,255,.18);border-radius:10px;background:rgba(10,16,28,.88);
+    box-shadow:0 3px 14px rgba(0,0,0,.35);transition:border-color .2s}
+  .sdCell.crit{border-color:rgba(255,70,60,.85)}
+  .sdIcon{width:40px;height:30px;flex:0 0 40px;color:#7fe3ff;filter:drop-shadow(0 0 5px rgba(90,200,255,.45))}
+  .sdIcon.wheel{width:30px;height:30px;flex-basis:30px;color:#ffd75e}
+  .sdInfo{flex:1;min-width:0}
+  .sdHead{display:flex;justify-content:space-between;align-items:baseline;font-size:9px;letter-spacing:.12em;opacity:.72}
+  .sdHead b{font-size:12px;letter-spacing:.02em;opacity:1}
+  .sdBar{height:6px;border-radius:4px;background:rgba(255,255,255,.16);overflow:hidden;margin-top:5px}
+  .sdFill{height:100%;width:100%;border-radius:4px;transition:width .2s,background .2s}
+  .sdNote{margin-top:4px;font-size:9px;letter-spacing:.08em;color:#ff9a5c;display:none}
+  .sdCell.crit .sdNote{display:block}
   
 #lights{position:fixed;left:50%;top:14%;transform:translateX(-50%);display:flex;gap:14px;z-index:15;background:rgba(20,20,25,.9);padding:14px 22px;border-radius:12px;border:2px solid rgba(255,255,255,.18);pointer-events:none}
 #lights.hidden{display:none!important}
@@ -164,17 +168,37 @@
   <div class="stat" id="boostBox"><b id="boostPct">35%</b><span>NITRO</span>
     <div id="boostTrack"><div id="boostFill" style="width:35%"></div></div>
     <div id="driftTag">DRIFT</div><div id="boostTag">BOOST</div></div>
-  <div id="tyreStatus">
-    <div class="tsHead"><span>TYRE CONDITION</span><span class="tsComp" id="tsCompound">M</span></div>
-    <div class="tsCond" id="tsCond">100%</div>
-    <div class="tsBar"><div class="tsFill" id="tsFill"></div></div>
-    <div class="tsWarn">TYRES CRITICAL — PIT NOW</div>
+  <div id="statusDock">
+    <div class="sdCell" id="damageCell">
+      <svg class="sdIcon" viewBox="0 0 72 36" aria-hidden="true">
+        <path d="M2 20 L14 18 L24 9 L45 9 L54 18 L68 19 L70 25 L2 25 Z" fill="currentColor"/>
+        <circle cx="19" cy="26" r="6.5" fill="#0b1020" stroke="currentColor" stroke-width="2.5"/>
+        <circle cx="53" cy="26" r="6.5" fill="#0b1020" stroke="currentColor" stroke-width="2.5"/>
+      </svg>
+      <div class="sdInfo">
+        <div class="sdHead"><span>CAR DAMAGE</span><b id="sdDamagePct">0%</b></div>
+        <div class="sdBar"><div class="sdFill" id="sdDamageFill" style="width:0%;background:#5affc0"></div></div>
+        <div class="sdNote">WRECK IMMINENT</div>
+      </div>
+    </div>
+    <div class="sdCell" id="tyreCell">
+      <svg class="sdIcon wheel" viewBox="0 0 36 36" aria-hidden="true">
+        <circle cx="18" cy="18" r="14" fill="#1b1f27" stroke="currentColor" stroke-width="4"/>
+        <circle cx="18" cy="18" r="6" fill="currentColor"/>
+        <path d="M18 4v8M18 24v8M4 18h8M24 18h8M8 8l6 6M22 22l6 6M28 8l-6 6M14 22l-6 6" stroke="currentColor" stroke-width="2"/>
+      </svg>
+      <div class="sdInfo">
+        <div class="sdHead"><span id="sdTyreComp">M · MEDIUM</span><b id="sdTyrePct">100%</b></div>
+        <div class="sdBar"><div class="sdFill" id="sdTyreFill" style="width:100%;background:#ffd60a"></div></div>
+        <div class="sdNote">PIT NOW</div>
+      </div>
+    </div>
   </div>
 </div>
 <div id="standings" class="hidden"></div>
 <div id="banner" class="hidden"></div>
 <div id="lights" class="hidden"><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div></div>
-  <div id="verTag">v2.29</div>
+  <div id="verTag">v2.30</div>
   <button id="achBtn" class="ghost">ACHIEVEMENTS</button>
   <div id="achPanel"><b style="letter-spacing:.12em">ACHIEVEMENTS</b><div id="achList" style="margin-top:8px"></div></div>
   <div id="pitMsg"></div>
@@ -233,7 +257,20 @@
 
 <div id="pause" class="overlay hidden">
   <h1>PAUSED</h1>
-  <button id="resumeBtn">RESUME</button>
+  <div class="btnRow">
+    <button id="resumeBtn">RESUME</button>
+    <button id="pauseRestartBtn" class="ghost">RESTART</button>
+    <button id="pauseLobbyBtn" class="ghost">BACK TO LOBBY</button>
+  </div>
+</div>
+
+<div id="gameOver" class="overlay hidden" style="z-index:40">
+  <h1 style="color:#ff5a4d">CAR WRECKED — RACE OVER</h1>
+  <p class="pitNote" style="max-width:460px;line-height:1.6;opacity:.85">Damage reached 100%. The car is retired and out of the race.</p>
+  <div class="btnRow">
+    <button id="gameOverRestartBtn">RESTART</button>
+    <button id="gameOverLobbyBtn" class="ghost">BACK TO LOBBY</button>
+  </div>
 </div>
 
 <div id="results" class="overlay hidden">
@@ -351,6 +388,17 @@
   var RAIL_LAT = GRAVEL_LAT + 0.8;           // guardrail (m)
   var TOTAL_LAPS = 2;
   var CAR_R = 2.3;      // collision radius (m)
+  /* Half-extent of a car along a horizontal direction (nx,nz). The body is far
+   * longer than it is wide: the nose/splitter reach 2.9 m ahead, the tail 2.2 m
+   * behind and each side about 1.25 m. One round radius made nose-to-tail cars
+   * overlap visibly while side-by-side cars sat too far apart, so contacts and
+   * barrier clearance now use this oriented-box footprint instead. */
+  function carExtent(c, nx, nz) {
+    var fx = Math.sin(c.yaw), fz = Math.cos(c.yaw);
+    var along = nx * fx + nz * fz;
+    var side = nx * -fz + nz * fx;
+    return Math.abs(along) * (along >= 0 ? 2.95 : 2.25) + Math.abs(side) * 1.25;
+  }
   var GRAVEL_ZONES = [];
   // true when (s, |lat|) lies in one of this circuit's gravel traps
   function inGravel(s, alat) {
@@ -2207,6 +2255,7 @@
   var menu = document.getElementById('menu');
   var pauseScreen = document.getElementById('pause');
   var resultsScreen = document.getElementById('results');
+  var gameOverScreen = document.getElementById('gameOver');
   var lightsEl = document.getElementById('lights');
   var lightEls = lightsEl ? Array.prototype.slice.call(lightsEl.querySelectorAll('.light')) : [];
   var banner = document.getElementById('banner');
@@ -2409,6 +2458,8 @@
     placeOnGrid();
     pitAuto = false; pitPhase = 0; pitServiceTime = 0;
     var pm = document.getElementById('pitMenu'); if (pm) pm.classList.add('hidden');
+    gameOverScreen.classList.add('hidden');
+    pauseScreen.classList.add('hidden');
     menu.classList.add('hidden');
     hud.classList.remove('hidden');
     standingsEl.classList.remove('hidden');
@@ -2430,24 +2481,38 @@
     banner.classList.add('hidden');
   });
   document.getElementById('resumeBtn').addEventListener('click', togglePause);
-  document.getElementById('againBtn').addEventListener('click', function () {
+  // Restart and Back-to-Lobby are available from the results, pause and wreck
+  // screens, so keep them in one place instead of three copies.
+  function restartRace() {
     if (netRace) { netRematch(); return; }
+    gameOverScreen.classList.add('hidden');
     resultsScreen.classList.add('hidden');
+    pauseScreen.classList.add('hidden');
+    paused = false;
     resetRace();
-  });
-  document.getElementById('lobbyBtn').addEventListener('click', function () {
+  }
+  function backToLobby() {
     if (netRace) { netReturnToRoom(); return; }
     // return to the start menu (lobby): put the field back on the grid, drop the
-    // HUD and results, and let the menu's slow orbit camera take over again
+    // HUD and every overlay, and let the menu's slow orbit camera take over again
+    gameOverScreen.classList.add('hidden');
     resultsScreen.classList.add('hidden');
+    pauseScreen.classList.add('hidden');
     resetRace();
     started = false;
     raceOver = false;
+    paused = false;
     banner.classList.add('hidden');
     menu.classList.remove('hidden');
     hud.classList.add('hidden');
     standingsEl.classList.add('hidden');
-  });
+  }
+  document.getElementById('againBtn').addEventListener('click', restartRace);
+  document.getElementById('lobbyBtn').addEventListener('click', backToLobby);
+  document.getElementById('pauseRestartBtn').addEventListener('click', restartRace);
+  document.getElementById('pauseLobbyBtn').addEventListener('click', backToLobby);
+  document.getElementById('gameOverRestartBtn').addEventListener('click', restartRace);
+  document.getElementById('gameOverLobbyBtn').addEventListener('click', backToLobby);
 
   function togglePause() {
     paused = !paused;
@@ -2502,6 +2567,7 @@
     // give every car a random grid slot and set up their initial state
     function resetRace() {
       raceOver = false;
+      if (gameOverScreen) gameOverScreen.classList.add('hidden');
       countdown = 0;
       lightsPhase = 0;
       lightsTimer = 0;
@@ -2523,7 +2589,6 @@
         c.retired = false;
         c.exploded = false;
         c.wrecked = false;
-      c.wrecked = false;
         c.inPits = false;
       c.aiPit = 0; c.aiPitT = 0; c.pitSpeedWarned = false;
         c.pitPhase = 0;
@@ -2709,7 +2774,10 @@
   function collideSolids(c) {
     for (var i = 0; i < solids.length; i++) {
       var o = solids[i];
-      var reach = o.hw + o.hd + CAR_R + 1;
+      // Use the car's full nose reach, not the old round radius, so a sideways
+      // car cannot push its nose through a grandstand / tree / gantry corner.
+      var SOLID_R = 2.95;
+      var reach = o.hw + o.hd + SOLID_R + 1;
       var ddx = c.x - o.x, ddz = c.z - o.z;
       if (ddx * ddx + ddz * ddz > reach * reach) continue;
 
@@ -2723,17 +2791,17 @@
       var qz = lz < -o.hd ? -o.hd : (lz > o.hd ? o.hd : lz);
       var ex = lx - qx, ez = lz - qz;
       var d2 = ex * ex + ez * ez;
-      if (d2 >= CAR_R * CAR_R) continue;
+      if (d2 >= SOLID_R * SOLID_R) continue;
 
       var nx, nz, pen, deep = d2 <= 1e-9;
       if (!deep) {
         var d = Math.sqrt(d2);
-        nx = ex / d; nz = ez / d; pen = CAR_R - d;
+        nx = ex / d; nz = ez / d; pen = SOLID_R - d;
       } else {
         // dead centre is inside the box: leave through the nearest face
         var ox = o.hw - Math.abs(lx), oz = o.hd - Math.abs(lz);
-        if (ox < oz) { nx = lx < 0 ? -1 : 1; nz = 0; pen = CAR_R + ox; }
-        else { nx = 0; nz = lz < 0 ? -1 : 1; pen = CAR_R + oz; }
+        if (ox < oz) { nx = lx < 0 ? -1 : 1; nz = 0; pen = SOLID_R + ox; }
+        else { nx = 0; nz = lz < 0 ? -1 : 1; pen = SOLID_R + oz; }
       }
 
       // local normal -> world
@@ -2869,12 +2937,17 @@ var pr = projectTrack(c.x, c.z, c.i);
      * its velocity is reflected off the wall: a graze keeps most of its speed, a
      * square hit loses almost all of it. The nose is then eased down the barrier
      * so a square hit turns into a slide instead of pinning the car in place.  */
-    // Keep the whole car body inside the rail: CAR_R is 2.3 m, so a 1.15 m
-    // margin let the nose and wheels visibly pass through the barrier.
-    var lim = RAIL_LAT - CAR_R - 0.15;
+    // Keep the WHOLE car inside the rail, including the nose while the car is
+    // sideways in a drift. A fixed radius let a rotated nose poke through the
+    // barrier, so clearance now follows the car's real lateral half-extent.
+    var NV = normalAt(c.s);
+    var TV = tangentAt(c.s);
+    var hx0 = Math.sin(c.yaw), hz0 = Math.cos(c.yaw);
+    var latReach = Math.abs(hx0 * NV.x + hz0 * NV.z) * 2.95
+                 + Math.abs(hx0 * TV.x + hz0 * TV.z) * 1.25;
+    var lim = RAIL_LAT - Math.max(CAR_R, latReach) - 0.25;
     if (c.lat > lim || c.lat < -lim) {
       var side = c.lat > 0 ? 1 : -1;
-      var NV = normalAt(c.s);
       var push = Math.abs(c.lat) - lim;
       c.x -= NV.x * push * side; c.z -= NV.z * push * side;
       c.lat = side * lim;
@@ -3002,7 +3075,6 @@ var pr = projectTrack(c.x, c.z, c.i);
    *  exchange an impulse along the contact normal, so a rear-end shunt
    *  costs the car behind most of its speed.                                */
   function collideCars() {
-    var MIN = CAR_R * 2 * 0.92; // slightly forgiving to avoid phantom hits when visually separated
     for (var i = 0; i < cars.length; i++) {
       var a = cars[i];
       if (a.hidden || a.retired) continue;
@@ -3011,8 +3083,6 @@ var pr = projectTrack(c.x, c.z, c.i);
         if (b.hidden || b.retired) continue;
         var dx = b.x - a.x, dz = b.z - a.z;
         var d = Math.hypot(dx, dz);
-        // Only collide if there's actual overlap
-        if (d >= MIN) continue;
         var fa = yawToForward(a.yaw);
 
         // cars at exactly the same spot have no direction to push each other
@@ -3021,9 +3091,15 @@ var pr = projectTrack(c.x, c.z, c.i);
         if (d > 1e-6) { nx = dx / d; nz = dz / d; }
         else { nx = -fa.z; nz = fa.x; d = 0; }
 
+        // How close the two bodies can legally get depends on their angle:
+        // nose-to-tail needs ~5.5 m, side-by-side only ~2.6 m. Using one round
+        // radius was the cause of cars visibly passing through each other.
+        var need = carExtent(a, nx, nz) + carExtent(b, -nx, -nz) + 0.12;
+        if (d >= need) continue;
+
         // separate the pair fully (plus a hair) so they never sit overlapped and
         // grind against each other
-        var overlap = (MIN - d) * 0.5 + 0.01;
+        var overlap = (need - d) * 0.5 + 0.01;
         if (overlap < 0) overlap = 0.01;
         a.x -= nx * overlap; a.z -= nz * overlap;
         b.x += nx * overlap; b.z += nz * overlap;
@@ -3041,7 +3117,7 @@ var pr = projectTrack(c.x, c.z, c.i);
           var impactForce = Math.abs(vn);
           if (a.damage !== undefined) a.damage = Math.min(100, a.damage + impactForce * 0.9);
           if (b.damage !== undefined) b.damage = Math.min(100, b.damage + impactForce * 0.9);
-          var crush = 0.4 * (1 - d / MIN);
+          var crush = 0.4 * (1 - d / need);
           a.vx *= (1 - crush); a.vz *= (1 - crush);
           b.vx *= (1 - crush); b.vz *= (1 - crush);
         }
@@ -3764,13 +3840,18 @@ var pr = projectTrack(c.x, c.z, c.i);
   }
   // push only the local car out of remote cars (remotes own their own position)
   function netResolveContacts() {
-    var MIN = CAR_R * 2;
+    if (!player) return;
     for (var i = 0; i < cars.length; i++) {
       var c = cars[i];
       if (!c.remote || c.hidden) continue;
       var dx = player.x - c.x, dz = player.z - c.z, d = Math.hypot(dx, dz);
-      if (d >= MIN || d < 1e-6) continue;
-      var nx = dx / d, nz = dz / d, push = (MIN - d);
+      var nx, nz;
+      if (d > 1e-6) { nx = dx / d; nz = dz / d; }
+      else { nx = Math.sin(player.yaw); nz = Math.cos(player.yaw); d = 0; }
+      // n points from the remote car to the player; use both real footprints.
+      var need = carExtent(player, -nx, -nz) + carExtent(c, nx, nz) + 0.12;
+      if (d >= need) continue;
+      var push = need - d;
       player.x += nx * push; player.z += nz * push;
       player.i = -1; player.contact = 0.2;
       var vn = player.vx * nx + player.vz * nz;
@@ -4074,9 +4155,12 @@ var pr = projectTrack(c.x, c.z, c.i);
         if (smokeAcc > 0.04) {
           smokeAcc = 0;
           cars.forEach(function(c){
-            if (!c || c.hidden || c.retired) return;
+            if (!c || c.hidden) return;
+            // Wrecked cars are also retired, so they need their own branch here
+            // or the black smoke would never be emitted.
+            if (c.wrecked) { if (Math.random() < 0.45) spawnSmoke(c, true); return; }
+            if (c.retired) return;
             if (c.boosting || c.drifting) spawnSmoke(c);
-            if (c.wrecked && Math.random() < 0.45) spawnSmoke(c, true);
           });
         }
         updateSmoke(dt);
@@ -4105,20 +4189,25 @@ var pr = projectTrack(c.x, c.z, c.i);
         document.getElementById('driftTag').classList.toggle('on', player.drifting);
         if (document.getElementById('damagePct')) document.getElementById('damagePct').textContent = Math.round(player.damage || 0) + '%';
         if (document.getElementById('tyreWear')) document.getElementById('tyreWear').textContent = Math.round((player.tyreWear || 0) * 100) + '%';
-        // Bottom-right tyre condition gauge: compound + remaining life.
+        // Bottom-right dock: car damage gauge + wheel/tyre condition gauge.
         (function () {
-          var ts = document.getElementById('tyreStatus');
-          if (!ts) return;
+          var dmg = Math.max(0, Math.min(100, Math.round(player.damage || 0)));
+          document.getElementById('sdDamagePct').textContent = dmg + '%';
+          var df = document.getElementById('sdDamageFill');
+          df.style.width = dmg + '%';
+          df.style.background = dmg >= 80 ? '#ff3b30' : (dmg >= 45 ? '#ff9a3c' : '#5affc0');
+          document.getElementById('damageCell').classList.toggle('crit', dmg >= 80);
+
           var ty = TYRES[player.tyre || 1] || TYRES[1];
           var cond = Math.max(0, Math.round((1 - (player.tyreWear || 0)) * 100));
           var col = '#' + new THREE.Color(ty.color).getHexString();
-          document.getElementById('tsCompound').textContent = ty.short + ' · ' + ty.label;
-          document.getElementById('tsCompound').style.color = col;
-          document.getElementById('tsCond').textContent = cond + '%';
-          var fill = document.getElementById('tsFill');
-          fill.style.width = cond + '%';
-          fill.style.background = cond > 45 ? col : (cond > 20 ? '#ffb43c' : '#ff4d4d');
-          ts.classList.toggle('warn', cond <= 20);
+          document.getElementById('sdTyreComp').textContent = ty.short + ' · ' + ty.label;
+          document.getElementById('sdTyreComp').style.color = col;
+          document.getElementById('sdTyrePct').textContent = cond + '%';
+          var tf = document.getElementById('sdTyreFill');
+          tf.style.width = cond + '%';
+          tf.style.background = cond > 45 ? col : (cond > 20 ? '#ffb43c' : '#ff4d4d');
+          document.getElementById('tyreCell').classList.toggle('crit', cond <= 20);
         })();
       }
     }
@@ -4504,7 +4593,20 @@ var pr = projectTrack(c.x, c.z, c.i);
       c.tyreWear = Math.min(1, (c.tyreWear||0) + sp * 0.000004 * dt * (TYRES[c.tyre||1]?TYRES[c.tyre||1].wear:1));
       if (c.damage >= 100 && !c.retired) {
         c.retired = true; c.wrecked = true; c.speed = 0; c.vx = 0; c.vz = 0;
-        if (c === player) flash('CAR WRECKED — RETIRED FROM THE RACE');
+        if (c === player) {
+          // 100% damage ends the player's race outright: freeze the field and
+          // offer RESTART / BACK TO LOBBY instead of the normal results table.
+          flash('CAR WRECKED — RACE OVER');
+          raceOver = true;
+          paused = false;
+          pauseScreen.classList.add('hidden');
+          resultsScreen.classList.add('hidden');
+          var pmenu = document.getElementById('pitMenu');
+          if (pmenu) pmenu.classList.add('hidden');
+          var pmsg = document.getElementById('pitMsg');
+          if (pmsg) pmsg.style.display = 'none';
+          gameOverScreen.classList.remove('hidden');
+        }
       }
     });
     if (player && player.boosting) { if(!_achNitro){ _achNitro=true; unlockAch('nitro_user'); } }
