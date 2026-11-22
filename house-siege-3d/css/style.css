@@ -233,7 +233,7 @@ b{font-weight:700}
 .v-sub{margin-top:7px;font-size:9px;letter-spacing:.14em;color:#93a0b4;text-shadow:0 1px 3px #000}
 
 /* gun box */
-.gunbox{position:absolute;right:0;bottom:0;text-align:right;min-width:200px;padding:14px 18px 16px 16px;
+.gunbox{text-align:right;min-width:200px;padding:14px 18px 16px 16px;
   background:linear-gradient(270deg,rgba(5,8,13,.82),rgba(5,8,13,.35) 62%,transparent)}
 .g-name{font-size:11px;letter-spacing:.18em;color:#cfd8e6;font-weight:700;text-shadow:0 1px 3px #000}
 .g-ammo{font-size:34px;font-weight:900;line-height:1;font-variant-numeric:tabular-nums;margin-top:2px;
@@ -245,7 +245,7 @@ b{font-weight:700}
 .g-hint.warn{color:var(--gold);animation:pulse .8s infinite}
 
 /* bag / loadout */
-#bag{position:absolute;right:0;bottom:118px;width:214px;padding:9px 12px 10px;text-align:left;
+#bag{width:214px;padding:9px 12px 10px;text-align:left;margin-bottom:18px;
   background:linear-gradient(270deg,rgba(5,8,13,.8),rgba(5,8,13,.34) 70%,transparent);
   border-top:1px solid rgba(255,255,255,.06)}
 .bag-head{font-size:9px;letter-spacing:.24em;color:#65718a;font-weight:700;margin-bottom:6px}
@@ -280,20 +280,19 @@ b{font-weight:700}
 #chargeLabel{position:absolute;left:50%;top:8px;transform:translateX(-50%);font-size:8px;
   letter-spacing:.18em;color:#ffd98a;white-space:nowrap;font-weight:700}
 
-/* prompt */
-/* the crate in reach: name and numbers, sitting on top of the take prompt so
-   you read the weapon and the decision in one glance */
-/* The loot card sits directly above the prompt, and the two of them are
-   stacked a fixed 112 px below the middle rather than at a percentage of the
-   height: at 60% the card's top edge landed 18 px inside the crosshair box and
-   hid its lower brackets, and a percentage would creep back over the reticle on
-   a short window. 112 px = 21 (half the reticle) + 9 + 68 (the card) + 9 + a
-   little air, so the reticle stays whole at any height. */
-#lootCard{position:absolute;left:50%;top:calc(50% + 112px);transform:translate(-50%,calc(-100% - 9px));
-  min-width:224px;padding:8px 13px 9px;background:rgba(8,11,17,.88);
-  border:1px solid rgba(255,196,77,.26);border-radius:2px;
-  opacity:0;transition:opacity .15s}
-#lootCard.show{opacity:1}
+/* bottom-right HUD: weapon data, bag and held gun share one right-anchored
+   column, so the crate card can never cover the ammo or the bag whatever the
+   window height or how many weapons are carried. */
+.rstack{position:absolute;right:0;bottom:0;display:flex;flex-direction:column;
+  align-items:flex-end;gap:8px;pointer-events:none}
+
+/* the crate in reach: name and numbers, pinned to the right bottom above the
+   bag. Hidden with display (not just opacity) so it takes no stack space while
+   nobody is near a weapon crate. */
+#lootCard{display:none;min-width:232px;padding:8px 13px 9px;background:rgba(8,11,17,.9);
+  border:1px solid rgba(255,196,77,.3);border-radius:2px}
+#lootCard.show{display:block;animation:lcIn .16s ease-out}
+@keyframes lcIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
 .lc-head{display:flex;justify-content:space-between;align-items:baseline;gap:16px}
 .lc-name{font-size:12px;font-weight:800;letter-spacing:.06em;color:#fff;white-space:nowrap}
 .lc-tag{font-size:7px;letter-spacing:.22em;color:#ffc44d}
