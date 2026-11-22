@@ -178,9 +178,10 @@
   .land.war{stroke:#7a2a2a;stroke-width:1.6}
   .sea{stroke:#243449;stroke-width:.7;stroke-dasharray:2 2}
   .seaZone{stroke:#3b7b99;stroke-width:1.2;stroke-dasharray:5 4;opacity:.94}
+   .seaZone.held{stroke:var(--seaOwner,#3b7b99);stroke-width:1.9;stroke-opacity:.92}
   .seaZone.sel{stroke:#a8ecff;stroke-width:2.4}
   .seaZone.tgt{stroke:#7fe08a;stroke-width:2.2;stroke-dasharray:5 3}
-  .seaLbl{font:italic 700 10.5px "Segoe UI",sans-serif;fill:#9bd4ee;paint-order:stroke;stroke:#06121c;stroke-width:3.2px;text-anchor:middle;pointer-events:none;user-select:none;letter-spacing:.7px}
+  .seaLbl{font:italic 700 11px "Segoe UI",sans-serif;fill:#b6e6ff;paint-order:stroke;stroke:#06121c;stroke-width:3.4px;text-anchor:middle;pointer-events:none;user-select:none;letter-spacing:.7px}
   .resBadge{pointer-events:auto;cursor:pointer}
   .resBadge rect{stroke:#e2b13c;stroke-width:1.1;rx:3}
   .resBadge.food rect{stroke:#7fe08a}
@@ -1076,8 +1077,8 @@ var EU_SEA = [
                   [41,68.2],[35,67.6],[29,66.6],[23,66.2],[18,66.8]]),
    nb:['norway','ussr','norwsea']},
   {id:'norwsea', name:'Norwegian Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[1,64.2],
-   polys:seaPoly([[-13,58.9],[-12,62],[-9,64],[-5,66],[0,67.6],[7,68.2],[13,68.4],[16,68.4],
-                  [16,67],[13,65.8],[10,64],[7,62],[8.5,58.9],[3,58.2],[-3,57.2],[-8,57.5]]),
+   polys:seaPoly([[-10,58.5],[-12,62],[-9,64],[-5,66],[0,67.6],[7,68.2],[13,68.4],[16,68.4],
+                  [16,67],[13,65.8],[10,64],[7,62],[8.5,58.9],[3,58.2],[-3,57.2],[-8,57]]),
    nb:['uk','norway','iceland','nsea','barents','atlantic','kattegat']},
   {id:'nsea', name:'North Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[3.4,55.1],
    polys:seaPoly([[-1,51],[0.5,52.4],[1.5,54],[3,56],[5.5,58],[8.5,58.9],[8,57.5],[7.4,56.6],
@@ -1096,9 +1097,9 @@ var EU_SEA = [
    polys:seaPoly([[17,60],[18.5,60.5],[20,61.5],[21,63],[21.5,64.5],[22,65.7],[24,65.5],
                   [25.5,64],[24.5,62.5],[23,61],[21,60]]),
    nb:['sweden','finland','baltic']},
-  {id:'gofin', name:'Gulf of Finland', flag:'&#127754;', color:'#16394f', sea:true, lab:[26,59.8],
-   polys:seaPoly([[21,59.2],[22.5,59.4],[24,59.6],[26,59.8],[28,59.9],[30,60.5],
-                  [29,60.2],[26,60.1],[23,60],[21,59.6]]),
+  {id:'gofin', name:'Gulf of Finland', flag:'&#127754;', color:'#16394f', sea:true, lab:[26,60.0],
+   polys:seaPoly([[21,59.4],[23,59.5],[25,59.6],[27,59.7],[29,59.9],[30.5,60.2],
+                  [29,60.6],[27,60.4],[25,60.2],[23,60],[21,59.8]]),
    nb:['finland','estonia','ussr','baltic']},
   {id:'irishsea', name:'Irish Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[-5.4,52.6],
    polys:seaPoly([[-6,55.5],[-5.5,54.5],[-5.2,53.5],[-5.4,52.6],[-5,51.8],[-4.5,51.3],
@@ -1109,8 +1110,8 @@ var EU_SEA = [
                   [0,49.2],[-2,48.6],[-4,48.5],[-6,49]]),
    nb:['uk','france','belgium','netherlands','nsea','atlantic','irishsea','biscay']},
   {id:'biscay', name:'Bay of Biscay', flag:'&#127754;', color:'#16394f', sea:true, lab:[-5.5,45.8],
-   polys:seaPoly([[-10.5,48],[-8,48.3],[-5,48],[-2.5,47.2],[-1.8,45.5],[-3,43.8],
-                  [-5,43.4],[-8,43.6],[-10.5,43.4],[-9.5,45]]),
+   polys:seaPoly([[-6,48],[-3,47.5],[-1.8,45.5],[-3,43.8],
+                  [-5,43.4],[-8,43.6],[-10.5,43.4],[-9.5,46]]),
    nb:['france','spain','atlantic','chan','iberia']},
   {id:'iberia', name:'Gulf of C&aacute;diz', flag:'&#127754;', color:'#16394f', sea:true, lab:[-7.2,36.6],
    polys:seaPoly([[-9.5,43.4],[-8,43],[-6.5,41],[-5.3,38.5],[-5.3,36],[-7,36.2],
@@ -1195,7 +1196,7 @@ function seaTint(hex){
   if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
   if(h.length!==6 || /[^0-9a-fA-F]/.test(h)) return '#16394f';
   var a=[17,47,66], b=[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];
-  return '#'+b.map(function(v,i){ var q=Math.round(v*0.6+a[i]*0.4).toString(16); return q.length<2?'0'+q:q; }).join('');
+  return '#'+b.map(function(v,i){ var q=Math.round(v*0.7+a[i]*0.3).toString(16); return q.length<2?'0'+q:q; }).join('');
 }
 var EU_SHIP_NAMES={
   germany:['destroyer:Zerst&ouml;rer|Fast, hard-hitting escorts of the Kriegsmarine.',
@@ -2056,7 +2057,7 @@ function buildMap(){
   });
 
   /* SEA ZONES are painted first; the continents are laid over them below, so
-     coastlines stay crisp and every rectangle reads as water. */
+     coastlines stay crisp and every irregular sea polygon reads as water. */
   SECTORS.filter(function(s){ return !!s.sea; }).forEach(function(sec){
     var x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
     PP[sec.id]=[];
@@ -2951,6 +2952,7 @@ function captureMsg(taker,provId,old,verb){
   var tn=NBY[taker]?NBY[taker].name:taker;
   var pn=NBY[provId]?NBY[provId].name:provId;
   var on=(old&&NBY[old])?NBY[old].name:null;
+  if(isSea(provId)) return tn+' '+verb+' control of the '+pn+(old&&old!=='sea'?' from '+on:'')+'.';
   if(provId===taker)          return tn+' retook its own homeland'+(on?' from '+on:'')+'.';
   if(provId===old)            return tn+' '+verb+' '+poss(old)+' homeland.';
   if(pn===on)                 return tn+' '+verb+' '+on+' from '+poss(provId)+' occupiers.';
@@ -3121,7 +3123,7 @@ function tick(){
     if(nu===S.player) sfx('capture');
     if(!isRes(win.id)) mailWarEvent(nu, old);
     invalidateWars();
-    if(!isRes(win.id) && (nu===S.player || old===S.player))
+    if(!isRes(win.id) && !isSea(win.id) && (nu===S.player || old===S.player))
       declareWar(S.player, (nu===S.player?old:nu));
     if(nu===S.player || old===S.player) log(captureMsg(nu,wp.id,old,'captured'));
     else if(Math.random()<0.18) log(captureMsg(nu,wp.id,old,'took'));
@@ -3957,14 +3959,17 @@ function render(){
   for(var id in S.prov){
     var p=S.prov[id], n=NBY[id];
     var color=p.owner? NBY[p.owner].color : '#2a2f3a';
-    if(isSea(id) && p.owner!=='sea') color=seaTint(color);
+    var held=isSea(id)&&p.owner&&p.owner!=='sea';
+    if(held) color=seaTint(color);
     var paths=landG.querySelectorAll('[data-id="'+id+'"]');
     for(var i=0;i<paths.length;i++){
       if(paths[i].getAttribute('data-bridge')){
         paths[i].setAttribute('stroke', color);
       } else {
         paths[i].setAttribute('fill', color);
-        paths[i].setAttribute('class','land'+(isSea(id)?' seaZone':'')+(id===S.sel?' sel':'')+
+        if(held) paths[i].style.setProperty('--seaOwner',NBY[p.owner].color);
+        else paths[i].style.removeProperty('--seaOwner');
+        paths[i].setAttribute('class','land'+(isSea(id)?' seaZone':'')+(held?' held':'')+(id===S.sel?' sel':'')+
           (S.targets.indexOf(id)>=0?' tgt':'')+(warAround(id)?' war':''));
       }
     }
@@ -4274,6 +4279,8 @@ function wireMap(){
     var s='<b>'+n.flag+' '+n.name+'</b><br>owner: '+NBY[p.owner].flag+' '+NBY[p.owner].name+
       '<br>garrison: '+(vis? g.length+' units' : 'unknown')+
       ' &middot; def '+(vis?Math.round(totalPower(id)):'?')+
+       (isSea(id)?'<br><span style="color:#8fd8ff">NAVAL ZONE &middot; '+g.length+'/'+capacity(id)+' ships</span>'+
+         (p.owner==='sea'?'<br>open water &middot; sail here to claim it':'') : '')+
       (p.mines?'<br>'+mineWord(p.mines>1)+': '+p.mines+' &middot; '+mineDays(p)+'d left':'')+
       (isLandFront(id)&&p.fort?'<br>land front: '+p.fort+'/3 (+'+(15*p.fort)+'% def)':'')+
       (isRes(id)?'<br><span style="color:'+(isOil(id)?'#e2b13c':'#7fe08a')+'">'+
@@ -5201,8 +5208,9 @@ function unitLead(prov,taker){
 function newsCaptures(evs){
   if(!newsCanvas()) return;
   /* oil fields and grain farms are a supply story, not a land grab */
-  var sites=[];
-  evs=evs.filter(function(e){ if(isRes(e.prov)){ sites.push(e); return false; } return true; });
+  var sites=[], seas=[];
+  evs=evs.filter(function(e){ if(isRes(e.prov)){ sites.push(e); return false; }
+    if(isSea(e.prov)){ seas.push(e); return false; } return true; });
   if(sites.length){
     var rs={};
     sites.forEach(function(e){ (rs[e.taker]=rs[e.taker]||[]).push(e); });
@@ -5216,7 +5224,30 @@ function newsCaptures(evs){
                'The granaries and fire-wells of '+sl.join(' and ')+' now fly the banner of <b>'+Nname(tk)+'</b>.']),false);
     });
   }
-  if(!evs.length) return;
+  if(seas.length){
+    var sg={};
+    seas.forEach(function(e){ (sg[e.taker]=sg[e.taker]||[]).push(e); });
+    Object.keys(sg).forEach(function(tk){
+      var g=sg[tk], tn=Nname(tk);
+      var sl=g.map(function(e){ return Nname(e.prov); });
+      var list=sl.length===1? sl[0] : sl.slice(0,-1).join(', ')+' and '+sl[sl.length-1];
+      var olds=[];
+      g.forEach(function(e){ if(e.old&&e.old!=='sea'&&olds.indexOf(Nname(e.old))<0) olds.push(Nname(e.old)); });
+      var lead=unitLead(g[0].prov,tk);
+      var ln=lead?unitFancy(tk,lead.type):null;
+      var verb=pick(['took control of','swept into','cleared enemy ships from','claimed']);
+      var headline=pick([tn+' commands '+list,
+                         tn+' raises the flag over '+list,
+                         'The fleets of '+tn+' win '+list]);
+      var body='On '+dayFull(g[0].d)+', the fleet of <b>'+tn+'</b> '+verb+' <b>'+list+'</b>. ';
+      if(ln) body+='The <b>'+ln+'</b> led the crossing, and prize crews soon had the buoys and charts in hand. ';
+      else body+='Patrols closed the narrows while prize crews charted the captured waters. ';
+      if(olds.length) body+='Rival squadrons fell back toward '+olds.join(' and ')+'.';
+      else body+='No rival fleet was left to contest the crossing.';
+      news(headline, body, false);
+    });
+  }
+   if(!evs.length) return;
   var groups={},i;
   for(i=0;i<evs.length;i++){ (groups[evs[i].taker]=groups[evs[i].taker]||[]).push(evs[i]); }
   for(var tk in groups){
