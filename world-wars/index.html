@@ -3459,6 +3459,9 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
       updateHud();
     }
     makeWreck(e);
+    // Remove the live plane mesh; otherwise it stays frozen in mid-air while
+    // the burning wreck falls separately.
+    scene.remove(e);
     enemies.splice(index, 1);
   }
 
@@ -4021,6 +4024,7 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
       return wrecks.length;
     },
     setFiring: v => { firing = !!v; return firing; },
+    ghostPlanes: () => scene.children.filter(o => o.userData && o.userData.team && o.userData.maxHp && !enemies.includes(o)).length,
     fullscreen: () => isFullscreen(),
     toggleFullscreen,
     key: (code, down) => { keys[code] = !!down; if (state === "playing") updateHud(); return !!keys[code]; },
