@@ -138,6 +138,12 @@
   .badge.air { background: #7a4c8c; }
   .badge.exhausted { background: #8a4c22; }
   .card.exhausted { filter: grayscale(.85) brightness(.92); }
+  /* four card levels */
+  .lvl { position: absolute; top: 2px; right: 3px; z-index: 2; min-width: 13px; padding: 0 3px; font-size: 7px; line-height: 11px; text-align: center; color: #10140b; border-radius: 2px; font-weight: bold; }
+  .lvl.lv1 { background: #9aa07f; }
+  .lvl.lv2 { background: #9fd4ff; }
+  .lvl.lv3 { background: #c9a2ff; }
+  .lvl.lv4 { background: #ffd95e; box-shadow: 0 0 6px rgba(255,217,94,.7); }
   .card.playable { border-color: #ffd95e; box-shadow: 0 0 12px 2px rgba(255,217,94,.45); }
   .card.unplayable { filter: brightness(.55); }
   .card.selected { border-color: #ff7a5e; box-shadow: 0 0 16px 4px rgba(255,122,94,.7); }
@@ -183,6 +189,15 @@
   #lobby #lobbyStart { margin-top: 6px; }
   #lobby #lobbyStart[disabled] { opacity: .4; }
   #lobby #lobbyWait { font-size: 11px; color: #b9c4a8; min-height: 14px; }
+  /* online waiting room — the battlefield stays hidden until the host starts */
+  #onlineWait { display: none; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 470px; text-align: center; padding: 20px; }
+  body.online-prestart #onlineWait { display: flex; }
+  body.online-prestart #panelTop, body.online-prestart #panelMid, body.online-prestart #panelBottom { display: none; }
+  .owIcon { font-size: 46px; color: #c9b458; text-shadow: 0 3px 12px #000; }
+  .owTitle { font-size: 16px; letter-spacing: 4px; color: #f0e6c8; }
+  .owText { font-size: 11px; color: #b9c4a8; line-height: 1.5; max-width: 380px; }
+  .owCode { display: inline-block; padding: 5px 14px; border: 2px solid #c9b458; border-radius: 6px; background: rgba(0,0,0,.5); color: #ffd95e; font-size: 16px; letter-spacing: 3px; }
+  .owCode.empty { display: none; }
   #onlineStatus { font-size: 12px; color: #b9c4a8; letter-spacing: 1px; min-height: 16px; }
 
   footer { display: flex; gap: 16px; padding: 10px 0 16px; }
@@ -411,11 +426,13 @@
     to { transform: perspective(500px) rotateY(0) scale(1); opacity: 1; }
   }
   .pkcard {
+    position: relative;
     width: 150px; min-height: 190px; padding: 10px 8px; text-align: center;
     border: 3px solid #ffd95e; border-radius: 12px;
     background: linear-gradient(165deg, #e2d9b6, #a89d75); color: #26220f;
     box-shadow: 0 0 22px 5px rgba(255,217,94,.45);
   }
+  .pkcard .lvl { top: 4px; right: 5px; }
   .pkcard .pkcname { font-size: 13px; font-weight: bold; line-height: 1.2; min-height: 30px; }
   .pkcard .pkcarta { font-size: 46px; line-height: 52px; }
   .pkcard .pkctext { font-size: 10px; line-height: 1.35; }
@@ -468,6 +485,8 @@
   .cocell .coown { position: absolute; bottom: 2px; right: 4px; font-size: 11px; font-weight: bold; color: #ffd95e; }
   .cocell .colock { position: absolute; bottom: 2px; left: 4px; font-size: 8px; letter-spacing: 1px; color: #e08a8a; }
   .cocell .copre { position: absolute; bottom: 2px; left: 4px; font-size: 8px; letter-spacing: 1px; color: #9fd4ff; }
+  .cocell .lvl { top: 3px; left: 22px; right: auto; }
+  .dcell .lvl { top: 3px; right: 3px; }
   .btn#colToggle.active { background: rgba(77,127,184,.35); color: #cfeaff; border-color: #9fd4ff; }
 
   /* lobby page — KARDS home-screen format */
@@ -733,11 +752,10 @@
 </style>
 </head>
 <body>
-<a href="../" title="Back to Arcade" aria-label="Back to Arcade" style="position:fixed;top:14px;left:14px;z-index:999999;padding:11px 20px;border:1px solid #3d4c74;border-radius:999px;background:rgba(10,13,20,.9);color:#eef2fb;font:700 17px/1.2 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;text-decoration:none;box-shadow:0 3px 12px rgba(0,0,0,.5)">&#8592; Arcade</a>
   <div id="fit">
     <div id="stage">
       <header>
-        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v36</span></h1>
+        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v37</span></h1>
         <div id="turnbar">Player 1's Turn</div>
       </header>
 
@@ -779,6 +797,13 @@
       </div>
 
       <div id="log"></div>
+
+      <div id="onlineWait">
+        <div class="owIcon">⚔</div>
+        <div class="owTitle" id="owTitle">ONLINE BATTLE</div>
+        <div class="owText" id="owText">Waiting for the host to start the battle.</div>
+        <div class="owCode" id="owCode"></div>
+      </div>
 
       <div class="panel" id="panelTop"></div>
       <div class="panel" id="panelMid"></div>
@@ -1177,6 +1202,35 @@ var DEFS = {
 var PREMIUM_KEYS = ["usa_b29", "uk_meteor", "de_kingtiger", "su_is3", "jp_shinden",
                     "usa_b52", "uk_typhoon", "de_me262", "su_su100", "jp_akagi"];
 
+// Four card levels. Regular cards scale by cost; premium cards have fixed tiers
+// so that more expensive packs can guarantee stronger cards.
+var LEVEL_NAMES = ["RECRUIT", "VETERAN", "ELITE", "LEGENDARY"];
+var LEVEL_ROMAN = ["I", "II", "III", "IV"];
+var PREMIUM_LEVEL = {
+  uk_typhoon: 1, de_me262: 2, su_su100: 2,
+  jp_shinden: 3, uk_meteor: 3, jp_akagi: 3,
+  usa_b29: 4, su_is3: 4, usa_b52: 4, de_kingtiger: 4
+};
+// Pack tier -> allowed card levels. Costs rise with the tier.
+var TIER_LEVELS = { 1: [1, 2], 2: [2, 3], 3: [3, 4], 4: [4] };
+var TIER_NAMES = { 1: "LEVEL I-II", 2: "LEVEL II-III", 3: "LEVEL III-IV", 4: "LEVEL IV" };
+
+function cardLevel(key) {
+  var d = DEFS[key];
+  if (!d) return 1;
+  if (PREMIUM_LEVEL[key]) return PREMIUM_LEVEL[key];
+  var c = d.cost || 0;
+  if (c <= 2) return 1;
+  if (c <= 4) return 2;
+  if (c <= 6) return 3;
+  return 4;
+}
+
+function levelBadge(key, cls) {
+  var lv = cardLevel(key);
+  return '<div class="' + (cls || "lvl") + ' lv' + lv + '" title="Level ' + lv + ' ' + LEVEL_NAMES[lv - 1] + '">' + LEVEL_ROMAN[lv - 1] + '</div>';
+}
+
 var FACTIONS = {
   usa:     { key: "usa",     name: "USA",     flag: "★", color: "#2a4d8c",
              desc: "Industrial might and air power: Shermans, P-51s, B-17s and Marines." },
@@ -1206,6 +1260,7 @@ function defaultProfile() {
     packs: 0,
     unopened: 0,
     packQueue: [],
+    packTiers: [],
     stats: { games: 0, wins: 0, losses: 0, aiWins: 0, localWins: 0, onlineWins: 0, byFaction: {}, flawlessWins: 0, blitzWins: 0, closeWins: 0, heals: 0, fullBoards: 0, bigUnits: 0, decksSaved: 0, tutDone: 0 },
     sfx: true, tut: false, aiLevel: "normal"
   };
@@ -1246,6 +1301,10 @@ function loadProfile() {
   p.packs = p.packs || 0;
   if (typeof p.unopened !== "number" || p.unopened < 0) p.unopened = 0;
   if (!Array.isArray(p.packQueue)) p.packQueue = [];
+  if (!Array.isArray(p.packTiers)) p.packTiers = [];
+  while (p.packTiers.length < p.packQueue.length) {
+    p.packTiers.push(p.packQueue[p.packTiers.length] ? 2 : 1);
+  }
   if (!p.missions || typeof p.missions !== "object") p.missions = null;
   if (typeof p.sfx !== "boolean") p.sfx = true;
   if (typeof p.tut !== "boolean") p.tut = false;
@@ -1397,16 +1456,16 @@ function renderStore() {
   var keep = msg ? msg.textContent : "";
   var html = '<div class="mhead">YOUR DIAMONDS <b>\u25c6 ' + (PROFILE.gems || 0) + '</b></div>';
   html += '<div class="shead">CARD PACKS</div>';
-  html += '<div class="sitem"><div class="sinfo"><b>Recruit Pack</b><span>1 sealed pack \u2014 reveal 1 random premium card.</span></div>' +
+  html += '<div class="sitem"><div class="sinfo"><b>Recruit Pack</b><span>1 sealed pack \u2014 reveal 1 Level I-II premium card.</span></div>' +
           '<button class="btn sbuy" onclick="buyPacks(1)">\u25c6 ' + PACK_COST + '</button></div>';
-  html += '<div class="sitem"><div class="sinfo"><b>War Chest</b><span>2 sealed packs \u2014 reveal 2 random premium cards.</span></div>' +
+  html += '<div class="sitem"><div class="sinfo"><b>War Chest</b><span>2 sealed packs \u2014 reveal 2 Level III-IV premium cards.</span></div>' +
           '<button class="btn sbuy" onclick="buyPacks(2)">\u25c6 ' + CHEST_COST + '</button></div>';
-  html += '<div class="sitem"><div class="sinfo"><b>Grand Arsenal</b><span>5 sealed packs in one bundle \u2014 reveal 5 premium cards.</span></div>' +
+  html += '<div class="sitem"><div class="sinfo"><b>Grand Arsenal</b><span>5 sealed packs \u2014 reveal 5 Level IV legendary cards.</span></div>' +
           '<button class="btn sbuy" onclick="buyPacks(5)">\u25c6 ' + ARSENAL_COST + '</button></div>';
   html += '<div class="shead">NATION PACKS</div>';
   FACTION_KEYS.forEach(function (f) {
     html += '<div class="sitem"><div class="sinfo"><b>' + FACTIONS[f].flag + ' ' + FACTIONS[f].name + ' Pack</b>' +
-      '<span>1 sealed pack \u2014 guarantees a ' + FACTIONS[f].name + ' premium card.</span></div>' +
+      '<span>1 sealed pack \u2014 guarantees a Level II-III ' + FACTIONS[f].name + ' premium card.</span></div>' +
       '<button class="btn sbuy" onclick="buyNationPack(\'' + f + '\')">\u25c6 ' + NATION_PACK_COST + '</button></div>';
   });
   html += '<div class="shead">PREMIUM CARDS</div>';
@@ -1416,10 +1475,10 @@ function renderStore() {
       ? '<span class="mclaimed">MAX ' + owned + '/3</span>'
       : '<button class="btn sbuy" onclick="buyCard(\'' + k + '\')">\u25c6 ' + PREMIUM_COST + '</button>';
     html += '<div class="sitem"><div class="sinfo"><b>' + FACTIONS[d.f].flag + ' ' + d.name + '</b>' +
-      '<span>' + d.cost + 'c \u00b7 ' + d.atk + '/' + d.hp + ' ' + (d.air ? '\u00b7 AIR ' : '') + (d.guard ? '\u00b7 GUARD' : '') + '</span>' +
+      '<span>LV ' + LEVEL_ROMAN[cardLevel(k) - 1] + ' \u00b7 ' + d.cost + 'c \u00b7 ' + d.atk + '/' + d.hp + ' ' + (d.air ? '\u00b7 AIR ' : '') + (d.guard ? '\u00b7 GUARD' : '') + '</span>' +
       '<span class="sown">OWNED ' + owned + '/3</span></div>' + b + '</div>';
   });
-  html += '<div class="snote">Packs go to your <b>PACKS</b> stash \u2014 open them there. <b>NATION PACKS</b> guarantee a card from that nation. Duplicates refund \u25c6' + DUST_REFUND + '. Earn diamonds from MISSIONS.</div>';
+  html += '<div class="snote">Packs go to your <b>PACKS</b> stash \u2014 open them there. <b>NATION PACKS</b> guarantee a card from that nation. Higher-cost packs contain higher-level cards (I-IV). Duplicates refund \u25c6' + DUST_REFUND + '. Earn diamonds from MISSIONS.</div>';
   document.getElementById("storeRows").innerHTML = html;
   if (msg) msg.textContent = keep;
 }
@@ -1443,9 +1502,11 @@ function buyPacks(count) {
   PROFILE.packs = (PROFILE.packs || 0) + count;
   PROFILE.unopened = (PROFILE.unopened || 0) + count;
   if (!Array.isArray(PROFILE.packQueue)) PROFILE.packQueue = [];
-  for (var i = 0; i < count; i++) PROFILE.packQueue.push("");
+  if (!Array.isArray(PROFILE.packTiers)) PROFILE.packTiers = [];
+  var tier = count >= 5 ? 4 : (count === 2 ? 3 : 1);
+  for (var i = 0; i < count; i++) { PROFILE.packQueue.push(""); PROFILE.packTiers.push(tier); }
   saveProfile(); refreshMetaUI(); renderStore();
-  storeMsg(count + " sealed pack" + (count === 1 ? "" : "s") + " added to your PACKS stash. Open them there!");
+  storeMsg(count + " sealed pack" + (count === 1 ? "" : "s") + " (" + TIER_NAMES[tier] + ") added to your PACKS stash. Open them there!");
   sfx("play");
 }
 
@@ -1458,9 +1519,11 @@ function buyNationPack(f) {
   PROFILE.packs = (PROFILE.packs || 0) + 1;
   PROFILE.unopened = (PROFILE.unopened || 0) + 1;
   if (!Array.isArray(PROFILE.packQueue)) PROFILE.packQueue = [];
+  if (!Array.isArray(PROFILE.packTiers)) PROFILE.packTiers = [];
   PROFILE.packQueue.push(f);
+  PROFILE.packTiers.push(2);
   saveProfile(); refreshMetaUI(); renderStore();
-  storeMsg(FACTIONS[f].name + " Pack added to your PACKS stash. Open it there for a guaranteed " + FACTIONS[f].name + " premium card!");
+  storeMsg(FACTIONS[f].name + " Pack (" + TIER_NAMES[2] + ") added to your PACKS stash — guaranteed " + FACTIONS[f].name + " card!");
   sfx("play");
 }
 
@@ -1472,8 +1535,10 @@ function packMsg(msg) { var e = document.getElementById("packMsg"); if (e) e.tex
 function renderPacks() {
   var u = PROFILE.unopened || 0;
   var next = (Array.isArray(PROFILE.packQueue) && PROFILE.packQueue.length) ? (PROFILE.packQueue[0] || "") : "";
+  var nextTier = (Array.isArray(PROFILE.packTiers) && PROFILE.packTiers.length) ? PROFILE.packTiers[0] : (next ? 2 : 1);
   var head = "SEALED PACKS <b>" + u + "</b> \u00b7 EACH PACK REVEALS 1 PREMIUM CARD";
   if (next && FACTIONS[next]) head += " \u00b7 NEXT: " + FACTIONS[next].flag + " " + FACTIONS[next].name;
+  if (u) head += " \u00b7 " + (TIER_NAMES[nextTier] || TIER_NAMES[1]);
   document.getElementById("packHead").innerHTML = head;
   var stage = document.getElementById("packStage"), btns = "";
   if (u > 0 && !PACK_RESULT) {
@@ -1485,10 +1550,11 @@ function renderPacks() {
       ? '<span class="pkcflag dup">DUPLICATE \u2192 +\u25c6' + r.refund + '</span>'
       : '<span class="pkcflag">NEW CARD</span>';
     stage.innerHTML = '<div class="packreveal"><div class="pkcard">' +
+      levelBadge(r.key) +
       '<div class="pkcname">' + d.name + '</div>' +
       '<div class="pkcarta">' + d.art + '</div>' +
       '<div class="pkctext">' + d.text + '</div>' +
-      '<div class="pkcstat">' + d.cost + 'c \u00b7 ' + (d.type === "order" ? "ORDER" : (opOf(d) + "op \u00b7 " + d.atk + "/" + d.hp)) + '</div>' +
+      '<div class="pkcstat">LV ' + LEVEL_ROMAN[r.level - 1] + ' ' + LEVEL_NAMES[r.level - 1] + '<br>' + d.cost + 'c \u00b7 ' + (d.type === "order" ? "ORDER" : (opOf(d) + "op \u00b7 " + d.atk + "/" + d.hp)) + '</div>' +
       flag + '</div></div>';
     packMsg(r.refund ? "Duplicate \u2014 " + r.refund + " diamonds refunded. Owned " + r.owned + "/3." : "Added to your collection! Owned " + r.owned + "/3.");
   } else {
@@ -1507,18 +1573,27 @@ function openOnePack() {
   if ((PROFILE.unopened || 0) <= 0) { packMsg("No sealed packs left."); return; }
   var forced = "";
   if (Array.isArray(PROFILE.packQueue) && PROFILE.packQueue.length) forced = PROFILE.packQueue.shift() || "";
+  var tier = 1;
+  if (Array.isArray(PROFILE.packTiers) && PROFILE.packTiers.length) tier = PROFILE.packTiers.shift() || (forced ? 2 : 1);
+  else tier = forced ? 2 : 1;
+  if (!TIER_LEVELS[tier]) tier = 1;
   PROFILE.unopened--;
   PROFILE.packs = (PROFILE.packs || 0) + 1;
-  var pool = PREMIUM_KEYS.filter(function (k) { return cardOwned(k) < MAX_COPIES && (!forced || DEFS[k].f === forced); });
+  var allowed = TIER_LEVELS[tier];
+  var pool = PREMIUM_KEYS.filter(function (k) {
+    return cardOwned(k) < MAX_COPIES && allowed.indexOf(cardLevel(k)) >= 0 && (!forced || DEFS[k].f === forced);
+  });
+  if (!pool.length) pool = PREMIUM_KEYS.filter(function (k) { return cardOwned(k) < MAX_COPIES && allowed.indexOf(cardLevel(k)) >= 0; });
   if (!pool.length) pool = PREMIUM_KEYS.filter(function (k) { return cardOwned(k) < MAX_COPIES; });
   if (!pool.length) {
     PROFILE.gems = (PROFILE.gems || 0) + DUST_REFUND;
-    PACK_RESULT = { key: PREMIUM_KEYS[0], owned: cardOwned(PREMIUM_KEYS[0]), refund: DUST_REFUND };
+    var dupKey = PREMIUM_KEYS[0];
+    PACK_RESULT = { key: dupKey, owned: cardOwned(dupKey), refund: DUST_REFUND, level: cardLevel(dupKey), tier: tier };
   } else {
     var k = pool[Math.floor(Math.random() * pool.length)];
     var owned = cardOwned(k);
     PROFILE.cards[k] = owned + 1;
-    PACK_RESULT = { key: k, owned: owned + 1, refund: 0 };
+    PACK_RESULT = { key: k, owned: owned + 1, refund: 0, level: cardLevel(k), tier: tier };
   }
   saveProfile(); refreshMetaUI(); renderPacks();
   sfx("play");
@@ -1562,7 +1637,7 @@ function renderCollection() {
     var stat = (d.type === "order") ? ("ORDER " + d.cost + "c") : (d.cost + "c \u00b7 " + opOf(d) + "op \u00b7 " + d.atk + "/" + d.hp);
     var tip = FACTIONS[d.f].name + " \u2014 " + d.name + " \u2014 " + d.text;
     html += '<div class="cocell' + (isPremium(k) ? " premium" : "") + (locked ? " locked" : "") + '" title="' + tip + '">' +
-      '<div class="cocost">' + d.cost + '</div><div class="coflag">' + FACTIONS[d.f].flag + '</div>' +
+      levelBadge(k) + '<div class="cocost">' + d.cost + '</div><div class="coflag">' + FACTIONS[d.f].flag + '</div>' +
       '<div class="coart">' + d.art + '</div><div class="coname">' + d.name + '</div>' +
       '<div class="costat">' + stat + '</div>' +
       '<div class="coown">' + (locked ? "\u2014" : "x" + owned) + '</div>' +
@@ -2326,10 +2401,36 @@ function showLobby() {
 function hideLobby() {
   var el = document.getElementById("lobby");
   if (el) el.style.display = "none";
+  updateOnlineWaiting();
+}
+
+// The battlefield is hidden in ONLINE mode until the host presses START BATTLE.
+function onlinePrestart() {
+  return MODE === "online" && (!NET || !NET.started || !S || !S.started);
+}
+
+function updateOnlineWaiting() {
+  var pre = onlinePrestart();
+  document.body.classList.toggle("online-prestart", pre);
+  if (!pre) return;
+  var title = document.getElementById("owTitle"), text = document.getElementById("owText"), code = document.getElementById("owCode");
+  if (!title || !text || !code) return;
+  title.textContent = "ONLINE BATTLE";
+  if (!NET) {
+    text.textContent = "Choose HOST or JOIN in the menu to open a room.";
+    code.textContent = "";
+  } else {
+    text.textContent = !NET.foeName
+      ? (NET.id === 0 ? "Waiting for an opponent to join..." : "Joining room...")
+      : (NET.id === 0 ? "Opponent ready. Press START BATTLE." : "Waiting for the host to start the battle...");
+    code.textContent = NET.code || "";
+  }
+  code.classList.toggle("empty", !code.textContent);
 }
 
 function lobbyRender() {
   if (!NET || MODE !== "online") return;
+  updateOnlineWaiting();
   var isHost = NET.id === 0;
   document.getElementById("lobbyRoom").textContent = NET.code || "";
   document.getElementById("lobbyHost").textContent = NET.meName + (isHost ? "  (you)" : "");
@@ -2351,6 +2452,7 @@ function startGame() {
   if (LOBBY_OPEN) closeLobbyPage();
   status("");
   onlineInit();
+  updateOnlineWaiting();
 }
 
 function lobbyStart() {
@@ -2755,6 +2857,7 @@ function hostGame() {
   NET = { code: genCode(), id: 0, sess: genSess(), ver: 0, meName: name, foeName: "", f: FACTION, foeF: "", started: false, lastHeard: Date.now() };
   S = { cur: NET.id, turn: NET.id, over: false, winner: 0, attackSel: null, readyOrder: null, started: false, overShown: false, pub: { hand: [0, 0], deck: [0, 0] } };
   S.players = [freshPlayer(), freshPlayer()];
+  updateOnlineWaiting();
   status("Connecting to relay...");
   mqConnect();
 }
@@ -2767,6 +2870,7 @@ function joinGame() {
   NET = { code: code, id: 1, sess: genSess(), ver: 0, meName: name, foeName: "", f: FACTION, foeF: "", started: false, lastHeard: Date.now() };
   S = { cur: NET.id, turn: NET.id, over: false, winner: 0, attackSel: null, readyOrder: null, started: false, overShown: false, pub: { hand: [0, 0], deck: [0, 0] } };
   S.players = [freshPlayer(), freshPlayer()];
+  updateOnlineWaiting();
   status("Connecting to relay...");
   mqConnect();
 }
@@ -2974,7 +3078,8 @@ function mqOnMessage(topic, msg) {
     if (msg.t !== "snap" || msg.s !== NET.sess) return;
     if (msg.v <= NET.ver) return;
     NET.lastHeard = Date.now();
-    if (!NET.started) { NET.started = true; onlineInit(); }
+    // A snapshot must never start the battle; only the host's START message does.
+    if (!NET.started) return;
     NET.ver = msg.v;
     applyPublic(msg.snap);
   }
@@ -3173,7 +3278,7 @@ function handHTML(pl, isActive, cnt) {
       var skillTxt = (inst.type !== "order" && DEFS[inst.key].fx) ? DEFS[inst.key].text : "";
       var hasskill = (inst.type !== "order" && DEFS[inst.key].fx) ? " hasskill" : "";
       html += '<div class="cardwrap"' + fan + '><div class="card n-' + DEFS[inst.key].f + ' ' + (playable ? "playable" : "unplayable") + (inst.type === "order" ? " order" : "") + hasskill + '" title="' + DEFS[inst.key].text + '" onclick="play(' + i + ')">' +
-        '<div class="cost">' + inst.cost + '</div>' +
+        levelBadge(inst.key) + '<div class="cost">' + inst.cost + '</div>' +
         '<div class="cname"' + cnameStyle(inst.name) + '>' + inst.name + '</div>' +
         '<div class="art">' + DEFS[inst.key].art + '</div>' +
         (inst.type === "order"
@@ -3198,13 +3303,17 @@ function boardHTML(pl, role, lineFilter, ownerP) {
     if (lineFilter && (inst.line === "front") !== (lineFilter === "front")) continue;
     var cls = "card n-" + DEFS[inst.key].f;
     var attm = '';
+    var actionOp = inst.op || 1;
+    // A ready unit you cannot pay for is just as inactive as an exhausted one.
+    var tooCostly = mine && canAct() && inst.canAttack && pl.res < actionOp;
+    var cardTip = DEFS[inst.key].text + (tooCostly ? " [Needs " + actionOp + " resource to attack]" : "");
 
     if (mine) {
       if (canAct()) {
         if (i === S.attackSel) { cls += " selected"; attm = ' onclick="selectAttacker(' + i + ')"'; }
         else if (inst.canAttack) { attm = ' onclick="selectAttacker(' + i + ')"'; }
       }
-      if (!inst.canAttack) cls += " exhausted";
+      if (!inst.canAttack || tooCostly) cls += " exhausted";
     } else if (foe) {
       if (canAct() && S.readyOrder !== null) {
         cls += " targetable";
@@ -3237,8 +3346,8 @@ function boardHTML(pl, role, lineFilter, ownerP) {
       adv = '<button class="advbtn' + (blockReason ? " off" : "") + '" title="' + advTip + '" onclick="moveToFront(' + i + ')">\u25b2 ' + op + '</button>';
     }
 
-    html += '<div class="cardwrap"><div class="' + cls + hasskill + '"' + attm + ' title="' + DEFS[inst.key].text + '">' +
-      '<div class="cost op" title="Action cost: ' + (inst.op || 1) + '">' + (inst.op || 1) + '</div>' +
+    html += '<div class="cardwrap"><div class="' + cls + hasskill + '"' + attm + ' title="' + cardTip + '">' +
+      levelBadge(inst.key) + '<div class="cost op" title="Action cost: ' + (inst.op || 1) + '">' + (inst.op || 1) + '</div>' +
       '<div class="cname">' + inst.name + '</div>' +
       '<div class="art">' + DEFS[inst.key].art + '</div>' +
       badges +
@@ -3260,6 +3369,7 @@ function hqTargetable() {
 
 function render() {
   if (!S) return;
+  updateOnlineWaiting();
   var cur = viewer();
   var foe = other(cur);
   var my = S.players[cur], en = S.players[foe];
@@ -3359,8 +3469,8 @@ var TUT_STEPS = [
   { t: "5. THE FRONTLINE", h: "<p>The battlefield has three zones: <b>your support line</b>, the shared <b>frontline</b>, and the <b>enemy support line</b>. Newly deployed units always arrive in your support line.</p><ul><li>Only <b>one side can hold the frontline</b> at a time (max 5 units). To take it, destroy any enemy frontline units first.</li><li>Click the <b>\u25b2 button</b> on one of your support units (or just click the unit card) to advance it. It costs that unit's <b>action cost</b> and uses its action for the turn. A unit <b>can advance on the very turn it is deployed</b>.</li><li>While you hold the frontline, your enemy cannot advance \u2014 and your frontline units can hit their support line and HQ.</li></ul>" },
   { t: "6. ATTACKING", h: "<ul><li>Click your unit, then click an enemy unit or the enemy HQ. Every attack costs the unit's <b>action cost</b>.</li><li>Each unit acts <b>once per turn</b> (move <i>or</i> attack). When two units fight, <b>both</b> deal their attack to each other.</li><li><b>Support-line units</b> can only reach the enemy <b>frontline</b>. <b>Frontline units</b> can reach the enemy <b>support line and HQ</b>.</li><li><b>Guard</b> units must be fought first. <b>Air</b> units ignore Guard and can always hit the HQ.</li><li>A newly deployed unit cannot <b>attack</b> that turn unless it has <b>Blitz</b> \u2014 but any unit may <b>advance to the frontline</b> immediately (that uses its action for the turn).</li></ul>" },
   { t: "7. ORDERS", h: "<p>Orders are one-shot cards \u2014 they resolve, then vanish. A played order is shown in the box on the left for <b>2 seconds</b> before its effect takes place. Orders ignore the frontline and can strike any enemy unit. Each nation has its own orders. The shared effects are:</p><ul><li><b>Damage a unit</b> \u2014 click the order, then pick an enemy unit.</li><li><b>Damage the enemy HQ</b> \u2014 a direct strike.</li><li><b>Damage all enemy units</b> \u2014 a sweeping barrage (hits the HQ if their board is empty).</li><li><b>Heal your HQ</b> \u2014 recover hit points.</li><li><b>Draw cards</b> \u2014 refill your hand.</li><li><b>Gain resource</b> \u2014 bank energy for bigger plays.</li><li><b>Rally</b> \u2014 all your units can attack again.</li></ul>" },
-  { t: "8. YOUR COLLECTION", h: "<p>Before a battle, open <b>CHOOSE DECK</b> (or <b>PICK DECK</b>) to select which deck each player will use: the nation's <b>STANDARD</b> deck or your saved <b>CUSTOM</b> deck. Your choice is remembered for that nation. In <b>LOCAL</b> mode use the <b>PLAYER 1 / PLAYER 2</b> toggle to set both decks.</p><ul><li>Open <b>DECK</b> to build your deck right from the <b>card collection</b> \u2014 click a card (or its <b>+</b>) to add a copy, right-click (or <b>-</b>) to remove one. A <b>gold border</b> means it's in your deck.</li><li>Each card tile shows <b>deploy cost</b>, <b>action cost</b> and <b>attack/HP</b>. Each nation keeps its <b>own saved deck</b>; in LOCAL use the <b>PLAYER 1 / PLAYER 2</b> toggle.</li><li>A deck needs <b>exactly 40 cards</b>, at most <b>3 copies</b> each. <b>USE DEFAULT</b> restores the starter deck, <b>SAVE</b> keeps changes.</li><li>Cards marked <b>\u25c6 PREMIUM</b> are locked until you unlock them in the <b>STORE</b> with diamonds.</li></ul>" },
-  { t: "9. PLAY & MENU", h: "<ul><li><b>LOCAL</b> \u2014 two players share one screen (hot-seat); choose <b>both</b> players' nations.</li><li><b>VS AI</b> \u2014 battle the computer; use <b>AI: EASY/NORMAL/HARD</b> to set its skill.</li><li><b>ONLINE</b> \u2014 HOST gives you a room code to share, or press <b>ROOMS</b> to join a waiting game. <b>LOBBY</b> \u2014 the screen you see when the game opens. Pick <b>LOCAL</b>, <b>VS AI</b> or <b>ONLINE</b>, then press <b>PLAY</b>. In ONLINE you can host, join by code, or browse open rooms.</li><li><b>NATION</b> \u2014 choose your nation. <b>CHOOSE DECK</b> \u2014 pick the STANDARD or CUSTOM deck to play before the battle. <b>DECK</b> \u2014 build your deck from your collection.</li><li><b>MISSIONS</b> \u2014 complete daily goals (win battles, deploy units, attack, advance, play orders) to earn <b>diamonds \u25c6</b>. <b>STORE</b> \u2014 spend diamonds on Recruit Packs, War Chests, the Grand Arsenal (5 packs), nation packs that guarantee a faction's card, or any of the 10 premium cards. <b>PACKS</b> \u2014 open your sealed packs to reveal the cards inside; a queued nation pack is marked NEXT. <b>COLLECTION</b> \u2014 see every card you own; use <b>SHOW UNPOSSESSED</b> to reveal the ones you have not unlocked yet.</li><li><b>STATS</b> \u2014 track wins, losses and records. Use <b>EXPORT SAVE</b> to back up your progress before clearing browser data.</li><li><b>TUTORIAL</b> reopens this guide, <b>SOUND</b> toggles audio.</li></ul><p>Good luck, Commander!</p>" }
+  { t: "8. YOUR COLLECTION", h: "<p>Before a battle, open <b>CHOOSE DECK</b> (or <b>PICK DECK</b>) to select which deck each player will use: the nation's <b>STANDARD</b> deck or your saved <b>CUSTOM</b> deck. Your choice is remembered for that nation. In <b>LOCAL</b> mode use the <b>PLAYER 1 / PLAYER 2</b> toggle to set both decks.</p><ul><li>Open <b>DECK</b> to build your deck right from the <b>card collection</b> \u2014 click a card (or its <b>+</b>) to add a copy, right-click (or <b>-</b>) to remove one. A <b>gold border</b> means it's in your deck.</li><li>Each card tile shows <b>deploy cost</b>, <b>action cost</b> and <b>attack/HP</b>. Each nation keeps its <b>own saved deck</b>; in LOCAL use the <b>PLAYER 1 / PLAYER 2</b> toggle.</li><li>A deck needs <b>exactly 40 cards</b>, at most <b>3 copies</b> each. <b>USE DEFAULT</b> restores the starter deck, <b>SAVE</b> keeps changes.</li><li>Cards marked <b>\u25c6 PREMIUM</b> are locked until you unlock them in the <b>STORE</b> with diamonds.</li><li>Every card has a <b>level I-IV</b> shown in its top corner. More expensive packs contain higher-level cards: Recruit (I-II), Nation (II-III), War Chest (III-IV), Grand Arsenal (IV).</li></ul>" },
+  { t: "9. PLAY & MENU", h: "<ul><li><b>LOCAL</b> \u2014 two players share one screen (hot-seat); choose <b>both</b> players' nations.</li><li><b>VS AI</b> \u2014 battle the computer; use <b>AI: EASY/NORMAL/HARD</b> to set its skill.</li><li><b>ONLINE</b> \u2014 HOST gives you a room code to share, or press <b>ROOMS</b> to join a waiting game. <b>LOBBY</b> \u2014 the screen you see when the game opens. Pick <b>LOCAL</b>, <b>VS AI</b> or <b>ONLINE</b>, then press <b>PLAY</b>. In ONLINE you can host, join by code, or browse open rooms \u2014 the battlefield stays hidden until the host presses <b>START BATTLE</b>.</li><li><b>NATION</b> \u2014 choose your nation. <b>CHOOSE DECK</b> \u2014 pick the STANDARD or CUSTOM deck to play before the battle. <b>DECK</b> \u2014 build your deck from your collection.</li><li><b>MISSIONS</b> \u2014 complete daily goals (win battles, deploy units, attack, advance, play orders) to earn <b>diamonds \u25c6</b>. <b>STORE</b> \u2014 spend diamonds on Recruit Packs, War Chests, the Grand Arsenal (5 packs), nation packs that guarantee a faction's card, or any of the 10 premium cards. <b>PACKS</b> \u2014 open your sealed packs to reveal the cards inside; a queued nation pack is marked NEXT. <b>COLLECTION</b> \u2014 see every card you own; use <b>SHOW UNPOSSESSED</b> to reveal the ones you have not unlocked yet.</li><li><b>STATS</b> \u2014 track wins, losses and records. Use <b>EXPORT SAVE</b> to back up your progress before clearing browser data.</li><li><b>TUTORIAL</b> reopens this guide, <b>SOUND</b> toggles audio.</li></ul><p>Good luck, Commander!</p>" }
 ];
 var TUT_PAGE = 0;
 
@@ -3512,7 +3622,7 @@ function renderDeckRows() {
     if (isPremium(k)) stat = locked ? "LOCKED \u25c6 STORE" : ("PREMIUM " + owned + "/3");
     var tip = d.name + " \u2014 " + d.text + (isPremium(k) ? (locked ? " (LOCKED - buy in the STORE)" : " (owned " + owned + "/3)") : "");
     html += '<div class="dcell' + (n > 0 ? " in" : "") + (locked ? " locked" : "") + '" onclick="deckCellClick(\'' + k + '\')" oncontextmenu="event.preventDefault();deckDec(\'' + k + '\')" title="' + tip + '">' +
-      '<div class="dcost">' + d.cost + '</div>' +
+      levelBadge(k) + '<div class="dcost">' + d.cost + '</div>' +
       '<div class="dart">' + d.art + '</div>' +
       '<div class="dn2">' + d.name + '</div>' +
       '<div class="dst2">' + stat + '</div>' +
