@@ -225,7 +225,7 @@
 <div id="standings" class="hidden"></div>
 <div id="banner" class="hidden"></div>
 <div id="lights" class="hidden"><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div></div>
-  <div id="verTag">v2.41</div>
+  <div id="verTag">v2.42</div>
   <button id="achBtn" class="ghost">ACHIEVEMENTS</button>
   <div id="achPanel"><b style="letter-spacing:.12em">ACHIEVEMENTS</b><div id="achList" style="margin-top:8px"></div></div>
   <div id="pitMsg"></div>
@@ -2148,105 +2148,191 @@ ctrl: [
     var g = new THREE.Group();
     var paint = new THREE.MeshLambertMaterial({ color: color });
     var dark = new THREE.MeshLambertMaterial({ color: 0x16181d });
+    var carbon = new THREE.MeshLambertMaterial({ color: 0x2a2d33 });
     var glass = new THREE.MeshLambertMaterial({ color: 0x2b3a4a });
     var trim = new THREE.MeshLambertMaterial({ color: accent });
+    var tireMat = new THREE.MeshLambertMaterial({ color: 0x121316 });
+    var rimMat = new THREE.MeshLambertMaterial({ color: 0x8b9099 });
 
-    // --- car body: what everyone else (and the chase cam) sees ---
+    // --- car body: F1-style third-person model ---
     var body = new THREE.Group();
     body.name = 'body';
     g.add(body);
 
-    var chassis = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.42, 4.3), paint);
-    chassis.position.y = 0.62; body.add(chassis);
-    var nose = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.3, 1.0), paint);
-    nose.position.set(0, 0.5, 2.35); body.add(nose);
-    var cabin = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.44, 1.7), glass);
-    cabin.position.set(0, 1.05, -0.15); body.add(cabin);
-    // accent stripe down the bonnet/roof, so the six liveries read apart
-    var stripe = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.03, 4.3), trim);
-    stripe.position.set(0, 0.845, 0.05); body.add(stripe);
-    // fin size varies a little per car (style) so each silhouette differs
-    var fin = new THREE.Mesh(new THREE.BoxGeometry(1.4 + 0.2 * (style % 3), 0.42 + 0.14 * (style % 2), 0.22), trim);
-    fin.position.set(0, 1.22 + 0.07 * (style % 2), -1.95); body.add(fin);
-    var splitter = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.12, 0.5), dark);
-    splitter.position.set(0, 0.36, 2.6); body.add(splitter);
-    var wg = new THREE.CylinderGeometry(0.42, 0.42, 0.32, 14);
-    var wm = new THREE.MeshLambertMaterial({ color: 0x121316 });
-    [[-1.02, 1.55], [1.02, 1.55], [-1.02, -1.5], [1.02, -1.5]].forEach(function (p) {
-      var w = new THREE.Mesh(wg, wm);
-      w.rotation.z = Math.PI / 2;
-      w.position.set(p[0], 0.42, p[1]);
-      body.add(w);
+    // Monocoque / chassis
+    var chassis = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.34, 3.2), paint);
+    chassis.position.y = 0.56; body.add(chassis);
+    // Nose cone
+    var nose = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.18, 2.1), paint);
+    nose.position.set(0, 0.44, 2.55); body.add(nose);
+    nose.rotation.x = 0.04;
+    // Front wing
+    var fwMain = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.06, 0.55), carbon);
+    fwMain.position.set(0, 0.28, 3.25); body.add(fwMain);
+    var fwFlap = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.04, 0.28), trim);
+    fwFlap.position.set(0, 0.33, 3.35); body.add(fwFlap);
+    [-1.35, 1.35].forEach(function (ex) {
+      var ep = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.22, 0.55), carbon);
+      ep.position.set(ex, 0.35, 3.25); body.add(ep);
     });
-    var shadow = new THREE.Mesh(new THREE.CircleGeometry(1.6, 16),
+    // Sidepods
+    [[-0.72, 0.48, 0.2], [0.72, 0.48, 0.2]].forEach(function (sp) {
+      var pod = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.28, 1.7), paint);
+      pod.position.set(sp[0], sp[1], sp[2]); body.add(pod);
+      var inlet = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.18, 0.08), dark);
+      inlet.position.set(sp[0], sp[1] + 0.02, sp[2] + 0.84); body.add(inlet);
+    });
+    // Engine cover / airbox
+    var airbox = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.32, 0.55), paint);
+    airbox.position.set(0, 0.82, -0.15); body.add(airbox);
+    var engineCover = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.22, 1.4), paint);
+    engineCover.position.set(0, 0.68, -0.85); body.add(engineCover);
+    // Cockpit opening (visible from outside)
+    var cockpitOpening = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.12, 0.9), dark);
+    cockpitOpening.position.set(0, 0.74, 0.35); body.add(cockpitOpening);
+    // Halo
+    var haloMat = new THREE.MeshLambertMaterial({ color: 0x1a1d22 });
+    var haloRing = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.035, 8, 20, Math.PI), haloMat);
+    haloRing.rotation.x = Math.PI / 2;
+    haloRing.rotation.z = Math.PI;
+    haloRing.position.set(0, 0.93, 0.45); body.add(haloRing);
+    var haloPillar = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.32, 0.08), haloMat);
+    haloPillar.position.set(0, 0.8, 0.7); body.add(haloPillar);
+    [[-0.22, 0.84, 0.35], [0.22, 0.84, 0.35]].forEach(function (hp) {
+      var hs = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.2, 0.06), haloMat);
+      hs.position.set(hp[0], hp[1], hp[2]); hs.rotation.x = -0.4; body.add(hs);
+    });
+    // Rear wing
+    var rwMain = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.08, 0.35), trim);
+    rwMain.position.set(0, 1.02 + 0.04 * (style % 2), -2.15); body.add(rwMain);
+    var rwUpper = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.06, 0.25), carbon);
+    rwUpper.position.set(0, 1.2 + 0.04 * (style % 2), -2.05); body.add(rwUpper);
+    [-0.82, 0.82].forEach(function (ex) {
+      var ep = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.42, 0.45), carbon);
+      ep.position.set(ex, 1.02 + 0.04 * (style % 2), -2.08); body.add(ep);
+    });
+    var rwPillar = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.45, 0.12), carbon);
+    rwPillar.position.set(0, 0.82, -1.95); body.add(rwPillar);
+    // Floor / diffuser hint
+    var floor = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.05, 3.6), carbon);
+    floor.position.set(0, 0.33, 0.2); body.add(floor);
+    var diffuser = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.12, 0.6), carbon);
+    diffuser.position.set(0, 0.36, -1.85); diffuser.rotation.x = 0.2; body.add(diffuser);
+    // Accent stripe
+    var stripe = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.03, 3.8), trim);
+    stripe.position.set(0, 0.74, 0.2); body.add(stripe);
+
+    // Wheels (F1-style: larger rear, open)
+    var fwGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.34, 16);
+    var rwGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.38, 16);
+    [[-1.05, 0.38, 1.9, fwGeo], [1.05, 0.38, 1.9, fwGeo], [-1.05, 0.42, -1.45, rwGeo], [1.05, 0.42, -1.45, rwGeo]].forEach(function (p) {
+      var w = new THREE.Mesh(p[3], tireMat);
+      w.rotation.z = Math.PI / 2;
+      w.position.set(p[0], p[1], p[2]);
+      body.add(w);
+      var rimGeo = new THREE.CylinderGeometry(p[3].parameters.radiusTop * 0.62, p[3].parameters.radiusTop * 0.62, p[3].parameters.height + 0.01, 12);
+      var rim = new THREE.Mesh(rimGeo, rimMat);
+      rim.rotation.z = Math.PI / 2;
+      rim.position.set(p[0], p[1], p[2]);
+      body.add(rim);
+    });
+
+    var shadow = new THREE.Mesh(new THREE.CircleGeometry(1.7, 16),
       new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28 }));
     shadow.rotation.x = -Math.PI / 2;
     shadow.position.y = 0.05;
     body.add(shadow);
 
-    // --- cockpit: shown only in first person, so the driver sees the road
-    //     framed by the dash, wheel and A-pillars instead of the car's own
-    //     wide bonnet filling the screen. ---
+    // --- cockpit: F1 first-person view ---
     var cockpit = new THREE.Group();
     cockpit.name = 'cockpit';
     cockpit.visible = false;
     g.add(cockpit);
 
-    // Narrow nose in the car's own colour, sloping away ahead of the driver, so
-    // there is clear road on both sides of it (like a real cockpit camera).
-    var noseC = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.07, 1.6), paint);
+    // Narrow nose/monocoque ahead of driver
+    var noseC = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.08, 2.2), paint);
     noseC.name = 'nose';
-    noseC.position.set(0, 0.62, 0.95);
+    noseC.position.set(0, 0.58, 1.25);
     cockpit.add(noseC);
+    // Front wing visible from cockpit
+    var fwC = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.04, 0.35), carbon);
+    fwC.position.set(0, 0.5, 2.2); cockpit.add(fwC);
+    [-0.85, 0.85].forEach(function (ex) {
+      var ep = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.12, 0.35), carbon);
+      ep.position.set(ex, 0.54, 2.2); cockpit.add(ep);
+    });
+    // Front tires visible at edges
+    [[-0.72, 0.52, 1.15], [0.72, 0.52, 1.15]].forEach(function (tp) {
+      var t = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.2, 12), tireMat);
+      t.rotation.z = Math.PI / 2;
+      t.position.set(tp[0], tp[1], tp[2]); cockpit.add(t);
+    });
 
-    // Steering wheel: a big rim, three spokes, a hub and a lit display screen.
-    // Grey materials (not near-black) so the cockpit reads clearly against the
-    // road instead of showing as a solid black mass.
-    var wheelMat = new THREE.MeshLambertMaterial({ color: 0x5a616c });
-    var cockpitDark = new THREE.MeshLambertMaterial({ color: 0x3a414b });
+    // Halo (F1) - central pillar and top hoop
+    var haloC = new THREE.MeshLambertMaterial({ color: 0x252830 });
+    var haloPillarC = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.38, 0.07), haloC);
+    haloPillarC.name = 'halo';
+    haloPillarC.position.set(0, 0.95, 0.55); cockpit.add(haloPillarC);
+    var haloTop = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.028, 8, 18, Math.PI), haloC);
+    haloTop.rotation.x = Math.PI / 2;
+    haloTop.rotation.z = Math.PI;
+    haloTop.position.set(0, 1.12, 0.38); cockpit.add(haloTop);
+    [[-0.18, 1.02, 0.32], [0.18, 1.02, 0.32]].forEach(function (hp) {
+      var hs = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.22, 0.05), haloC);
+      hs.position.set(hp[0], hp[1], hp[2]); hs.rotation.x = -0.35; cockpit.add(hs);
+    });
+
+    // Rectangular F1 steering wheel/yoke
+    var wheelMat = new THREE.MeshLambertMaterial({ color: 0x3a3f48 });
+    var cockpitDark = new THREE.MeshLambertMaterial({ color: 0x2c3038 });
     var wheelRoot = new THREE.Group();
     wheelRoot.name = 'wheel';
-    wheelRoot.position.set(0, 0.78, 0.25);   // at arm's reach so the whole top arc is in view
-    wheelRoot.rotation.x = -0.45;
+    wheelRoot.position.set(0, 0.8, 0.28);
+    wheelRoot.rotation.x = -0.35;
     cockpit.add(wheelRoot);
-    var rim = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.045, 10, 24), wheelMat);
-    wheelRoot.add(rim);
-    var hub = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.05, 16), cockpitDark);
-    hub.rotation.x = Math.PI / 2;
-    wheelRoot.add(hub);
-    for (var si = 0; si < 3; si++) {
-      var sa = si * Math.PI * 2 / 3;
-      var spoke = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.035, 0.02), cockpitDark);
-      spoke.rotation.z = sa;
-      spoke.position.set(Math.cos(sa) * 0.09, Math.sin(sa) * 0.09, 0);
-      wheelRoot.add(spoke);
-    }
-    var display = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.07, 0.02),
+    // Rectangular yoke: top/bottom bars + side grips
+    var yokeTop = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.055, 0.04), wheelMat);
+    yokeTop.position.set(0, 0.13, 0); wheelRoot.add(yokeTop);
+    var yokeBottom = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.05, 0.04), wheelMat);
+    yokeBottom.position.set(0, -0.13, 0); wheelRoot.add(yokeBottom);
+    [[-0.17, 0, 0], [0.17, 0, 0]].forEach(function (gp) {
+      var grip = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.28, 0.055), wheelMat);
+      grip.position.set(gp[0], gp[1], gp[2]); wheelRoot.add(grip);
+      var pad = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.12, 0.06), cockpitDark);
+      pad.position.set(gp[0], gp[1], gp[2] + 0.01); wheelRoot.add(pad);
+    });
+    // Center hub/display
+    var hub = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.14, 0.04), cockpitDark);
+    hub.position.set(0, 0, 0.01); wheelRoot.add(hub);
+    var display = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.07, 0.015),
       new THREE.MeshBasicMaterial({ color: 0x37e08a }));
-    display.position.set(0, 0.07, 0.03);
-    wheelRoot.add(display);
-    // Driver's hands gripping the rim at 10 and 2 o'clock.
+    display.position.set(0, 0.02, 0.035); wheelRoot.add(display);
+    // Rotary dials/buttons on wheel
+    [[-0.11, 0.07, 0.03], [0.11, 0.07, 0.03], [-0.11, -0.07, 0.03], [0.11, -0.07, 0.03]].forEach(function (bp) {
+      var btn = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.01, 8), trim);
+      btn.rotation.x = Math.PI / 2;
+      btn.position.set(bp[0], bp[1], bp[2]); wheelRoot.add(btn);
+    });
+
+    // Driver hands on yoke grips
     var skinMat = new THREE.MeshLambertMaterial({ color: 0xd9a066 });
-    var handGeo = new THREE.BoxGeometry(0.09, 0.08, 0.09);
-    [[-0.17, 0.12], [0.17, 0.12]].forEach(function (h) {
+    var handGeo = new THREE.BoxGeometry(0.07, 0.09, 0.08);
+    [[-0.19, 0.0], [0.19, 0.0]].forEach(function (h) {
       var hand = new THREE.Mesh(handGeo, skinMat);
       hand.name = 'hand';
-      hand.position.set(h[0], h[1], 0.05);
+      hand.position.set(h[0], h[1], 0.04);
       wheelRoot.add(hand);
     });
 
-    // Dashboard shelf under the windscreen and A-pillars framing it
+    // Cockpit sides / dash
     var dashMat = new THREE.MeshLambertMaterial({ color: 0x2e333b });
-    var dashC = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.12, 0.3), dashMat);
+    var dashC = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.1, 0.25), dashMat);
     dashC.name = 'dash';
-    dashC.position.set(0, 0.6, 0.42);
-    cockpit.add(dashC);
-    var pillarGeo = new THREE.BoxGeometry(0.1, 0.42, 0.06);
-    [-0.22, 0.22].forEach(function (px) {
-      var p = new THREE.Mesh(pillarGeo, cockpitDark);
-      p.name = 'pillar';
-      p.position.set(px, 1.13, 0.08);
-      cockpit.add(p);
+    dashC.position.set(0, 0.62, 0.42); cockpit.add(dashC);
+    // Side cockpit walls
+    [[-0.32, 0.78, 0.3], [0.32, 0.78, 0.3]].forEach(function (sp) {
+      var side = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.22, 0.55), carbon);
+      side.position.set(sp[0], sp[1], sp[2]); cockpit.add(side);
     });
 
     return g;
