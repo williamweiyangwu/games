@@ -12,7 +12,39 @@ REF.Tour = (function () {
     return D.TOURNAMENTS[0];
   }
 
-  function state() { return REF.Save.data.tournament; }
+  function slots() {
+    var d = REF.Save.data;
+    if (!Array.isArray(d.tourSlots)) d.tourSlots = [null, null, null];
+    while (d.tourSlots.length < 3) d.tourSlots.push(null);
+    return d.tourSlots;
+  }
+
+  function slotIndex() {
+    var d = REF.Save.data;
+    if (d.tourSlot !== 0 && d.tourSlot !== 1 && d.tourSlot !== 2) d.tourSlot = 0;
+    return d.tourSlot;
+  }
+
+  /* keep the single "tournament" field pointing at the active slot, so
+     older saves and the match launcher keep working */
+  function state() {
+    var d = REF.Save.data;
+    var t = slots()[slotIndex()];
+    if (d.tournament !== t) d.tournament = t;
+    return t;
+  }
+
+  function useSlot(i) {
+    if (i !== 0 && i !== 1 && i !== 2) return;
+    REF.Save.data.tourSlot = i;
+    state();
+    REF.Save.save();
+  }
+
+  function startIn(i, id) {
+    useSlot(i);
+    return start(id);
+  }
 
   function active() {
     var t = state();
@@ -80,6 +112,7 @@ REF.Tour = (function () {
       done: false,
       venue: U.pick(c.venues)
     };
+    slots()[slotIndex()] = t;
     REF.Save.data.tournament = t;
     makeRound(t);
     REF.Save.save();
@@ -174,7 +207,15 @@ REF.Tour = (function () {
   }
 
   function reset() {
+    slots()[slotIndex()] = null;
     REF.Save.data.tournament = null;
+    REF.Save.save();
+  }
+
+  function clearSlot(i) {
+    if (i !== 0 && i !== 1 && i !== 2) return;
+    slots()[i] = null;
+    if (slotIndex() === i) REF.Save.data.tournament = null;
     REF.Save.save();
   }
 
@@ -191,6 +232,11 @@ REF.Tour = (function () {
   return {
     cfg: cfg,
     state: state,
+    slots: slots,
+    slotIndex: slotIndex,
+    useSlot: useSlot,
+    startIn: startIn,
+    clearSlot: clearSlot,
     active: active,
     start: start,
     fixture: fixture,

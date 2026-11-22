@@ -98,6 +98,10 @@ REF.Match = (function () {
     this.wallPlacing = false;
     this.lastGoalCall = null;
     this.lastFoul = null;
+    /* rolling footage of the last few seconds, for VAR replays */
+    this.trace = [];
+    this.traceT = 0;
+    this.replay = null;
     this.wall = null;
     this.passTo = null;
     this.events = [];
@@ -1457,7 +1461,8 @@ REF.Match = (function () {
     if (!ok) return false;
     this.decision = null;
     if (d.apply) d.apply.call(this, id);
-    this.emit('decision', null);
+    /* apply may open a follow-up decision (e.g. goal -> VAR review) */
+    this.emit('decision', this.decision);
     return true;
   };
 
@@ -1565,20 +1570,63 @@ REF.Match = (function () {
         '. Give it and the score reads ' + line + '.',
       options: [
         { id: 'goal', label: 'Goal', sub: 'Point to the centre spot', tone: 'ok' },
-        { id: 'no-goal', label: 'No goal', sub: 'Rule it out', tone: 'no' }
+        { id: 'no-goal', label: 'No goal', sub: 'Rule it out', tone: 'no' },
+        { id: 'var', label: 'VAR', sub: 'Check the replay first', tone: 'var' }
       ],
       apply: function (id) {
-        self.lastGoalCall.confirmed = id === 'goal';
-        if (id === 'goal') {
-          self.scoreGoal(team);
-        } else {
-          self.log('no-goal', 'No goal — ' + (scorer ? scorer.name : 'the goal') + ' is ruled out');
-          var gx = (team === 0 ? 1 : -1) * (F.L / 2 - 5);
-          self.setPiece('goal-kick', new THREE.Vector3(gx, 0, U.rand(-4.5, 4.5)), 1 - team);
-        }
+        if (id === 'var') { self.varBeforeGoal(team, scorer, line); return; }
+        self.commitGoal(team, scorer, id);
       }
     };
     this.emit('decision', this.decision);
+  };
+
+  /* both the on-field call and the post-VAR call land here */
+  Match.prototype.commitGoal = function (team, scorer, id) {
+    if (!this.lastGoalCall) return;
+    this.lastGoalCall.confirmed = id === 'goal';
+    if (id === 'goal') {
+      this.scoreGoal(team);
+    } else {
+      this.log('no-goal', 'No goal — ' + (scorer ? scorer.name : 'the goal') + ' is ruled out');
+      var gx = (team === 0 ? 1 : -1) * (F.L / 2 - 5);
+      this.setPiece('goal-kick', new THREE.Vector3(gx, 0, U.rand(-4.5, 4.5)), 1 - team);
+    }
+  };
+
+  /* called straight from the goal decision: watch the angles first, then the
+     monitor gives a verdict and the referee still makes the final call */
+  Match.prototype.varBeforeGoal = function (team, scorer, line) {
+    var self = this;
+    var g = this.lastGoalCall;
+    if (!g) return;
+    var good = U.chance(0.7);
+    var verdict = good
+      ? 'The three angles show the whole ball over the line, and no offside. The monitor says GOAL.'
+      : 'The replay catches an offside in the build-up. The monitor says NO GOAL — check it before you give it.';
+    var decision = {
+      kind: 'var-goal',
+      kicker: 'VAR REVIEW  ·  ' + Math.floor(g.min) + "'",
+      title: 'After the replay',
+      text: verdict + ' The final call is yours — the score would read ' + line + '.',
+      options: [
+        { id: 'goal', label: 'Goal', sub: 'The goal stands', tone: 'ok' },
+        { id: 'no-goal', label: 'No goal', sub: 'Rule it out', tone: 'no' }
+      ],
+      apply: function (id) { self.commitGoal(team, scorer, id); }
+    };
+    var label = 'GOAL  ·  ' + this.teamName(team);
+    if (!this.playReplay({
+      team: team,
+      label: label,
+      onDone: function () {
+        self.decision = decision;
+        self.emit('decision', decision);
+      }
+    })) {
+      this.decision = decision;
+      this.emit('decision', decision);
+    }
   };
 
   Match.prototype.scoreGoal = function (team) {
@@ -1711,20 +1759,139 @@ REF.Match = (function () {
 
   Match.prototype.afterFreeze = function () { return this.continuePlay(); };
 
+  /* --------------------------------------------------------------- replay */
+  /* Twenty poses a second for the last four seconds: enough footage to
+     reconstruct a goal from any angle without storing full 3D meshes. */
+  var TRACE_HZ = 20;
+  var TRACE_MAX = 80;
+  var REPLAY_ANGLES = ['BEHIND GOAL', 'SIDELINE', 'TACTICAL CAM'];
+
+  Match.prototype.recordTrace = function (dt) {
+    this.traceT += dt;
+    if (this.traceT < 1 / TRACE_HZ) return;
+    this.traceT = 0;
+    var snap = [[this.ball.pos.x, this.ball.pos.y, this.ball.pos.z]];
+    for (var i = 0; i < this.players.length; i++) {
+      var p = this.players[i];
+      snap.push([p.pos.x, p.pos.z, p.facing]);
+    }
+    this.trace.push(snap);
+    if (this.trace.length > TRACE_MAX) this.trace.shift();
+  };
+
+  /* if the referee calls for VAR without any footage (e.g. a loaded state),
+     stage a short version from the current poses so there is always a picture */
+  Match.prototype.syntheticTrace = function (team) {
+    var end = team === 0 ? 1 : -1;
+    var gx = end * (F.L / 2 + 0.3);
+    var bz = this.ball.pos.z;
+    var out = [];
+    for (var i = 0; i < 24; i++) {
+      var t = i / 23;
+      var snap = [[gx - end * 16 * (1 - t), 0.11 + 1.7 * Math.sin(Math.PI * t), bz * (0.4 + 0.6 * t)]];
+      for (var p = 0; p < this.players.length; p++) {
+        var q = this.players[p];
+        snap.push([q.pos.x, q.pos.z, q.facing]);
+      }
+      out.push(snap);
+    }
+    return out;
+  };
+
+  /* Take over the picture: playback is driven from the render loop, and the
+     verdict is only handed back when the replay finishes. */
+  Match.prototype.playReplay = function (opts) {
+    var frames = this.trace.slice();
+    if (frames.length < 3) frames = this.syntheticTrace(opts.team);
+    if (!frames.length) return false;
+    this.replay = {
+      frames: frames,
+      idx: 0,
+      hold: 0,
+      team: opts.team,
+      label: opts.label || 'GOAL',
+      onDone: opts.onDone || null,
+      angle: 0,
+      angleT: 0,
+      ball: { x: frames[0][0][0], y: frames[0][0][1], z: frames[0][0][2] },
+      liveBall: this.ball.pos.clone()
+    };
+    this.decision = null;
+    this.emit('decision', null);
+    this.emit('replay', { on: true, label: this.replay.label, angle: REPLAY_ANGLES[0] });
+    return true;
+  };
+
+  Match.prototype.replayTick = function (dt) {
+    var r = this.replay;
+    if (!r) return;
+    if (r.hold > 0) {
+      r.hold -= dt;
+      if (r.hold <= 0) this.endReplay();
+      return;
+    }
+    var frames = r.frames;
+    r.idx += dt * TRACE_HZ * 0.8;   /* a touch under real speed */
+    var f = Math.min(frames.length - 1, r.idx);
+    var i0 = Math.floor(f); if (i0 < 0) i0 = 0;
+    var i1 = Math.min(frames.length - 1, i0 + 1);
+    var t = f - i0;
+    var a = frames[i0], b = frames[i1];
+    var bx = a[0][0] + (b[0][0] - a[0][0]) * t;
+    var by = a[0][1] + (b[0][1] - a[0][1]) * t;
+    var bz = a[0][2] + (b[0][2] - a[0][2]) * t;
+    r.ball.x = bx; r.ball.y = by; r.ball.z = bz;
+    this.ball.pos.set(bx, by, bz);
+    for (var p = 0; p < this.players.length; p++) {
+      var q = this.players[p], pa = a[p + 1], pb = b[p + 1];
+      if (!pa || !pb || !q.ch) continue;
+      q.ch.group.position.set(pa[0] + (pb[0] - pa[0]) * t, 0, pa[1] + (pb[1] - pa[1]) * t);
+      q.ch.group.rotation.y = pa[2];
+    }
+    /* split whatever footage we have into three equal angles, so even a
+       short clip shows all three views before the verdict */
+    var prog = f / Math.max(1, frames.length - 1);
+    var want = prog < 0.34 ? 0 : (prog < 0.67 ? 1 : 2);
+    if (want !== r.angle) {
+      r.angle = want;
+      this.emit('replay-angle', { angle: want, name: REPLAY_ANGLES[want] });
+    }
+    if (f >= frames.length - 1) r.hold = 0.7;
+  };
+
+  Match.prototype.endReplay = function (abort) {
+    var r = this.replay;
+    if (!r) return;
+    this.replay = null;
+    this.ball.pos.copy(r.liveBall);
+    for (var i = 0; i < this.players.length; i++) {
+      var p = this.players[i];
+      if (!p.ch) continue;
+      p.ch.group.position.set(p.pos.x, 0, p.pos.z);
+      p.ch.group.rotation.y = p.facing;
+    }
+    this.emit('replay', { on: false });
+    if (!abort && r.onDone) r.onDone.call(this);
+  };
+
   /* ------------------------------------------------------------------ VAR */
   Match.prototype.varReview = function () {
+    /* the goal decision itself offers VAR — the HUD button takes the same route */
+    if (this.decision && this.decision.kind === 'goal' && this.resolve('var')) {
+      return { ok: true };
+    }
     if (this.decision) return { ok: false, msg: 'Make the call on the pitch first' };
     var g = this.lastGoalCall;
     if (!g || g.confirmed === null) return { ok: false, msg: 'VAR: no goal decision to review' };
     if (this.min - g.min > 10) return { ok: false, msg: 'VAR: that was too long ago to review' };
     var self = this;
     this.frozen = true;
-    this.decision = {
+    var decision = {
       kind: 'var',
       kicker: 'VAR REVIEW  ·  ' + Math.floor(g.min) + "'",
       title: 'Was that a goal?',
-      text: 'The monitor replays the ' + Math.floor(g.min) + "' incident. You " +
-        (g.confirmed ? 'awarded the goal' : 'ruled it out') + '. Confirm it or turn it over.',
+      text: 'You watched the angles and ' + (g.confirmed ? 'awarded the goal' : 'ruled it out') +
+        '. Confirm the call or turn it over.',
       options: [
         { id: 'confirm', label: 'Confirm', sub: 'The call stands', tone: 'ok' },
         { id: 'overturn', label: 'Overturn', sub: 'Change the decision', tone: 'no' }
@@ -1753,7 +1920,17 @@ REF.Match = (function () {
         }
       }
     };
-    this.emit('decision', this.decision);
+    if (!this.playReplay({
+      team: g.team,
+      label: 'VAR REVIEW  ·  ' + this.teamName(g.team),
+      onDone: function () {
+        self.decision = decision;
+        self.emit('decision', decision);
+      }
+    })) {
+      this.decision = decision;
+      this.emit('decision', decision);
+    }
     return { ok: true };
   };
 
@@ -2113,6 +2290,7 @@ REF.Match = (function () {
       REF.Actors.animate(this.players[a].ch, dt, this.time);
     }
 
+    if (this.state === 'play') this.recordTrace(dt);
     this.emit('tick', null);
   };
 

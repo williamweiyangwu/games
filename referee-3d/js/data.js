@@ -223,14 +223,15 @@ REF.DATA = (function () {
     }
   ];
 
+  /* the "kits" are whistles now — in first person the whistle is the skin */
   var SKINS = [
-    { id: 'classic', name: 'Classic Black', cost: 0, shirt: '#2b2f3a', shirt2: null, shorts: '#1b1e26', socks: '#2b2f3a', desc: 'The uniform. No arguments.' },
-    { id: 'volt', name: 'Volt', cost: 0, shirt: '#c6ff2e', shirt2: null, shorts: '#161a14', socks: '#c6ff2e', desc: 'You will be seen from the moon.' },
-    { id: 'retro', name: 'Retro Red', cost: 150, shirt: '#d92b2b', shirt2: null, shorts: '#1a1a1a', socks: '#d92b2b', desc: '1970s cup-final energy.' },
-    { id: 'ice', name: 'Ice Blue', cost: 250, shirt: '#5cd6ff', shirt2: null, shorts: '#0e1a2a', socks: '#5cd6ff', desc: 'Cool head, cold calls.' },
-    { id: 'gold', name: 'Gold Elite', cost: 500, shirt: '#e8b53a', shirt2: null, shorts: '#2a1f0b', socks: '#e8b53a', desc: 'For referees who never get it wrong.' },
-    { id: 'zebra', name: 'Zebra', cost: 800, shirt: '#ffffff', shirt2: '#111111', shorts: '#111111', socks: '#ffffff', desc: 'Black and white. No grey areas.' },
-    { id: 'violet', name: 'Midnight Violet', cost: 1200, shirt: '#7a4bd8', shirt2: null, shorts: '#150e26', socks: '#7a4bd8', desc: 'Stoppage time, under the lights.' }
+    { id: 'classic', name: 'Classic Steel', cost: 0, body: '#d2d9e6', trim: '#8892a6', desc: 'Brushed steel. The uniform.' },
+    { id: 'volt', name: 'Volt', cost: 0, body: '#c6ff2e', trim: '#6f8c14', desc: 'You will be heard from the moon.' },
+    { id: 'retro', name: 'Retro Red', cost: 150, body: '#d92b2b', trim: '#7a1414', desc: '1970s cup-final energy.' },
+    { id: 'ice', name: 'Ice Blue', cost: 250, body: '#5cd6ff', trim: '#1c6f94', desc: 'Cool head, cold calls.' },
+    { id: 'gold', name: 'Gold Elite', cost: 500, body: '#e8b53a', trim: '#8a6510', desc: 'For referees who never get it wrong.' },
+    { id: 'zebra', name: 'Zebra', cost: 800, body: '#ffffff', trim: '#111111', desc: 'Black and white. No grey areas.' },
+    { id: 'violet', name: 'Midnight Violet', cost: 1200, body: '#7a4bd8', trim: '#3a1d70', desc: 'Stoppage time, under the lights.' }
   ];
 
   var ACH = [
@@ -245,7 +246,7 @@ REF.DATA = (function () {
     { id: 'full90', name: 'Full Time', desc: 'Complete a full match.', pts: 50 },
     { id: 'tutorial', name: 'Academy', desc: 'Finish the tutorial.', pts: 100 },
     { id: 'whistler', name: 'Whistle Happy', desc: 'Blow 50 whistles across your career.', pts: 60 },
-    { id: 'collector', name: 'Wardrobe', desc: 'Unlock three referee kits.', pts: 60 },
+    { id: 'collector', name: 'Collector', desc: 'Unlock three whistles.', pts: 60 },
     { id: 'tour_tie', name: 'Knockout', desc: 'Take charge of a tournament tie.', pts: 45 },
     { id: 'tour_champ', name: 'The Trophy', desc: 'Referee a tournament all the way to the final whistle.', pts: 180 }
   ];
@@ -311,7 +312,7 @@ REF.DATA = (function () {
     { id: 'red', name: 'Red card', key: '3', glyph: '▮', hint: 'Click a player to send him off', color: '#ff4d4d' },
     { id: 'paint', name: 'Paint can', key: '4', glyph: '✚', hint: 'Click the spot, then click where the wall stands', color: '#e8f4ff' },
     { id: 'book', name: 'Notebook', key: '5', glyph: '▤', hint: 'Review the match log' },
-    { id: 'var', name: 'VAR', key: '6', glyph: '▣', hint: 'Review the last goal decision', color: '#7ad1ff' }
+    { id: 'var', name: 'VAR', key: '6', glyph: '▣', hint: 'Check a goal before you call it, or review the last one', color: '#7ad1ff' }
   ];
 
   return {

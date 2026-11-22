@@ -30,6 +30,8 @@ window.REF = window.REF || {};
         if (REF.Game.match.frozen) return;
         /* a call is on the screen: the cursor belongs to the buttons */
         if (REF.Game.match.decision) return;
+        /* a replay owns the camera and the mouse stays on the monitor */
+        if (REF.Game.match.replay) return;
         try {
           var req = d.requestPointerLock();
           /* newer browsers return a promise that rejects without a gesture */
@@ -49,7 +51,7 @@ window.REF = window.REF || {};
         var h = document.getElementById('lockhint');
         if (!h) return;
         var on = !locked && !!REF.Game.match && !REF.Game.match.ended &&
-          !REF.Game.match.frozen && !REF.Game.match.decision &&
+          !REF.Game.match.frozen && !REF.Game.match.decision && !REF.Game.match.replay &&
           !REF.Game.paused && !REF.UI.currentScreen() && !REF.UI.isDialogueOpen();
         h.classList.toggle('on', on);
       }
@@ -89,12 +91,8 @@ window.REF = window.REF || {};
 
     build: function (scene) {
       if (this.ch) scene.remove(this.ch.group);
-      var skin = REF.Save.data.skin || 'classic';
-      var kit = null;
-      for (var i = 0; i < D.SKINS.length; i++) if (D.SKINS[i].id === skin) kit = D.SKINS[i];
-      if (!kit) kit = D.SKINS[0];
       this.ch = REF.Actors.create({
-        shirt: kit.shirt, shirt2: kit.shirt2, shorts: kit.shorts, socks: kit.socks,
+        shirt: '#2b2f3a', shirt2: null, shorts: '#1b1e26', socks: '#2b2f3a',
         skin: '#e8bb96', hair: '#1a1410', ref: true
       });
       this.ch.group.position.copy(this.pos);
@@ -118,9 +116,13 @@ window.REF = window.REF || {};
         color: 0xd2d9e6, roughness: 0.28, metalness: 0.6,
         emissive: 0x252a3a, emissiveIntensity: 0.6
       });
+      var trim = new THREE.MeshStandardMaterial({
+        color: 0x8892a6, roughness: 0.4, metalness: 0.55
+      });
       var cuffMat = new THREE.MeshStandardMaterial({ color: 0x2b2f3a, roughness: 0.88, metalness: 0.02 });
       this.vmMat = cuffMat;
       this.vmMetal = metal;
+      this.vmTrim = trim;
 
       function block(w, h, d, m, x, y, z) {
         var b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
@@ -183,26 +185,26 @@ window.REF = window.REF || {};
       /* the barrel */
       whistle.add(block(0.082, 0.036, 0.042, metal, 0.006, 0, 0));
       /* the air slot along the top */
-      whistle.add(block(0.04, 0.006, 0.014, skinShade, -0.004, 0.019, 0));
+      whistle.add(block(0.04, 0.006, 0.014, trim, -0.004, 0.019, 0));
       /* the flat mouthpiece tube at the left */
       whistle.add(block(0.04, 0.016, 0.028, metal, -0.056, -0.008, 0));
-      whistle.add(block(0.012, 0.011, 0.032, metal, -0.078, -0.008, 0));
+      whistle.add(block(0.012, 0.011, 0.032, trim, -0.078, -0.008, 0));
       /* the domed chamber on top — the bit that makes it a whistle */
-      var chamber = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.034, 16), metal);
+      var chamber = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.034, 16), trim);
       chamber.rotation.x = Math.PI / 2;
       chamber.position.set(0.012, 0.032, 0);
       whistle.add(chamber);
-      var dome = new THREE.Mesh(new THREE.SphereGeometry(0.024, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), metal);
+      var dome = new THREE.Mesh(new THREE.SphereGeometry(0.024, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), trim);
       dome.rotation.x = Math.PI / 2;
       dome.position.set(0.012, 0.032, 0.017);
       whistle.add(dome);
 
-      var ring = new THREE.Mesh(new THREE.TorusGeometry(0.014, 0.0034, 8, 16), metal);
+      var ring = new THREE.Mesh(new THREE.TorusGeometry(0.014, 0.0034, 8, 16), trim);
       ring.position.set(0.056, 0.006, 0);
       ring.rotation.y = Math.PI / 2;
       whistle.add(ring);
 
-      var cord = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.0028, 6, 22), metal);
+      var cord = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.0028, 6, 22), trim);
       cord.position.set(0.074, -0.004, 0.012);
       cord.rotation.set(0.2, 1.25, 0.2);
       whistle.add(cord);
@@ -226,8 +228,9 @@ window.REF = window.REF || {};
       var skin = REF.Save.data.skin || 'classic';
       var kit = D.SKINS[0];
       for (var i = 0; i < D.SKINS.length; i++) if (D.SKINS[i].id === skin) kit = D.SKINS[i];
-      if (this.ch) this.ch.setKit(kit);
-      if (this.vmMat) this.vmMat.color.set(kit.shirt);
+      if (this.vmMetal) this.vmMetal.color.set(kit.body || '#d2d9e6');
+      if (this.vmTrim) this.vmTrim.color.set(kit.trim || '#8892a6');
+      if (this.vmMat) this.vmMat.color.set('#2b2f3a');
     },
 
     reset: function () {
@@ -379,7 +382,7 @@ window.REF = window.REF || {};
     doWhistle: function () {
       if (REF.Game.paused || !REF.Game.match) return;
       var m = REF.Game.match;
-      if (m.decision) return 'busy';
+      if (m.decision || m.replay) return 'busy';
 
       this.state = 'whistle';
       this.stateT = 0.85;
@@ -477,6 +480,13 @@ window.REF = window.REF || {};
         if (d) REF.UI.showDecision(d);
         else REF.UI.hideDecision();
       });
+      this.match.on('replay', function (d) {
+        if (d && d.on) REF.UI.showReplay(d);
+        else REF.UI.hideReplay();
+      });
+      this.match.on('replay-angle', function (a) {
+        REF.UI.setReplayAngle(a);
+      });
       this.match.on('goal', function (g) {
         REF.UI.toast('GOAL', g.scorer ? g.scorer.name : 'Goal', 0);
       });
@@ -538,7 +548,7 @@ window.REF = window.REF || {};
     },
 
     varReview: function () {
-      if (!this.match) return;
+      if (!this.match || this.match.replay) return;
       var r = this.match.varReview();
       if (!r.ok) { REF.UI.flash(r.msg); return; }
       REF.Audio.resume();
@@ -685,7 +695,7 @@ window.REF = window.REF || {};
       REF.Save.unlockSkin('retro');
       REF.Save.save();
       REF.Save.ach('tutorial');
-      REF.UI.toast('TUTORIAL COMPLETE', 'Retro Red kit unlocked', 100);
+      REF.UI.toast('TUTORIAL COMPLETE', 'Retro Red whistle unlocked', 100);
       document.getElementById('objectives').classList.remove('on');
     }
   };
@@ -927,6 +937,32 @@ window.REF = window.REF || {};
       return;
     }
 
+    /* VAR replay: a broadcast camera, three angles, no referee in the way */
+    var rp = REF.Game.match.replay;
+    if (rp) {
+      var b = rp.ball;
+      var end = rp.team === 0 ? 1 : -1;
+      var goalX = end * (REF.FIELD.L / 2);
+      var px, py, pz;
+      if (rp.angle === 0) {
+        px = goalX + end * 10; py = 7.2; pz = b.z * 0.4 + 8;
+      } else if (rp.angle === 1) {
+        var side = b.z >= 0 ? 1 : -1;
+        px = b.x - end * 10; py = 8.4; pz = b.z + side * 20;
+      } else {
+        px = b.x - end * 15; py = 17; pz = b.z + 12;
+      }
+      var rk = 1 - Math.exp(-5.5 * dt);
+      camera.position.x += (px - camera.position.x) * rk;
+      camera.position.y += (py - camera.position.y) * rk;
+      camera.position.z += (pz - camera.position.z) * rk;
+      camera.lookAt(b.x, Math.max(0.5, b.y * 0.6), b.z);
+      if (REF.Ref.vm) REF.Ref.vm.visible = false;
+      var cross = document.getElementById('crosshair');
+      if (cross) cross.classList.remove('on');
+      return;
+    }
+
     if (cam.dragT > 0) cam.dragT -= dt;
 
     var moving = Math.abs(REF.Ref.vel.x) + Math.abs(REF.Ref.vel.z) > 1.2;
@@ -998,8 +1034,12 @@ window.REF = window.REF || {};
 
     if (!REF.Game.paused) {
       if (REF.Game.match && !REF.Game.match.ended) {
-        REF.Game.match.update(dt);
-        REF.Ref.update(dt);
+        if (REF.Game.match.replay) {
+          REF.Game.match.replayTick(dt);
+        } else {
+          REF.Game.match.update(dt);
+          REF.Ref.update(dt);
+        }
       }
     }
 

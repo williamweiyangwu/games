@@ -178,6 +178,21 @@ b, strong { font-weight: 800; }
 .obj-row.done { color: #7fe0a0; }
 .obj-row.done i { border-color: #2f6a45; background: #16351f; color: #7fe0a0; }
 
+#var-hud {
+  position: absolute; right: 76px; bottom: 20px; pointer-events: auto;
+  width: 52px; height: 46px; border-radius: 12px;
+  background: rgba(9, 22, 34, .92);
+  border: 1px solid rgba(122, 209, 255, .45);
+  color: #7ad1ff; display: grid; place-items: center; gap: 0;
+  transition: transform .15s, border-color .15s, box-shadow .15s;
+  box-shadow: 0 0 16px rgba(122, 209, 255, .12);
+}
+#var-hud b { font-size: 12px; letter-spacing: 1px; }
+#var-hud em { font-style: normal; font-size: 9px; color: #7ad1ff; opacity: .7; }
+#var-hud:hover { transform: translateY(-2px); border-color: #7ad1ff; box-shadow: 0 0 22px rgba(122, 209, 255, .3); }
+#var-hud.ready { animation: varPulse 1.4s ease-in-out infinite; }
+@keyframes varPulse { 50% { box-shadow: 0 0 24px rgba(122, 209, 255, .55); } }
+
 #toolbox-toggle {
   position: absolute; right: 20px; bottom: 20px; pointer-events: auto;
   width: 46px; height: 46px; border-radius: 12px;
@@ -312,7 +327,48 @@ body.talking #stage canvas { cursor: help; }
 .dec-btn.red { border-color: rgba(255, 77, 77, .55); background: rgba(120, 20, 20, .22); }
 .dec-btn.red b { color: #ff6b6b; }
 .dec-btn.warn b { color: #ffd9a0; }
+.dec-btn.var { border-color: rgba(122, 209, 255, .55); background: rgba(24, 72, 108, .22); flex: 0 1 140px; }
+.dec-btn.var b { color: #7ad1ff; }
 .dec-btn.ghost { background: transparent; }
+
+/* ------------------------------------------------------------ VAR replay */
+#replay {
+  position: fixed; inset: 0; z-index: 47;
+  pointer-events: none; opacity: 0; transition: opacity .22s;
+  background: linear-gradient(to bottom, rgba(3, 7, 13, .88) 0, rgba(3, 7, 13, .35) 17%, transparent 32%,
+              transparent 68%, rgba(3, 7, 13, .42) 84%, rgba(3, 7, 13, .95) 100%);
+}
+#replay.on { opacity: 1; }
+.rp-top {
+  position: absolute; top: 22px; left: 28px; right: 28px;
+  display: flex; align-items: center; gap: 14px;
+  font-size: 12px; letter-spacing: 3px; color: #d5e6f7;
+}
+.rp-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 7px 12px; border: 1px solid rgba(122, 209, 255, .6);
+  border-radius: 6px; background: rgba(16, 58, 88, .62);
+  color: #9be1ff; font-weight: 700; letter-spacing: 3px;
+}
+.rp-badge i {
+  width: 7px; height: 7px; border-radius: 50%; background: #7ad1ff;
+  box-shadow: 0 0 12px #7ad1ff; animation: rp-pulse 1.1s infinite;
+}
+@keyframes rp-pulse { 50% { opacity: .3; } }
+.rp-watermark {
+  position: absolute; left: 50%; top: 47%; transform: translate(-50%, -50%);
+  font-size: clamp(44px, 9vw, 120px); font-weight: 900; letter-spacing: 16px;
+  color: rgba(255, 255, 255, .10); text-shadow: 0 4px 30px rgba(0, 0, 0, .4);
+}
+.rp-bottom { position: absolute; bottom: 26px; left: 28px; right: 28px; }
+.rp-angle { font-size: 21px; letter-spacing: 5px; color: #eef5ff; margin-bottom: 11px; }
+.rp-track { height: 4px; border-radius: 3px; background: rgba(255, 255, 255, .18); overflow: hidden; }
+.rp-track i {
+  display: block; height: 100%; width: 0%; border-radius: 3px;
+  background: linear-gradient(90deg, #7ad1ff, #d7f2ff);
+  box-shadow: 0 0 14px rgba(122, 209, 255, .8);
+}
+.rp-note { margin-top: 10px; font-size: 10px; letter-spacing: 3px; color: #9fb2cc; }
 
 /* ------------------------------------------------------ tournament extras */
 .tour-extras {
@@ -527,6 +583,13 @@ body.talking #stage canvas { cursor: help; }
 .scard.locked { opacity: .78; }
 .sprev { height: 92px; border-radius: 10px; position: relative; overflow: hidden; margin-bottom: 11px; }
 .sprev .sbody { position: absolute; left: 0; right: 0; bottom: 0; height: 30%; }
+/* whistle previews: the kit is the whistle in your hand */
+.wprev { background: radial-gradient(circle at 50% 45%, #1b2434, #0c111b) !important; display: grid; place-items: center; }
+.whistle-prev { position: relative; width: 96px; height: 44px; transform: rotate(-8deg); filter: drop-shadow(0 6px 8px rgba(0,0,0,.5)); }
+.wp-body { position: absolute; left: 22px; top: 12px; width: 58px; height: 22px; border-radius: 9px 5px 5px 9px; box-shadow: inset 0 -5px 8px rgba(0,0,0,.3), inset 0 3px 5px rgba(255,255,255,.35); }
+.wp-mouth { position: absolute; left: 4px; top: 18px; width: 22px; height: 11px; border-radius: 3px 2px 2px 3px; }
+.wp-chamber { position: absolute; left: 56px; top: 2px; width: 22px; height: 18px; border-radius: 6px 6px 3px 3px; box-shadow: inset 0 -3px 5px rgba(0,0,0,.3); }
+.wp-ring { position: absolute; left: 84px; top: 17px; width: 12px; height: 12px; border: 2px solid; border-radius: 50%; }
 .sname { font-size: 13.5px; font-weight: 700; letter-spacing: .4px; }
 .sdesc { font-size: 11px; color: var(--dim); margin-top: 3px; min-height: 28px; }
 .sfoot { margin-top: 8px; }
@@ -669,6 +732,24 @@ body.talking #stage canvas { cursor: help; }
 .tcard p { margin: 0 0 14px; font-size: 12px; color: var(--dim); }
 .tchips { display: flex; gap: 5px; flex-wrap: wrap; }
 .tchips .chip, .tour-champ .chip { width: 16px; height: 16px; border-radius: 4px; display: block; box-shadow: 0 0 0 1px rgba(255, 255, 255, .18); }
+
+/* three tournament save slots */
+.save-blocks { margin-bottom: 22px; }
+.sb-caption { font-size: 10px; letter-spacing: 3px; color: var(--dim); margin-bottom: 10px; }
+.sb-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.save-block {
+  text-align: left; padding: 12px 14px; border-radius: 12px;
+  background: #101724; border: 1px solid #212b41; color: var(--ink);
+  transition: transform .14s, border-color .14s, background .14s;
+}
+.save-block:hover { transform: translateY(-2px); border-color: #3d4c74; }
+.save-block.active { border-color: var(--gold); background: #1b2233; box-shadow: 0 0 0 1px rgba(255, 215, 94, .25); }
+.save-block.empty { opacity: .8; }
+.sb-num { font-size: 9.5px; letter-spacing: 2px; color: var(--gold2); margin-bottom: 7px; }
+.save-block:not(.active) .sb-num { color: #7f8ca6; }
+.sb-comp { font-size: 13px; font-weight: 700; letter-spacing: .4px; }
+.sb-status { font-size: 11px; color: var(--dim); margin-top: 3px; }
+@media (max-width: 700px) { .sb-row { grid-template-columns: 1fr; } }
 
 .tour-head { display: flex; align-items: flex-end; gap: 20px; margin-bottom: 18px; }
 .tour-comp { font-size: 16px; font-weight: 800; letter-spacing: 2px; }

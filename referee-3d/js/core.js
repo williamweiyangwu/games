@@ -51,6 +51,8 @@ REF.Save = (function () {
       tutorial: { done: false },
       history: [],
       tournament: null,
+      tourSlots: [null, null, null],
+      tourSlot: 0,
       tourCups: 0
     };
   }
@@ -71,7 +73,17 @@ REF.Save = (function () {
         if (p.talkedTo) d.talkedTo = p.talkedTo;
         if (p.tutorial) d.tutorial = { done: !!p.tutorial.done };
         if (Array.isArray(p.history)) d.history = p.history.slice(0, 20);
-        if (p.tournament && Array.isArray(p.tournament.rounds)) d.tournament = p.tournament;
+        /* three save blocks; an older single-tournament save becomes slot 1 */
+        if (Array.isArray(p.tourSlots)) {
+          for (var si = 0; si < 3; si++) {
+            var sl = p.tourSlots[si];
+            if (sl && Array.isArray(sl.rounds)) d.tourSlots[si] = sl;
+          }
+        } else if (p.tournament && Array.isArray(p.tournament.rounds)) {
+          d.tourSlots[0] = p.tournament;
+        }
+        d.tourSlot = (p.tourSlot === 1 || p.tourSlot === 2) ? p.tourSlot : 0;
+        d.tournament = d.tourSlots[d.tourSlot];
         if (typeof p.tourCups === 'number') d.tourCups = p.tourCups;
       }
     } catch (e) { /* corrupted save, start clean */ }

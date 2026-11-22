@@ -37,7 +37,12 @@ REF.UI = (function () {
     }
     currentScreen = name;
     $('hud').classList.toggle('on', !name || name === 'pause' || name === 'result');
-    if (name) { $('continuebar').classList.remove('on'); hideDecision(); }
+    if (name) {
+      $('continuebar').classList.remove('on');
+      hideDecision();
+      hideReplay();
+      if (REF.Game.match && REF.Game.match.replay) REF.Game.match.endReplay(true);
+    }
     if (name && REF.Pointer) REF.Pointer.unlock();
     if (REF.Pointer) REF.Pointer.refresh();
   }
@@ -141,13 +146,18 @@ REF.UI = (function () {
       var card = h('button', 'scard' + (owned ? '' : ' locked') + (active ? ' active' : ''));
       card.type = 'button';
 
-      var prev = h('div', 'sprev');
-      prev.style.background = s.shirt2
-        ? 'repeating-linear-gradient(90deg,' + s.shirt + ' 0 12px,' + s.shirt2 + ' 12px 24px)'
-        : s.shirt;
-      var body = h('div', 'sbody');
-      body.style.background = s.shorts;
-      prev.appendChild(body);
+      var prev = h('div', 'sprev wprev');
+      var wn = h('div', 'whistle-prev');
+      var wb = h('div', 'wp-body');
+      wb.style.background = s.body;
+      var wc = h('div', 'wp-chamber');
+      wc.style.background = s.trim;
+      var wm = h('div', 'wp-mouth');
+      wm.style.background = s.trim;
+      var wr = h('div', 'wp-ring');
+      wr.style.borderColor = s.trim;
+      wn.appendChild(wm); wn.appendChild(wb); wn.appendChild(wc); wn.appendChild(wr);
+      prev.appendChild(wn);
       card.appendChild(prev);
 
       card.appendChild(h('div', 'sname', s.name));
@@ -220,9 +230,50 @@ REF.UI = (function () {
     var body = $('tour-body');
     if (!body) return;
     body.innerHTML = '';
+    renderSaveBlocks(body);
     var t = REF.Tour.state();
     if (!t) renderTourPicker(body);
     else renderBracket(body, t);
+  }
+
+  /* three save blocks: each holds its own draw, and you pick which is active */
+  function renderSaveBlocks(body) {
+    var wrap = h('div', 'save-blocks');
+    wrap.appendChild(h('div', 'sb-caption', 'SAVE SLOTS  ·  three tournaments, pick one to run'));
+    var row = h('div', 'sb-row');
+    var slots = REF.Tour.slots();
+    var active = REF.Tour.slotIndex();
+    for (var i = 0; i < 3; i++) {
+      (function (n) {
+        var t = slots[n];
+        var isActive = n === active;
+        var card = h('button', 'save-block' + (isActive ? ' active' : '') + (t ? '' : ' empty'));
+        card.type = 'button';
+        card.appendChild(h('div', 'sb-num', 'SLOT ' + (n + 1) + (isActive ? '  ·  ACTIVE' : '')));
+        if (t) {
+          card.appendChild(h('div', 'sb-comp', t.comp + ' · ' + t.year));
+          card.appendChild(h('div', 'sb-status', t.done
+            ? 'Champion: ' + D.TEAMS[t.champ].name
+            : REF.Tour.stageName(t.round) + ' · ' + t.alive.length + ' teams left'));
+        } else {
+          card.appendChild(h('div', 'sb-comp', 'Empty slot'));
+          card.appendChild(h('div', 'sb-status', 'Start a new draw here'));
+        }
+        card.addEventListener('click', function () {
+          REF.Audio.click();
+          /* clicking an active slot twice clears it */
+          if (isActive && t && confirm('Clear tournament in slot ' + (n + 1) + '?')) {
+            REF.Tour.clearSlot(n);
+          } else {
+            REF.Tour.useSlot(n);
+          }
+          buildTour();
+        });
+        row.appendChild(card);
+      })(i);
+    }
+    wrap.appendChild(row);
+    body.appendChild(wrap);
   }
 
   function renderTourPicker(body) {
@@ -547,6 +598,34 @@ REF.UI = (function () {
 
   function decisionOpen() { return $('decision').classList.contains('on'); }
 
+  /* ------------------------------------------------------------ VAR replay */
+  function showReplay(info) {
+    $('rp-label').textContent = info.label || 'VAR';
+    setReplayAngle({ name: info.angle || 'BEHIND GOAL' });
+    $('rp-fill').style.width = '0%';
+    $('replay').classList.add('on');
+    hideDecision();
+    hideContinue();
+    cancelFlash();
+    if (REF.Pointer) { REF.Pointer.unlock(); REF.Pointer.refresh(); }
+    updatePromptNow();
+  }
+
+  function hideReplay() {
+    $('replay').classList.remove('on');
+  }
+
+  function setReplayAngle(a) {
+    $('rp-angle').textContent = a.name || 'BEHIND GOAL';
+  }
+
+  function updateReplayBar(m) {
+    var r = m.replay;
+    if (!r || !r.frames.length) return;
+    var pct = Math.min(100, Math.round((r.idx / r.frames.length) * 100));
+    $('rp-fill').style.width = pct + '%';
+  }
+
   /* --------------------------------------------------------- continue bar */
   function showContinue() { $('continuebar').classList.add('on'); }
   function hideContinue() { $('continuebar').classList.remove('on'); }
@@ -661,6 +740,7 @@ REF.UI = (function () {
     var m = REF.Game.match;
     if (!m) { setPrompt(''); return; }
     if (tool === 'yellow' || tool === 'red') return;
+    if (m.replay) { setPrompt(''); return; }
     if (m.decision) { setPrompt(''); return; }
     if (m.wallPlacing) { setPrompt('Click where the wall should stand  ·  ENTER skips it'); return; }
     if (m.awaiting) {
@@ -703,16 +783,26 @@ REF.UI = (function () {
     }
     $('sb-clock').textContent = U.fmtClock(match.min) + (match.half === 2 ? '  2H' : '');
     var stopped = !!(match.frozen || match.freezeT > 0);
-    var held = stopped || !!match.awaiting || !!match.decision;
+    var held = stopped || !!match.awaiting || !!match.decision || !!match.replay;
     $('sb-clock').classList.toggle('frozen', held);
     var ps = $('playstop');
     if (ps) {
       ps.classList.toggle('on', held);
-      ps.textContent = match.decision ? 'DECISION' : (match.awaiting ? 'BALL DEAD' : 'PLAY STOPPED');
+      ps.textContent = match.replay ? 'VAR REVIEW' :
+        (match.decision ? 'DECISION' : (match.awaiting ? 'BALL DEAD' : 'PLAY STOPPED'));
     }
+    if (match.replay) updateReplayBar(match);
     var cb = $('continuebar');
     if (cb) cb.classList.toggle('on', stopped && !match.decision && !match.awaiting);
     $('sb-comp').textContent = match.data.comp + ' · ' + match.data.stage + ' · ' + match.data.year;
+
+    var vh = $('var-hud');
+    if (vh) {
+      var g = match.lastGoalCall;
+      var ready = !!(match.decision && match.decision.kind === 'goal') ||
+        (!!g && g.confirmed !== null && match.min - g.min <= 10);
+      vh.classList.toggle('ready', ready);
+    }
 
     $('sb-n0').textContent = match.teams[0].info.abbr;
     $('sb-n1').textContent = match.teams[1].info.abbr;
@@ -890,6 +980,12 @@ REF.UI = (function () {
       REF.Audio.click();
       openToolbox(!$('toolbox').classList.contains('on'));
     });
+    var vh = $('var-hud');
+    if (vh) vh.addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      REF.Audio.click();
+      REF.Game.varReview();
+    });
 
     var histBtn = $('btn-hist');
     if (histBtn) {
@@ -1005,6 +1101,9 @@ REF.UI = (function () {
     showDecision: showDecision,
     hideDecision: hideDecision,
     decisionOpen: decisionOpen,
+    showReplay: showReplay,
+    hideReplay: hideReplay,
+    setReplayAngle: setReplayAngle,
     openSave: openSave,
     currentScreen: function () { return currentScreen; },
     tool: function () { return tool; },
