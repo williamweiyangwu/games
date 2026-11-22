@@ -225,7 +225,7 @@
 <div id="standings" class="hidden"></div>
 <div id="banner" class="hidden"></div>
 <div id="lights" class="hidden"><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div></div>
-  <div id="verTag">v2.38</div>
+  <div id="verTag">v2.39</div>
   <button id="achBtn" class="ghost">ACHIEVEMENTS</button>
   <div id="achPanel"><b style="letter-spacing:.12em">ACHIEVEMENTS</b><div id="achList" style="margin-top:8px"></div></div>
   <div id="pitMsg"></div>
@@ -1452,10 +1452,15 @@ ctrl: [
   function geomLat(s, lat) {
     var cap = clearLatAt(s);
     var k = signedKappaAt(s);
-    if (Math.abs(k) > 1e-7 && lat * k < 0) cap = Math.min(cap, OFFSET_SAFETY / Math.abs(k));
+    var foldMax = Infinity;
+    if (Math.abs(k) > 1e-7 && lat * k < 0) foldMax = OFFSET_SAFETY / Math.abs(k);
+    cap = Math.min(cap, foldMax);
     if (cap < 1.0) cap = 1.0;
     if (cap < RAIL_LAT && Math.abs(lat) > 1e-6) lat *= cap / RAIL_LAT;
-    return limitedLat(s, lat);
+    // Hard fold clamp as safety net: outer faces can exceed foldMax after scaling.
+    // limitedLat() is not used here because it would re-collapse wall faces.
+    if (foldMax < Infinity && Math.abs(lat) > foldMax) lat = lat < 0 ? -foldMax : foldMax;
+    return lat;
   }
   function railLatLimit(s, side) {
     var lim = Math.min(RAIL_LAT, clearLatAt(s)), k = signedKappaAt(s);
@@ -1692,6 +1697,10 @@ ctrl: [
       var s0 = i / SEG * LEN, s1 = (i + 1) / SEG * LEN;
       var l0 = geomLat(s0, lat), l1 = geomLat(s1, lat);
       var l0b = geomLat(s0, lat - inward * W), l1b = geomLat(s1, lat - inward * W);
+      // Prevent degenerate zero-width wall panels if fold clamp collapses faces.
+      var minWall = 0.15;
+      if (Math.abs(l0 - l0b) < minWall) l0b = l0 - inward * minWall;
+      if (Math.abs(l1 - l1b) < minWall) l1b = l1 - inward * minWall;
       var A0 = offsetPos(s0, l0),  B0 = offsetPos(s1, l1);
       var A2 = offsetPos(s0, l0b), B2 = offsetPos(s1, l1b);
       var V = normalAt(s0), nx = V.x * inward, nz = V.z * inward;
