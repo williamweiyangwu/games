@@ -604,6 +604,9 @@ REF.UI = (function () {
     setReplayAngle({ name: info.angle || 'BEHIND GOAL' });
     $('rp-fill').style.width = '0%';
     $('replay').classList.add('on');
+    var ps = $('playstop');
+    if (ps) { ps.textContent = 'VAR REVIEW'; ps.classList.add('on'); }
+    if (REF.Ref && REF.Ref.vm) REF.Ref.vm.visible = false;
     hideDecision();
     hideContinue();
     cancelFlash();

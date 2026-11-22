@@ -1025,7 +1025,8 @@ window.REF = window.REF || {};
   /* --------------------------------------------------------------- loop */
   function frame(now) {
     requestAnimationFrame(frame);
-    var dt = (now - clockLast) / 1000;
+    var rawDt = (now - clockLast) / 1000;
+    var dt = rawDt;
     clockLast = now;
     if (!isFinite(dt) || dt <= 0) dt = 0.016;
     if (dt > 0.05) dt = 0.05;
@@ -1035,7 +1036,9 @@ window.REF = window.REF || {};
     if (!REF.Game.paused) {
       if (REF.Game.match && !REF.Game.match.ended) {
         if (REF.Game.match.replay) {
-          REF.Game.match.replayTick(dt);
+          /* real elapsed time: a slow machine must not turn a short replay
+             into a two-minute slideshow */
+          REF.Game.match.replayTick(Math.min(0.25, Math.max(0, rawDt)));
         } else {
           REF.Game.match.update(dt);
           REF.Ref.update(dt);
