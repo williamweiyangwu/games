@@ -225,7 +225,7 @@
 <div id="standings" class="hidden"></div>
 <div id="banner" class="hidden"></div>
 <div id="lights" class="hidden"><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div></div>
-  <div id="verTag">v2.43</div>
+  <div id="verTag">v2.44</div>
   <button id="achBtn" class="ghost">ACHIEVEMENTS</button>
   <div id="achPanel"><b style="letter-spacing:.12em">ACHIEVEMENTS</b><div id="achList" style="margin-top:8px"></div></div>
   <div id="pitMsg"></div>
@@ -1863,6 +1863,28 @@ ctrl: [
     /* ---- start / finish: chequered band, timing line, gantry, flags ---- */
     world.add(chequer(-2.6, 6.6, 14, 2));
     world.add(ribbon(-HALF_W, HALF_W, 0.05, [1, 1, 1], -0.45, 0.45, 3));   // solid timing line
+    // Flat road marking helper: a quad between two s/lat pairs.
+    function flatMark(sa, sb, latA, latB, color, y) {
+      var A = offsetPos(sa, geomLat(sa, latA)), B = offsetPos(sa, geomLat(sa, latB));
+      var C = offsetPos(sb, geomLat(sb, latB)), D = offsetPos(sb, geomLat(sb, latA));
+      var g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute([
+        A.x, y + A.y, A.z, B.x, y + B.y, B.z, C.x, y + C.y, C.z,
+        A.x, y + A.y, A.z, C.x, y + C.y, C.z, D.x, y + D.y, D.z
+      ], 3));
+      g.computeVertexNormals();
+      world.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: color, side: THREE.DoubleSide })));
+    }
+    // F1-style grid boxes (staggered 2x11)
+    for (var gb = 0; gb < 22; gb++) {
+      var row = Math.floor(gb / 2), col = gb % 2;
+      var gs = wrapS(LEN - 10 - row * 8 - (col ? 4 : 0));
+      var gl = col ? 3.2 : -3.2;
+      flatMark(gs - 1.6, gs + 1.6, gl - 1.5, gl - 1.35, 0xffffff, 0.045);
+      flatMark(gs - 1.6, gs + 1.6, gl + 1.35, gl + 1.5, 0xffffff, 0.045);
+      flatMark(gs - 1.6, gs - 1.45, gl - 1.5, gl + 1.5, 0xffffff, 0.045);
+      flatMark(gs + 1.45, gs + 1.6, gl - 1.5, gl + 1.5, 0xffffff, 0.045);
+    }
 
     (function gantry() {
       var g0 = yawAt(0);
@@ -1893,6 +1915,25 @@ ctrl: [
       board.position.set(face.x, 7.6, face.z);
       board.rotation.y = g0 + Math.PI;
       world.add(board);
+      // F1-style 5-light clusters
+      for (var li = 0; li < 5; li++) {
+        var lx = -4 + li * 2;
+        var lp = offsetPos(-0.5, lx);
+        var housing = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.6, 0.5), new THREE.MeshLambertMaterial({ color: 0x111318 }));
+        housing.position.set(lp.x, 9.0, lp.z);
+        housing.rotation.y = g0;
+        world.add(housing);
+        for (var lr = 0; lr < 2; lr++) {
+          var light = new THREE.Mesh(new THREE.CircleGeometry(0.22, 12), new THREE.MeshBasicMaterial({ color: 0x550000 }));
+          light.position.set(lp.x, 9.35 - lr * 0.55, lp.z);
+          light.rotation.y = g0 + Math.PI;
+          // nudge slightly forward
+          var nf = tangentAt(0);
+          light.position.x -= nf.x * 0.28;
+          light.position.z -= nf.z * 0.28;
+          world.add(light);
+        }
+      }
 
       var flagTex = signTexture('', '#f2f2f2', '#16181d');
       [-1, 1].forEach(function (side) {
@@ -1918,18 +1959,6 @@ ctrl: [
       var pitBox = new THREE.MeshLambertMaterial({ color: 0x252b36 });
       var pitLat = -(HALF_W + 3.2);
       var pitW = 4.2;
-      // Flat road marking helper: a quad between two s/lat pairs.
-      function flatMark(sa, sb, latA, latB, color, y) {
-        var A = offsetPos(sa, geomLat(sa, latA)), B = offsetPos(sa, geomLat(sa, latB));
-        var C = offsetPos(sb, geomLat(sb, latB)), D = offsetPos(sb, geomLat(sb, latA));
-        var g = new THREE.BufferGeometry();
-        g.setAttribute('position', new THREE.Float32BufferAttribute([
-          A.x, y + A.y, A.z, B.x, y + B.y, B.z, C.x, y + C.y, C.z,
-          A.x, y + A.y, A.z, C.x, y + C.y, C.z, D.x, y + D.y, D.z
-        ], 3));
-        g.computeVertexNormals();
-        world.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: color, side: THREE.DoubleSide })));
-      }
       // build pit road segments
       var segs = 70;
       var total = 78;
@@ -2061,6 +2090,25 @@ ctrl: [
           world.add(beacon);
         });
       } catch(e){}
+    })();
+
+    // F1-style DRS zone markers
+    (function drsZones() {
+      [0.22, 0.62].forEach(function (frac, zi) {
+        var ds = frac * LEN;
+        world.add(ribbon(-HALF_W, HALF_W, 0.055, [1, 1, 1], ds - 0.3, ds + 0.3, 2));
+        flatMark(ds - 1.0, ds + 1.0, -HALF_W - 0.2, -HALF_W + 0.8, 0xffffff, 0.05);
+        flatMark(ds - 1.0, ds + 1.0, HALF_W - 0.8, HALF_W + 0.2, 0xffffff, 0.05);
+        var bp = offsetPos(ds, HALF_W + 4.5);
+        var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 4.2, 8), new THREE.MeshLambertMaterial({ color: 0x888888 }));
+        pole.position.set(bp.x, 2.1, bp.z); world.add(pole);
+        try {
+          var sign = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 1.2), new THREE.MeshBasicMaterial({ map: signTexture('DRS ZONE ' + (zi + 1), '#0b6623', '#ffffff'), side: THREE.DoubleSide }));
+          sign.position.set(bp.x, 4.5, bp.z);
+          sign.rotation.y = yawAt(ds) + Math.PI;
+          world.add(sign);
+        } catch(e){}
+      });
     })();
 
     // scenery: trees and grandstands outside the railings
