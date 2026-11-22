@@ -752,12 +752,10 @@
 </style>
 </head>
 <body>
-<a id="arcadeBack" href="../" title="Back to Arcade" aria-label="Back to Arcade" style="position:fixed;top:14px;left:14px;z-index:999999;padding:11px 20px;border:1px solid #3d4c74;border-radius:999px;background:rgba(10,13,20,.9);color:#eef2fb;font:700 17px/1.2 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;text-decoration:none;box-shadow:0 3px 12px rgba(0,0,0,.5);transition:opacity .25s">&#8592; Arcade</a>
-<script>(function(){var a=document.getElementById('arcadeBack');if(!a)return;var t;function show(){a.style.opacity='1';a.style.pointerEvents='auto';}function hide(){a.style.opacity='0';a.style.pointerEvents='none';}function later(){clearTimeout(t);t=setTimeout(hide,700);}document.addEventListener('mousemove',function(e){if(e.clientX<170&&e.clientY<75){clearTimeout(t);show();}else later();},{passive:true});a.addEventListener('mouseenter',function(){clearTimeout(t);show();});a.addEventListener('mouseleave',later);show();})();</script>
   <div id="fit">
     <div id="stage">
       <header>
-        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v37</span></h1>
+        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v38</span></h1>
         <div id="turnbar">Player 1's Turn</div>
       </header>
 
@@ -2578,9 +2576,8 @@ function lpLeave() {
   if (NET && NET.id === 0 && MQ.connected) mqClear("kards6/rooms/" + NET.code);
   if (NET) { stopPoll(); NET = null; }
   stopRoomWatch();
-  startRoomWatch();
   status("");
-  lobbyPageRender();
+  openLobbyPage();
 }
 
 function lobbyNameVal(def) {
@@ -2859,6 +2856,8 @@ function hostGame() {
   NET = { code: genCode(), id: 0, sess: genSess(), ver: 0, meName: name, foeName: "", f: FACTION, foeF: "", started: false, lastHeard: Date.now() };
   S = { cur: NET.id, turn: NET.id, over: false, winner: 0, attackSel: null, readyOrder: null, started: false, overShown: false, pub: { hand: [0, 0], deck: [0, 0] } };
   S.players = [freshPlayer(), freshPlayer()];
+  // Leave the full-screen lobby hub so the waiting room is fully visible.
+  if (LOBBY_OPEN) closeLobbyPage();
   updateOnlineWaiting();
   status("Connecting to relay...");
   mqConnect();
@@ -2872,6 +2871,8 @@ function joinGame() {
   NET = { code: code, id: 1, sess: genSess(), ver: 0, meName: name, foeName: "", f: FACTION, foeF: "", started: false, lastHeard: Date.now() };
   S = { cur: NET.id, turn: NET.id, over: false, winner: 0, attackSel: null, readyOrder: null, started: false, overShown: false, pub: { hand: [0, 0], deck: [0, 0] } };
   S.players = [freshPlayer(), freshPlayer()];
+  // Leave the full-screen lobby hub so the waiting room is fully visible.
+  if (LOBBY_OPEN) closeLobbyPage();
   updateOnlineWaiting();
   status("Connecting to relay...");
   mqConnect();
