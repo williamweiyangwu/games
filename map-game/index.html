@@ -177,6 +177,10 @@
   .land.tgt{stroke:#7fe08a;stroke-width:2.2;stroke-dasharray:5 3}
   .land.war{stroke:#7a2a2a;stroke-width:1.6}
   .sea{stroke:#243449;stroke-width:.7;stroke-dasharray:2 2}
+  .seaZone{stroke:#3b7b99;stroke-width:1.2;stroke-dasharray:5 4;opacity:.94}
+  .seaZone.sel{stroke:#a8ecff;stroke-width:2.4}
+  .seaZone.tgt{stroke:#7fe08a;stroke-width:2.2;stroke-dasharray:5 3}
+  .seaLbl{font:italic 700 10.5px "Segoe UI",sans-serif;fill:#9bd4ee;paint-order:stroke;stroke:#06121c;stroke-width:3.2px;text-anchor:middle;pointer-events:none;user-select:none;letter-spacing:.7px}
   .resBadge{pointer-events:auto;cursor:pointer}
   .resBadge rect{stroke:#e2b13c;stroke-width:1.1;rx:3}
   .resBadge.food rect{stroke:#7fe08a}
@@ -721,21 +725,23 @@
       <div class="tutS">
         <div class="tutN">7</div>
         <div>
-          <h4>Fleets &amp; air wings</h4>
-          <p>Coastal nations can build <b>ships</b> in the <b>Navy</b> tab, and every nation can build
-          <b>aircraft</b> in the <b>Air Force</b> tab. Select a ship and click a neighbouring enemy
-          province to storm its coast &mdash; an amphibious landing. Select aircraft and click a
-          neighbouring enemy province to strike it; the squadron attacks and returns home. Every
-          squadron you field gives your whole army and navy an <b>air-superiority bonus</b> in battle.</p>
+          <h4>War at sea</h4>
+          <p>Coastal nations can build <b>ships</b> in the <b>Navy</b> tab. Eighteen named <b>sea zones</b>
+          follow the real coasts and narrow straits instead of a grid. Select a fleet in port, then click an
+          adjacent sea zone to sail there. Fleets fight enemy ships in the same zone, and a lone fleet takes
+          control of it. From a sea zone you can <b>storm an enemy coast</b> &mdash; an amphibious landing.
+          Only ships may enter the sea.</p>
         </div>
       </div>
       <div class="tutS">
         <div class="tutN">8</div>
         <div>
-          <h4>Land fronts</h4>
-          <p>On land, <b>entrench</b> your own provinces (or leave engineers there) to raise a fortified
-          front that makes defenders much tougher. Forts are lost when a province falls. This works on
-          every map.</p>
+          <h4>Air wings &amp; land fronts</h4>
+          <p>Every nation can build <b>aircraft</b> in the <b>Air Force</b> tab. Select a squadron and click a
+          neighbouring enemy province to strike it; the squadron attacks and returns home. Every squadron you
+          field gives your whole army and navy an <b>air-superiority bonus</b> in battle. On land,
+          <b>entrench</b> your own provinces (or leave engineers there) to raise a fortified front that makes
+          defenders much tougher. Both mechanics work on every map.</p>
         </div>
       </div>
       <div class="tutS">
@@ -1052,6 +1058,89 @@ var EU_REGIONS = [
    nb:['germany','czechoslovakia','hungary','yugoslavia','italy','switzerland'],
    owner:'germany',playable:false}
 ];
+/* =======================================================================
+   2a-EU. EUROPE SEA ZONES   (Europe map only - China has no navy)
+   Eighteen named seas and straits, drawn as irregular coast-following
+   polygons rather than a grid. Land is painted over the water, so each
+   coastline stays true to the real outline and only the narrows divide one
+   sea from the next. Fleets sail between them and storm enemy shores.
+   ======================================================================= */
+function seaPoly(pts){ return [pts]; }
+var EU_SEA = [
+  {id:'atlantic', name:'North Atlantic', flag:'&#127754;', color:'#16394f', sea:true, lab:[-17,50.2],
+   polys:seaPoly([[-27,36],[-27,58],[-24,60.5],[-19,61],[-14,60],[-10,58.5],[-8,57],[-7.5,55],
+                  [-9,52],[-7,49.8],[-6,48],[-9.5,46],[-10.5,43.4],[-12,40],[-11,36]]),
+   nb:['ireland','uk','france','spain','portugal','iceland','norwsea','chan','irishsea','biscay','iberia']},
+  {id:'barents', name:'Barents Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[31,70.0],
+   polys:seaPoly([[16,68.4],[19,69.2],[24,70],[30,70.8],[36,71.2],[46,71.2],[46,68.6],
+                  [41,68.2],[35,67.6],[29,66.6],[23,66.2],[18,66.8]]),
+   nb:['norway','ussr','norwsea']},
+  {id:'norwsea', name:'Norwegian Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[1,64.2],
+   polys:seaPoly([[-13,58.9],[-12,62],[-9,64],[-5,66],[0,67.6],[7,68.2],[13,68.4],[16,68.4],
+                  [16,67],[13,65.8],[10,64],[7,62],[8.5,58.9],[3,58.2],[-3,57.2],[-8,57.5]]),
+   nb:['uk','norway','iceland','nsea','barents','atlantic','kattegat']},
+  {id:'nsea', name:'North Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[3.4,55.1],
+   polys:seaPoly([[-1,51],[0.5,52.4],[1.5,54],[3,56],[5.5,58],[8.5,58.9],[8,57.5],[7.4,56.6],
+                  [9,56],[8.5,55.5],[8.2,53.5],[6,52.2],[3.5,51.4],[1.5,51]]),
+   nb:['uk','netherlands','belgium','germany','denmark','norway','norwsea','kattegat','chan','irishsea']},
+  {id:'kattegat', name:'Kattegat &amp; Skagerrak', flag:'&#127754;', color:'#16394f', sea:true, lab:[9.7,58.4],
+   polys:seaPoly([[8.5,58.9],[10.5,58.2],[12.5,57.8],[13,57.2],[12.6,56.2],[11.5,55.5],
+                  [10,55.6],[8.5,55.5],[9,56.5],[7.4,56.6],[8,57.5]]),
+   nb:['denmark','norway','sweden','nsea','norwsea','baltic']},
+  {id:'baltic', name:'Baltic Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[17,56.8],
+   polys:seaPoly([[12.5,55.5],[13.5,55],[15,54.5],[17,54.2],[19,54.5],[21,55],[21,57],
+                  [20,58.5],[21,59.5],[21,60],[19,60],[17,59.5],[15.5,59],[14,58],[13,57]]),
+   nb:['germany','denmark','sweden','finland','poland','estonia','latvia','lithuania','ussr',
+       'kattegat','bothnia','gofin']},
+  {id:'bothnia', name:'Gulf of Bothnia', flag:'&#127754;', color:'#16394f', sea:true, lab:[21,62.8],
+   polys:seaPoly([[17,60],[18.5,60.5],[20,61.5],[21,63],[21.5,64.5],[22,65.7],[24,65.5],
+                  [25.5,64],[24.5,62.5],[23,61],[21,60]]),
+   nb:['sweden','finland','baltic']},
+  {id:'gofin', name:'Gulf of Finland', flag:'&#127754;', color:'#16394f', sea:true, lab:[26,59.8],
+   polys:seaPoly([[21,59.2],[22.5,59.4],[24,59.6],[26,59.8],[28,59.9],[30,60.5],
+                  [29,60.2],[26,60.1],[23,60],[21,59.6]]),
+   nb:['finland','estonia','ussr','baltic']},
+  {id:'irishsea', name:'Irish Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[-5.4,52.6],
+   polys:seaPoly([[-6,55.5],[-5.5,54.5],[-5.2,53.5],[-5.4,52.6],[-5,51.8],[-4.5,51.3],
+                  [-5.5,51.5],[-6,52.5],[-6,53.5]]),
+   nb:['uk','ireland','atlantic','chan']},
+  {id:'chan', name:'English Channel', flag:'&#127754;', color:'#16394f', sea:true, lab:[-1.5,49.9],
+   polys:seaPoly([[-6,51.3],[-4.5,51.1],[-2.5,50.8],[-0.5,50.5],[1.5,51],[1.5,49.6],
+                  [0,49.2],[-2,48.6],[-4,48.5],[-6,49]]),
+   nb:['uk','france','belgium','netherlands','nsea','atlantic','irishsea','biscay']},
+  {id:'biscay', name:'Bay of Biscay', flag:'&#127754;', color:'#16394f', sea:true, lab:[-5.5,45.8],
+   polys:seaPoly([[-10.5,48],[-8,48.3],[-5,48],[-2.5,47.2],[-1.8,45.5],[-3,43.8],
+                  [-5,43.4],[-8,43.6],[-10.5,43.4],[-9.5,45]]),
+   nb:['france','spain','atlantic','chan','iberia']},
+  {id:'iberia', name:'Gulf of C&aacute;diz', flag:'&#127754;', color:'#16394f', sea:true, lab:[-7.2,36.6],
+   polys:seaPoly([[-9.5,43.4],[-8,43],[-6.5,41],[-5.3,38.5],[-5.3,36],[-7,36.2],
+                  [-8.5,36.6],[-9.5,37.5],[-9.2,40],[-10.5,43.4]]),
+   nb:['spain','portugal','france','atlantic','biscay','wmed']},
+  {id:'wmed', name:'Western Mediterranean', flag:'&#127754;', color:'#16394f', sea:true, lab:[1.5,40],
+   polys:seaPoly([[-5.3,43.5],[-3,43.2],[0,42],[3,41],[6,40],[8,39],[8,37.5],
+                  [6,36.5],[3,36.5],[0,37],[-2,38],[-5.3,36],[-4.5,39],[-5.3,41]]),
+   nb:['france','spain','italy','iberia','tyrrhenian']},
+  {id:'tyrrhenian', name:'Tyrrhenian Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[12,41],
+   polys:seaPoly([[8,44],[9,43.5],[11,43],[13,42.5],[15.5,41],[15.5,38],
+                  [14,37.5],[12,38],[10,39],[8,39]]),
+   nb:['italy','france','wmed','adriatic','ionian']},
+  {id:'adriatic', name:'Adriatic Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[16.5,42.5],
+   polys:seaPoly([[15.5,44.8],[13,45.8],[12.5,44.5],[14,43],[16,41.5],
+                  [18,40.5],[20,40],[20,42],[18.5,43],[17,44.5]]),
+   nb:['italy','yugoslavia','albania','tyrrhenian','ionian']},
+  {id:'ionian', name:'Ionian Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[19,38],
+   polys:seaPoly([[15.5,40],[17,40.5],[19,40],[21,39.5],[23.2,40],
+                  [23,38],[21,36.5],[19,36],[17,37],[15.5,38]]),
+   nb:['italy','albania','greece','tyrrhenian','adriatic','aegean']},
+  {id:'aegean', name:'Aegean Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[26,38.5],
+   polys:seaPoly([[23.2,41.5],[24,40.5],[25.5,40],[27,39.5],[29,41],
+                  [29,39],[27,38],[25,36.5],[23.2,36.5],[24,38.5],[23.2,40]]),
+   nb:['greece','turkey','bulgaria','ionian','blacksea']},
+  {id:'blacksea', name:'Black Sea', flag:'&#127754;', color:'#16394f', sea:true, lab:[34.4,44.1],
+   polys:seaPoly([[27.5,46.8],[29,46.5],[31,46.2],[33,46],[36,45.5],[39,45],[41.5,44],
+                  [41,42],[39,41.5],[36,41],[33,41.5],[30,42],[28,43],[27.5,44.5],[29,45.8]]),
+   nb:['turkey','bulgaria','romania','ussr','aegean']}
+];
 /* one compact site polygon around a real-world oil field or breadbasket */
 function resPoly(cx,cy,dx,dy){ return [[[cx-dx,cy-dy],[cx+dx,cy-dy],[cx+dx,cy+dy],[cx-dx,cy+dy]]]; }
 var EU_RES = [
@@ -1080,10 +1169,17 @@ var EU_RES = [
   {id:'res_thrace', name:'Thracian Grain', flag:'\uD83C\uDF3E', color:'#6f9f5a', res:true, resType:'food', gain:4,
    owner:'bulgaria', lab:[25.4,41.8], polys:resPoly(25.4,41.8,0.8,0.5), nb:['bulgaria','greece','turkey','yugoslavia']}
 ];
+/* where each coastal nation's first squadrons put to sea */
+var EU_HOME_SEA={uk:'nsea', germany:'nsea', netherlands:'nsea', denmark:'kattegat',
+  poland:'baltic', sweden:'baltic', finland:'gofin', estonia:'gofin', latvia:'baltic',
+  lithuania:'baltic', norway:'norwsea', ireland:'irishsea', france:'chan', belgium:'nsea',
+  spain:'iberia', portugal:'iberia', italy:'tyrrhenian', yugoslavia:'adriatic', albania:'adriatic',
+  greece:'aegean', turkey:'blacksea', bulgaria:'blacksea', romania:'blacksea', ussr:'blacksea'};
 /* only these nations are landlocked - everyone else can build ships */
 var EU_LANDLOCKED={czechoslovakia:1,hungary:1,switzerland:1,austria:1,iceland:1};
-function hasCoast(n){ return !EU_LANDLOCKED[n]; }
+function hasCoast(n){ return !!(SEA_ZONES&&SEA_ZONES.length) && !EU_LANDLOCKED[n]; }
 function isShip(u){ var t=u&&U(u.owner,u.type); return !!(t&&t.navy); }
+function isSea(id){ return !!(NBY[id]&&NBY[id].sea); }
 function isAirUnit(u){ var t=u&&U(u.owner,u.type); return !!(t&&t.air); }
 function isRes(id){ return !!(NBY[id]&&NBY[id].res); }
 function isOil(id){ return !!(NBY[id]&&NBY[id].resType==='oil'); }
@@ -1094,6 +1190,13 @@ function resTypeName(id){
   return isOil(id)?'Oil field':'Grain farm';
 }
 function resYield(id){ return (NBY[id]&&NBY[id].gain)||0; }
+function seaTint(hex){
+  var h=String(hex||'#16394f').replace('#','');
+  if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  if(h.length!==6 || /[^0-9a-fA-F]/.test(h)) return '#16394f';
+  var a=[17,47,66], b=[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];
+  return '#'+b.map(function(v,i){ var q=Math.round(v*0.6+a[i]*0.4).toString(16); return q.length<2?'0'+q:q; }).join('');
+}
 var EU_SHIP_NAMES={
   germany:['destroyer:Zerst&ouml;rer|Fast, hard-hitting escorts of the Kriegsmarine.',
            'submarine:U-boat|The wolf packs that nearly starved Britain.',
@@ -1130,9 +1233,11 @@ var EU_SHIP_DEFAULT=['destroyer:Destroyer|A fast escort for the coastal fleet.',
   'cruiser:Cruiser|A tough, well-armed ship for the open sea.',
   'battleship:Battleship|The biggest gun afloat, and worth every coin.',
   'carrier:Aircraft Carrier|Strikes far beyond the horizon.'];
+var SEA_ZONES=[];
 function buildNBY(){
   NBY={};
-  [].concat(NATIONS,REGIONS,RES_SITES||[]).forEach(function(n){ NBY[n.id]=n; });
+  [].concat(NATIONS,REGIONS,SEA_ZONES||[],RES_SITES||[]).forEach(function(n){ NBY[n.id]=n; });
+  if(SEA_ZONES&&SEA_ZONES.length) NBY.sea={id:'sea',name:'Open Sea',flag:'&#127754;',color:'#122b3d',bloc:'Sea',nb:[]};
 }
 
 /* =======================================================================
@@ -1216,7 +1321,7 @@ function linkSector(a,b){
 function buildSectors(){
   SECTORS=[]; NAT_SECTORS={};
   var had={};
-  [].concat(NATIONS,REGIONS,RES_SITES||[]).forEach(function(n){
+  [].concat(NATIONS,REGIONS,SEA_ZONES||[],RES_SITES||[]).forEach(function(n){
     var polys=n.polys||GEO[n.id]||[];
     var sp=SPLITS[n.id];
     var pieces=(sp && polys.length) ? splitEqual(polys,sp.axis,sp.n) : [polys];
@@ -1228,8 +1333,8 @@ function buildSectors(){
       var nm  = pieces.length>1 ? (n.name+' ('+((sp&&sp.lab[i])||('sector '+(i+1)))+')') : n.name;
       var sec={ id:sid, nat:n.id, name:nm, flag:n.flag, color:n.color, bloc:n.bloc,
                 nb:(n.nb||[]).slice(), snb:[], polys:ps, playable:false,
-                owner:n.owner||undefined,
-                 res:!!n.res, resType:n.resType||null,
+                owner:n.sea?'sea':(n.owner||undefined),
+                 sea:!!n.sea, res:!!n.res, resType:n.resType||null,
                  gain:n.gain||0, lab:n.lab||null };
       SECTORS.push(sec); NAT_SECTORS[n.id].push(sid); NBY[sid]=sec;
     });
@@ -1269,7 +1374,7 @@ function buildSectors(){
     }); });
   });
   /* a declared frontier that the outlines did not prove gets every-to-every */
-  [].concat(NATIONS,REGIONS,RES_SITES||[]).forEach(function(n){
+  [].concat(NATIONS,REGIONS,SEA_ZONES||[],RES_SITES||[]).forEach(function(n){
     (n.nb||[]).forEach(function(m){
       if(had[n.id+'>'+m]) return;
       (NAT_SECTORS[n.id]||[]).forEach(function(a){
@@ -1940,7 +2045,7 @@ function buildMap(){
   unitG=el('g',{}); g.appendChild(unitG);
   fxG=el('g',{}); g.appendChild(fxG);
 
-  SECTORS.filter(function(s){ return !s.res; }).sort(function(a,b){ return (a.nat==='ussr'?-1:0)-(b.nat==='ussr'?-1:0); })
+  SECTORS.filter(function(s){ return !s.sea && !s.res; }).sort(function(a,b){ return (a.nat==='ussr'?-1:0)-(b.nat==='ussr'?-1:0); })
   .forEach(function(sec){
     /* a fat same-colour stroke drawn under every land path fills the hairline
        gaps between adjacent pieces, so the map reads as one continent */
@@ -1950,7 +2055,30 @@ function buildMap(){
     });
   });
 
-  SECTORS.filter(function(s){ return !s.res; }).sort(function(a,b){ return (a.nat==='ussr'?-1:0)-(b.nat==='ussr'?-1:0); })
+  /* SEA ZONES are painted first; the continents are laid over them below, so
+     coastlines stay crisp and every rectangle reads as water. */
+  SECTORS.filter(function(s){ return !!s.sea; }).forEach(function(sec){
+    var x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+    PP[sec.id]=[];
+    sec.polys.forEach(function(p){
+      var flat=[];
+      landG.appendChild(el('path',{d:polyD(p),fill:sec.color,class:'land seaZone','data-id':sec.id}));
+      p.forEach(function(q){
+        var x=px(q[0]), y=py(q[1]);
+        flat.push(x,y);
+        if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y;
+      });
+      PP[sec.id].push(flat);
+    });
+    if(x0>x1){ x0=0; y0=0; x1=W; y1=H; }
+    markEl[sec.id]={x:(x0+x1)/2,y:(y0+y1)/2};
+    if(sec.lab){
+      var sl=el('text',{x:px(sec.lab[0]).toFixed(1),y:py(sec.lab[1]).toFixed(1),class:'seaLbl'});
+      sl.textContent=sec.name.toUpperCase(); unitG.appendChild(sl);
+    }
+  });
+
+  SECTORS.filter(function(s){ return !s.sea && !s.res; }).sort(function(a,b){ return (a.nat==='ussr'?-1:0)-(b.nat==='ussr'?-1:0); })
   .forEach(function(sec){
     var x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
     PP[sec.id]=[];
@@ -2026,7 +2154,7 @@ function warMap(){
   if(WAR_MAP) return WAR_MAP;
   WAR_MAP={};
   for(var id in S.prov){
-    if(isRes(id)) continue;   /* resource sites do not redraw the war map */
+    if(isSea(id)||isRes(id)) continue;   /* domain layers do not redraw the war map */
     var a=S.prov[id].owner, sn=(NBY[id]&&NBY[id].snb)||[];
     for(var i=0;i<sn.length;i++){
       var t=S.prov[sn[i]];
@@ -2171,7 +2299,7 @@ function newGame(player){
       tech:{pts:{},active:{},done:{}}, gen:{roster:{},assign:{}}, ally:new Set(), guarantee:new Set(), pactT:{} };
   SECTORS.forEach(function(sec){
     var nat=NBY[sec.nat];
-    var home=(sec.nat!=='iceland' && !nat.owner);
+    var home=(!sec.sea && sec.nat!=='iceland' && !nat.owner);
     var first=(sectorsOf(sec.nat)[0]===sec.id);
     S.prov[sec.id]={ id:sec.id, nat:sec.nat, owner:(nat.owner||sec.nat), units:[],
                      mines:(home&&first)?2:0, mineBy:(home&&first)?sec.nat:null, mineT:5,
@@ -2205,24 +2333,28 @@ function newGame(player){
       spawn('infantry', sid, S.prov[sid].owner);
     }
   });
-  /* opening squadrons: the great powers keep a coastal fleet and an air wing at home */
-  var majors={uk:1,germany:1,italy:1,france:1,ussr:1};
+  /* opening squadrons: fleets sail from home seas, air wings from home ports */
+  if(SEA_ZONES.length){
+    var majors={uk:1,germany:1,italy:1,france:1,ussr:1};
+    Object.keys(EU_HOME_SEA).forEach(function(n){
+      var z=EU_HOME_SEA[n];
+      if(!S.prov[z]) return;
+      var cnt=majors[n]?2:1;
+      for(var q=0;q<cnt;q++){
+        var kd=q===0?'destroyer':((n==='uk'||n==='germany')?'cruiser':'destroyer');
+        spawn(kd,z,n);
+      }
+    });
+    log('Fleets have put to sea - '+SEA_ZONES.length+' naval zones are now open.');
+  }
   ALL.forEach(function(n){
     if(n.id==='iceland') return;
     var secs=sectorsOf(n.id);
     if(!secs.length || !S.prov[secs[0]]) return;
-    var homeSec=secs[0];
-    if(majors[n.id]){
-      for(var q=0;q<2;q++){
-        var kd=q===0?'destroyer':((n.id==='uk'||n.id==='germany')?'cruiser':'destroyer');
-        if(unitsAt(homeSec).length<capacity(homeSec)) spawn(kd,homeSec,n.id);
-      }
-    }
-    var st=NATION_STATS[n.id];
+    var homeSec=secs[0], st=NATION_STATS[n.id];
     if(st && (st.gold||0)>=60 && unitsAt(homeSec).length<capacity(homeSec))
       spawn('fighter',homeSec,n.id);
   });
-  log('Fleets and squadrons are stationed in home ports and airfields.');
   if(RES_SITES.length){
     log(MAP==='china'
       ? 'Rock-oil wells and grain farms are marked on the map - occupy a site to claim its yield.'
@@ -2245,8 +2377,8 @@ function spawn(type,loc,owner){
   return u;
 }
 function unitsAt(id){ return S.units.filter(function(u){ return u.loc===id && u.hp>0; }); }
-function landOf(c){ var n=0; for(var k in S.prov) if(S.prov[k].owner===c) n++; return n; }
-function isLandFront(id){ return !!S.prov[id]; }
+function landOf(c){ var n=0; for(var k in S.prov) if(S.prov[k].owner===c && !isSea(k)) n++; return n; }
+function isLandFront(id){ return !!(S.prov[id] && !isSea(id)); }
 function unitsOf(c){ return S.units.filter(function(u){ return u.owner===c && u.hp>0; }); }
 function upkeep(c){ return unitsOf(c).reduce(function(s,u){ return s+U(u.owner,u.type).up; },0); }
 function mineCount(c){ var t=0; for(var id in S.prov) if(S.prov[id].owner===c) t+=S.prov[id].mines; return t; }
@@ -2377,7 +2509,10 @@ function areaOf(c){
    them holds an extra regiment. NAT_CAP sizes every nation's army to what it
    actually fielded in the war, so a micro-state can never out-muscle a power.
    Anything not listed falls back to area size. */
-var EU_SEC_CAP = {'ussr#0':4, 'ussr#1':4, 'ussr#2':5};
+var EU_SEC_CAP = {'ussr#0':4, 'ussr#1':4, 'ussr#2':5,
+  nsea:9, baltic:7, norwsea:7, atlantic:7, chan:6, irishsea:5, iberia:5,
+  barents:5, kattegat:5, bothnia:5, gofin:5, biscay:6,
+  wmed:6, tyrrhenian:6, adriatic:6, ionian:6, aegean:6, blacksea:7};
 var EU_NAT_CAP = {
   germany:14, ussr:13, uk:11, france:10, italy:9,
   poland:7, czechoslovakia:7, finland:6, hungary:6, romania:7,
@@ -2651,7 +2786,7 @@ function researchRate(n){ return (1+Math.floor(mineCount(n)/2))*techEff(n,'resea
 function terrainOf(id){
   if(!TERRAIN_CACHE[id]){
     var t=(TERRAIN && (TERRAIN[id] || TERRAIN[natOf(id)])) || 'plains';
-    if(isRes(id)) t='plains';
+    if(isSea(id) || isRes(id)) t='plains';
     TERRAIN_CACHE[id]=t;
   }
   return TERRAIN_CACHE[id];
@@ -2701,12 +2836,12 @@ var MAPS={
     stats:function(){ return EU_STATS; }, arsenal:function(){ return EU_ARSENAL; },
     units:function(){ return EU_UNITS; }, fallback:function(){ return EU_FALLBACK; },
     secCap:function(){ return EU_SEC_CAP; }, natCap:function(){ return EU_NAT_CAP; },
-    proj:function(){ return EU_PROJ; },
+    proj:function(){ return EU_PROJ; }, sea:function(){ return EU_SEA; },
     res:function(){ return EU_RES; }, tech:function(){ return TECH_EU; },
     generals:function(){ return GEN_EU; }, terrain:function(){ return TERRAIN_EU; },
     blocs:['Axis','Allies','Other','Neutral'],
     defaultPlayer:'germany', tabAir:'&#9992; Air Force', newsName:'THE CONTINENTAL',
-    rules:'Nations that fought in the Second World War are on the map. Each begins with its own treasury, riflemen and two mine fields at home &mdash; a major power far more than a micro-state.<br>There is <b>no daily income</b> &mdash; <b>mine fields are the only gold</b> in the game, mined at each nation\u2019s own rate. Each field holds <b>20 days</b> of ore and then runs dry; buy mine cars to replenish it, and take countries to grow your yield.<br>Once you have chosen a nation, the Shop&rsquo;s <b>Tanks</b> tab lists that nation&rsquo;s own historical armour.<br>Click a country to open its sheet: a small map of the country with the units standing in it. Recruit in your own territory, then order units into a neighbouring country. Every front is a real front &mdash; the AI nations fight each other too, so a war can be won without fighting the whole continent.<br>Units fight at their best on friendly soil, and hardest of all in their homeland. Tanks, artillery and bombers cost upkeep every day, so a huge army can bankrupt you.<br>Army sizes follow real history: micro-states like <b>Albania</b> or <b>Denmark</b> hold just <b>2&ndash;3</b> units, while a major power fields up to <b>14</b>. The Soviet Union is split into three fronts &mdash; <b>South 4</b>, <b>Centre 4</b>, <b>North 5</b> &mdash; and a weak state buys only basic rifles, guns and fighters: no tanks, heavy armour or bomber fleets.<br>Send your men at a front and they <b>hold the ground until the country falls</b> &mdash; only then do the survivors march back home to rearm. Only <b>one territory on the whole map</b> changes hands each day.<br>The <b>Navy</b> tab builds ships in any coastal nation: destroyers, submarines, cruisers, battleships and carriers. Select a fleet and click a neighbouring enemy province to storm its coast; landlocked nations cannot build a fleet. The <b>Air Force</b> tab builds fighters and bombers: select a squadron and click a neighbouring enemy province to strike it, then it returns home. Every squadron you field adds <b>+5% power</b> to every land and sea unit you own (up to six). On the ground you can <b>entrench</b> any province you own (or leave engineers there) for up to <b>+45% defence</b>; forts are lost when the province falls.<br>The gold-marked <b>oil fields</b> and green-marked <b>grain farms</b> are a second economy: march a ground unit onto one to seize it, and every site held pays oil or food each day. Every unit eats food; tanks, aircraft and ships burn oil. Empty stores weaken formations and, after three days, disband the costliest one.<br>The <b>Command</b> desk adds research, named commanders, diplomacy and the seasons: mine fields fund permanent upgrades, officers and veteran troops strengthen a front, alliances and pacts reshape the war, and mountains, mud and winter change how armies fight.<br>You win by holding <b>every</b> land territory. You lose if you hold none.'
+    rules:'Nations that fought in the Second World War are on the map. Each begins with its own treasury, riflemen and two mine fields at home &mdash; a major power far more than a micro-state.<br>There is <b>no daily income</b> &mdash; <b>mine fields are the only gold</b> in the game, mined at each nation\u2019s own rate. Each field holds <b>20 days</b> of ore and then runs dry; buy mine cars to replenish it, and take countries to grow your yield.<br>Once you have chosen a nation, the Shop&rsquo;s <b>Tanks</b> tab lists that nation&rsquo;s own historical armour.<br>Click a country to open its sheet: a small map of the country with the units standing in it. Recruit in your own territory, then order units into a neighbouring country. Every front is a real front &mdash; the AI nations fight each other too, so a war can be won without fighting the whole continent.<br>Units fight at their best on friendly soil, and hardest of all in their homeland. Tanks, artillery and bombers cost upkeep every day, so a huge army can bankrupt you.<br>Army sizes follow real history: micro-states like <b>Albania</b> or <b>Denmark</b> hold just <b>2&ndash;3</b> units, while a major power fields up to <b>14</b>. The Soviet Union is split into three fronts &mdash; <b>South 4</b>, <b>Centre 4</b>, <b>North 5</b> &mdash; and a weak state buys only basic rifles, guns and fighters: no tanks, heavy armour or bomber fleets.<br>Send your men at a front and they <b>hold the ground until the country falls</b> &mdash; only then do the survivors march back home to rearm. Only <b>one territory on the whole map</b> changes hands each day.<br>The <b>Navy</b> tab builds ships in any coastal nation: destroyers, submarines, cruisers, battleships and carriers. Eighteen named <b>sea zones</b> &mdash; the North and Baltic Seas, the Kattegat, the Atlantic approaches, the Channel, Bay of Biscay and the Mediterranean&rsquo;s six seas &mdash; follow the real coasts and narrow straits instead of a grid. Sail into them to contest them, and storm enemy coastlines from the sea. Only ships can enter a sea zone, and landlocked nations cannot build a fleet.<br>The <b>Air Force</b> tab builds fighters and bombers: select a squadron and click a neighbouring enemy province to strike it, then it returns home. Every squadron you field adds <b>+5% power</b> to every land and sea unit you own (up to six). On the ground you can <b>entrench</b> any province you own (or leave engineers there) for up to <b>+45% defence</b>; forts are lost when the province falls.<br>The gold-marked <b>oil fields</b> and green-marked <b>grain farms</b> are a second economy: march a ground unit onto one to seize it, and every site held pays oil or food each day. Every unit eats food; tanks, aircraft and ships burn oil. Empty stores weaken formations and, after three days, disband the costliest one.<br>The <b>Command</b> desk adds research, named commanders, diplomacy and the seasons: mine fields fund permanent upgrades, officers and veteran troops strengthen a front, alliances and pacts reshape the war, and mountains, mud and winter change how armies fight.<br>You win by holding <b>every</b> land territory. You lose if you hold none.'
   },
   china:{
     id:'china', title:'CHINA &middot; THE PROVINCES', tag:'Choosing your province',
@@ -2739,6 +2874,7 @@ function useMap(name){
   if(!MAPS[name]) name='europe';
   MAP=name;
   var P=MAPS[name];
+  SEA_ZONES=(P.sea&&P.sea())||[];
   RES_SITES=(P.res&&P.res())||[];
   GEO=P.geo(); NATIONS=P.nations(); REGIONS=P.regions(); SPLITS=P.splits();
   NATION_STATS=P.stats(); ARSENAL=P.arsenal(); UNITS=P.units(); FALLBACK=P.fallback();
@@ -2754,9 +2890,9 @@ function useMap(name){
   buildNBY(); buildNatName(); buildSectors();
   REGION_IDS=REGIONS.map(function(r){ return r.id; });
   ALL=[].concat(NATIONS,REGIONS);
-  WIN_NEED=SECTORS.filter(function(s){ return !s.res && REGION_IDS.indexOf(s.nat)<0; }).length;
+  WIN_NEED=SECTORS.filter(function(s){ return !s.sea && !s.res && REGION_IDS.indexOf(s.nat)<0; }).length;
   /* Europe's coastal nations keep their own historical ship names. */
-  if(MAP==='europe' && ARSENAL){
+  if(SEA_ZONES.length && ARSENAL){
     Object.keys(ARSENAL).forEach(function(n){
       if(!hasCoast(n)) return;
       ARSENAL[n]=ARSENAL[n]||{army:[],air:[],tanks:[]};
@@ -3270,8 +3406,20 @@ function aiTurn(){
       else if(gold>=artU.cost && (threat||Math.random()<0.3)) choice=artU.type;
       else if(gold>=tankU.cost && (threat || Math.random()<0.35)) choice=tankU.type;
       else choice=ar[0].type;
+      var shipChoice=isShipType(choice);
       var spot=pickRecruit(n.id);
-      if(spot && U(n.id,choice).cost<=gold && unitsAt(spot).length<capacity(spot)){
+      if(shipChoice){
+        var hz=EU_HOME_SEA[n.id], spots=[];
+        if(hz && S.prov[hz] && unitsAt(hz).length<capacity(hz)) spots.push(hz);
+        SEA_ZONES.forEach(function(z){
+          if((z.nb||[]).indexOf(n.id)>=0 && S.prov[z.id] &&
+             unitsAt(z.id).length<capacity(z.id) && spots.indexOf(z.id)<0) spots.push(z.id);
+        });
+        if(spots.length && U(n.id,choice).cost<=gold){
+          spawn(choice,spots[0],n.id); S.gold[n.id]-=U(n.id,choice).cost;
+          if(SHOWCASE[choice]) newsUnveil(n.id,choice,spots[0]);
+        }
+      } else if(spot && U(n.id,choice).cost<=gold && unitsAt(spot).length<capacity(spot)){
           spawn(choice,spot,n.id);
           S.gold[n.id]-=U(n.id,choice).cost;
           if(SHOWCASE[choice]) newsUnveil(n.id,choice,spot);
@@ -3283,7 +3431,7 @@ function aiTurn(){
     var myUnits=unitsOf(n.id).length;
     if(myUnits>=3 && (S.gold[n.id]||0)>0){
     for(var id in S.prov){
-      if(S.prov[id].owner!==n.id || isRes(id)) continue;
+      if(S.prov[id].owner!==n.id || isSea(id) || isRes(id)) continue;
       var stack=unitsAt(id);
       if(stack.length<2) continue;
       var here=totalPower(id);
@@ -3322,7 +3470,7 @@ function aiTurn(){
       if(take) u.moving={to:take,t:1,from:u.loc,assault:false};
     });
 
-    /* --- fleet manoeuvres: ships storm enemy coastlines --- */
+    /* --- fleet manoeuvres: ships contest the sea and storm enemy coasts --- */
     unitsOf(n.id).filter(isShip).forEach(function(u){
       if(u.moving || u.air || u.hp<=0) return;
       var here=u.loc, best=null;
@@ -3331,7 +3479,8 @@ function aiTurn(){
         var oo=S.prov[m].owner;
         if(oo===n.id) return;
         if(isRes(m)) return;                       /* fields are taken by land parties */
-        if(!atWar(n.id,oo)) return;
+        if(isSea(m)){ if(oo!=='sea' && !atWar(n.id,oo)) return; }
+        else if(!atWar(n.id,oo)) return;
         if(unitsAt(m).length>=capacity(m)) return;
         if(totalPower(m) > power(u,here)*aggro) return;
         best=m;
@@ -3376,7 +3525,7 @@ function isShipType(t){ var d=UNITS[t]; return !!(d&&d.navy); }
 function pickRecruit(c){
   var best=null,bestScore=-1e9;
   for(var id in S.prov){
-    if(S.prov[id].owner!==c || isRes(id)) continue;
+    if(S.prov[id].owner!==c || isSea(id) || isRes(id)) continue;
     if(unitsAt(id).length>=7) continue;
     var d=0, b=0;
     (NBY[id].snb||[]).forEach(function(m){
@@ -3412,13 +3561,14 @@ function known(id){
 }
 function moveTo(dst){
   if(!S.prov[dst]) return flash('No such front.');
-  var own=S.prov[dst].owner, site=isRes(dst);
-  if(!site && own!==S.player && !atWar(S.player,own))
+  var own=S.prov[dst].owner, sea=isSea(dst), site=isRes(dst);
+  if(!site && own!==S.player && own!=='sea' && !atWar(S.player,own))
     return flash('You are not at war with '+NBY[own].name+'.');
   var ids=[],n=0;
   unitsOf(S.player).forEach(function(u){
     if(!S.pick.has(u.id)) return;                                 /* only selected units */
     if((NBY[u.loc].snb||[]).indexOf(dst)<0) return;                 /* must border the target */
+    if(sea && !isShip(u)) return;                                  /* armies cannot walk on water */
     if(site && (isShip(u)||isAirUnit(u))) return;                  /* only ground troops take fields */
     ids.push(u.id);
     if(site){ u.air=null; u.moving={to:dst,t:1,from:u.loc,assault:false}; }
@@ -3428,7 +3578,8 @@ function moveTo(dst){
   });
   if(!n){
     if(!S.pick.size) flash('No units selected - click units in the list or on the country sheet first.');
-    else flash('None of the selected units border '+NBY[dst].name+'.');
+    else flash(sea? 'None of the selected ships border '+NBY[dst].name+'.'
+                  : 'None of the selected units border '+NBY[dst].name+'.');
     return;
   }
   if(NET && NET.mode===2) netPubRoom('cmd',JSON.stringify({p:NET.pid,k:'m',dst:dst,ids:ids}));
@@ -3442,7 +3593,9 @@ function recruit(type){
   var u=U(S.player,type);
   if(!S.prov[id] || S.prov[id].owner!==S.player){ flash('Select one of your own territories to recruit.'); return; }
   if(isRes(id)){ flash('Resource sites are occupied, not recruited in. Take one with ground troops.'); return; }
+  if(u.navy && isSea(id)){ flash('Build ships in a coastal port, then sail them out.'); return; }
   if(u.navy && !hasCoast(natOf(id))){ flash('Only coastal nations can build ships.'); return; }
+  if(!u.navy && isSea(id)){ flash('Only ships can be built at sea.'); return; }
   if(unitsAt(id).length>=capacity(id)){ flash('Garrison is full ('+capacity(id)+' units).'); return; }
   if((S.gold[S.player]||0)<u.cost){ flash('Not enough gold for a '+u.name.toLowerCase()+' ('+u.cost+').'); return; }
   S.gold[S.player]-=u.cost;
@@ -3643,6 +3796,7 @@ function renderMini(id){
 
   /* the country itself */
   var col=p.owner? NBY[p.owner].color : '#2a2f3a';
+  if(isSea(id) && p.owner!=='sea') col=seaTint(col);
   own.forEach(function(a){
     svg.appendChild(el('path',{d:flatD(a),fill:col,stroke:'#0b0e14','stroke-width':(vw*0.008).toFixed(2)}));
   });
@@ -3730,9 +3884,11 @@ function computeTargets(){
     if(p && p.owner===S.player) from=[S.sel];
   }
   var picked=unitsOf(S.player).filter(function(u){ return S.pick.has(u.id); });
-  var hasGround=picked.some(function(u){ return !isShip(u)&&!isAirUnit(u); });
+  var hasShip=picked.some(isShip), hasAir=picked.some(isAirUnit),
+      hasLand=picked.some(function(u){ return !isShip(u); }),
+      hasGround=picked.some(function(u){ return !isShip(u)&&!isAirUnit(u); });
   if(!picked.length && S.sel && S.prov[S.sel] && S.prov[S.sel].owner===S.player){
-    hasGround=!isRes(S.sel);
+    hasLand=true; hasGround=!isSea(S.sel)&&!isRes(S.sel);
   }
   var out={};
   from.forEach(function(f){
@@ -3743,8 +3899,13 @@ function computeTargets(){
         if(hasGround && !own) out[m]=1;   /* ground troops occupy oil fields and farms */
         return;
       }
-      if(own) return;                            /* no point moving into your own land */
-      if(!atWar(S.player,S.prov[m].owner)) return;
+      if(isSea(m)){
+        if(!hasShip) return;                       /* only fleets can enter open water */
+        if(!own && S.prov[m].owner!=='sea' && !atWar(S.player,S.prov[m].owner)) return;
+      } else {
+        if(own && !hasShip) return;                /* no point marching into your own land */
+        if(!own && !atWar(S.player,S.prov[m].owner)) return;
+      }
       out[m]=1;
     });
   });
@@ -3796,13 +3957,14 @@ function render(){
   for(var id in S.prov){
     var p=S.prov[id], n=NBY[id];
     var color=p.owner? NBY[p.owner].color : '#2a2f3a';
+    if(isSea(id) && p.owner!=='sea') color=seaTint(color);
     var paths=landG.querySelectorAll('[data-id="'+id+'"]');
     for(var i=0;i<paths.length;i++){
       if(paths[i].getAttribute('data-bridge')){
         paths[i].setAttribute('stroke', color);
       } else {
         paths[i].setAttribute('fill', color);
-        paths[i].setAttribute('class','land'+(id===S.sel?' sel':'')+
+        paths[i].setAttribute('class','land'+(isSea(id)?' seaZone':'')+(id===S.sel?' sel':'')+
           (S.targets.indexOf(id)>=0?' tgt':'')+(warAround(id)?' war':''));
       }
     }
@@ -4155,7 +4317,7 @@ function wireTop(){
       for(var i=0;i<ns.length;i++){
         if(!S.prov[ns[i]]) continue;
         var oo=S.prov[ns[i]].owner;
-        if(atWar(S.player,oo)){ S.pick.add(u.id); n++; return; }
+        if(atWar(S.player,oo) || (isSea(ns[i]) && oo==='sea')){ S.pick.add(u.id); n++; return; }
       }
     });
     flash(n? n+' unit'+(n>1?'s':'')+' selected on your fronts.' : 'No unit of yours stands on a front.');
@@ -4846,6 +5008,10 @@ function loadGame(){
       oil:o.oil||{}, food:o.food||{}, oilShort:o.oilShort||{}, foodShort:o.foodShort||{},
       tech:o.tech||{pts:{},active:{},done:{}}, gen:o.gen||{roster:{},assign:{}},
       ally:new Set(o.ally||[]), guarantee:new Set(o.guarantee||[]), pactT:o.pactT||{} };
+  /* an older save may predate the sea map - seed it before restoring ownership */
+  if(SEA_ZONES.length) SEA_ZONES.forEach(function(z){
+    if(!S.prov[z.id]) S.prov[z.id]={id:z.id,nat:z.id,owner:'sea',units:[],mines:0,mineBy:null,mineT:0,pend:0};
+  });
   /* an older save may predate the resource layer - seed sites with their home owner */
   if(RES_SITES.length) RES_SITES.forEach(function(z){
     if(!S.prov[z.id]) S.prov[z.id]={id:z.id,nat:z.id,owner:z.owner,units:[],mines:0,mineBy:null,mineT:0,mineRes:0,pend:0};
