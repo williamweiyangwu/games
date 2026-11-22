@@ -305,6 +305,19 @@
     border-radius: 7px; cursor: pointer; letter-spacing: .4px;
   }
   .hangar-btn:hover { border-color: var(--gold); color: var(--gold); }
+  .fullscreen-btn {
+    position: absolute; z-index: 6; top: 32px; right: 96px;
+    padding: 5px 11px; font-size: 0.76rem; font-weight: 700;
+    color: #d8e9f7; background: rgba(8,15,26,.72); border: 1px solid rgba(255,255,255,.24);
+    border-radius: 7px; cursor: pointer; letter-spacing: .4px;
+  }
+  .fullscreen-btn:hover { border-color: var(--gold); color: var(--gold); }
+  .game-wrap.is-fullscreen,
+  .game-wrap:fullscreen,
+  .game-wrap:-webkit-full-screen {
+    width: 100vw; height: 100vh; max-width: none; margin: 0;
+    aspect-ratio: auto; border: 0; border-radius: 0; background: #03060c;
+  }
   .game-card.hangar { max-width: 780px; }
   .hangar-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 10px; }
   .hangar-coins { color: var(--gold); font-weight: 800; font-size: 1.05rem; }
@@ -353,6 +366,7 @@
     .game-hud { font-size: 0.7rem; gap: 7px; left: 9px; right: 9px; }
     .game-hud span:nth-child(4), .game-hud span:nth-child(5) { display: none; }
     .hangar-btn { top: 30px; right: 9px; font-size: 0.68rem; padding: 4px 8px; }
+    .fullscreen-btn { top: 30px; right: 80px; font-size: 0.68rem; padding: 4px 8px; }
     .hangar-grid { grid-template-columns: 1fr 1fr; }
     .section-intro { grid-template-columns: 1fr; gap: 12px; }
     .intro-aside { border-left: none; border-top: 1px solid var(--border); padding: 12px 0 0; }
@@ -515,7 +529,7 @@
 
   <section id="fighter">
     <h2 data-i18n="fighterTitle">Plane Wars: Fly a WWII Fighter</h2>
-    <p class="sub" data-i18n="fighterSub">Fly a continuous dogfight over wartime Europe — there are no waves. Allied and Axis squadrons fight each other while Axis interceptors hunt you above the battle sites marked on the map. Steer with the mouse, hold left mouse button (or touch) to fire and hold Space to boost. Every Axis kill earns one coin for the hangar, and hitting a hill ends the run — Esc pauses.</p>
+    <p class="sub" data-i18n="fighterSub">Fly a continuous dogfight over wartime Europe — there are no waves. Allied and Axis squadrons fight each other while Axis interceptors hunt you above the battle sites marked on the map. Steer with the mouse, hold left mouse button (or touch) to fire and hold Space to boost. Every Axis kill earns one coin for the hangar, hitting a hill ends the run, and F toggles fullscreen — Esc pauses.</p>
     <div class="game-wrap" id="gameWrap">
       <canvas id="fighterCanvas" width="900" height="560"></canvas>
       <div class="reticle" aria-hidden="true"></div>
@@ -527,6 +541,7 @@
         <span>Alt <b id="gAlt">0</b></span>
       </div>
       <button class="hangar-btn" id="hangarBtn" type="button">Hangar</button>
+      <button class="fullscreen-btn" id="fullscreenBtn" type="button" aria-label="Enter fullscreen" title="Fullscreen (F)">Fullscreen</button>
       <div class="hit-flash" aria-hidden="true"></div>
       <div class="crash-banner" id="crashBanner" aria-hidden="true">CRASH!<small id="crashBannerNote">Aircraft down</small></div>
       <div class="game-overlay" id="gameOverlay"></div>
@@ -621,7 +636,7 @@ const WARS = {
     battlesDetail: "Every battle is pinned to the same Europe map used above and marked on the ground in the plane game. Open a card to see the date, the result and why that patch of ground mattered.",
     battlesAside: "Turning points · fronts · sieges · air and naval campaigns",
     fighterTitle: "Plane Wars: Fly a WWII Fighter",
-    fighterSub: "Fly a continuous dogfight over wartime Europe — there are no waves. Allied and Axis squadrons fight each other while Axis interceptors hunt you above the battle sites marked on the map. Steer with the mouse, hold left mouse button (or touch) to fire and hold Space to boost. Every Axis kill earns one coin for the hangar, and hitting a hill ends the run — Esc pauses.",
+    fighterSub: "Fly a continuous dogfight over wartime Europe — there are no waves. Allied and Axis squadrons fight each other while Axis interceptors hunt you above the battle sites marked on the map. Steer with the mouse, hold left mouse button (or touch) to fire and hold Space to boost. Every Axis kill earns one coin for the hangar, hitting a hill ends the run, and F toggles fullscreen — Esc pauses.",
     footer: "Data compiled from public historical sources for educational purposes; some figures are estimates.",
     statDuration: "Duration", statCountries: "Belligerent nations",
     statDeaths: "Fatalities (worldwide)", statCamps: "Major camps",
@@ -2111,6 +2126,7 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
     adTimer: document.getElementById("adTimer"),
     adBar: document.getElementById("adBar"),
     adClaim: document.getElementById("adClaim"),
+    fullscreen: document.getElementById("fullscreenBtn"),
     crashBanner: document.getElementById("crashBanner"),
     crashNote: document.getElementById("crashBannerNote")
   };
@@ -3035,7 +3051,7 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
             <button class="btn primary" id="gameStart">Take off</button>
             <button class="btn" id="gameHangar">Hangar</button>
           </div>
-          <p class="game-tip">Click or tap to lock the camera · move to steer · hold left mouse button or touch to fire · hold Space to boost · Esc pauses · hitting a hill ends the run</p>
+          <p class="game-tip">Click or tap to lock the camera · move to steer · hold left mouse button or touch to fire · hold Space to boost · F toggles fullscreen · Esc pauses · hitting a hill ends the run</p>
           ${leaderboardHtml()}
         </div>`;
       document.getElementById("gameStart").onclick = startGame;
@@ -3051,7 +3067,7 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
             <button class="btn" id="gameHangarPause">Hangar</button>
             <button class="btn" id="gameQuit">Restart</button>
           </div>
-          <p class="game-tip">Resume locks the mouse again · move to steer · left mouse button or touch fires · Space boosts · Esc pauses</p>
+          <p class="game-tip">Resume locks the mouse again · move to steer · left mouse button or touch fires · Space boosts · F toggles fullscreen · Esc pauses</p>
         </div>`;
       document.getElementById("gameResume").onclick = resumeGame;
       document.getElementById("gameHangarPause").onclick = openHangar;
@@ -3827,6 +3843,48 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
   if ("ResizeObserver" in window) new ResizeObserver(resize).observe(wrap);
   window.addEventListener("resize", resize);
 
+  // Fullscreen uses the game viewport itself, so the canvas, HUD and overlays
+  // scale together. F works while pointer lock hides the cursor.
+  const fsSupported = !!(wrap.requestFullscreen || wrap.webkitRequestFullscreen);
+  const isFullscreen = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+  function updateFullscreenUI() {
+    const on = isFullscreen();
+    wrap.classList.toggle("is-fullscreen", on);
+    els.fullscreen.textContent = on ? "Exit fullscreen" : "Fullscreen";
+    els.fullscreen.setAttribute("aria-label", on ? "Exit fullscreen" : "Enter fullscreen");
+    els.fullscreen.title = on ? "Exit fullscreen (F)" : "Fullscreen (F)";
+    resize();
+  }
+  async function toggleFullscreen() {
+    if (!fsSupported) return;
+    try {
+      if (!isFullscreen()) {
+        const req = wrap.requestFullscreen || wrap.webkitRequestFullscreen;
+        await req.call(wrap);
+      } else {
+        const exit = document.exitFullscreen || document.webkitExitFullscreen;
+        await exit.call(document);
+      }
+    } catch (e) {}
+    updateFullscreenUI();
+  }
+  if (els.fullscreen) {
+    if (!fsSupported) els.fullscreen.style.display = "none";
+    els.fullscreen.addEventListener("click", ev => {
+      ev.stopPropagation();
+      toggleFullscreen();
+    });
+    document.addEventListener("fullscreenchange", () => {
+      updateFullscreenUI();
+      requestAnimationFrame(resize);
+    });
+    document.addEventListener("webkitfullscreenchange", () => {
+      updateFullscreenUI();
+      requestAnimationFrame(resize);
+    });
+    updateFullscreenUI();
+  }
+
   if ("IntersectionObserver" in window) {
     new IntersectionObserver(entries => { visible = entries[0].isIntersecting; }, { threshold: 0 }).observe(wrap);
   }
@@ -3911,6 +3969,11 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
       ev.preventDefault();
       return;
     }
+    if (ev.code === "KeyF" && (state === "playing" || isFullscreen())) {
+      toggleFullscreen();
+      ev.preventDefault();
+      return;
+    }
     if (!controlCodes.includes(ev.code)) return;
     keys[ev.code] = true;
     if (state === "playing") ev.preventDefault();
@@ -3958,6 +4021,8 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
       return wrecks.length;
     },
     setFiring: v => { firing = !!v; return firing; },
+    fullscreen: () => isFullscreen(),
+    toggleFullscreen,
     key: (code, down) => { keys[code] = !!down; if (state === "playing") updateHud(); return !!keys[code]; },
     planes: () => enemies.map(p => ({
       team: p.userData.team, type: p.userData.type,
@@ -4014,6 +4079,7 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
       allies: enemies.filter(p => p.userData.team === "allied").length,
       firing,
       boost: !!keys.Space,
+      fullscreen: isFullscreen(),
       speed: els.speed.textContent,
       bullets: bullets.length,
       enemyBullets: enemyBullets.length,
