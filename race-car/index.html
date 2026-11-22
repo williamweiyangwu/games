@@ -225,7 +225,7 @@
 <div id="standings" class="hidden"></div>
 <div id="banner" class="hidden"></div>
 <div id="lights" class="hidden"><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div></div>
-  <div id="verTag">v2.35</div>
+  <div id="verTag">v2.36</div>
   <button id="achBtn" class="ghost">ACHIEVEMENTS</button>
   <div id="achPanel"><b style="letter-spacing:.12em">ACHIEVEMENTS</b><div id="achList" style="margin-top:8px"></div></div>
   <div id="pitMsg"></div>
@@ -1481,10 +1481,11 @@ ctrl: [
   }
   // Geometry clamp: prevents overlapping meshes when the real GPS centreline
   // runs close to another non-adjacent section (e.g. Monaco harbour, Baku castle).
+  // Scale the whole corridor proportionally so bands keep width and never collapse
+  // into degenerate triangles.
   function geomLat(s, lat) {
-    var lim = clearLatAt(s);
-    if (lat > lim) lat = lim;
-    if (lat < -lim) lat = -lim;
+    var cap = clearLatAt(s);
+    if (cap < RAIL_LAT) lat *= cap / RAIL_LAT;
     return limitedLat(s, lat);
   }
   function railLatLimit(s, side) {
