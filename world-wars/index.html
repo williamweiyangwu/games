@@ -275,18 +275,6 @@
     opacity: 1;
     background: radial-gradient(circle at 50% 62%, rgba(255,176,54,.24) 8%, rgba(178,28,10,.78) 92%);
   }
-  .crash-banner {
-    position: absolute; left: 50%; top: 17%; z-index: 4; pointer-events: none;
-    transform: translate(-50%, -10px); opacity: 0; text-align: center;
-    color: #ffe0a8; font-size: clamp(1.7rem, 5vw, 3rem); font-weight: 900;
-    letter-spacing: 5px; text-shadow: 0 0 18px rgba(255,84,22,.95), 0 3px 0 #641405;
-    transition: opacity .12s ease, transform .2s ease;
-  }
-  .crash-banner small {
-    display: block; margin-top: 6px; color: #ffb886;
-    font-size: .32em; letter-spacing: 2px; font-weight: 800;
-  }
-  .game-wrap.crash .crash-banner { opacity: 1; transform: translate(-50%, 0); }
   .game-overlay {
     position: absolute; inset: 0; z-index: 5; display: none; align-items: flex-start; justify-content: center;
     background: rgba(3,7,15,.8); padding: 20px; text-align: center; overflow-y: auto;
@@ -389,6 +377,8 @@
 </style>
 </head>
 <body>
+<a id="arcadeBack" href="../" title="Back to Arcade" aria-label="Back to Arcade" style="position:fixed;top:14px;left:14px;z-index:999999;padding:11px 20px;border:1px solid #3d4c74;border-radius:999px;background:rgba(10,13,20,.9);color:#eef2fb;font:700 17px/1.2 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;text-decoration:none;box-shadow:0 3px 12px rgba(0,0,0,.5);transition:opacity .25s">&#8592; Arcade</a>
+<script>(function(){var a=document.getElementById('arcadeBack');if(!a)return;var t;function show(){a.style.opacity='1';a.style.pointerEvents='auto';}function hide(){a.style.opacity='0';a.style.pointerEvents='none';}function later(){clearTimeout(t);t=setTimeout(hide,700);}document.addEventListener('mousemove',function(e){if(e.clientX<170&&e.clientY<75){clearTimeout(t);show();}else later();},{passive:true});a.addEventListener('mouseenter',function(){clearTimeout(t);show();});a.addEventListener('mouseleave',later);show();})();</script>
 
 <div class="topbar">
   <div class="topbar-left">
@@ -525,7 +515,6 @@
       </div>
       <button class="hangar-btn" id="hangarBtn" type="button">Hangar</button>
       <div class="hit-flash" aria-hidden="true"></div>
-      <div class="crash-banner" id="crashBanner" aria-hidden="true">CRASH!<small id="crashBannerNote">Aircraft down</small></div>
       <div class="game-overlay" id="gameOverlay"></div>
       <div class="ad-overlay" id="adOverlay">
         <div class="ad-card">
@@ -2107,9 +2096,7 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
     alt: document.getElementById("gAlt"),
     adTimer: document.getElementById("adTimer"),
     adBar: document.getElementById("adBar"),
-    adClaim: document.getElementById("adClaim"),
-    crashBanner: document.getElementById("crashBanner"),
-    crashNote: document.getElementById("crashBannerNote")
+    adClaim: document.getElementById("adClaim")
   };
 
   const AD_MS = 10000;
@@ -2668,7 +2655,6 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
   let smoke = [];
   let groundMarks = [];
   let playerCrash = { active: false };
-  let lastCrashKind = "shot";
 
   const playerPos = new THREE.Vector3(0, 30, 0);
   let targetX = 0, targetY = 30;
@@ -3029,7 +3015,7 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
             <button class="btn primary" id="gameStart">Take off</button>
             <button class="btn" id="gameHangar">Hangar</button>
           </div>
-          <p class="game-tip">Click or tap to lock the camera · move to steer · hold left mouse button or touch to fire · hold Space to boost · Esc pauses · hitting a hill ends the run</p>
+          <p class="game-tip">Click or tap to lock the camera · move to steer · hold left mouse button or touch to fire · hold Space to boost · Esc pauses · hitting a hill costs hull and respawns you</p>
           ${leaderboardHtml()}
         </div>`;
       document.getElementById("gameStart").onclick = startGame;
@@ -3053,8 +3039,8 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
     } else if (kind === "dead") {
       overlay.innerHTML = `
         <div class="game-card">
-          <h3>${lastCrashKind === "terrain" ? "Crashed" : "Shot down"}</h3>
-          <p>${lastCrashKind === "terrain" ? `Your ${plane.name} hit the ground over Europe.` : `Your ${plane.name} went down over Europe.`}</p>
+          <h3>Shot down</h3>
+          <p>Your ${plane.name} went down over Europe.</p>
           <p class="score">Run earnings ${coinLabel(runCoins)} · Wave ${wave} · Bank ${coinLabel(coins)}</p>
           ${leaderboardHtml()}
           <div class="game-btns">
@@ -3203,8 +3189,6 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
 
   function beginPlayerCrash(kind) {
     if (playerCrash.active || state !== "playing") return;
-    lastCrashKind = kind;
-    if (els.crashNote) els.crashNote.textContent = kind === "terrain" ? "Hill impact" : "Aircraft down";
     firing = false;
     // Set the crash flag before unlocking the pointer so the lock-change
     // handler does not mistake the intentional unlock for a player pause.
@@ -3295,10 +3279,10 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
     updateHud();
   }
 
-  function crashIntoTerrain() {
+  function crashRespawn() {
     if (state !== "playing" || invuln > 0 || playerCrash.active) return;
-    // Hitting a hill is fatal: show the full crash sequence and the death flow.
-    health = 0;
+    health -= Math.max(10, Math.round(healthMax * 0.22));
+    if (health <= 0) health = 0;
     beginPlayerCrash("terrain");
   }
 
@@ -3503,7 +3487,7 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
 
       if (e.position.z > 48) {
         killPlaneAt(i, null);
-        if (ud.team === "axis") damage(4);
+        if (ud.team === "axis") damage(2);
         if (state !== "playing") return;
         continue;
       }
@@ -3515,7 +3499,7 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
           explode(e.position, 12, 0.95);
           spawnDebris(e.position, 8, 0.9);
           killPlaneAt(i, player);
-          damage(ud.type === "bomber" ? 36 : 26);
+          damage(ud.type === "bomber" ? 24 : 18);
           if (state !== "playing") return;
           continue;
         }
@@ -3581,7 +3565,7 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
         const dz = b.position.z;
         if (dx * dx + dy * dy + dz * dz < 24) {
           explode(b.position, 7, 0.7);
-          damage(13);
+          damage(8);
           remove = true;
         }
       }
@@ -3709,13 +3693,13 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
     player.visible = !(invuln > 0 && Math.floor(performance.now() / 85) % 2 === 0);
     player.userData.prop.rotation.z += dt * 48;
 
-    // Terrain collision: clipping a hill ends the run in a visible crash.
+    // Terrain collision: clipping a hill costs hull and respawns you high.
     for (let i = 0; i < terrain.length; i++) {
       const h = terrain[i];
       if (Math.abs(h.z) < h.radius * 0.92 &&
           Math.abs(player.position.x - h.x) < h.radius * 0.72 &&
           player.position.y < h.height + 2) {
-        crashIntoTerrain();
+        crashRespawn();
         break;
       }
     }
