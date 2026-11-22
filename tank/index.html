@@ -202,7 +202,6 @@
 </style>
 </head>
 <body>
-<a href="../" title="Back to Arcade" aria-label="Back to Arcade" style="position:fixed;top:10px;left:10px;z-index:999999;padding:6px 11px;border:1px solid #3d4c74;border-radius:999px;background:rgba(10,13,20,.85);color:#eef2fb;font:600 12px/1.2 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.4)">&#8592; Arcade</a>
 <div id="app"></div>
 <div id="scan"></div><div id="vig"></div>
 <svg id="cross" viewBox="0 0 26 26">
@@ -1423,19 +1422,26 @@ function clampArena(e,r){
 ============================================================ */
 function damage(t, dmg, from){
   if(!t.alive) return;
+  const hostile = !from || from.team!==t.team;   // friendly fire hurts, but earns no credits or kills
   if(from && !from.isHuman) dmg *= AI().dmgMul;
   if(t.shieldT>0) dmg *= 0.5;
   t.hp -= dmg; t.hitFlash=0.12;
-  if(from && from.isPlayer) pstats.damage += dmg;
-  if(from && from.isHuman){ addMoney(from, Math.round(dmg*0.8)); }
+  if(hostile){
+    if(from && from.isPlayer) pstats.damage += dmg;
+    if(from && from.isHuman){ addMoney(from, Math.round(dmg*0.8)); }
+  }
   if(t.hp<=0){
     t.die();
     if(from){
-      const i = from.team===0?0:1;
-      kills[i]++;
-      if(from.isPlayer){ pstats.kills++; SAVE.kills++; checkAchievements(); }
-      if(from.isHuman) addMoney(from, 260);
-      netFeed(`${from.name} destroyed ${t.name}`, from.team===0?'#8fd0ff':'#ff9a8a');
+      if(hostile){
+        const i = from.team===0?0:1;
+        kills[i]++;
+        if(from.isPlayer){ pstats.kills++; SAVE.kills++; checkAchievements(); }
+        if(from.isHuman) addMoney(from, 260);
+        netFeed(`${from.name} destroyed ${t.name}`, from.team===0?'#8fd0ff':'#ff9a8a');
+      } else {
+        netFeed(`FRIENDLY FIRE — ${from.name} destroyed ${t.name}`, '#ffd76a');
+      }
       SFX.alarm();
     }
   }
@@ -1496,11 +1502,11 @@ function stepBullets(dt){
     for(const w of walls){
       if(Math.abs(b.x-w.x)<w.w && Math.abs(b.z-w.z)<w.d){ hit=w; break; }
     }
-    // entities — only ENEMY tanks absorb shells, so friendlies never
-    // body-block your line of fire (there is no friendly fire anyway)
+    // entities — any tank except the shooter can absorb a shell, including
+    // friendlies (friendly fire is on)
     if(!hit){
       for(const t of tanks){
-        if(!t.alive || t.team===b.team) continue;
+        if(!t.alive || t===b.owner) continue;
         if(Math.hypot(b.x-t.x, b.z-t.z) < t.c.radius+0.35){ hit=t; break; }
       }
     }
@@ -1530,20 +1536,16 @@ function stepBullets(dt){
         if(b.splash){
           boom(b.x,b.y,b.z, 4.2, 0xff9944);
           for(const t of tanks){
-            if(!t.alive) continue;
+            if(!t.alive || t===b.owner) continue;
             const d=Math.hypot(b.x-t.x,b.z-t.z);
-            if(d<b.splash){
-              if(t.team===b.team) continue;                 // no friendly fire
-              const f=1-d/b.splash;
-              damage(t, b.dmg*f*(t.team===b.team?0:1), b.owner);
-            }
+            if(d<b.splash) damage(t, b.dmg*(1-d/b.splash), b.owner);
           }
           const h=HQS[b.team^1];
           if(h.alive && Math.hypot(b.x-h.x,b.z-h.z)<h.w+b.splash)
             damageHQ(h, b.dmg*0.7*(1-Math.hypot(b.x-h.x,b.z-h.z)/(h.w+b.splash))*hqRangeK(b,h), b.owner);
         } else {
           boom(b.x,b.y,b.z, 1.5, 0xffbb66);
-          if(hit.team!==b.team) damage(hit, b.dmg, b.owner);
+          damage(hit, b.dmg, b.owner);
         }
       }
       bullets.splice(i,1); continue;
