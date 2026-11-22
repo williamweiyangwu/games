@@ -225,7 +225,7 @@
 <div id="standings" class="hidden"></div>
 <div id="banner" class="hidden"></div>
 <div id="lights" class="hidden"><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div></div>
-  <div id="verTag">v2.39</div>
+  <div id="verTag">v2.40</div>
   <button id="achBtn" class="ghost">ACHIEVEMENTS</button>
   <div id="achPanel"><b style="letter-spacing:.12em">ACHIEVEMENTS</b><div id="achList" style="margin-top:8px"></div></div>
   <div id="pitMsg"></div>
@@ -1389,7 +1389,12 @@ ctrl: [
       var cix = CX[ci], ciz = CZ[ci], cih = HY[ci];
       for (var cj = 0; cj < N; cj++) {
         var arc = Math.abs(ci - cj); if (arc > N / 2) arc = N - arc;
-        if (arc * dsClear < 80) continue;
+        var arcM = arc * dsClear;
+        if (arcM < 25) continue;
+        if (arcM < 80) {
+          var dotT = TX[ci] * TX[cj] + TZ[ci] * TZ[cj];
+          if (dotT > 0.1) continue;  // same-bend proximity, not a fold-back overlap
+        }
         if (Math.abs(cih - HY[cj]) > 3) continue;
         var dx = cix - CX[cj], dz = ciz - CZ[cj];
         var d = Math.hypot(dx, dz);
