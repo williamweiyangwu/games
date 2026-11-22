@@ -390,8 +390,7 @@
 </head>
 <body>
 <a id="arcadeBack" href="../" title="Back to Arcade" aria-label="Back to Arcade" style="position:fixed;top:14px;left:14px;z-index:999999;padding:11px 20px;border:1px solid #3d4c74;border-radius:999px;background:rgba(10,13,20,.9);color:#eef2fb;font:700 17px/1.2 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;text-decoration:none;box-shadow:0 3px 12px rgba(0,0,0,.5);transition:opacity .25s">&#8592; Arcade</a>
-<div id="arcadeHot" aria-hidden="true" style="position:fixed;top:0;left:0;width:140px;height:64px;z-index:999998"></div>
-<script>(function(){var a=document.getElementById('arcadeBack'),h=document.getElementById('arcadeHot');if(!a||!h)return;var t;function show(){clearTimeout(t);a.style.opacity='1';a.style.pointerEvents='auto';}function hide(){a.style.opacity='0';a.style.pointerEvents='none';}function later(){clearTimeout(t);t=setTimeout(hide,1500);}a.addEventListener('mouseenter',show);a.addEventListener('mouseleave',later);h.addEventListener('mouseenter',show);h.addEventListener('mouseleave',later);show();t=setTimeout(hide,4000);})();</script>
+<script>(function(){var a=document.getElementById('arcadeBack');if(!a)return;var t;function show(){a.style.opacity='1';a.style.pointerEvents='auto';}function hide(){a.style.opacity='0';a.style.pointerEvents='none';}function later(){clearTimeout(t);t=setTimeout(hide,700);}document.addEventListener('mousemove',function(e){if(e.clientX<170&&e.clientY<75){clearTimeout(t);show();}else later();},{passive:true});a.addEventListener('mouseenter',function(){clearTimeout(t);show();});a.addEventListener('mouseleave',later);show();})();</script>
 
 <div class="topbar">
   <div class="topbar-left">
@@ -515,14 +514,14 @@
 
   <section id="fighter">
     <h2 data-i18n="fighterTitle">Plane Wars: Fly a WWII Fighter</h2>
-    <p class="sub" data-i18n="fighterSub">Fly over wartime Europe, where Allied and Axis squadrons dogfight above famous battle sites marked on the map. Steer with the mouse, hold left mouse button (or touch) to fire and hold Space to boost. Watch for crashes and burning wrecks, earn one coin for every Axis plane you shoot down, upgrade in the hangar, and watch out for hills — Esc pauses.</p>
+    <p class="sub" data-i18n="fighterSub">Fly a continuous dogfight over wartime Europe — there are no waves. Allied and Axis squadrons fight each other while Axis interceptors hunt you above the battle sites marked on the map. Steer with the mouse, hold left mouse button (or touch) to fire and hold Space to boost. Every Axis kill earns one coin for the hangar, and hitting a hill ends the run — Esc pauses.</p>
     <div class="game-wrap" id="gameWrap">
       <canvas id="fighterCanvas" width="900" height="560"></canvas>
       <div class="reticle" aria-hidden="true"></div>
       <div class="game-hud">
         <span>Coins <b id="gCoins">0</b></span>
         <span>Hull <b id="gHealth">100</b></span>
-        <span>Wave <b id="gWave">1</b></span>
+        <span>Bandits <b id="gBandits">0</b></span>
         <span>Speed <b id="gSpeed">0</b></span>
         <span>Alt <b id="gAlt">0</b></span>
       </div>
@@ -621,7 +620,7 @@ const WARS = {
     battlesDetail: "Every battle is pinned to the same Europe map used above and marked on the ground in the plane game. Open a card to see the date, the result and why that patch of ground mattered.",
     battlesAside: "Turning points · fronts · sieges · air and naval campaigns",
     fighterTitle: "Plane Wars: Fly a WWII Fighter",
-    fighterSub: "Fly over wartime Europe, where Allied and Axis squadrons dogfight above famous battle sites marked on the map. Steer with the mouse, hold left mouse button (or touch) to fire and hold Space to boost. Watch for crashes and burning wrecks, earn one coin for every Axis plane you shoot down, upgrade in the hangar, and watch out for hills — Esc pauses.",
+    fighterSub: "Fly a continuous dogfight over wartime Europe — there are no waves. Allied and Axis squadrons fight each other while Axis interceptors hunt you above the battle sites marked on the map. Steer with the mouse, hold left mouse button (or touch) to fire and hold Space to boost. Every Axis kill earns one coin for the hangar, and hitting a hill ends the run — Esc pauses.",
     footer: "Data compiled from public historical sources for educational purposes; some figures are estimates.",
     statDuration: "Duration", statCountries: "Belligerent nations",
     statDeaths: "Fatalities (worldwide)", statCamps: "Major camps",
@@ -2104,7 +2103,7 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
   const adOverlay = document.getElementById("adOverlay");
   const els = {
     coins: document.getElementById("gCoins"),
-    wave: document.getElementById("gWave"),
+    bandits: document.getElementById("gBandits"),
     health: document.getElementById("gHealth"),
     speed: document.getElementById("gSpeed"),
     alt: document.getElementById("gAlt"),
@@ -2118,6 +2117,8 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
   const AD_MS = 10000;
   const rand = (a, b) => a + Math.random() * (b - a);
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  // Continuous pressure replaces discrete waves: the melee slowly intensifies.
+  const threat = () => clamp(meleeT / 180, 0, 1);
   const store = {
     get(key, fallback) {
       try {
@@ -2150,7 +2151,7 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
 
   let coins = store.get("coins", 0);
   let best = store.get("best", 0);
-  let leaderboard = (store.get("leaderboard", []) || []).map(r => ({ coins: r.coins || 0, wave: r.wave || 1 }));
+  let leaderboard = (store.get("leaderboard", []) || []).map(r => ({ coins: r.coins || 0, kills: r.kills || r.wave || 0 }));
   let unlocked = store.get("unlocked", ["spitfire"]);
   let selectedId = store.get("selected", "spitfire");
   if (!unlocked.includes("spitfire")) unlocked.push("spitfire");
@@ -2161,7 +2162,7 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
   let paintIndex = Math.min(paintSel[selectedId] || 0, plane.paints.length - 1);
 
   let state = "idle";
-  let wave = 1, firing = false;
+  let meleeT = 0, firing = false;
   let adTimerId = null, adEnds = 0;
   let visible = true;
   let cameraSnap = true;
@@ -2674,11 +2675,12 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
   let lastCrashKind = "shot";
 
   const playerPos = new THREE.Vector3(0, 30, 0);
+  let playerVelX = 0, playerVelY = 0;
   let targetX = 0, targetY = 30;
   let roll = 0, pitch = 0;
   let health = 100, healthMax = 100;
   let runCoins = 0, runRecorded = false;
-  let spawnT = 0, allyT = 0, fireT = 0, waveT = 0, invuln = 0;
+  let spawnT = 0, allyT = 0, fireT = 0, invuln = 0;
   let shake = 0, hitFlash = 0, idleT = 0, hudT = 0, saveT = 0;
   let hangarMsg = "";
   let hangarReturn = "idle";
@@ -2894,9 +2896,9 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
 
   function updateHud() {
     els.coins.textContent = coins;
-    els.wave.textContent = wave;
+    els.bandits.textContent = enemies.filter(p => p.userData.team === "axis").length;
     els.health.textContent = Math.max(0, Math.ceil(health));
-    els.speed.textContent = Math.round((290 + wave * 12) * plane.speed * (keys.Space && state === "playing" ? 1.55 : 1)) + " km/h";
+    els.speed.textContent = Math.round(300 * plane.speed * (keys.Space && state === "playing" ? 1.55 : 1)) + " km/h";
     els.alt.textContent = Math.round(player.position.y * 30) + " m";
   }
 
@@ -2914,7 +2916,7 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
     if (runRecorded) return;
     runRecorded = true;
     if (runCoins > best) best = runCoins;
-    leaderboard = leaderboard.concat([{ coins: runCoins, wave: wave }])
+    leaderboard = leaderboard.concat([{ coins: runCoins, kills: runCoins }])
       .sort((a, b) => (b.coins || 0) - (a.coins || 0)).slice(0, 5);
     saveProgress();
   }
@@ -2923,7 +2925,7 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
     const rows = leaderboard.slice(0, 5);
     return `<div class="leaderboard">
       <div><span>Personal best (single run)</span><b>${coinLabel(best)}</b></div>
-      ${rows.length ? rows.map((r, i) => `<div><span>#${i + 1} · Wave ${r.wave || 1}</span><b>${coinLabel(r.coins || 0)}</b></div>`).join("") : `<div><span>No runs logged yet</span><b>—</b></div>`}
+      ${rows.length ? rows.map((r, i) => `<div><span>#${i + 1} · ${r.kills || 0} bandits downed</span><b>${coinLabel(r.coins || 0)}</b></div>`).join("") : `<div><span>No runs logged yet</span><b>—</b></div>`}
     </div>`;
   }
 
@@ -3026,7 +3028,7 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
       overlay.innerHTML = `
         <div class="game-card">
           <h3>Plane Wars: WWII</h3>
-          <p>Take off over wartime Europe. Allied and Axis squadrons are already dogfighting below — join the melee and shoot down Axis fighters and bombers. Every Axis kill earns one coin to spend in the hangar on faster, tougher aircraft and new paint jobs.</p>
+          <p>No waves — the air battle is already underway. Allied and Axis squadrons are dogfighting across Europe while Axis interceptors break off to hunt you. Shoot down Axis fighters and bombers; every kill earns one coin for faster, tougher aircraft and new paint jobs.</p>
           <p class="score">Coins ${coins} · Best run ${coinLabel(best)} · Flying the ${plane.name}</p>
           <div class="game-btns">
             <button class="btn primary" id="gameStart">Take off</button>
@@ -3042,7 +3044,7 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
         <div class="game-card">
           <h3>Paused</h3>
           <p>Mission on hold over occupied Europe. Coins you have earned are safely banked.</p>
-          <p class="score">Coins ${coins} · Wave ${wave} · Hull ${Math.max(0, Math.ceil(health))}</p>
+          <p class="score">Coins ${coins} · Bandits ${els.bandits.textContent} · Hull ${Math.max(0, Math.ceil(health))}</p>
           <div class="game-btns">
             <button class="btn primary" id="gameResume">Resume</button>
             <button class="btn" id="gameHangarPause">Hangar</button>
@@ -3058,7 +3060,7 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
         <div class="game-card">
           <h3>${lastCrashKind === "terrain" ? "Crashed" : "Shot down"}</h3>
           <p>${lastCrashKind === "terrain" ? `Your ${plane.name} hit the ground over Europe.` : `Your ${plane.name} went down over Europe.`}</p>
-          <p class="score">Run earnings ${coinLabel(runCoins)} · Wave ${wave} · Bank ${coinLabel(coins)}</p>
+          <p class="score">Run earnings ${coinLabel(runCoins)} · Bandits downed ${runCoins} · Bank ${coinLabel(coins)}</p>
           ${leaderboardHtml()}
           <div class="game-btns">
             <button class="btn primary" id="gameRestart">Restart</button>
@@ -3154,14 +3156,15 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
     clearSpawnZone();
     runCoins = 0;
     runRecorded = false;
-    wave = 1;
+    meleeT = 0;
     healthMax = plane.health;
     health = healthMax;
     firing = false;
-    spawnT = 1.0;
-    allyT = 1.8;
+    playerVelX = 0;
+    playerVelY = 0;
+    spawnT = 0.7;
+    allyT = 1.1;
     fireT = 0;
-    waveT = 0;
     // Short spawn protection prevents a hill at the spawn point causing an instant crash.
     invuln = 1.5;
     shake = 0;
@@ -3177,6 +3180,7 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
     player.visible = true;
     playerPos.set(0, 30, 0);
     wrap.classList.remove("hit", "boost", "crash");
+    seedDogfight();
     updateHud();
   }
 
@@ -3374,19 +3378,22 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
   function spawnEnemy() { spawnPlane("axis"); }
   function spawnAlly() { spawnPlane("allied"); }
 
-  function spawnPlane(team) {
+  function spawnPlane(team, z) {
     const ally = team === "allied";
-    const bomber = !ally && Math.random() < Math.min(0.3, 0.05 + wave * 0.025);
+    const pressure = threat();
+    const bomber = !ally && Math.random() < (0.12 + pressure * 0.08);
     const type = bomber ? "bomber" : "fighter";
     const g = (ally ? allyTemplate : enemyTemplates[type]).clone(true);
-    const hp = bomber ? 5 + Math.floor(wave / 2) : (ally ? 3 + Math.floor(wave / 4) : 2 + Math.floor(wave / 3));
-    g.position.set(rand(-54, 54), rand(13, 54), rand(-540, -430));
+    const hp = bomber ? 6 + Math.floor(pressure * 3) : (ally ? 4 : 4 + Math.floor(pressure * 2));
+    g.position.set(rand(-54, 54), rand(13, 54), z == null ? rand(-540, -430) : z + rand(-18, 18));
     g.userData = {
       team, type, hp, maxHp: hp,
-      speed: rand(bomber ? 14 : 22, bomber ? 26 : 38) * (ally ? 0.96 : 1),
+      speed: rand(bomber ? 16 : 26, bomber ? 28 : 42) * (ally ? 0.94 : 1),
       phase: rand(0, 6.28),
       ampX: rand(4, 16), ampY: rand(2, 8),
-      fire: rand(0.45, 1.5),
+      fire: rand(0.4, 1.0),
+      huntsPlayer: !ally && Math.random() < 0.62,
+      vx: 0, vy: 0,
       targetT: 0, target: null, dead: false,
       baseX: g.position.x, baseY: g.position.y
     };
@@ -3394,9 +3401,18 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
     enemies.push(g);
   }
 
+  function seedDogfight() {
+    for (let i = 0; i < 3; i++) spawnPlane("axis", -180 - i * 110);
+    for (let i = 0; i < 3; i++) spawnPlane("allied", -230 - i * 110);
+  }
+
   // Every plane looks for the nearest living opponent — including the player.
   function pickTarget(e) {
-    const hostile = e.userData.team === "axis" ? "allied" : "axis";
+    const ud = e.userData;
+    // Axis interceptors peel away from the melee to hunt the player.
+    if (ud.team === "axis" && ud.huntsPlayer &&
+        Math.abs(player.position.z - e.position.z) < 260) return player;
+    const hostile = ud.team === "axis" ? "allied" : "axis";
     let best = null, bestD = Infinity;
     const consider = candidate => {
       if (!candidate || candidate === e || candidate.userData.dead) return;
@@ -3457,11 +3473,18 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
   function aiShoot(e, target) {
     const ud = e.userData;
     const from = new THREE.Vector3(e.position.x, e.position.y + 0.1, e.position.z + (ud.type === "bomber" ? 5 : 4));
-    const dir = new THREE.Vector3(target.position.x - from.x, target.position.y + 0.4 - from.y, target.position.z - from.z);
-    dir.x += rand(-3.5, 3.5);
-    dir.y += rand(-2, 2);
+    const speed = 150 + threat() * 18;
+    const dx = target.position.x - from.x;
+    const dy = target.position.y + 0.4 - from.y;
+    const dz = target.position.z - from.z;
+    const lead = Math.hypot(dx, dy, dz) / speed;
+    const tv = target === player ? { vx: playerVelX, vy: playerVelY } : (target.userData || {});
+    const dir = new THREE.Vector3(dx + (tv.vx || 0) * lead * 0.7,
+                                  dy + (tv.vy || 0) * lead * 0.7, dz);
+    dir.x += rand(-1.7, 1.7);
+    dir.y += rand(-1.1, 1.1);
     if (dir.lengthSq() < 1) dir.set(0, 0, 1);
-    dir.normalize().multiplyScalar(135 + wave * 4);
+    dir.normalize().multiplyScalar(speed);
     const axis = ud.team === "axis";
     const b = new THREE.Mesh(axis ? enemyBulletGeo : allyBulletGeo, axis ? enemyBulletMat : allyBulletMat);
     b.position.copy(from);
@@ -3500,6 +3523,8 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
       }
       const vx = (e.position.x - prevX) / Math.max(dt, 0.0001);
       const vy = (e.position.y - prevY) / Math.max(dt, 0.0001);
+      ud.vx = vx;
+      ud.vy = vy;
       e.rotation.z = clamp(-vx * 0.012, -0.75, 0.75);
       e.rotation.x = clamp(vy * 0.008, -0.35, 0.35);
       e.rotation.y = clamp(vx * 0.003, -0.2, 0.2) + Math.sin(idleT * 2.2 + ud.phase) * 0.08;
@@ -3530,8 +3555,8 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
                       e.position.z > -360 && e.position.z < 38;
       if (ud.fire <= 0 && inRange) {
         aiShoot(e, shootingTarget);
-        ud.fire = ud.type === "bomber" ? rand(1.4, 2.4)
-          : rand(ud.team === "axis" ? 1.0 : 0.7, ud.team === "axis" ? 1.9 : 1.4);
+        ud.fire = ud.type === "bomber" ? rand(1.1, 1.8)
+          : rand(ud.team === "axis" ? 0.55 : 0.8, ud.team === "axis" ? 1.05 : 1.35);
       }
     }
   }
@@ -3584,7 +3609,7 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
         const dz = b.position.z;
         if (dx * dx + dy * dy + dz * dz < 24) {
           explode(b.position, 7, 0.7);
-          damage(13);
+          damage(15);
           remove = true;
         }
       }
@@ -3677,7 +3702,7 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
   function update(dt) {
     idleT += dt;
     const boosting = !!keys.Space;
-    const worldSpeed = (54 + wave * 3.2) * plane.speed * (boosting ? 1.55 : 1);
+    const worldSpeed = (58 + threat() * 10) * plane.speed * (boosting ? 1.55 : 1);
     if (playerCrash.active) {
       updatePlayerCrash(dt, worldSpeed);
       updateCrashEffects(dt, worldSpeed);
@@ -3702,6 +3727,8 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
     playerPos.copy(player.position);
     const vx = (player.position.x - px) / Math.max(dt, 0.0001);
     const vy = (player.position.y - py) / Math.max(dt, 0.0001);
+    playerVelX = vx;
+    playerVelY = vy;
     const rollTarget = clamp(vx * 0.014, -0.7, 0.7);
     const pitchTarget = clamp(vy * 0.008, -0.32, 0.32);
     roll += (rollTarget - roll) * (1 - Math.exp(-7 * dt));
@@ -3742,17 +3769,21 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
 
     spawnT -= dt;
     allyT -= dt;
-    waveT += dt;
-    if (waveT > 18) { waveT = 0; wave++; updateHud(); }
+    meleeT += dt;
+    const pressure = threat();
     if (spawnT <= 0) {
-      if (enemies.length < 18) spawnEnemy();
-      spawnT = Math.max(0.42, 1.35 - wave * 0.055) * rand(0.75, 1.2);
+      if (enemies.length < 20) {
+        spawnEnemy();
+        if (Math.random() < 0.4 && enemies.length < 20) spawnEnemy();
+      }
+      spawnT = Math.max(0.52, 0.95 - pressure * 0.28) * rand(0.8, 1.2);
     }
     if (allyT <= 0) {
       let axisCount = 0, allyCount = 0;
       enemies.forEach(p => { if (p.userData.team === "allied") allyCount++; else axisCount++; });
-      if (axisCount > 0 && allyCount < Math.max(2, Math.min(6, 2 + Math.floor(wave / 3)))) spawnAlly();
-      allyT = rand(1.5, 2.6);
+      const wanted = clamp(Math.round(axisCount * 0.75), 3, 7);
+      if (axisCount > 0 && allyCount < wanted) spawnAlly();
+      allyT = rand(1.0, 1.7);
     }
 
     updateEnemies(dt, worldSpeed);
@@ -3967,7 +3998,8 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
       coins,
       runCoins,
       best,
-      wave,
+      bandits: enemies.filter(p => p.userData.team === "axis").length,
+      meleeT: Math.round(meleeT * 10) / 10,
       plane: plane.id,
       unlocked: unlocked.slice(),
       x: Math.round(player.position.x * 10) / 10,
