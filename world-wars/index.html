@@ -93,6 +93,19 @@
   .filters button:hover { border-color: var(--muted); }
   .filters button.active { background: var(--axis); border-color: var(--axis); color: #fff; }
 
+  .section-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+  .section-head h2 { font-size: 1.5rem; margin-bottom: 6px; padding-left: 14px; border-left: 4px solid var(--axis); }
+  .fold-toggle {
+    display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
+    background: var(--panel); color: var(--muted); border: 1px solid var(--border);
+    border-radius: 999px; padding: 6px 13px; cursor: pointer;
+    font-size: 0.78rem; font-weight: 800; transition: all .2s;
+  }
+  .fold-toggle:hover { color: var(--text); border-color: var(--muted); }
+  .fold-icon { display: inline-block; font-size: 0.7rem; transition: transform .2s; }
+  .fold-toggle[aria-expanded="false"] .fold-icon { transform: rotate(-90deg); }
+  .fold-body[hidden] { display: none; }
+
   .timeline { position: relative; padding-left: 40px; }
   .timeline::before {
     content: ""; position: absolute; left: 14px; top: 0; bottom: 0; width: 3px;
@@ -340,6 +353,8 @@
     .topbar { padding: 10px 14px; }
     .topbar-left { gap: 10px; }
     .war-tab { padding: 4px 12px; font-size: 0.76rem; }
+    .section-head { align-items: flex-start; }
+    .fold-toggle { padding: 5px 10px; font-size: 0.72rem; }
   }
 
 
@@ -362,7 +377,6 @@
 </style>
 </head>
 <body>
-<a href="../" title="Back to Arcade" aria-label="Back to Arcade" style="position:fixed;top:14px;left:14px;z-index:999999;padding:11px 20px;border:1px solid #3d4c74;border-radius:999px;background:rgba(10,13,20,.9);color:#eef2fb;font:700 17px/1.2 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;text-decoration:none;box-shadow:0 3px 12px rgba(0,0,0,.5)">&#8592; Arcade</a>
 
 <div class="topbar">
   <div class="topbar-left">
@@ -421,12 +435,20 @@
   </section>
 
   <section id="timeline">
-    <h2 data-i18n="timelineTitle">Timeline of Events</h2>
-    <div class="filters" id="filters"></div>
-    <div style="margin-bottom:18px;">
-      <button class="btn primary" id="timelinePlay">&#9654; <span data-i18n="autoPlay">Autoplay</span></button>
+    <div class="section-head">
+      <h2 data-i18n="timelineTitle">Timeline of Events</h2>
+      <button type="button" class="fold-toggle" id="timelineFold" aria-expanded="true" aria-controls="timelineBody">
+        <span class="fold-icon" aria-hidden="true">&#9662;</span>
+        <span id="timelineFoldLabel" data-i18n="foldTimeline">Fold timeline</span>
+      </button>
     </div>
-    <div class="timeline" id="timelineList"></div>
+    <div class="fold-body" id="timelineBody">
+      <div class="filters" id="filters"></div>
+      <div style="margin-bottom:18px;">
+        <button class="btn primary" id="timelinePlay">&#9654; <span data-i18n="autoPlay">Autoplay</span></button>
+      </div>
+      <div class="timeline" id="timelineList"></div>
+    </div>
   </section>
 
   <section id="figures">
@@ -570,6 +592,7 @@ const WARS = {
     mapTitle: "Territorial Control of Europe",
     mapSub: "Drag or play through 1939–1945 to see how Axis and Allied control, plus key battles, evolved.",
     timelineTitle: "Timeline of Events", figuresTitle: "Key Figures", autoPlay: "Autoplay",
+    foldTimeline: "Fold timeline", unfoldTimeline: "Expand timeline",
     figuresLead: "History is shaped by people as much as by plans. This gallery follows the leaders, dictators and commanders who started the war, directed its armies, and decided how it would end.",
     figuresDetail: "Each card pairs a portrait with a short explanation of why the person mattered. Open a card for a fuller biography and a timeline of the choices that put them at the centre of the conflict.",
     figuresAside: "Political leaders · battlefield commanders · Allied and Axis decision-makers",
@@ -997,6 +1020,7 @@ const WARS = {
     mapTitle: "Territorial Control of Europe",
     mapSub: "Drag or play through 1914–1918 to see how the Central Powers and Entente lines, plus key battles, moved.",
     timelineTitle: "Timeline of Events", figuresTitle: "Key Figures", autoPlay: "Autoplay",
+    foldTimeline: "Fold timeline", unfoldTimeline: "Expand timeline",
     figuresLead: "The First World War was fought by empires, but directed by individuals. This gallery introduces the monarchs, premiers and generals whose decisions carried Europe from a Balkan crisis into four years of total war.",
     figuresDetail: "Each card pairs a portrait with a concise account of the person's role. Open a card for a fuller biography and the key moments that shaped their wartime reputation.",
     figuresAside: "Emperors · prime ministers · generals · Allied and Central Powers",
@@ -1498,6 +1522,24 @@ function renderFilters() {
       renderTimeline();
     });
   });
+}
+
+// ================= Timeline fold =================
+let timelineFolded = false;
+function updateTimelineFoldUi() {
+  const body = document.getElementById("timelineBody");
+  const btn = document.getElementById("timelineFold");
+  const label = document.getElementById("timelineFoldLabel");
+  if (!body || !btn || !label) return;
+  body.hidden = timelineFolded;
+  btn.setAttribute("aria-expanded", String(!timelineFolded));
+  label.textContent = t(timelineFolded ? "unfoldTimeline" : "foldTimeline");
+}
+function setTimelineFolded(folded) {
+  timelineFolded = !!folded;
+  updateTimelineFoldUi();
+  // Autoplay scrolls through events, so never leave it running on hidden content.
+  if (timelineFolded && tlPlaying) timelinePlayToggle();
 }
 
 // ================= Render: chart =================
@@ -3945,6 +3987,7 @@ function timelinePlayToggle() {
     btn.innerHTML = "&#9654; <span>" + t("autoPlay") + "</span>";
     return;
   }
+  if (timelineFolded) setTimelineFolded(false);
   tlPlaying = true; tlIdx = 0;
   btn.innerHTML = "&#10074;&#10074; <span>" + t("pause") + "</span>";
   const els = Array.from(document.querySelectorAll("#timelineList .event"));
@@ -3966,6 +4009,7 @@ function applyI18n() {
   renderStats();
   renderTimeline();
   renderFilters();
+  updateTimelineFoldUi();
   renderChart();
   renderMap();
   renderFigures();
@@ -4030,6 +4074,7 @@ document.getElementById("mapSpeed").addEventListener("change", e => {
   if (mapPlaying) startMapTimer();
 });
 document.getElementById("timelinePlay").addEventListener("click", timelinePlayToggle);
+document.getElementById("timelineFold").addEventListener("click", () => setTimelineFolded(!timelineFolded));
 
   // Figure detail modal
 document.getElementById("modalClose").addEventListener("click", closeFigure);
