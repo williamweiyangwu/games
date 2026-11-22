@@ -225,7 +225,7 @@
 <div id="standings" class="hidden"></div>
 <div id="banner" class="hidden"></div>
 <div id="lights" class="hidden"><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div></div>
-  <div id="verTag">v2.44</div>
+  <div id="verTag">v2.45</div>
   <button id="achBtn" class="ghost">ACHIEVEMENTS</button>
   <div id="achPanel"><b style="letter-spacing:.12em">ACHIEVEMENTS</b><div id="achList" style="margin-top:8px"></div></div>
   <div id="pitMsg"></div>
@@ -2878,14 +2878,14 @@ ctrl: [
       var rpi = Math.floor(Math.random() * order.length);
       var tp2 = order[pi]; order[pi] = order[rpi]; order[rpi] = tp2;
     }
-    var ROW_GAP = 8.5, COL = 4.6;
+    var ROW_GAP = 8, COL = 3.2, STAGGER = 4;
     for (var i = 0; i < order.length; i++) {
       var c = order[i];
       c.isPlayer = (c === player);
       c.gridSlot = i;
-      var row = Math.floor(i / 2), side = (i % 2) ? 1 : -1;
-      var s = wrapS(LEN - 8 - row * ROW_GAP);
-      var lat = side * COL;
+      var row = Math.floor(i / 2), col = i % 2;
+      var s = wrapS(LEN - 10 - row * ROW_GAP - (col ? STAGGER : 0));
+      var lat = col ? COL : -COL;
       var P = offsetPos(s, lat);
       c.x = P.x; c.z = P.z;
       c.yaw = yawAt(s);
