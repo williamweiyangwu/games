@@ -169,6 +169,22 @@
   #chestgrid,#chestinv{display:grid;grid-template-columns:repeat(9,1fr);gap:5px;max-height:36vh;overflow-y:auto;padding-right:2px}
   #chestlabel{margin:6px 0 5px;font-size:10px;letter-spacing:1px;color:var(--dim);text-align:center}
 
+  /* ---------- villager trading ---------- */
+  #trade{position:fixed;inset:0;display:grid;place-items:center;background:rgba(4,6,10,.55);z-index:4}
+  #trade.hide{display:none}
+  #trade .invpanel{width:min(520px,94vw)}
+  #tradelist{display:flex;flex-direction:column;gap:5px;max-height:58vh;overflow-y:auto;padding-right:2px}
+  .trow{display:flex;align-items:center;gap:7px;padding:5px 7px;border:1px solid var(--line);
+    border-radius:7px;background:rgba(0,0,0,.25);cursor:pointer;user-select:none}
+  .trow:hover{background:rgba(90,140,190,.22);border-color:#7fb6e0}
+  .trow.off{opacity:.42;cursor:not-allowed}
+  .tslot{position:relative;width:34px;height:34px;flex:none;display:grid;place-items:center}
+  .tslot canvas{width:30px;height:30px;image-rendering:pixelated}
+  .tcnt{position:absolute;right:0;bottom:0;font:10px/1 monospace;color:#fff;text-shadow:0 1px 0 #000}
+  .tarr{color:var(--dim);font-size:14px;line-height:1}
+  .tname{flex:1;font-size:10px;color:var(--dim);text-align:right;padding-right:4px}
+  #tradehead{margin:0 0 10px;font-size:10px;color:var(--dim);text-align:center}
+
   /* ---------- death ---------- */
   #death{position:fixed;inset:0;display:grid;place-items:center;background:rgba(70,6,6,.55);z-index:5}
   #death.hide{display:none}
@@ -237,7 +253,7 @@
 </style>
 </head>
 <body>
-<a href="../" title="Back to Arcade" aria-label="Back to Arcade" style="position:fixed;top:14px;left:14px;z-index:999999;padding:11px 20px;border:1px solid #3d4c74;border-radius:999px;background:rgba(10,13,20,.9);color:#eef2fb;font:700 17px/1.2 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;text-decoration:none;box-shadow:0 3px 12px rgba(0,0,0,.5)">&#8592; Arcade</a>
+<a href="../" title="Back to Arcade" aria-label="Back to Arcade" style="position:fixed;top:10px;left:10px;z-index:999999;padding:6px 11px;border:1px solid #3d4c74;border-radius:999px;background:rgba(10,13,20,.85);color:#eef2fb;font:600 12px/1.2 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.4)">&#8592; Arcade</a>
 
 <canvas id="view"></canvas>
 <div id="tint"></div>
@@ -254,7 +270,7 @@
   <div id="bar"></div>
   <div id="dbg"></div>
   <div id="toast"></div>
-  <div id="ver">v2.4 build 1</div>
+  <div id="ver">v2.5 build 1</div>
 </div>
 
 <div id="inv" class="hide">
@@ -301,6 +317,15 @@
   </div>
 </div>
 
+<div id="trade" class="hide">
+  <div class="invpanel">
+    <h3>Villager Trades</h3>
+    <div id="tradehead">Emeralds are the currency &middot; sell goods to earn them</div>
+    <div id="tradelist"></div>
+    <div class="invfoot">Click a trade to exchange &middot; <b>E</b> / <b>Esc</b> close</div>
+  </div>
+</div>
+
 <div id="picker" class="hide">
   <div class="invpanel">
     <h3>Get Items</h3>
@@ -322,7 +347,7 @@
 <div id="menu" class="hide">
   <div class="panel">
     <h1>BLOCKCRAFT</h1>
-    <h2>survival + creative &middot; v2.4 &middot; villages, chests &amp; block models &middot; software-rendered in canvas 2d</h2>
+    <h2>survival + creative &middot; v2.5 &middot; villager trading, villages &amp; chests &middot; software-rendered in canvas 2d</h2>
     <div class="grid">
       <div><b>W A S D</b> move</div>
       <div><b>Space</b> jump / swim up</div>
@@ -821,7 +846,7 @@ const IT = { BEEF: 100, PORK: 101, MUTTON: 102, CHICKEN: 103, LEATHER: 104, WOOL
              GHELM: 163, GCHEST: 164, GLEGS: 165, GBOOTS: 166,
              IHELM: 167, ICHEST: 168, ILEGS: 169, IBOOTS: 170,
              DHELM: 171, DCHEST: 172, DLEGS: 173, DBOOTS: 174,
-             BOOK: 175 };
+             BOOK: 175, EMERALD: 176 };
 /* ------------------------------------------------------------- armor */
 /* slot 0 helmet, 1 chestplate, 2 leggings, 3 boots */
 const ARMOR_SLOTS = ['Helmet', 'Chestplate', 'Leggings', 'Boots'];
@@ -983,6 +1008,11 @@ function defineItems() {
     rect(g, 6, 6, 20, 20, '#7a3f2c'); rect(g, 8, 6, 17, 20, '#f2e6c8');
     rect(g, 6, 6, 3, 20, '#5b2e20'); rect(g, 10, 9, 2, 14, '#c9b99a');
     rect(g, 14, 10, 9, 2, '#8a6a4c'); rect(g, 14, 15, 7, 2, '#8a6a4c');
+  });
+  R(IT.EMERALD, 'Emerald', 0x2fd45c, 0, g => {
+    rect(g, 11, 5, 10, 22, '#2fd45c'); rect(g, 7, 9, 18, 14, '#3ee86c');
+    rect(g, 7, 9, 5, 14, '#7cf6a0'); rect(g, 20, 9, 5, 14, '#1fa844');
+    rect(g, 10, 6, 12, 4, '#8cfab0'); rect(g, 8, 21, 16, 3, '#1a7e39');
   });
   const armorParts = ['helm', 'chest', 'legs', 'boots'];
   const armorNames = ['Helmet', 'Chestplate', 'Leggings', 'Boots'];
@@ -1189,6 +1219,7 @@ function chestAt(x, y, z, create) { return chestAtDim(dim, x, y, z, create); }
 function clearChests() {
   chestMap.clear();
   if (chestOpen) { chestOpen = 0; openC = null; chestEl.classList.add('hide'); renderCursor(); }
+  if (tradeOpen) { tradeOpen = 0; openV = null; tradeEl.classList.add('hide'); renderCursor(); }
 }
 function removeChest(x, y, z, dropContents) {
   const c = chestAt(x, y, z, false);
@@ -2789,7 +2820,7 @@ let INV = new Array(INV_BASE).fill(null);
 const invCraft = new Array(4).fill(null), tableCraft = new Array(9).fill(null);
 let craftMode = 'inv', craftSlots = invCraft;
 let invOpen = 0, furnaceOpen = 0, openF = null, chestOpen = 0, openC = null,
-    pickerOpen = 0, cursor = null, cursorX = 0, cursorY = 0;
+    tradeOpen = 0, openV = null, pickerOpen = 0, cursor = null, cursorX = 0, cursorY = 0;
 let fLastFlame = -1, fLastBar = -1;
 let hostiles = [], arrows = [], drops = [], spawnPt = { x: 0, y: 0, z: 0 };
 
@@ -2876,6 +2907,8 @@ function consumeSel() {
   if (invOpen) renderInv(); else refreshHotbar();
 }
 function useSel() {
+  const v = pickEntity(4.5);
+  if (v && v.kind === VILLAGER_KIND) { openTrade(v); return; }
   if (hit && hit.id === CRAFT_TABLE) { openInv('table'); return; }
   if (hit && hit.id === FURNACE) { furnaceActivate(hit.x, hit.y, hit.z); return; }
   if (hit && hit.id === CHEST) { chestActivate(hit.x, hit.y, hit.z); return; }
@@ -3157,6 +3190,7 @@ function hurt(dmg, sx, sz) {
 }
 function die() {
   dead = 1; invOpen = 0;
+  if (tradeOpen) { tradeOpen = 0; openV = null; tradeEl.classList.add('hide'); }
   document.getElementById('inv').classList.add('hide');
   document.getElementById('death').classList.remove('hide');
   if (document.pointerLockElement) document.exitPointerLock();
@@ -3507,6 +3541,8 @@ const furnaceEl = document.getElementById('furnace');
 const chestEl = document.getElementById('chest');
 const chestGridEl = document.getElementById('chestgrid');
 const chestInvEl = document.getElementById('chestinv');
+const tradeEl = document.getElementById('trade');
+const tradeListEl = document.getElementById('tradelist');
 const fSlotEls = [0, 1, 2].map(i => document.getElementById('fslot' + i));
 const fFlameEl = document.getElementById('fflame');
 const fBarEl = document.getElementById('fbar');
@@ -4017,6 +4053,113 @@ chestEl.addEventListener('mouseover', e => {
   else if (d.hasAttribute('data-ci')) hoverSlot = { arr: INV, i: +d.getAttribute('data-ci') };
 });
 chestEl.addEventListener('mouseleave', () => { hoverSlot = null; });
+
+/* ------------------------------------------------- villager trading */
+const TRADES = [
+  { give: IT.EMERALD, gn: 1, get: IT.CBEET,  qty: 4, label: 'Buy Cooked Beef' },
+  { give: IT.EMERALD, gn: 1, get: IT.CPORK,  qty: 4, label: 'Buy Cooked Porkchop' },
+  { give: IT.EMERALD, gn: 1, get: IT.TORCH,  qty: 8, label: 'Buy Torches' },
+  { give: IT.EMERALD, gn: 1, get: IT.ARROW,  qty: 8, label: 'Buy Arrows' },
+  { give: IT.EMERALD, gn: 2, get: IT.BOOK,   qty: 1, label: 'Buy Book' },
+  { give: IT.EMERALD, gn: 3, get: IT.IPICK,  qty: 1, label: 'Buy Iron Pickaxe' },
+  { give: IT.EMERALD, gn: 3, get: IT.ISWORD, qty: 1, label: 'Buy Iron Sword' },
+  { give: IT.EMERALD, gn: 4, get: IT.DSWORD, qty: 1, label: 'Buy Diamond Sword' },
+  { give: IT.EMERALD, gn: 6, get: IT.DPICK,  qty: 1, label: 'Buy Diamond Pickaxe' },
+  { give: IT.IRON,    gn: 8, get: IT.EMERALD, qty: 1, label: 'Sell Iron Ingots' },
+  { give: IT.COAL,    gn: 16, get: IT.EMERALD, qty: 1, label: 'Sell Coal' },
+  { give: IT.LEATHER, gn: 8, get: IT.EMERALD, qty: 1, label: 'Sell Leather' },
+  { give: IT.DIAMOND, gn: 2, get: IT.EMERALD, qty: 1, label: 'Sell Diamonds' }
+];
+function invCount(id) {
+  let n = 0;
+  for (const s of INV) if (s && s.id === id) n += s.n;
+  return n;
+}
+function removeItems(id, n) {
+  for (let i = 0; i < INV.length && n > 0; i++) {
+    const s = INV[i];
+    if (!s || s.id !== id) continue;
+    const t = Math.min(s.n, n);
+    s.n -= t; n -= t;
+    if (s.n <= 0) INV[i] = null;
+  }
+  return n;
+}
+function invSpaceFor(id, n) {
+  let room = 0;
+  for (const s of INV) {
+    if (!s) room += 64;
+    else if (s.id === id) room += 64 - s.n;
+  }
+  return room >= n;
+}
+function canTrade(t) { return invCount(t.give) >= t.gn && invSpaceFor(t.get, t.qty); }
+function tradeIcon(id, n) {
+  const d = document.createElement('div');
+  d.className = 'tslot';
+  d.appendChild(slotIconEl(id));
+  if (n > 1) { const q = document.createElement('b'); q.className = 'tcnt'; q.textContent = n; d.appendChild(q); }
+  d.title = itemName(id) + ' x' + n;
+  return d;
+}
+function renderTrade() {
+  if (!tradeOpen) return;
+  tradeListEl.innerHTML = '';
+  for (let i = 0; i < TRADES.length; i++) {
+    const t = TRADES[i];
+    const row = document.createElement('div');
+    row.className = 'trow' + (canTrade(t) ? '' : ' off');
+    row.setAttribute('data-t', i);
+    row.title = t.gn + ' ' + itemName(t.give) + ' \u2192 ' + t.qty + ' ' + itemName(t.get);
+    row.appendChild(tradeIcon(t.give, t.gn));
+    const arr = document.createElement('span'); arr.className = 'tarr'; arr.textContent = '\u2192';
+    row.appendChild(arr);
+    row.appendChild(tradeIcon(t.get, t.qty));
+    const nm = document.createElement('span'); nm.className = 'tname'; nm.textContent = t.label;
+    row.appendChild(nm);
+    tradeListEl.appendChild(row);
+  }
+  renderCursor();
+}
+function openTrade(v) {
+  if (!v || v.kind !== VILLAGER_KIND || dead) return false;
+  if (cursor) {
+    const left = addItem(cursor.id, cursor.n);
+    if (left) dropItem(cursor.id, left, pl.x, pl.y + 0.4, pl.z, 0, 2, 0);
+    cursor = null;
+  }
+  openV = v; tradeOpen = 1;
+  tradeEl.classList.remove('hide');
+  renderTrade();
+  if (document.pointerLockElement) document.exitPointerLock();
+  sfxAt(340, 0.14, 'triangle', v.x, v.y + 1, v.z, 18);
+  return true;
+}
+function closeTrade() {
+  if (!tradeOpen) return;
+  tradeOpen = 0; openV = null;
+  tradeEl.classList.add('hide');
+  view.requestPointerLock();
+}
+function doTrade(i) {
+  if (!tradeOpen || !openV) return false;
+  const t = TRADES[i];
+  if (!t) return false;
+  if (invCount(t.give) < t.gn) { toast('need ' + t.gn + ' ' + itemName(t.give)); sfx(150, 0.08, 'square'); return false; }
+  if (!invSpaceFor(t.get, t.qty)) { toast('no room for ' + itemName(t.get)); sfx(150, 0.08, 'square'); return false; }
+  removeItems(t.give, t.gn);
+  const left = addItem(t.get, t.qty);
+  if (left) dropItem(t.get, left, pl.x, pl.y + 0.4, pl.z, Math.sin(cam.yaw) * 2.4, 2.2, Math.cos(cam.yaw) * 2.4);
+  sfxAt(640, 0.12, 'triangle', openV.x, openV.y + 1, openV.z, 18);
+  toast('traded ' + t.gn + ' ' + itemName(t.give) + ' \u2192 ' + t.qty + ' ' + itemName(t.get));
+  refreshHotbar(); renderTrade(); saveDirty = 1;
+  return true;
+}
+tradeListEl.addEventListener('click', e => {
+  const d = e.target.closest('.trow');
+  if (d) doTrade(+d.getAttribute('data-t'));
+});
+tradeEl.addEventListener('click', e => { if (e.target === tradeEl) closeTrade(); });
 document.getElementById('respawn').addEventListener('click', respawn);
 
 /* --------------------------------------------------------------- input */
@@ -4036,6 +4179,7 @@ addEventListener('keydown', e => {
   keys[k] = 1;
   if (k === 'KeyE') {
     if (pickerOpen) closePicker();
+    else if (tradeOpen) closeTrade();
     else if (chestOpen) closeChest();
     else if (furnaceOpen) closeFurnace();
     else if (invOpen) closeInv();
@@ -4044,6 +4188,7 @@ addEventListener('keydown', e => {
   }
   if (k === 'Escape') {
     if (pickerOpen) closePicker();
+    else if (tradeOpen) closeTrade();
     else if (chestOpen) closeChest();
     else if (furnaceOpen) closeFurnace();
     else if (invOpen) closeInv();
@@ -4079,7 +4224,7 @@ function pickHint() {
   toast((t && t.k === 'pick') ? 'needs a better pickaxe' : 'needs a pickaxe');
 }
 addEventListener('mousedown', e => {
-  if (!running || invOpen) return;
+  if (!running || invOpen || chestOpen || tradeOpen || furnaceOpen || pickerOpen) return;
   if (e.button === 0) {
     if (mode === 'survival' && !dead) {
       const em = pickEntity(4.2);
@@ -4105,11 +4250,11 @@ addEventListener('wheel', e => {
 document.addEventListener('pointerlockchange', () => {
   hasPointer = document.pointerLockElement === view;
   running = hasPointer;
-  menu.classList.toggle('hide', hasPointer || invOpen || furnaceOpen || chestOpen || pickerOpen || dead);
+  menu.classList.toggle('hide', hasPointer || invOpen || furnaceOpen || chestOpen || tradeOpen || pickerOpen || dead);
   if (!hasPointer) {
     keys = Object.create(null); mining = 0;
     if (savingEnabled && saveDirty) { try { saveWorld(); } catch (e) {} }
-    if (!invOpen && !furnaceOpen && !chestOpen && !pickerOpen && !dead) updateMenu();
+    if (!invOpen && !furnaceOpen && !chestOpen && !tradeOpen && !pickerOpen && !dead) updateMenu();
   }
 });
 document.addEventListener('visibilitychange', () => {
@@ -4120,7 +4265,7 @@ addEventListener('pagehide', () => {
 });
 addEventListener('mousemove', e => {
   cursorX = e.clientX; cursorY = e.clientY;
-  if ((invOpen || furnaceOpen || chestOpen) && cursor) { cursorEl.style.left = cursorX + 'px'; cursorEl.style.top = cursorY + 'px'; }
+  if ((invOpen || furnaceOpen || chestOpen || tradeOpen) && cursor) { cursorEl.style.left = cursorX + 'px'; cursorEl.style.top = cursorY + 'px'; }
   if (!hasPointer) return;
   cam.yaw += e.movementX * 0.0026;
   cam.pitch = clamp(cam.pitch - e.movementY * 0.0026, -1.5533, 1.5533);
