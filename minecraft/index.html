@@ -291,7 +291,7 @@
   <div id="bar"></div>
   <div id="dbg"></div>
   <div id="toast"></div>
-  <div id="ver">v2.6 build 1</div>
+  <div id="ver">v2.6 build 2</div>
 </div>
 
 <div id="inv" class="hide">
@@ -1225,6 +1225,7 @@ LOOT.enderman = [[IT.ENDER_PEARL,1,2]];
 LOOT.dragon = [[IT.ENDER_PEARL,2,4]];
 LOOT.slime = [[IT.SLIME,0,2]];
 LOOT.witch = [[IT.GUNPOWDER,0,2],[IT.ROTTEN,0,1],[IT.GOLD,0,1]];
+LOOT.villager = [[IT.EMERALD,1,2],[IT.BREAD,0,2]];
 /* Generated chests get deterministic loot from their coordinates + world seed,
    so the same structure always holds the same rewards for the same world. */
 const CHEST_LOOT = {
@@ -2805,9 +2806,10 @@ function drawMob(m) {
   const yaw = m.dir, ca = Math.cos(yaw), sa = Math.sin(yaw);
   const bob = m.moving ? Math.abs(Math.sin(m.bob)) * 0.035 : 0;
   const sw = m.moving ? Math.sin(m.bob) : 0;
+  const flash = m.hurtT > 0 && ((worldT * 20) | 0) % 2 === 0;
   const part = (side, up, fwd, w, h, d, c) =>
     boxFacesRot(m.x + side * ca + fwd * sa, m.y + up + bob, m.z - side * sa + fwd * ca,
-                w, h, d, yaw, c[0], c[1], c[2]);
+                w, h, d, yaw, flash ? 248 : c[0], flash ? 70 : c[1], flash ? 70 : c[2]);
   const shade = (c, k) => [c[0] * k | 0, c[1] * k | 0, c[2] * k | 0];
   const body = M.c, head = M.h, leg = M.l, dark = [30, 26, 24];
 
@@ -3114,6 +3116,7 @@ function stepAnimals(dt) {
     if (!trySpawnVillager()) trySpawnVillagerNear();
   for (const a of animals) {
     const M = MOBS[a.kind];
+    if (a.hurtT > 0) a.hurtT -= dt;
     if (a.kx) {
       a.x += a.kx * dt; a.z += a.kz * dt;
       a.kx *= Math.max(0, 1 - 6 * dt); a.kz *= Math.max(0, 1 - 6 * dt);
@@ -3414,7 +3417,7 @@ function attack(e) {
   if (!e || e.hp === undefined) return;
   const t = heldTool();
   e.hp -= (t && t.k === 'sword') ? t.dmg : 5;
-  e.flee = 3;
+  e.hurtT = 0.18; e.flee = 3;
   const ax = e.x - pl.x, az = e.z - pl.z, al = Math.hypot(ax, az) || 1;
   e.kx = ax / al * 3.4; e.kz = az / al * 3.4;
   sfx(200, 0.08, 'square');
@@ -3427,6 +3430,13 @@ function killMob(e) {
   for (const L of loot) {
     const n = L[1] + Math.floor(Math.random() * (L[2] - L[1] + 1));
     if (n > 0) { addItem(L[0], n); toast('+ ' + n + ' ' + itemName(L[0])); }
+  }
+  /* Other villagers scatter when one of their own is killed. */
+  if (e.kind === VILLAGER_KIND) {
+    for (const a of animals) if (a.kind === VILLAGER_KIND && a !== e) {
+      const ax = a.x - e.x, az = a.z - e.z, al = Math.hypot(ax, az) || 1;
+      a.kx = ax / al * 2.6; a.kz = az / al * 2.6; a.flee = 4;
+    }
   }
   for (let k = 0; k < 12; k++) parts.push({
     x: e.x + (Math.random() - 0.5) * 0.6, y: e.y + 0.4 + Math.random() * 0.6, z: e.z + (Math.random() - 0.5) * 0.6,
@@ -3484,6 +3494,7 @@ function stepHostiles(dt) {
     const hd0 = hostiles[i].x - pl.x, hd1 = hostiles[i].z - pl.z;
     if (hd0 * hd0 + hd1 * hd1 > 72 * 72) { hostiles.splice(i, 1); continue; }
     const h = hostiles[i], M = MOBS[h.kind];
+    if (h.hurtT > 0) h.hurtT -= dt;
     h.bob += dt * (h.kind === 12 ? 4.6 : 7);
     if (h.kind === 12) {                     /* slimes bounce instead of gliding */
       const hop = Math.sin(h.bob * 2.1);
@@ -4923,7 +4934,7 @@ function pickHint() {
 addEventListener('mousedown', e => {
   if (!running || invOpen || chestOpen || tradeOpen || furnaceOpen || pickerOpen || mapOpen) return;
   if (e.button === 0) {
-    if (mode === 'survival' && !dead) {
+    if (!dead) {
       const em = pickEntity(4.2);
       if (em) { attack(em); swing = 0.34; return; }
     }
