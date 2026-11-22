@@ -225,7 +225,7 @@
 <div id="standings" class="hidden"></div>
 <div id="banner" class="hidden"></div>
 <div id="lights" class="hidden"><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div></div>
-  <div id="verTag">v2.37</div>
+  <div id="verTag">v2.38</div>
   <button id="achBtn" class="ghost">ACHIEVEMENTS</button>
   <div id="achPanel"><b style="letter-spacing:.12em">ACHIEVEMENTS</b><div id="achList" style="margin-top:8px"></div></div>
   <div id="pitMsg"></div>
@@ -1447,10 +1447,14 @@ ctrl: [
   // Geometry clamp: prevents overlapping meshes when the real GPS centreline
   // runs close to another non-adjacent section (e.g. Monaco harbour, Baku castle).
   // Scale the whole corridor proportionally so bands keep width and never collapse
-  // into degenerate triangles.
+  // into degenerate triangles. Also scale for inside-of-turn fold limits so walls
+  // don't collapse to zero width (which caused drive-through gaps).
   function geomLat(s, lat) {
     var cap = clearLatAt(s);
-    if (cap < RAIL_LAT) lat *= cap / RAIL_LAT;
+    var k = signedKappaAt(s);
+    if (Math.abs(k) > 1e-7 && lat * k < 0) cap = Math.min(cap, OFFSET_SAFETY / Math.abs(k));
+    if (cap < 1.0) cap = 1.0;
+    if (cap < RAIL_LAT && Math.abs(lat) > 1e-6) lat *= cap / RAIL_LAT;
     return limitedLat(s, lat);
   }
   function railLatLimit(s, side) {
