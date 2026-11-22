@@ -149,9 +149,6 @@
 </style>
 </head>
 <body>
-<a id="arcadeBack" href="../" title="Back to Arcade" aria-label="Back to Arcade" style="position:fixed;top:14px;left:14px;z-index:999999;padding:11px 20px;border:1px solid #3d4c74;border-radius:999px;background:rgba(10,13,20,.9);color:#eef2fb;font:700 17px/1.2 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;text-decoration:none;box-shadow:0 3px 12px rgba(0,0,0,.5);transition:opacity .25s">&#8592; Arcade</a>
-<div id="arcadeHot" aria-hidden="true" style="position:fixed;top:0;left:0;width:140px;height:64px;z-index:999998"></div>
-<script>(function(){var a=document.getElementById('arcadeBack'),h=document.getElementById('arcadeHot');if(!a||!h)return;var t;function show(){clearTimeout(t);a.style.opacity='1';a.style.pointerEvents='auto';}function hide(){a.style.opacity='0';a.style.pointerEvents='none';}function later(){clearTimeout(t);t=setTimeout(hide,1500);}a.addEventListener('mouseenter',show);a.addEventListener('mouseleave',later);h.addEventListener('mouseenter',show);h.addEventListener('mouseleave',later);show();t=setTimeout(hide,4000);})();</script>
 <style>
   #dialog {
     position: fixed; left: 50%; bottom: 8%; transform: translateX(-50%);
@@ -288,7 +285,8 @@
     Buy where goods are cheap, sell them at home, and carve your name into the age &mdash;
     from unknown citizen to Fidalgo of the Realm.
     Your body is not iron: running, swimming and hauling all spend your wind, and a man
-    spent in deep water drowns.
+    spent in deep water drowns. In Lisbon a barber, a fencing master and a pilot will
+    make you harder to kill and faster to sea — for a price.
     When your hour is done, the ledger of your life will be read aloud.
   </div>
   <div class="controls-info">
@@ -296,7 +294,6 @@
     <div><b>Mouse</b><span> Look</span></div>
     <div><b>E</b><span> Talk / Interact / Helm</span></div>
     <div><b>Shift</b><span> Run &mdash; it costs your wind</span></div>
-    <div><b>Z / X</b><span> Brace the yards to the wind</span></div>
     <div><b>Space</b><span> Jump / Climb out / Anchor</span></div>
     <div><b>Esc</b><span> Menu &amp; Save</span></div>
   </div>
@@ -356,7 +353,7 @@
       <div id="trimLbl">YARDS</div>
     </div>
     <div id="windLbl">wind &mdash;</div>
-    <div id="helmHint">W hoist &middot; S reef<br>A / D helm<br>Z / X brace the yards</div>
+    <div id="helmHint">W hoist &middot; S reef<br>A / D helm<br>The yards trim themselves</div>
   </div>
 </div>
 
@@ -2675,6 +2672,10 @@ const LIS_CITY = {
   square: { x0: -52, x1: 52, z0: -36, z1: 20 },
 };
 const walkers = [];
+// The bustle is a second, quieter population: carts, dogs, hawkers, chimney
+// smoke and washing on the lines. None of it is solid or talkable -- it is
+// there so the town keeps moving when you stand still.
+const streetLife = [];
 let lisbonSpawn = { x: 0, z: 12 };
 
 function findFlat(island, angle, tMin, tMax, steps = 14) {
@@ -2696,9 +2697,8 @@ let lisbonDock = { x: 0, z: 44 };
 // and no hint that you had to walk back down the pier to your own ship.
 let lisbonGangway = null;
 
-// The dock shift: the lighter's cargo on the east quay, and the customs table
-// it has to reach. Both are filled in by buildLisbon, which is why they are
-// declared out here.
+// The dock shift: the lighter's cargo on the east quay, and the dock landing
+// on the pier where it has to go. Both are filled in by buildLisbon.
 let dockWork = null;            // { pickup, drop, pickupIt, dropIt }
 let dockCrateGroup = null;      // the stack, shrinking as you clear it
 const DOCK_SHIFT = { total: 8, wage: 5, bonus: 8 };
@@ -3296,11 +3296,14 @@ function buildLisbon(group, island, pointAt) {
   }
 
   // ---------------------------------------------------------
-  //  THE DOCK SHIFT - the lighter's cargo, and the customs table
+  //  THE DOCK SHIFT - the lighter's cargo, and the dock landing
   // ---------------------------------------------------------
   {
     const PX = 26, PZ = 21;        // the stack, at the quay's edge
-    const DX = 26, DZ = 8;         // the table it has to reach
+    // The landing sits to starboard of the pier root, not across its middle:
+    // the old centre line was the only dry path from the spawn to the town,
+    // and a pallet there stopped a man after three feet of walking.
+    const DX = 3.6, DZ = 28;       // the dock landing, on the pier root
     dockWork = {
       pickup: { x: OX + PX, z: OZ + PZ, y: Y },
       drop:   { x: OX + DX, z: OZ + DZ, y: Y },
@@ -3319,18 +3322,24 @@ function buildLisbon(group, island, pointAt) {
       dockCrateGroup.add(crate);
     }
 
-    // the customs counter: a solid trestle with a lip, not a floating plank
-    const counterWood = new THREE.MeshStandardMaterial({ color: 0x8a6a42, roughness: 0.9 });
-    const counterBody = new THREE.MeshStandardMaterial({ color: 0x6d5334, roughness: 0.94 });
-    const top = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.22, 1.5), counterWood);
-    add(top, DX, Y + 0.98, DZ);
-    const body = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.88, 1.3), counterBody);
-    add(body, DX, Y + 0.44, DZ);
+    // the dock landing: a low timber pallet on the pier root where the
+    // lighter's cargo is tallied. No more trek inland to a customs table --
+    // the whole job stays on the quay and ends here at the dock.
+    const palletWood = new THREE.MeshStandardMaterial({ color: 0x8a6a42, roughness: 0.9 });
+    const palletDark = new THREE.MeshStandardMaterial({ color: 0x6d5334, roughness: 0.94 });
+    const top = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.22, 1.5), palletWood);
+    add(top, DX, Y + 0.12, DZ);
     for (const sx of [-1.2, 1.2]) {
-      const post = new THREE.Mesh(new THREE.BoxGeometry(0.18, 1.1, 1.4), CITY_MAT.timber);
-      add(post, DX + sx, Y + 0.55, DZ);
+      const skid = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.16, 1.5), palletDark);
+      add(skid, DX + sx, Y + 0.01, DZ);
     }
-    coll(DX, DZ, 2.8, 1.5, Y + 1.1);      // you cannot walk through a counter
+    for (let i = 0; i < 2; i++) {
+      const waiting = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.6, 0.8), CITY_MAT.timber);
+      add(waiting, DX - 0.5 + i * 1.0, Y + 0.52, DZ - 0.1);
+    }
+    const tallyPost = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.5, 0.14), CITY_MAT.timber);
+    add(tallyPost, DX + 1.5, Y + 0.75, DZ - 0.6);
+    coll(DX, DZ, 2.8, 1.5, Y + 0.7);      // you cannot walk through the landing
     const ring = new THREE.Mesh(new THREE.RingGeometry(1.28, 1.62, 28),
       new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.72,
                                     side: THREE.DoubleSide, depthWrite: false }));
@@ -3340,7 +3349,7 @@ function buildLisbon(group, island, pointAt) {
     dockWork.pickupIt = addInteractable(OX + PX, OZ + PZ, Y, 3.2,
       'Shoulder a crate', shoulderCrate);
     dockWork.dropIt = addInteractable(OX + DX, OZ + DZ + 1.7, Y, 2.8,
-      'Set the crate down on the table', dropCrate);
+      'Set the crate down at the dock', dropCrate);
     dockWork.pickupIt.hidden = true;
     dockWork.dropIt.hidden = true;
   }
@@ -3384,6 +3393,63 @@ function buildLisbon(group, island, pointAt) {
 
   // dockmaster at the pier root
   npc(8.2, 24, 0x5a5a4a, 0x2a2a1a, 0xffd700, "Zé Caolho, the dockmaster", () => openDialog('dockmaster'), Math.PI);
+
+  // ---------------------------------------------------------
+  //  THREE PEOPLE WHO MAKE YOU MORE CAPABLE
+  // ---------------------------------------------------------
+  {
+    // the barber's pole and the stool where he sits his patients
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 3.0, 8), CITY_MAT.slab);
+    add(pole, -52, Y + 1.5, 5);
+    for (let i = 0; i < 4; i++) {
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.5, 8),
+        new THREE.MeshStandardMaterial({ color: i % 2 ? 0x8f2430 : 0xe6dcc4, roughness: 0.8 }));
+      add(band, -52, Y + 0.6 + i * 0.6, 5);
+    }
+    const stool = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.12, 0.7), CITY_MAT.timber);
+    add(stool, -51, Y + 0.55, 6.8);
+    for (const sx of [-0.25, 0.25]) for (const sz of [-0.25, 0.25]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.55, 0.08), CITY_MAT.timber);
+      add(leg, -51 + sx, Y + 0.27, 6.8 + sz);
+    }
+  }
+  npc(-50, 6, 0x9a8a72, null, 0x9fe8ff, "Mestre Amaro, the barber-surgeon",
+      () => openDialog('surgeon'), Math.PI / 2);
+
+  {
+    // a practice post with a stuffed sack, and rapiers in a rack
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, 2.7, 8), CITY_MAT.timber);
+    add(post, -18, Y + 1.35, -35.5);
+    const sack = new THREE.Mesh(new THREE.SphereGeometry(0.48, 10, 8),
+      new THREE.MeshStandardMaterial({ color: 0x9a8052, roughness: 0.95 }));
+    add(sack, -18, Y + 1.9, -35.5);
+    const rack = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.12, 0.24), CITY_MAT.timber);
+    add(rack, -20, Y + 1.1, -36.5);
+    for (let i = 0; i < 4; i++) {
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.3, 0.05), CITY_MAT.iron);
+      add(blade, -20.6 + i * 0.4, Y + 1.75, -36.5);
+    }
+  }
+  npc(-16, -34, 0x6a2a2a, 0x2a1a14, 0xffb26a, "Mestre Rui, the fencing master",
+      () => openDialog('fencing'), Math.PI);
+
+  {
+    // the pilot's table: a chart, a compass and a rolled portolan
+    const table = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.14, 1.1), CITY_MAT.timber);
+    add(table, 26, Y + 0.85, -9);
+    for (const sx of [-0.75, 0.75]) for (const sz of [-0.4, 0.4]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.85, 0.09), CITY_MAT.timber);
+      add(leg, 26 + sx, Y + 0.42, -9 + sz);
+    }
+    const chart = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.8),
+      new THREE.MeshStandardMaterial({ color: 0xd8cba0, roughness: 0.95, side: THREE.DoubleSide }));
+    chart.rotation.x = -Math.PI / 2;
+    add(chart, 26, Y + 0.93, -9);
+    const compass = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 0.1, 12), CITY_MAT.iron);
+    add(compass, 26.55, Y + 1.0, -8.7);
+  }
+  npc(24, -8, 0x2a4a6a, 0x1a2a3a, 0x9fd8ff, "Mestre Tomás, the pilot",
+      () => openDialog('pilot'), Math.PI / 2);
 
   // ---------------------------------------------------------
   //  THE COOKSHOP - a cauldron on the quay, the cheapest meal in town
@@ -3573,6 +3639,22 @@ function buildLisbon(group, island, pointAt) {
     [{ x: -18, z: -66 }, { x: 22, z: -66 }, { x: 22, z: -88 }, { x: -18, z: -88 }],
     [{ x: -58, z: -176 }, { x: 62, z: -176 }, { x: 62, z: -188 }, { x: -58, z: -188 }],
   ];
+  // Ten more rounds through the town. The quay, the central street and the
+  // two squares were empty compared with a port this size; now there are
+  // children running errands, porters with bundles, and folk in every square.
+  const EXTRA_WALKS = [
+    { kind: 'porter', pts: [{ x: -96, z: 4 }, { x: 96, z: 4 }, { x: 96, z: 16 }, { x: -96, z: 16 }] },
+    { kind: 'child',  pts: [{ x: -50, z: 20 }, { x: -20, z: 20 }, { x: -20, z: 6 }, { x: -50, z: 6 }] },
+    { kind: 'adult',  pts: [{ x: -2, z: 6 }, { x: -2, z: -34 }, { x: 2, z: -34 }, { x: 2, z: 6 }] },
+    { kind: 'child',  pts: [{ x: -4, z: -40 }, { x: 4, z: -40 }, { x: 4, z: -64 }, { x: -4, z: -64 }] },
+    { kind: 'porter', pts: [{ x: -40, z: -20 }, { x: 40, z: -20 }, { x: 40, z: -34 }, { x: -40, z: -34 }] },
+    { kind: 'adult',  pts: [{ x: -40, z: -174 }, { x: -8, z: -174 }, { x: -8, z: -188 }, { x: -40, z: -188 }] },
+    { kind: 'adult',  pts: [{ x: 8, z: -174 }, { x: 40, z: -174 }, { x: 40, z: -188 }, { x: 8, z: -188 }] },
+    { kind: 'child',  pts: [{ x: -3, z: -100 }, { x: 3, z: -100 }, { x: 3, z: -130 }, { x: -3, z: -130 }] },
+    { kind: 'porter', pts: [{ x: 40, z: 6 }, { x: 90, z: 6 }, { x: 90, z: 18 }, { x: 40, z: 18 }] },
+    { kind: 'adult',  pts: [{ x: 5, z: 8 }, { x: 5, z: -30 }, { x: -5, z: -30 }, { x: -5, z: 8 }] },
+  ];
+  for (const e of EXTRA_WALKS) { e.pts.kind = e.kind; WALK_PATHS.push(e.pts); }
   const ROBES = [0x6b5a3a, 0x3a4a5a, 0x7a4a3a, 0x4a5a3a, 0x5a3a4a, 0x6a6a5a,
                  0x7a6a4a, 0x3a5a5a, 0x5a4a6a, 0x6a5a5a];
   // Every citizen of Lisbon has a name, a trade and a temperament. Walk up to
@@ -3589,24 +3671,52 @@ function buildLisbon(group, island, pointAt) {
     { name: "Branca",  job: "fishmonger", portrait: "\u{1F9D5}", talk: "which fish lie about their freshness" },
     { name: "Vasco",   job: "pilot",    portrait: "\u{1F9D3}", talk: "the bar off Cascais and the tides at Setúbal" },
     { name: "Mécia",   job: "ropemaker", portrait: "\u{1F9D5}", talk: "hemp, and what a frayed halyard costs" },
+    { name: "Martim",  job: "fisherman", portrait: "\u{1F9D3}", talk: "where the sardine shoals run in spring" },
+    { name: "Joana",   job: "fruit seller", portrait: "\u{1F9D5}", talk: "the price of oranges from the Algarve" },
+    { name: "Lopo",    job: "cutler",    portrait: "\u{1F9D4}", talk: "a good blade and a cheap one" },
+    { name: "Brites",  job: "laundress", portrait: "\u{1F9D5}", talk: "which washerwomen keep their tongues" },
+    { name: "Simão",   job: "muleteer",  portrait: "\u{1F9D4}", talk: "the road to Santarém and its tolls" },
+    { name: "Cecília", job: "chandler",  portrait: "\u{1F9D5}", talk: "tallow, wicks and the price of light" },
+    { name: "Ana",     job: "water carrier", portrait: "\u{1F9D5}", talk: "the fountain at Rossio and its queue" },
+    { name: "Vicente", job: "bookbinder", portrait: "\u{1F9D4}", talk: "the maps printed down by the Sé" },
+    { name: "Margarida", job: "herbalist", portrait: "\u{1F9D5}", talk: "feverfew, and what the Guinea air does" },
+    { name: "Gonçalo", job: "apprentice", portrait: "\u{1F9D4}", talk: "the errands nobody else will run" },
   ];
   for (let i = 0; i < WALK_PATHS.length; i++) {
-    const p = makePerson(ROBES[i], i % 2 ? 0x2a2a1a : null);
-    const start = WALK_PATHS[i][0];
+    const path = WALK_PATHS[i];
+    const kind = path.kind || 'adult';
+    const p = makePerson(ROBES[i % ROBES.length], i % 2 ? 0x2a2a1a : null);
+    if (kind === 'child') {
+      // children are shorter, hatless and quicker on their feet
+      p.scale.setScalar(0.72);
+    } else if (kind === 'porter') {
+      // a bundle on the back, slung from the shoulders: you can tell a man
+      // with work from a man with an errand across a crowded street
+      const bundle = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.5, 0.42),
+        new THREE.MeshStandardMaterial({ color: 0x9a8052, roughness: 0.95 }));
+      bundle.position.set(0, 1.24, -0.24);
+      p.add(bundle);
+      for (const sx of [-0.16, 0.16]) {
+        const strap = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.95, 0.06), CITY_MAT.dark);
+        strap.position.set(sx, 1.28, 0.06);
+        p.add(strap);
+      }
+    }
+    const start = path[0];
     add(p, start.x, Y, start.z, Math.random() * 6.28);
     const id = CITIZENS[i % CITIZENS.length];
     // ox/oz carry the group offset so the collision code can compare these
     // local positions against world-space Player.x/z
     walkers.push({
-      obj: p, ox: OX, oz: OZ, path: WALK_PATHS[i], seg: 0,
-      phase: Math.random() * 6.28, speed: 1.0 + Math.random() * 0.5,
+      obj: p, ox: OX, oz: OZ, path, seg: 0, kind,
+      phase: Math.random() * 6.28, speed: (kind === 'child' ? 1.5 : 1.0) + Math.random() * 0.5,
       name: id.name, job: id.job, portrait: id.portrait, talk: id.talk,
       skill: 0.34 + Math.random() * 0.28, met: false, talkT: 0, riddle: null, riddleRight: false,
     });
   }
 
-  // a few gulls over the harbour
-  for (let i = 0; i < 6; i++) {
+  // gulls over the harbour: enough of them to make the waterfront feel fed
+  for (let i = 0; i < 10; i++) {
     const g = new THREE.Group();
     const wingMat = new THREE.MeshStandardMaterial({ color: 0xf4f4ee, roughness: 0.9, side: THREE.DoubleSide });
     const wl = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.28), wingMat);
@@ -3618,6 +3728,121 @@ function buildLisbon(group, island, pointAt) {
     g.userData = { cx: g.position.x, cz: g.position.z, r: 12 + i * 3, a: i * 1.1, spd: 0.25 + i * 0.04 };
     group.add(g);
     walkers.push({ gull: g, phase: i });
+  }
+
+  // ---------------------------------------------------------
+  //  STREET LIFE - the motion that makes a town feel inhabited.
+  //  None of this is solid or talkable: it is scenery with a pulse, so the
+  //  quay keeps working while you stand still.
+  // ---------------------------------------------------------
+  const silver = new THREE.MeshStandardMaterial({ color: 0xa9bcc4, roughness: 0.55, metalness: 0.12 });
+  const clothCols = [0xb2483a, 0xd8c9a4, 0x4d6b7a, 0x8a5a3a];
+  for (let i = 0; i < 4; i++) {
+    const sx = -74 + i * 5.5;
+    for (let f = 0; f < 5; f++) {
+      const fish = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.5, 6), silver);
+      fish.rotation.z = Math.PI / 2;
+      fish.rotation.y = f % 2 ? 0.25 : -0.25;
+      add(fish, sx - 1.3 + f * 0.65, Y + 1.05, 8 + (f % 2 ? 0.22 : -0.18));
+    }
+    const basket = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.3, 0.42, 8), CITY_MAT.timber);
+    add(basket, sx + 1.25, Y + 1.2, 8);
+    const hawker = makePerson(ROBES[(i + 4) % ROBES.length], i % 2 ? 0x2a2a1a : null);
+    add(hawker, sx + 2.5, Y, 10.2, Math.PI);
+    streetLife.push({ kind: 'haggle', obj: hawker, phase: i * 1.7, baseY: Y });
+  }
+
+  // Carts: a sack barrow on the quay and a barrel cart in Rossio, each with
+  // a man at the shafts.
+  function handcart(load) {
+    const g = new THREE.Group();
+    const bed = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.16, 2.4), CITY_MAT.timber);
+    bed.position.y = 0.78; g.add(bed);
+    for (const sx of [-0.78, 0.78]) for (const sz of [-0.85, 0.85]) {
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.12, 12), CITY_MAT.dark);
+      wheel.rotation.z = Math.PI / 2;
+      wheel.position.set(sx, 0.4, sz); g.add(wheel);
+      const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.16, 8), CITY_MAT.iron);
+      hub.rotation.z = Math.PI / 2;
+      hub.position.set(sx + (sx > 0 ? 0.08 : -0.08), 0.4, sz); g.add(hub);
+    }
+    for (const sx of [-0.55, 0.55]) {
+      const shaft = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 2.1), CITY_MAT.timber);
+      shaft.position.set(sx, 0.82, 2.2); shaft.rotation.x = -0.08; g.add(shaft);
+    }
+    for (let k = 0; k < (load === 'barrels' ? 2 : 3); k++) {
+      const thing = load === 'barrels'
+        ? new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.8, 10), CITY_MAT.timber)
+        : new THREE.Mesh(new THREE.SphereGeometry(0.42, 10, 8),
+            new THREE.MeshStandardMaterial({ color: 0xa89268, roughness: 1 }));
+      thing.scale.y = load === 'barrels' ? 1 : 0.72;
+      thing.position.set(k % 2 ? 0.3 : -0.3, 1.25, -0.7 + Math.floor(k / 2) * 1.0);
+      g.add(thing);
+    }
+    const pusher = makePerson(load === 'barrels' ? 0x5a4630 : 0x6a5a3a, 0x2a2a1a);
+    pusher.position.set(0, 0, 3.1);
+    g.add(pusher);
+    return g;
+  }
+  const cartPaths = [
+    { kind: 'cart', obj: handcart('sacks'), speed: 2.0, seg: 0, phase: 0,
+      path: [{ x: -100, z: 3 }, { x: 100, z: 3 }, { x: 100, z: 19 }, { x: -100, z: 19 }] },
+    { kind: 'cart', obj: handcart('barrels'), speed: 1.6, seg: 1, phase: 2.1,
+      path: [{ x: -38, z: -174 }, { x: 38, z: -174 }, { x: 38, z: -188 }, { x: -38, z: -188 }] },
+  ];
+  for (const c of cartPaths) {
+    const st = c.path[c.seg];
+    add(c.obj, st.x, Y, st.z);
+    streetLife.push(c);
+  }
+
+  // Two dogs worry the carts: one on the quay, one at Rossio's fountain.
+  function makeDog() {
+    const g = new THREE.Group();
+    const fur = new THREE.MeshStandardMaterial({ color: 0x8b6c46, roughness: 1 });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.3, 0.7), fur);
+    body.position.y = 0.36; g.add(body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.17, 8, 6), fur);
+    head.position.set(0, 0.45, 0.46); g.add(head);
+    const snout = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.11, 0.22), fur);
+    snout.position.set(0, 0.4, 0.62); g.add(snout);
+    for (const sx of [-0.17, 0.17]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.32, 0.08), fur);
+      leg.position.set(sx, 0.16, sx > 0 ? 0.22 : -0.22); g.add(leg);
+    }
+    const tail = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.35, 6), fur);
+    tail.position.set(0, 0.5, -0.48); tail.rotation.x = -1.0; g.add(tail);
+    g.userData.tail = tail;
+    return g;
+  }
+  const dogPaths = [
+    [{ x: -20, z: 17 }, { x: 20, z: 17 }, { x: 20, z: 5 }, { x: -20, z: 5 }],
+    [{ x: -14, z: -172 }, { x: 14, z: -172 }, { x: 14, z: -186 }, { x: -14, z: -186 }],
+  ];
+  for (let i = 0; i < dogPaths.length; i++) {
+    const d = makeDog();
+    add(d, dogPaths[i][0].x, Y, dogPaths[i][0].z);
+    streetLife.push({ kind: 'dog', obj: d, path: dogPaths[i], seg: 0, speed: 3.1, phase: i * 2.3 });
+  }
+
+  // Smoke over the roofs, and washing strung across the back streets.
+  for (const [x, z] of [[-25, -88], [25, -88], [-60, -120], [60, -120], [-25, -150], [25, -150]]) {
+    const puff = new THREE.Mesh(new THREE.SphereGeometry(0.55, 8, 6),
+      new THREE.MeshBasicMaterial({ color: 0xc8c2b4, transparent: true, opacity: 0.25, depthWrite: false }));
+    add(puff, x, Y + 14, z);
+    streetLife.push({ kind: 'smoke', obj: puff, base: Y + 14, phase: Math.random() * 7 });
+  }
+  for (const z of [-74, -132]) {
+    const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 13.6, 5), CITY_MAT.dark);
+    rope.rotation.z = Math.PI / 2;
+    add(rope, 0, Y + 3.9, z);
+    for (let i = 0; i < 7; i++) {
+      const sheet = new THREE.Mesh(new THREE.PlaneGeometry(0.85, 1.0),
+        new THREE.MeshStandardMaterial({ color: clothCols[i % clothCols.length],
+          roughness: 1, side: THREE.DoubleSide }));
+      add(sheet, -5.4 + i * 1.8, Y + 3.35, z);
+      streetLife.push({ kind: 'cloth', obj: sheet, phase: i * 0.7 });
+    }
   }
 }
 
@@ -3913,7 +4138,8 @@ const Game = {
   // the ledger of a life: everything the end-of-hour screen reads aloud
   stats: { jobs: 0, voyages: 0, earned: 0, spent: 0, distance: 0,
            fish: 0, talked: 0, duels: 0, duelsWon: 0, duelsLost: 0, prayers: 0,
-           contracts: 0, hauled: 0, meals: 0, crewDays: 0, errands: 0 },
+           contracts: 0, hauled: 0, meals: 0, crewDays: 0, errands: 0,
+           tended: 0, fenceLessons: 0, navLessons: 0 },
   cause: '',
 };
 
@@ -3930,6 +4156,9 @@ const Player = {
   // the man inside the sailor: both 0..100, and both now decide what he can do
   health: 100, stamina: 100,
   hunger: 100,                  // 100 fed, 0 starving: a belly of its own
+  // what a man carries in his head and his wrists, not in his chest
+  fencing: 0,                   // 0..5, bought from the master of fence
+  navigation: 0,                // 0..5, bought from the pilot
   carry: 0,                     // crates shouldered on the quay
   healthWarn: false, staminaWarn: false, hungerWarn: false,
 };
@@ -3957,7 +4186,6 @@ const VITALS = {
   sprint: 10.5,        // wind spent running flat out, per second
   swim: 6.2,           // and swimming
   carry: 2.4,          // per crate shouldered, while moving
-  brace: 3.0,          // hauling the sheets by hand
   regenIdle: 14, regenWalk: 7.5, regenDeck: 5.5,
   healRest: 1.1,       // a rested, fed man knits
   drown: 7.5,          // health per second, spent and in deep water
@@ -3970,6 +4198,17 @@ const VITALS = {
   hungerStarve: 0.9,   // health per second at zero, on top of an empty hold
   ration: 40,          // below this, a man with stores eats from them
   rationFeed: 18,      // hunger a single provision is worth to him
+};
+
+// What the two teachers in Lisbon sell. Both skills are personal, capped, and
+// bought with silver, wind and a half hour of the life. Fencing tilts a
+// boarding; navigation makes the same hull a little faster through the water.
+const LESSON = {
+  max: 5,
+  fenceCost: lv => 10 + lv * 4,
+  pilotCost: lv => 12 + lv * 5,
+  fenceBonus: 0.06,     // per level, added to the boarding roll
+  pilotBonus: 0.03,     // per level, added to top speed
 };
 
 // A wound is a number, not a sentence: small hurts only bleed your body, and
@@ -4014,9 +4253,6 @@ function tickVitals(h) {
     // holding Shift spends wind whether or not there is any left, so a spent
     // man stays spent until he lets go and gets his breath back
     else if (keys['shift'] && moving) drain += VITALS.sprint;
-  } else if (Player.mode === 'helm') {
-    // bracing the yards yourself; a crew takes most of the strain
-    if (keys['z'] || keys['x']) drain += VITALS.brace * (crewAboard() ? 0.45 : 1);
   }
   if (Player.carry > 0 && moving) drain += VITALS.carry * Player.carry;
 
@@ -4117,8 +4353,8 @@ function sailDrive() {
 //  THE DOCK SHIFT - cargo you carry with your own back
 // ============================================================
 // Zé used to hand out ten minutes of work as a single button: click, wait,
-// collect twelve silver. Now he points at a lighter and a customs table, and
-// the wage is whatever you actually shift between them.
+// collect twelve silver. Now he points at a lighter and the dock landing, and
+// the wage is whatever you actually carry between them.
 function startDockShift() {
   if (Game.shift && Game.shift.active) {
     showToast('Your shift is already running', 2400);
@@ -4127,12 +4363,12 @@ function startDockShift() {
   if (Player.carry > 0) { showToast('Set that crate down first'); return; }
   Game.shift = { active: true, total: DOCK_SHIFT.total, left: DOCK_SHIFT.total, done: 0, paid: 0 };
   syncDockWork();
-  addLog(`Zé waves you at the lighter: ${DOCK_SHIFT.total} crates to the customs table.`);
+  addLog(`Zé waves you at the lighter: ${DOCK_SHIFT.total} crates to the dock landing.`);
   showToast('Shift started — shoulder a crate at the lighter', 3600);
   updateHUD();
 }
 
-// The prompt at the stack and the prompt at the table are the same two
+// The prompt at the stack and the prompt at the dock are the same two
 // interactables all shift long; only their labels and their visibility change.
 function syncDockWork() {
   if (!dockWork) return;
@@ -4154,13 +4390,13 @@ function shoulderCrate() {
   const s = Game.shift;
   if (!s || !s.active) { showToast('You are not on a shift'); return; }
   if (Player.carry > 0) { showToast('You are already carrying one'); return; }
-  if (s.left <= 0) { showToast('The lighter is empty — take that one to the table'); return; }
+  if (s.left <= 0) { showToast('The lighter is empty — take that one to the dock'); return; }
   if (Player.stamina < 6) { showToast('No strength left to lift it — rest a moment', 2600); return; }
   s.left--;
   Player.carry = 1;
   Player.stamina = Math.max(0, Player.stamina - 5);
   syncDockWork();
-  showToast('Crate shouldered — carry it to the customs table', 2600);
+  showToast('Crate shouldered — carry it to the dock landing', 2600);
   updateHUD();
 }
 
@@ -4174,7 +4410,7 @@ function dropCrate() {
   Game.gold += DOCK_SHIFT.wage;
   Game.stats.hauled = (Game.stats.hauled || 0) + 1;
   Player.stamina = Math.max(0, Player.stamina - 3);
-  addLog(`Crate stacked on the customs table. +${DOCK_SHIFT.wage}g`);
+  addLog(`Crate landed at the dock. +${DOCK_SHIFT.wage}g`);
   if (s.done >= s.total) finishDockShift();
   else showToast(`+${DOCK_SHIFT.wage}g — ${s.total - s.done} to go`, 2000);
   syncDockWork();
@@ -4912,7 +5148,7 @@ function normKey(e) {
 
 window.addEventListener('keydown', (e) => {
   const k = normKey(e);
-  if (['w', 'a', 's', 'd', ' ', 'shift', 'z', 'x'].includes(k)) {
+  if (['w', 'a', 's', 'd', ' ', 'shift'].includes(k)) {
     keys[k] = true;
     if (Game.phase === 'play') e.preventDefault();
   }
@@ -5203,6 +5439,7 @@ function renderDialog(node) {
       if (opt.req.rep && Game.rep < opt.req.rep) { reqOk = false; reqTxt = `Needs reputation ${opt.req.rep}`; }
       if (opt.req.ship && !Game.ship) { reqOk = false; reqTxt = 'Needs a ship'; }
       if (opt.req.crew && Game.crew < opt.req.crew) { reqOk = false; reqTxt = `Needs ${opt.req.crew} crew`; }
+      if (opt.req.stamina && Player.stamina < opt.req.stamina) { reqOk = false; reqTxt = `Needs ${opt.req.stamina} wind`; }
       if (opt.req.cargo && (Game.inventory[opt.req.cargo] || 0) < 1) { reqOk = false; reqTxt = 'Nothing to sell'; }
       if (opt.req.cargoAny && Object.values(Game.inventory).reduce((a, b) => a + b, 0) < 1) { reqOk = false; reqTxt = 'Nothing to sell'; }
     }
@@ -5385,7 +5622,7 @@ function hullPenalty() {
 function shipMaxSpeed() {
   if (!Game.ship) return 12;
   const base = SHIP_CLASSES[Game.ship.cls].maxSpeed + 1.5 * (Game.upgrades.sheathing || 0);
-  return base * hullPenalty();
+  return base * hullPenalty() * (1 + LESSON.pilotBonus * (Player.navigation || 0));
 }
 
 function damageHull(n) {
@@ -5839,7 +6076,7 @@ const DLG = {
 
   // ---------------- Lisbon: the dockmaster ----------------
   // The work is no longer a button that prints silver: Zé points at the lighter
-  // and at the customs table, and the wage is whatever you carry between them.
+  // and the dock landing, and the wage is whatever you carry between them.
   dockmaster: () => {
     const s = Game.shift;
     const working = !!(s && s.active);
@@ -5847,7 +6084,7 @@ const DLG = {
     if (working) {
       opts.push({
         label: `Back to the crates (${s.done}/${s.total} shifted, ${s.paid}g so far)`,
-        hint: "The lighter is on the east quay",
+        hint: "The lighter is on the east quay — carry to the dock",
       });
       opts.push({
         label: `Knock off for now — the ${s.paid}g is yours`,
@@ -5865,8 +6102,8 @@ const DLG = {
     return {
       who: "Zé Caolho", role: "Dockmaster", portrait: "⚓",
       text: working
-        ? `"Back again? There's still ${s.total - s.done} on the lighter. Shift's not done till the table's full."`
-        : `Zé spits into the water. "Work? There's always work. A lighter came in this morning — ${DOCK_SHIFT.total} crates of it, and they want them on the customs table before the tide. ${DOCK_SHIFT.wage} the crate, and I'll stand you ${DOCK_SHIFT.bonus} more when the lighter's clear. Ruins your back, mind."`,
+        ? `"Back again? There's still ${s.total - s.done} on the lighter. Shift's not done till every crate is on the dock."`
+        : `Zé spits into the water. "Work? There's always work. A lighter came in this morning — ${DOCK_SHIFT.total} crates of it, and they want them on the dock landing before the tide. ${DOCK_SHIFT.wage} the crate, and I'll stand you ${DOCK_SHIFT.bonus} more when the lighter's clear. Ruins your back, mind."`,
       rebuild: () => DLG.dockmaster(),
       options: opts,
     };
@@ -5876,6 +6113,139 @@ const DLG = {
     who: "Zé Caolho", role: "Dockmaster", portrait: "⚓",
     text: `"Same as ever, camarada. ${RUMORS[Math.floor(Math.random() * RUMORS.length)]} And keep an eye on the sky — a green horizon means turn home."`,
     options: [{ label: "I'll remember that.", next: 'dockmaster' }],
+  }),
+
+  // ---------------- Lisbon: people who make you more capable ----------------
+  // A barber who mends the body, a fencing master who mends your odds when a
+  // corsair grapples, and a pilot who teaches an old hull to sail a little
+  // faster. All three spend silver, wind and time, so they are real choices.
+  surgeon: () => {
+    const opts = [
+      {
+        label: 'Have your wounds dressed — 9g',
+        hint: 'Health +45 · 20 minutes · 4 wind',
+        req: { gold: 9 },
+        action: () => {
+          Game.gold -= 9;
+          Player.stamina = Math.max(0, Player.stamina - 4);
+          Game.stats.tended = (Game.stats.tended || 0) + 1;
+          applyEffect({ health: 45, time: 20 });
+          addLog('Mestre Amaro cleans the cuts and binds your ribs. The world stops swimming.', 'good');
+          showToast(`Wounds dressed — health ${Math.round(Player.health)}`, 3200);
+        },
+        stay: true,
+      },
+      {
+        label: 'A draught of gentian and wine — 3g',
+        hint: 'Hunger +32 · health +6 · a little cheer',
+        req: { gold: 3 },
+        action: () => {
+          Game.gold -= 3;
+          applyEffect({ hunger: 32, health: 6, morale: 2 });
+          addLog('A bitter draught, and a belly that keeps quiet for a while.', 'good');
+          showToast('The draught settles your stomach', 2800);
+        },
+        stay: true,
+      },
+      {
+        label: 'A bed in the back room — 12g',
+        hint: 'Six hours · health to 100 · hunger +26',
+        req: { gold: 12 },
+        action: () => {
+          sleepHours(6, 12, 100);
+          Game.stats.tended = (Game.stats.tended || 0) + 1;
+        },
+        stay: true,
+      },
+      { label: 'And what else do you do?', next: 'surgeon_lore' },
+      { label: 'I will keep my blood, thank you.' },
+    ];
+    return {
+      who: "Mestre Amaro", role: "Barber-Surgeon", portrait: "⚕",
+      text: `He rolls up his sleeve and nods at the stool. "A sailor who bleeds into his own shirt fights like a sack of meal. Body ${Math.round(Player.health)}, wind ${Math.round(Player.stamina)} — I can mend the first and rest the second. My prices are honest; my lancets are clean."`,
+      rebuild: () => DLG.surgeon(),
+      options: opts,
+    };
+  },
+
+  surgeon_lore: () => ({
+    who: "Mestre Amaro", role: "Barber-Surgeon", portrait: "⚕",
+    text: `"A man can be starving with a full hold — the crew's biscuit is not the captain's dinner. My gentian settles a hollow belly; my bed lets you sleep six hours and wake whole. Neither makes you a better sailor. Both keep you alive long enough to become one."`,
+    options: [{ label: 'I am obliged to you.', next: 'surgeon' }],
+  }),
+
+  fencing: () => {
+    const lv = Player.fencing || 0, cost = LESSON.fenceCost(lv);
+    const opts = [];
+    if (lv < LESSON.max) {
+      opts.push({
+        label: `A lesson with the rapier — ${cost}g`,
+        hint: `Fencing ${lv} → ${lv + 1} · 30 minutes · 18 wind · +6 points on the boarding roll`,
+        req: { gold: cost, stamina: 18 },
+        action: () => {
+          Game.gold -= cost;
+          Player.stamina = Math.max(0, Player.stamina - 18);
+          Player.fencing = lv + 1;
+          Game.gameMinutes += 30;
+          Game.stats.fenceLessons = (Game.stats.fenceLessons || 0) + 1;
+          addLog(`Mestre Rui drills you at the post. Fencing ${lv} → ${lv + 1}.`, 'good');
+          showToast(`Fencing ${lv + 1} — boarding odds improved`, 3200);
+          updateHUD();
+        },
+        stay: true,
+      });
+    }
+    opts.push({ label: 'Does it truly help at sea?', next: 'fencing_lore' });
+    opts.push({ label: lv >= LESSON.max ? 'I have learned all you can teach.' : 'I have had enough of blades.' });
+    return {
+      who: "Mestre Rui", role: "Master of Fence", portrait: "⚔",
+      text: `The practice yard rings with steel. "Footwork, then the wrist," he says, "for when a corsair's hook catches your rail and there is nothing between you and forty men but what you learned here." Fencing ${lv} of ${LESSON.max}.`,
+      rebuild: () => DLG.fencing(),
+      options: opts,
+    };
+  },
+
+  fencing_lore: () => ({
+    who: "Mestre Rui", role: "Master of Fence", portrait: "⚔",
+    text: `"Crew and a sound hull win most boardings. But when the grapnels are in, every lesson buys you six points in a hundred — five lessons, and a pirate thinks twice about your ship. Only a fool pays twice for the same lesson, so I stop at five."`,
+    options: [{ label: 'Let us begin.', next: 'fencing' }],
+  }),
+
+  pilot: () => {
+    const lv = Player.navigation || 0, cost = LESSON.pilotCost(lv);
+    const opts = [];
+    if (lv < LESSON.max) {
+      opts.push({
+        label: `A lesson in the pilot's art — ${cost}g`,
+        hint: `Navigation ${lv} → ${lv + 1} · 30 minutes · 15 wind · +3% top speed`,
+        req: { gold: cost, stamina: 15 },
+        action: () => {
+          Game.gold -= cost;
+          Player.stamina = Math.max(0, Player.stamina - 15);
+          Player.navigation = lv + 1;
+          Game.gameMinutes += 30;
+          Game.stats.navLessons = (Game.stats.navLessons || 0) + 1;
+          addLog(`Mestre Tomás walks you through the tides. Navigation ${lv} → ${lv + 1}.`, 'good');
+          showToast(`Navigation ${lv + 1} — she will carry more sail`, 3200);
+          updateHUD();
+        },
+        stay: true,
+      });
+    }
+    opts.push({ label: 'What can you teach me?', next: 'pilot_lore' });
+    opts.push({ label: 'The tide waits for no man.' });
+    return {
+      who: "Mestre Tomás", role: "Pilot of the Tagus", portrait: "🧭",
+      text: `He taps a grease-stained portolan with a horn fingernail. "Any fool can hold a wheel. The difference is knowing when to ease a sheet, when to let her come up, and when the bar at Cascais will have you for breakfast." Navigation ${lv} of ${LESSON.max}.`,
+      rebuild: () => DLG.pilot(),
+      options: opts,
+    };
+  },
+
+  pilot_lore: () => ({
+    who: "Mestre Tomás", role: "Pilot of the Tagus", portrait: "🧭",
+    text: `"Every lesson is three parts in a hundred of speed, because you waste less of the wind fighting her. It stays with you through every hull you buy — a good pilot is worth more than a new suit of sails. Five lessons and there is nothing left that I can tell you."`,
+    options: [{ label: 'I understand.', next: 'pilot' }],
   }),
 
   // ---------------- Lisbon: your house ----------------
@@ -6426,7 +6796,8 @@ DLG.sea_fight = (ctx) => {
   // your hands against hers: a full crew and a sound hull are worth a great
   // deal, an empty deck and a holed ship are worth almost nothing
   const fightChance = Math.max(0.16, Math.min(0.86,
-    0.18 + crew * 0.048 + (Game.hull - 60) * 0.003));
+    0.18 + crew * 0.048 + (Game.hull - 60) * 0.003 +
+    LESSON.fenceBonus * (Player.fencing || 0)));
   const toll = Math.max(35, Math.round(45 + cargoValue() * 0.22));
   const runChance = Math.max(0.18, Math.min(0.88, 0.20 + Math.abs(Ship.speed) / 15));
   const doomed = Game.hull <= 26;
@@ -6443,7 +6814,7 @@ DLG.sea_fight = (ctx) => {
     options: [
       {
         label: 'Beat to quarters and fight her',
-        hint: `${pct}% — ${crew} hand${crew === 1 ? '' : 's'}, hull ${Math.round(Game.hull)}%`,
+        hint: `${pct}% — ${crew} hand${crew === 1 ? '' : 's'}, hull ${Math.round(Game.hull)}%, fence ${Player.fencing || 0}`,
         roll: {
           chance: fightChance,
           good: {
@@ -6830,7 +7201,7 @@ const JOB_ERRAND = [
   { label: 'Carry a cask up to the Sé steps', pay: 9, lx: -67, lz: -104, where: 'the Sé steps' },
   { label: 'Take the pilot his coat from the estalagem', pay: 6, lx: -7.9, lz: -150, where: 'the estalagem' },
   { label: 'Take this fish to the cookshop', pay: 5, lx: -40, lz: 14.6, where: 'the cookshop on the quay' },
-  { label: 'Take a message to the customs table', pay: 7, lx: 26, lz: 9.7, where: 'the customs table' },
+  { label: 'Take a message to the dock landing', pay: 7, lx: 0, lz: 29.7, where: 'the dock landing' },
 ];
 
 function jobOffers() {
@@ -7284,6 +7655,39 @@ function resolveXZ(pos, radius, feetY) {
   return pos;
 }
 
+// The bustle has no claims on the player: carts roll, dogs trot, hawkers
+// shift their weight, smoke climbs and washing flaps. All of it is local to
+// the Lisbon group, and none of it enters collision or conversation.
+function updateStreetLife(dt, t) {
+  for (const s of streetLife) {
+    if (s.kind === 'cart' || s.kind === 'dog') {
+      const tgt = s.path[(s.seg + 1) % s.path.length];
+      const dx = tgt.x - s.obj.position.x, dz = tgt.z - s.obj.position.z;
+      const d = Math.hypot(dx, dz);
+      if (d < 0.8) { s.seg = (s.seg + 1) % s.path.length; continue; }
+      const step = Math.min(s.speed * dt, d);
+      s.obj.position.x += dx / d * step;
+      s.obj.position.z += dz / d * step;
+      s.obj.rotation.y = Math.atan2(dx, dz);
+      if (s.kind === 'dog') {
+        s.obj.position.y = LIS_CITY.Y + Math.abs(Math.sin(t * 9 + s.phase)) * 0.06;
+        if (s.obj.userData.tail) s.obj.userData.tail.rotation.z = Math.sin(t * 11 + s.phase) * 0.6;
+      }
+    } else if (s.kind === 'haggle') {
+      s.obj.rotation.y = Math.PI + Math.sin(t * 1.3 + s.phase) * 0.35;
+      s.obj.position.y = s.baseY + Math.abs(Math.sin(t * 2 + s.phase)) * 0.03;
+    } else if (s.kind === 'smoke') {
+      const f = ((t * 0.18 + s.phase) % 7) / 7;
+      s.obj.position.y = s.base + f * 6;
+      s.obj.scale.setScalar(0.7 + f * 1.7);
+      s.obj.material.opacity = 0.28 * (1 - f);
+    } else if (s.kind === 'cloth') {
+      s.obj.rotation.y = Math.sin(t * 1.6 + s.phase) * 0.28;
+      s.obj.rotation.z = Math.sin(t * 1.1 + s.phase) * 0.08;
+    }
+  }
+}
+
 // The people of Lisbon are solid. You shoulder past them, you do not walk
 // through their ribs -- until now every citizen was a ghost. Walkers are
 // children of the Lisbon group, so their .position is LOCAL and has to be
@@ -7533,21 +7937,12 @@ function updateShipPhysics(dt) {
     SHIP_PHYS.yawRate *= Math.exp(-3.0 * dt);
   }
 
-  // ---------------- the yards: your hands, or the crew's ----------------
-  // Z and X walk the yards across the ship. Get them where the green band on
-  // the gauge wants them and she flies; leave them squared to a beam wind and
-  // you are pushing a barn through the water.
-  let brace = 0;
-  if (atHelm && !Ship.anchored) {
-    if (keys['z']) brace -= 1;
-    if (keys['x']) brace += 1;
-  }
-  if (brace && Player.stamina > 0.5) {
-    Ship.trim = Math.max(-1, Math.min(1, Ship.trim + brace * 0.9 * dt));
-  } else if (crewAboard()) {
-    // a full crew trims the yards without being told; a thin one waits for you
-    Ship.trim += (optimalTrim() - Ship.trim) * Math.min(1, 0.40 * dt);
-  }
+  // ---------------- the yards: somebody else's hands ----------------
+  // Z and X used to walk the yards by hand. They are gone: the hands on the
+  // halyards trim for you. A full crew gets them round quickly, a thin crew
+  // takes its time, but the yards always settle toward the wind.
+  const trimRate = crewAboard() ? 0.40 : 0.16;
+  Ship.trim += (optimalTrim() - Ship.trim) * Math.min(1, trimRate * dt);
 
   // ---------------- forward: thrust vs quadratic hull drag ----------------
   const thrustAcc = 3.6;
@@ -8228,6 +8623,9 @@ function endStats() {
     row('Berths worked in another man\'s ship', s.crewDays || 0) +
     row('Days worked the docks', (s.jobs || 0) + (s.hauled ? ` · ${s.hauled} crates` : '')) +
     row('Errands run for your neighbours', s.errands || 0) +
+    row('Wounds dressed by the barber', s.tended || 0) +
+    row('Lessons in fence', s.fenceLessons || 0) +
+    row('Lessons in navigation', s.navLessons || 0) +
     row('Meals taken', s.meals || 0) +
     row('Fish caught', s.fish || 0) +
     row('Citizens you came to know', s.talked || 0) +
@@ -8308,7 +8706,8 @@ function saveGame(slot) {
     market: Game.market ? JSON.parse(JSON.stringify(Game.market)) : null,
     marketAt: Game.marketAt,
     player: { mode: Player.mode, x: Player.x, y: Player.y, z: Player.z, lookYaw: Player.lookYaw,
-              health: Player.health, stamina: Player.stamina, hunger: Player.hunger },
+              health: Player.health, stamina: Player.stamina, hunger: Player.hunger,
+              fencing: Player.fencing || 0, navigation: Player.navigation || 0 },
     job: Game.job ? { ...Game.job } : null,
     dockedAt: dockedAt ? dockedAt.def.name : null,
     island: Player.island ? Player.island.def.name : null,
@@ -8374,6 +8773,9 @@ function loadGame(slot) {
   Player.stamina = typeof s.player.stamina === 'number' ? s.player.stamina : VITALS.stamina;
   // a life saved before hunger existed loads with a full belly, not an empty one
   Player.hunger = typeof s.player.hunger === 'number' ? s.player.hunger : 100;
+  // a life saved before the teachers existed comes back untrained
+  Player.fencing = typeof (s.player || {}).fencing === 'number' ? s.player.fencing : 0;
+  Player.navigation = typeof (s.player || {}).navigation === 'number' ? s.player.navigation : 0;
   Game.job = s.job || null;
   Player.healthWarn = false; Player.staminaWarn = false; Player.hungerWarn = false;
   Player.carry = 0;
@@ -8498,7 +8900,7 @@ function resetLife() {
     quests: {}, stats: { jobs: 0, voyages: 0, earned: 0, spent: 0, distance: 0,
                          fish: 0, talked: 0, duels: 0, duelsWon: 0, duelsLost: 0,
                          prayers: 0, contracts: 0, hauled: 0, meals: 0, crewDays: 0,
-                         errands: 0 },
+                         errands: 0, tended: 0, fenceLessons: 0, navLessons: 0 },
     hull: 100, upgrades: { hold: 0, sheathing: 0, oak: 0 },
     contracts: [], board: null, market: null, marketAt: 0, shift: null,
     jobs: null, job: null, crewShip: null, voyage: null,
@@ -8517,6 +8919,8 @@ function resetLife() {
   Player.health = VITALS.health;
   Player.stamina = VITALS.stamina;
   Player.hunger = 100;
+  Player.fencing = 0;
+  Player.navigation = 0;
   Player.carry = 0;
   Player.healthWarn = false; Player.staminaWarn = false; Player.hungerWarn = false;
   Ship.trim = 0;
@@ -8723,6 +9127,7 @@ function animate() {
       w.phase += dt * 7;
       w.obj.position.y = LIS_CITY.Y + Math.abs(Math.sin(w.phase)) * 0.05;
     }
+    updateStreetLife(dt, elapsed);
 
     // ---- other ships: merchants working their routes, corsairs hunting ----
     updateAIFleet(dt);
@@ -8771,7 +9176,8 @@ window.__voyage = {
   THREE,
   Game, Player, Ship, PORTS, camera, scene, renderer, interactables, keys, clouds,
   DLG, SEA_EVENTS, STREET_EVENTS, renderDialog, closeDialog,
-  COLLIDERS, PLATFORMS, LIS_CITY, walkers, SHIP_PHYS, updateFoot, updateShipPhysics,
+  COLLIDERS, PLATFORMS, LIS_CITY, walkers, streetLife, updateStreetLife,
+  SHIP_PHYS, updateFoot, updateShipPhysics,
   updateDeckWalk, resolveXZ, supportY, groundY, SHIP_CLASSES, openDialog, chooseOption,
   spawnPlayerShip, spawnShipInLisbon, goAshore, boardShip, lisbonBerth, lisbonDock,
   get lisbonGangway() { return lisbonGangway; }, takeHelm,
@@ -8804,7 +9210,7 @@ window.__voyage = {
   makeContractOffer, boardOffers, acceptContract, deliverContracts, tickContracts,
   contractMinutesLeft, shipMaxSpeed, damageHull, repairCost, hullPenalty,
   // the body, the wind, and the work of sailing
-  VITALS, WIND, tickVitals, hurtPlayer, sailDrive, optimalTrim, windRelative,
+  VITALS, LESSON, WIND, tickVitals, hurtPlayer, sailDrive, optimalTrim, windRelative,
   pointOfSail, windPhrase, crewAboard,
   // the dock shift
   DOCK_SHIFT, startDockShift, endDockShift, syncDockWork,
