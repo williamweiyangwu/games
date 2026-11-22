@@ -523,7 +523,8 @@
       Nations that fought in the Second World War are on the map. Each begins with its own treasury,
       riflemen and two mine fields at home &mdash; a major power far more than a micro-state.<br>
       There is <b>no daily income</b> &mdash; <b>mine fields are the only gold</b> in the game, mined at each
-      nation's own rate. Buy mine cars to lay more, and take countries to grow your yield.<br>
+      nation's own rate. Each field holds <b>20 days</b> of ore and then runs dry; buy mine cars to replenish
+      the reserve, and take countries to grow your yield.<br>
       Once you have chosen a nation, the Shop's <b>Tanks</b> tab lists that nation's own historical armour.<br>
       Click a country to open its sheet: a small map of the country with the units standing in it.
       Recruit in your own territory, then order units into a neighbouring country. Every front is a real front &mdash;
@@ -674,9 +675,9 @@
         <div class="tutN">2</div>
         <div>
           <h4>Money comes from mines</h4>
-          <p>There is <b>no daily income</b> &mdash; mine fields pay <b>4 gold a day each</b>.
-          Buy <b>mine cars</b> in the Shop and send them to your front to lay more fields. No mines,
-          no money to pay for troops.</p>
+          <p>There is <b>no daily income</b> &mdash; mine fields pay <b>4 gold a day each</b> and run dry after
+          <b>20 days</b>. Buy <b>mine cars</b> in the Shop and send them to your front to lay more fields and
+          top up the reserve. No mines, no money to pay for troops.</p>
         </div>
       </div>
       <div class="tutS">
@@ -1290,7 +1291,7 @@ var WIN_NEED=0;
 var EU_UNITS = {
   /* ================= ARMY ================= */
   infantry :{key:'infantry' ,name:'Infantry',  code:'INF' ,cost:10 ,hp:60 ,atk:8 ,def:1.7,up:0,col:'#c9a15a',blurb:'Cheap troops. Strong when dug in on their own soil.'},
-  mine     :{key:'mine'     ,name:'Mine car',  code:'MINE',cost:20 ,hp:50 ,atk:3 ,def:1.4,up:0,col:'#9aa4b8',mines:true,blurb:'Lays mine fields. They wreck attackers and pay 4 gold a day each - mines are your only income.'},
+  mine     :{key:'mine'     ,name:'Mine car',  code:'MINE',cost:20 ,hp:50 ,atk:3 ,def:1.4,up:0,col:'#9aa4b8',mines:true,blurb:'Lays mine fields. They wreck attackers, pay 4 gold a day each and run dry in 20 days - mines are your only income.'},
   motor    :{key:'motor'    ,name:'Motorized infantry',code:'MOT',cost:60 ,hp:85 ,atk:11,def:1.6,up:1,col:'#b08a5a',blurb:'Wheels instead of boots. Crosses a frontier in days, but no armour worth the name.'},
   assault  :{key:'assault'  ,name:'Assault infantry',code:'ASL',cost:40,hp:80 ,atk:14,def:1.5,up:1,col:'#a86a4a',blurb:'Trained to storm trenches. Cheap, and utterly relentless.'},
   antitank :{key:'antitank' ,name:'Anti-tank gun',code:'AT' ,cost:70 ,hp:55 ,atk:18,def:1.3,up:1,col:'#8f8a5a',blurb:'One well-aimed shot ruins a tank. Helpless once infantry reach it.'},
@@ -1875,6 +1876,9 @@ function U(owner,key){
 function startGold(c){ var p=NATION_STATS[c]; return (p&&p.gold!=null)?p.gold:START_MONEY; }
 function startUnits(c){ var p=NATION_STATS[c]; return (p&&p.start!=null)?p.start:3; }
 function mineGold(c){ var p=NATION_STATS[c]; return (p&&p.mine!=null)?p.mine:MINE_GOLD; }
+function mineWord(plural){ return MAP==='china' ? (plural?'salt works':'salt work') : (plural?'mine fields':'mine field'); }
+function mineResOf(p){ return (p && p.mineRes!=null) ? p.mineRes : ((p&&p.mines) ? p.mines*MINE_LIFE : 0); }
+function mineDays(p){ return (p && p.mines>0) ? Math.max(0,Math.floor(mineResOf(p)/p.mines)) : 0; }
 
 function arsenal(nat,kind){
   var a=ARSENAL&&ARSENAL[nat];
@@ -2002,6 +2006,7 @@ function buildMap(){
 const SPEED_MS={0.5:3000,1:1500,2:750,3:400};
 const START_MONEY=50;
 const MINE_GOLD=4;         /* gold a mine field pays out every day - the only income */
+const MINE_LIFE=20;        /* days of payout stored in each mine / salt field */
 const CAPITAL_DEF=1.45;   /* extra defence multiplier inside your own homeland */
 let S=null, timer=null, spd=1, chosen='germany', DIFF='normal';
 const DIFF_MODS={
@@ -2169,7 +2174,8 @@ function newGame(player){
     var home=(sec.nat!=='iceland' && !nat.owner);
     var first=(sectorsOf(sec.nat)[0]===sec.id);
     S.prov[sec.id]={ id:sec.id, nat:sec.nat, owner:(nat.owner||sec.nat), units:[],
-                     mines:(home&&first)?2:0, mineBy:(home&&first)?sec.nat:null, mineT:5, pend:0,
+                     mines:(home&&first)?2:0, mineBy:(home&&first)?sec.nat:null, mineT:5,
+                     mineRes:(home&&first)?2*MINE_LIFE:0, pend:0,
                      fort:0, fortBy:null, fortT:0 };
   });
   ALL.forEach(function(n){
@@ -2478,7 +2484,7 @@ var CN_FALLBACK={ army:['infantry','mine','motor','assault','antitank','flak','e
 var CN_UNITS={
   /* ===== ARMY ===== */
   infantry :{key:'infantry' ,name:'Spear Militia',     code:'SPR' ,cost:10 ,hp:60 ,atk:8 ,def:1.7,up:0,col:'#c9a15a',blurb:'Levy spearmen. Cheap, and stubborn on their own soil.'},
-  mine     :{key:'mine'     ,name:'Salt Works',        code:'SALT',cost:20 ,hp:50 ,atk:3 ,def:1.4,up:0,col:'#9aa4b8',mines:true,blurb:'Boils brine into salt - your treasury. Salt pays 4 gold a day, and the works foul an enemy approach.'},
+  mine     :{key:'mine'     ,name:'Salt Works',        code:'SALT',cost:20 ,hp:50 ,atk:3 ,def:1.4,up:0,col:'#9aa4b8',mines:true,blurb:'Boils brine into salt - your treasury. Salt pays 4 gold a day, foils an enemy approach and runs dry in 20 days.'},
   motor    :{key:'motor'    ,name:'War Chariot',       code:'CHR' ,cost:60 ,hp:85 ,atk:11,def:1.6,up:1,col:'#b08a5a',blurb:'A two-horse chariot. Covers ground fast, but brittle in the open.'},
   assault  :{key:'assault'  ,name:'Shock Troops',      code:'SHK' ,cost:40 ,hp:80 ,atk:14,def:1.5,up:1,col:'#a86a4a',blurb:'Daring blades who go in first and take the wall.'},
   antitank :{key:'antitank' ,name:'Crossbowmen',       code:'XBW' ,cost:70 ,hp:55 ,atk:18,def:1.3,up:1,col:'#8a9a5a',blurb:'Massed crossbows - the answer to armoured chargers and war elephants alike.'},
@@ -2700,7 +2706,7 @@ var MAPS={
     generals:function(){ return GEN_EU; }, terrain:function(){ return TERRAIN_EU; },
     blocs:['Axis','Allies','Other','Neutral'],
     defaultPlayer:'germany', tabAir:'&#9992; Air Force', newsName:'THE CONTINENTAL',
-    rules:'Nations that fought in the Second World War are on the map. Each begins with its own treasury, riflemen and two mine fields at home &mdash; a major power far more than a micro-state.<br>There is <b>no daily income</b> &mdash; <b>mine fields are the only gold</b> in the game, mined at each nation\u2019s own rate. Buy mine cars to lay more, and take countries to grow your yield.<br>Once you have chosen a nation, the Shop&rsquo;s <b>Tanks</b> tab lists that nation&rsquo;s own historical armour.<br>Click a country to open its sheet: a small map of the country with the units standing in it. Recruit in your own territory, then order units into a neighbouring country. Every front is a real front &mdash; the AI nations fight each other too, so a war can be won without fighting the whole continent.<br>Units fight at their best on friendly soil, and hardest of all in their homeland. Tanks, artillery and bombers cost upkeep every day, so a huge army can bankrupt you.<br>Army sizes follow real history: micro-states like <b>Albania</b> or <b>Denmark</b> hold just <b>2&ndash;3</b> units, while a major power fields up to <b>14</b>. The Soviet Union is split into three fronts &mdash; <b>South 4</b>, <b>Centre 4</b>, <b>North 5</b> &mdash; and a weak state buys only basic rifles, guns and fighters: no tanks, heavy armour or bomber fleets.<br>Send your men at a front and they <b>hold the ground until the country falls</b> &mdash; only then do the survivors march back home to rearm. Only <b>one territory on the whole map</b> changes hands each day.<br>The <b>Navy</b> tab builds ships in any coastal nation: destroyers, submarines, cruisers, battleships and carriers. Select a fleet and click a neighbouring enemy province to storm its coast; landlocked nations cannot build a fleet. The <b>Air Force</b> tab builds fighters and bombers: select a squadron and click a neighbouring enemy province to strike it, then it returns home. Every squadron you field adds <b>+5% power</b> to every land and sea unit you own (up to six). On the ground you can <b>entrench</b> any province you own (or leave engineers there) for up to <b>+45% defence</b>; forts are lost when the province falls.<br>The gold-marked <b>oil fields</b> and green-marked <b>grain farms</b> are a second economy: march a ground unit onto one to seize it, and every site held pays oil or food each day. Every unit eats food; tanks, aircraft and ships burn oil. Empty stores weaken formations and, after three days, disband the costliest one.<br>The <b>Command</b> desk adds research, named commanders, diplomacy and the seasons: mine fields fund permanent upgrades, officers and veteran troops strengthen a front, alliances and pacts reshape the war, and mountains, mud and winter change how armies fight.<br>You win by holding <b>every</b> land territory. You lose if you hold none.'
+    rules:'Nations that fought in the Second World War are on the map. Each begins with its own treasury, riflemen and two mine fields at home &mdash; a major power far more than a micro-state.<br>There is <b>no daily income</b> &mdash; <b>mine fields are the only gold</b> in the game, mined at each nation\u2019s own rate. Each field holds <b>20 days</b> of ore and then runs dry; buy mine cars to replenish it, and take countries to grow your yield.<br>Once you have chosen a nation, the Shop&rsquo;s <b>Tanks</b> tab lists that nation&rsquo;s own historical armour.<br>Click a country to open its sheet: a small map of the country with the units standing in it. Recruit in your own territory, then order units into a neighbouring country. Every front is a real front &mdash; the AI nations fight each other too, so a war can be won without fighting the whole continent.<br>Units fight at their best on friendly soil, and hardest of all in their homeland. Tanks, artillery and bombers cost upkeep every day, so a huge army can bankrupt you.<br>Army sizes follow real history: micro-states like <b>Albania</b> or <b>Denmark</b> hold just <b>2&ndash;3</b> units, while a major power fields up to <b>14</b>. The Soviet Union is split into three fronts &mdash; <b>South 4</b>, <b>Centre 4</b>, <b>North 5</b> &mdash; and a weak state buys only basic rifles, guns and fighters: no tanks, heavy armour or bomber fleets.<br>Send your men at a front and they <b>hold the ground until the country falls</b> &mdash; only then do the survivors march back home to rearm. Only <b>one territory on the whole map</b> changes hands each day.<br>The <b>Navy</b> tab builds ships in any coastal nation: destroyers, submarines, cruisers, battleships and carriers. Select a fleet and click a neighbouring enemy province to storm its coast; landlocked nations cannot build a fleet. The <b>Air Force</b> tab builds fighters and bombers: select a squadron and click a neighbouring enemy province to strike it, then it returns home. Every squadron you field adds <b>+5% power</b> to every land and sea unit you own (up to six). On the ground you can <b>entrench</b> any province you own (or leave engineers there) for up to <b>+45% defence</b>; forts are lost when the province falls.<br>The gold-marked <b>oil fields</b> and green-marked <b>grain farms</b> are a second economy: march a ground unit onto one to seize it, and every site held pays oil or food each day. Every unit eats food; tanks, aircraft and ships burn oil. Empty stores weaken formations and, after three days, disband the costliest one.<br>The <b>Command</b> desk adds research, named commanders, diplomacy and the seasons: mine fields fund permanent upgrades, officers and veteran troops strengthen a front, alliances and pacts reshape the war, and mountains, mud and winter change how armies fight.<br>You win by holding <b>every</b> land territory. You lose if you hold none.'
   },
   china:{
     id:'china', title:'CHINA &middot; THE PROVINCES', tag:'Choosing your province',
@@ -2714,9 +2720,9 @@ var MAPS={
     tech:function(){ return TECH_CN; }, generals:function(){ return GEN_CN; }, terrain:function(){ return TERRAIN_CN; },
     blocs:CN_BLOCS,
     defaultPlayer:'shaanxi', tabAir:'&#127993; Siege &amp; Cavalry', newsName:'THE COURT GAZETTE',
-    rules:'The 34 province-level divisions of the modern People\u2019s Republic are on the map &mdash; each a country in its own right, fighting to unify the realm. Every province begins with its own treasury, spearmen and salt works at home.<br>There is <b>no daily income</b> &mdash; <b>salt is the only gold</b>, boiled at each province\u2019s own rate. Buy <b>Salt Works</b> and send them to your frontier to swell your yield.<br>Buy levies, crossbows and chariots in the <b>Army</b> tab; the <b>Siege &amp; Cavalry</b> tab holds horse archers, ballistae, catapults and the full siege train, which strike across a border and retire home.<br>Click a province to open its sheet: a small map of it with the units standing there. Recruit in your own land, then order units into a neighbouring province. Every frontier is a real front &mdash; the rival provinces fight one another too.<br>Units fight best on friendly soil and hardest of all in their homeland. Heavy chariots, siege engines and the Imperial Guard cost upkeep daily, so a vast host can bankrupt you.<br>Send your men at a frontier and they <b>hold the ground until it falls</b> &mdash; only then do the survivors march home. Only <b>one province on the whole map</b> changes hands each day.<br>The <b>Siege &amp; Cavalry</b> tab fields horse archers, ballistae and siege trains: select one and click a neighbouring enemy province to strike it, then it retires home. Every siege or cavalry squadron you field adds <b>+5% power</b> to all your forces (up to six). <b>Entrench</b> your own provinces (or garrison military engineers) for up to <b>+45% defence</b>; forts are lost when a province falls.<br>The gold-marked <b>rock-oil wells</b> and green-marked <b>grain farms</b> feed the war: occupy a site with ground troops to claim its daily petroleum or grain. Every unit eats grain, and fire-lance rockets and siege trains also burn naphtha. Empty stores weaken a host and, after three days, scatter its costliest formation.<br>The <b>Command</b> desk adds research, named commanders, diplomacy and the seasons: salt wealth funds lasting upgrades, officers and veteran troops strengthen a frontier, pacts and alliances reshape the realm&rsquo;s wars, and mountains, mud and winter change how a host fights.<br>You win by holding <b>every</b> province. You lose if you hold none.',
+    rules:'The 34 province-level divisions of the modern People\u2019s Republic are on the map &mdash; each a country in its own right, fighting to unify the realm. Every province begins with its own treasury, spearmen and salt works at home.<br>There is <b>no daily income</b> &mdash; <b>salt is the only gold</b>, boiled at each province\u2019s own rate. Each salt work holds <b>20 days</b> of brine and then runs dry; buy <b>Salt Works</b> to replenish it and swell your yield.<br>Buy levies, crossbows and chariots in the <b>Army</b> tab; the <b>Siege &amp; Cavalry</b> tab holds horse archers, ballistae, catapults and the full siege train, which strike across a border and retire home.<br>Click a province to open its sheet: a small map of it with the units standing there. Recruit in your own land, then order units into a neighbouring province. Every frontier is a real front &mdash; the rival provinces fight one another too.<br>Units fight best on friendly soil and hardest of all in their homeland. Heavy chariots, siege engines and the Imperial Guard cost upkeep daily, so a vast host can bankrupt you.<br>Send your men at a frontier and they <b>hold the ground until it falls</b> &mdash; only then do the survivors march home. Only <b>one province on the whole map</b> changes hands each day.<br>The <b>Siege &amp; Cavalry</b> tab fields horse archers, ballistae and siege trains: select one and click a neighbouring enemy province to strike it, then it retires home. Every siege or cavalry squadron you field adds <b>+5% power</b> to all your forces (up to six). <b>Entrench</b> your own provinces (or garrison military engineers) for up to <b>+45% defence</b>; forts are lost when a province falls.<br>The gold-marked <b>rock-oil wells</b> and green-marked <b>grain farms</b> feed the war: occupy a site with ground troops to claim its daily petroleum or grain. Every unit eats grain, and fire-lance rockets and siege trains also burn naphtha. Empty stores weaken a host and, after three days, scatter its costliest formation.<br>The <b>Command</b> desk adds research, named commanders, diplomacy and the seasons: salt wealth funds lasting upgrades, officers and veteran troops strengthen a frontier, pacts and alliances reshape the realm&rsquo;s wars, and mountains, mud and winter change how a host fights.<br>You win by holding <b>every</b> province. You lose if you hold none.',
     tutCN:"<div class=\"tutS\"><div class=\"tutN\">1</div><div><h4>Pick a province</h4><p>Aim of the war: hold <b>every</b> province on the map. You start with <b>your province's own treasury and spearmen</b> and two salt works at home. The frontier is long and every neighbour is a rival.</p></div></div>"+
-      "<div class=\"tutS\"><div class=\"tutN\">2</div><div><h4>Money comes from salt</h4><p>There is <b>no daily income</b> &mdash; salt works pay <b>4 gold a day each</b>. Buy <b>Salt Works</b> in the Shop and send them to your frontier to lay more. No salt, no money to pay for troops.</p></div></div>"+
+      "<div class=\"tutS\"><div class=\"tutN\">2</div><div><h4>Money comes from salt</h4><p>There is <b>no daily income</b> &mdash; salt works pay <b>4 gold a day each</b> and run dry after <b>20 days</b>. Buy <b>Salt Works</b> in the Shop and send them to your frontier to lay more and top up the reserve. No salt, no money to pay for troops.</p></div></div>"+
       "<div class=\"tutS\"><div class=\"tutN\">3</div><div><h4>Recruit &amp; move</h4><p>Click a province you own to open it, pick a unit in the Shop (the <b>Army</b> and <b>Siege &amp; Cavalry</b> tabs). Then click <b>Battle</b>, tick your units, and click a flashing border to send them into a neighbouring province. <b>Select every unit on my fronts</b> grabs your whole line at once. They hold the ground until it falls, then the survivors retire home.</p></div></div>"+
       "<div class=\"tutS\"><div class=\"tutN\">4</div><div><h4>One piece a day</h4><p>Only <b>one province on the whole map</b> can change hands each day &mdash; whoever has held the front longest takes it. Attack on several borders and the strongest claim wins. When a province loses its last piece it <b>capitulates</b> and its host disbands.</p></div></div>"+
       "<div class=\"tutS\"><div class=\"tutN\">5</div><div><h4>Defend your homeland</h4><p>Units fight at their best on friendly soil, and hardest of all in their home province. Salt works maul attackers. Heavy chariots, siege engines and the Imperial Guard cost upkeep every day, so a vast host can bankrupt you.</p></div></div>"+
@@ -2874,10 +2880,12 @@ function tick(){
       if(U(u.owner,u.type).mines && p.mines<3){
         p.mineT--;
         if(p.mineT<=0){
-          if(p.mineBy!==u.owner){ p.mineBy=u.owner; p.mines=0; }
-          p.mines++; p.mineT=5;
+          if(p.mineBy!==u.owner){ p.mineBy=u.owner; p.mines=0; p.mineRes=0; }
+          var carried=mineResOf(p);
+          p.mines++; p.mineRes=carried+MINE_LIFE; p.mineT=5;
           if(u.owner===S.player && p.mines===1)
-            log('Mine car laid the first mine field in '+NBY[p.id].name+' (+'+mineGold(u.owner)+' gold a day).');
+            log(U(u.owner,u.type).name+' laid the first '+mineWord(false)+' in '+NBY[p.id].name+
+                ' (+'+mineGold(u.owner)+' gold a day).');
         }
       }
     });
@@ -2970,7 +2978,7 @@ function tick(){
     wp.owner=nu;
     uu.forEach(function(u){ if(u.owner===nu) u.xp=(u.xp||0)+4; });
     var cg=generalAt(nu,win.id); if(cg) cg.prestige=(cg.prestige||0)+1;
-    wp.mines=0; wp.mineBy=null; wp.pend=0;
+    wp.mines=0; wp.mineBy=null; wp.mineRes=0; wp.pend=0;
     wp.fort=0; wp.fortBy=null; wp.fortT=0;
     capEv.push({taker:nu, prov:win.id, old:old, d:S.day});
     fxAdd('capture',win.id);
@@ -3035,6 +3043,19 @@ function tick(){
     }
     if(S.gold[n.id]<=-40 && !S.brokeSet.has(n.id)){ S.brokeSet.add(n.id); newsCollapse(n.id); }
   });
+
+  /* --- mines run dry: each field spends one day of reserve, then vanishes --- */
+  for(var mid in S.prov){
+    var mp=S.prov[mid];
+    if(!(mp.mines>0)) continue;
+    var dry=mp.mines;
+    mp.mineRes=Math.max(0,mineResOf(mp)-mp.mines);
+    if(mp.mineRes<=0){
+      mp.mines=0; mp.mineBy=null; mp.mineRes=0;
+      if(mp.owner===S.player)
+        log(NBY[mid].name+' '+mineWord(dry>1)+' ran dry - no more gold from there.');
+    }
+  }
 
   /* --- research: every nation banks points each day, then spends them --- */
   Object.keys(S.pactT||{}).forEach(function(k){
@@ -3660,8 +3681,9 @@ function renderMini(id){
   /* captions: mine yield, and what cannot be seen */
   var cap=el('text',{class:'cap',x:(vx+vw*0.03).toFixed(1),y:(vy+vh*0.09).toFixed(1)});
   cap.textContent=(see? '' : 'no intelligence \路 ')+
-    (p.mines>0&&see? p.mines+' mine field'+(p.mines>1?'s':'')+' \路 +'+(p.mines*mineGold(p.owner))+' gold/day'
-                   : (p.owner===S.player? 'no mines \路 no income' : ''));
+    (p.mines>0&&see? p.mines+' '+mineWord(p.mines>1)+' \路 +'+(p.mines*mineGold(p.owner))+' gold/day'+
+                    ' \路 '+mineDays(p)+'d left'
+                   : (p.owner===S.player? 'no '+mineWord(true)+' \路 no income' : ''));
   svg.appendChild(cap);
   if(us.length && !see){
     var q2=el('text',{class:'cap',x:(vx+vw*0.5).toFixed(1),y:(vy+vh*0.56).toFixed(1)});
@@ -3947,7 +3969,8 @@ function renderPanel(){
       (p.mines?' <span style="color:#9aa4b8">(+'+minePower(id)+' mines)</span>':'')
     : '<span style="color:#8d99b0">no intelligence</span>';
   document.getElementById('pMines').innerHTML=see
-    ? (p.mines? p.mines+' <span style="color:#57b567">+'+p.mines*mineGold(p.owner)+'/day</span>' : '0')
+    ? (p.mines? p.mines+' <span style="color:#57b567">+'+p.mines*mineGold(p.owner)+'/day</span>'+
+        ' <span style="opacity:.7">&middot; '+mineDays(p)+'d left</span>' : '0')
     : '?';
   var fortEl=document.getElementById('pFort');
   if(fortEl) fortEl.innerHTML=(see && isLandFront(id))
@@ -4089,7 +4112,7 @@ function wireMap(){
     var s='<b>'+n.flag+' '+n.name+'</b><br>owner: '+NBY[p.owner].flag+' '+NBY[p.owner].name+
       '<br>garrison: '+(vis? g.length+' units' : 'unknown')+
       ' &middot; def '+(vis?Math.round(totalPower(id)):'?')+
-      (p.mines?'<br>mines: '+p.mines:'')+
+      (p.mines?'<br>'+mineWord(p.mines>1)+': '+p.mines+' &middot; '+mineDays(p)+'d left':'')+
       (isLandFront(id)&&p.fort?'<br>land front: '+p.fort+'/3 (+'+(15*p.fort)+'% def)':'')+
       (isRes(id)?'<br><span style="color:'+(isOil(id)?'#e2b13c':'#7fe08a')+'">'+
         resTypeName(id).toUpperCase()+' &middot; +'+resYield(id)+'/day &middot; occupy with ground troops</span>':'');
@@ -4215,7 +4238,7 @@ function buildPicker(){
         'You will play <b>'+nn.flag+' '+nn.name+'</b> &middot; '+nn.nb.length+
         ' front'+(nn.nb.length>1?'s':'')+' &middot; '+startGold(chosen)+' gold, '+
         startUnits(chosen)+' rifleman'+(startUnits(chosen)>1?'s':'')+
-        ', '+mineGold(chosen)+' gold a mine/day';
+        ', '+mineGold(chosen)+' gold a '+mineWord(false)+'/day &middot; '+MINE_LIFE+' days';
     };
   });
 }
@@ -4717,7 +4740,7 @@ function netStateOut(){
   var wars=[],i,k;
   S.wars.forEach(function(w){ wars.push(w); });
   var prov={};
-  for(k in S.prov){ var p=S.prov[k]; prov[k]={o:p.owner,m:p.mines,mb:p.mineBy,mt:p.mineT}; }
+  for(k in S.prov){ var p=S.prov[k]; prov[k]={o:p.owner,m:p.mines,mb:p.mineBy,mt:p.mineT,mr:p.mineRes}; }
   var units=S.units.map(function(u){
     var o={id:u.id, type:u.type, loc:u.loc, owner:u.owner, hp:u.hp, mv:null, ar:u.air||null, xp:u.xp||0};
     if(u.moving) o.mv=[u.moving.to, u.moving.t, u.moving.from, u.moving.assault?1:0];
@@ -4744,7 +4767,8 @@ function applyNetState(o){
     return u;
   });
   S.prov={};
-  for(var k in (o.prov||{})){ var p=o.prov[k]; S.prov[k]={id:k, owner:p.o, units:[], mines:p.m, mineBy:p.mb, mineT:p.mt}; }
+  for(var k in (o.prov||{})){ var p=o.prov[k]; S.prov[k]={id:k, owner:p.o, units:[], mines:p.m, mineBy:p.mb, mineT:p.mt,
+    mineRes:(p.mr!=null?p.mr:(p.m||0)*MINE_LIFE)}; }
   if(o.gold) S.gold=o.gold;
   S.log=o.log||S.log;
   S.news=o.news||[];
@@ -4770,7 +4794,7 @@ function saveGame(silent){
   var wars=[]; S.wars.forEach(function(w){ wars.push(w); });
   var prov={};
   for(var k in S.prov){ var p=S.prov[k];
-    prov[k]={o:p.owner,m:p.mines,mb:p.mineBy,mt:p.mineT,pend:p.pend,f:p.fort||0,fb:p.fortBy||null,ft:p.fortT||0}; }
+    prov[k]={o:p.owner,m:p.mines,mb:p.mineBy,mt:p.mineT,mr:p.mineRes,pend:p.pend,f:p.fort||0,fb:p.fortBy||null,ft:p.fortT||0}; }
   var units=S.units.map(function(u){
     var o={id:u.id, type:u.type, loc:u.loc, owner:u.owner, hp:u.hp, mv:null, ar:u.air||null,
            cf:u.cameFrom||null, as:u.assault?1:0, ao:u.attackOwner||null, xp:u.xp||0};
@@ -4824,10 +4848,11 @@ function loadGame(){
       ally:new Set(o.ally||[]), guarantee:new Set(o.guarantee||[]), pactT:o.pactT||{} };
   /* an older save may predate the resource layer - seed sites with their home owner */
   if(RES_SITES.length) RES_SITES.forEach(function(z){
-    if(!S.prov[z.id]) S.prov[z.id]={id:z.id,nat:z.id,owner:z.owner,units:[],mines:0,mineBy:null,mineT:0,pend:0};
+    if(!S.prov[z.id]) S.prov[z.id]={id:z.id,nat:z.id,owner:z.owner,units:[],mines:0,mineBy:null,mineT:0,mineRes:0,pend:0};
   });
   for(var k in o.prov){ var p=o.prov[k]; S.prov[k]={id:k, owner:p.o, units:[], mines:p.m, mineBy:p.mb,
-    mineT:p.mt, pend:p.pend||0, fort:p.f||0, fortBy:p.fb||null, fortT:p.ft||0}; }
+    mineT:p.mt, mineRes:(p.mr!=null?p.mr:(p.m||0)*MINE_LIFE),
+    pend:p.pend||0, fort:p.f||0, fortBy:p.fb||null, fortT:p.ft||0}; }
   S.units=(o.units||[]).map(function(x){
     var u={id:x.id, type:x.type, loc:x.loc, owner:x.owner, hp:x.hp, moving:null, air:null,
            cameFrom:x.cf||null, assault:!!x.as, attackOwner:x.ao||null, xp:x.xp||0};
