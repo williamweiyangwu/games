@@ -192,8 +192,6 @@
   /* online waiting room — the battlefield stays hidden until the host starts */
   #onlineWait { display: none; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 470px; text-align: center; padding: 20px; }
   body.online-prestart #onlineWait { display: flex; }
-  /* If the lobby hub is open, it is the waiting screen — don't stack another one behind it. */
-  body.online-prestart.lobby-open #onlineWait { display: none; }
   body.online-prestart #panelTop, body.online-prestart #panelMid, body.online-prestart #panelBottom { display: none; }
   .owIcon { font-size: 46px; color: #c9b458; text-shadow: 0 3px 12px #000; }
   .owTitle { font-size: 16px; letter-spacing: 4px; color: #f0e6c8; }
@@ -754,10 +752,13 @@
 </style>
 </head>
 <body>
+<a id="arcadeBack" href="../" title="Back to Arcade" aria-label="Back to Arcade" style="position:fixed;top:14px;left:14px;z-index:999999;padding:11px 20px;border:1px solid #3d4c74;border-radius:999px;background:rgba(10,13,20,.9);color:#eef2fb;font:700 17px/1.2 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;text-decoration:none;box-shadow:0 3px 12px rgba(0,0,0,.5);transition:opacity .25s">&#8592; Arcade</a>
+<div id="arcadeHot" aria-hidden="true" style="position:fixed;top:0;left:0;width:140px;height:64px;z-index:999998"></div>
+<script>(function(){var a=document.getElementById('arcadeBack'),h=document.getElementById('arcadeHot');if(!a||!h)return;var t;function show(){clearTimeout(t);a.style.opacity='1';a.style.pointerEvents='auto';}function hide(){a.style.opacity='0';a.style.pointerEvents='none';}function later(){clearTimeout(t);t=setTimeout(hide,1500);}a.addEventListener('mouseenter',show);a.addEventListener('mouseleave',later);h.addEventListener('mouseenter',show);h.addEventListener('mouseleave',later);show();t=setTimeout(hide,4000);})();</script>
   <div id="fit">
     <div id="stage">
       <header>
-        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v39</span></h1>
+        <h1>KARDS LITE<span style="font-size:9px;color:#7d865f;vertical-align:top;margin-left:6px;">v38</span></h1>
         <div id="turnbar">Player 1's Turn</div>
       </header>
 
@@ -2474,7 +2475,6 @@ var LOBBY_MODES = {
 
 function openLobbyPage() {
   LOBBY_OPEN = true;
-  document.body.classList.add("lobby-open");
   LOBBY_MODE = (MODE === "online") ? "online" : (MODE === "ai" ? "ai" : "local");
   var nm = document.getElementById("lpNameIn"), base = document.getElementById("nameIn");
   if (nm && base && base.value && base.value !== "Player#1") nm.value = base.value;
@@ -2509,7 +2509,6 @@ function lpPlay() {
 
 function closeLobbyPage() {
   LOBBY_OPEN = false;
-  document.body.classList.remove("lobby-open");
   var el = document.getElementById("lobbyPage");
   if (el) el.classList.remove("show");
   stopRoomWatch();
