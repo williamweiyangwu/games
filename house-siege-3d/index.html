@@ -5,12 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>WHITE MAZE 5v5</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230a0d13'/%3E%3Cpath d='M16 5l9 6v10l-9 6-9-6V11z' fill='none' stroke='%23ff4a4a' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23ffc44d'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="css/style.css?v=49">
+<link rel="stylesheet" href="css/style.css?v=50">
 </head>
 <body>
-<a id="arcadeBack" href="../" title="Back to Arcade" aria-label="Back to Arcade" style="position:fixed;top:14px;left:14px;z-index:999999;padding:11px 20px;border:1px solid #3d4c74;border-radius:999px;background:rgba(10,13,20,.9);color:#eef2fb;font:700 17px/1.2 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;text-decoration:none;box-shadow:0 3px 12px rgba(0,0,0,.5);transition:opacity .25s">&#8592; Arcade</a>
-<div id="arcadeHot" aria-hidden="true" style="position:fixed;top:0;left:0;width:140px;height:64px;z-index:999998"></div>
-<script>(function(){var a=document.getElementById('arcadeBack'),h=document.getElementById('arcadeHot');if(!a||!h)return;var t;function show(){clearTimeout(t);a.style.opacity='1';a.style.pointerEvents='auto';}function hide(){a.style.opacity='0';a.style.pointerEvents='none';}function later(){clearTimeout(t);t=setTimeout(hide,1500);}a.addEventListener('mouseenter',show);a.addEventListener('mouseleave',later);h.addEventListener('mouseenter',show);h.addEventListener('mouseleave',later);show();t=setTimeout(hide,4000);})();</script>
 
 <!-- ================= LOADING ================= -->
 <div id="loading">
@@ -148,24 +145,25 @@
     <div class="v-sub" id="vSub">KNIFE · PISTOL</div>
   </div>
 
-  <!-- bottom right: weapon -->
-  <div class="gunbox">
-    <div class="g-name" id="gName">M9 PISTOL</div>
-    <div class="g-ammo"><span id="gMag">12</span><i>/</i><span id="gRes">96</span></div>
-    <div class="g-hint" id="gHint">R RELOAD</div>
+  <!-- bottom right: the numbers on a weapon crate, the bag, and the held gun.
+       One right-anchored flex column keeps the three stacked with no overlap. -->
+  <div class="rstack">
+    <!-- near a weapon chest: its data, right bottom -->
+    <div id="lootCard">
+      <div class="lc-head"><span class="lc-name" id="lcName">AK-47 RIFLE</span><span class="lc-tag">WEAPON</span></div>
+      <div class="lc-stats" id="lcStats"></div>
+    </div>
+    <div id="bag">
+      <div class="bag-head">BAG <span>1–5 · WHEEL CYCLE</span></div>
+      <div id="bagList"></div>
+    </div>
+    <div class="gunbox">
+      <div class="g-name" id="gName">M9 PISTOL</div>
+      <div class="g-ammo"><span id="gMag">12</span><i>/</i><span id="gRes">96</span></div>
+      <div class="g-hint" id="gHint">R RELOAD</div>
+    </div>
   </div>
 
-  <!-- bag / loadout -->
-  <div id="bag">
-    <div class="bag-head">BAG <span>1–5 · WHEEL CYCLE</span></div>
-    <div id="bagList"></div>
-  </div>
-
-  <!-- chest prompt, and the numbers on whatever is inside -->
-  <div id="lootCard">
-    <div class="lc-head"><span class="lc-name" id="lcName">AK-47 RIFLE</span><span class="lc-tag">WEAPON</span></div>
-    <div class="lc-stats" id="lcStats"></div>
-  </div>
   <div id="prompt"><b>RMB</b> OPEN CRATE</div>
 
   <!-- flag carrier -->
@@ -384,28 +382,28 @@
 
 <script src="lib/three.min.js"></script>
 <script src="lib/mqtt.min.js"></script>
-<script src="js/00-core.js?v=49"></script>
-<script src="js/10-render.js?v=49"></script>
-<script src="js/20-world.js?v=49"></script>
-<script src="js/30-nav.js?v=49"></script>
-<script src="js/35-physics.js?v=49"></script>
-<script src="js/40-actors.js?v=49"></script>
-<script src="js/45-combat.js?v=49"></script>
-<script src="js/50-items.js?v=49"></script>
-<script src="js/55-effects.js?v=49"></script>
-<script src="js/60-loot.js?v=49"></script>
-<script src="js/65-flags.js?v=49"></script>
-<script src="js/70-ai.js?v=49"></script>
-<script src="js/75-player.js?v=49"></script>
-<script src="js/80-viewmodel.js?v=49"></script>
-<script src="js/90-hud.js?v=49"></script>
-<script src="js/91-vote.js?v=49"></script>
-<script src="js/93-achieve.js?v=49"></script>
-<script src="js/94-tutorial.js?v=49"></script>
-<script src="js/95-input.js?v=49"></script>
-<script src="js/96-flow.js?v=49"></script>
-<script src="js/97-net.js?v=49"></script>
-<script src="js/98-menu.js?v=49"></script>
-<script src="js/99-boot.js?v=49"></script>
+<script src="js/00-core.js?v=50"></script>
+<script src="js/10-render.js?v=50"></script>
+<script src="js/20-world.js?v=50"></script>
+<script src="js/30-nav.js?v=50"></script>
+<script src="js/35-physics.js?v=50"></script>
+<script src="js/40-actors.js?v=50"></script>
+<script src="js/45-combat.js?v=50"></script>
+<script src="js/50-items.js?v=50"></script>
+<script src="js/55-effects.js?v=50"></script>
+<script src="js/60-loot.js?v=50"></script>
+<script src="js/65-flags.js?v=50"></script>
+<script src="js/70-ai.js?v=50"></script>
+<script src="js/75-player.js?v=50"></script>
+<script src="js/80-viewmodel.js?v=50"></script>
+<script src="js/90-hud.js?v=50"></script>
+<script src="js/91-vote.js?v=50"></script>
+<script src="js/93-achieve.js?v=50"></script>
+<script src="js/94-tutorial.js?v=50"></script>
+<script src="js/95-input.js?v=50"></script>
+<script src="js/96-flow.js?v=50"></script>
+<script src="js/97-net.js?v=50"></script>
+<script src="js/98-menu.js?v=50"></script>
+<script src="js/99-boot.js?v=50"></script>
 </body>
 </html>
