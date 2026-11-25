@@ -114,6 +114,14 @@
   .ic.shield{background:#a8c0d6;height:9px;
     clip-path:polygon(50% 0,100% 18%,100% 58%,50% 100%,0 58%,0 18%)}
   .ic.empty{background:rgba(20,24,32,.72)}
+  #xpwrap{display:flex;align-items:center;gap:6px;height:12px}
+  #xplevel{width:18px;text-align:center;font:10px/1 monospace;color:#b6ff7a;text-shadow:0 1px 0 #000}
+  #xpbar{flex:1;height:6px;border-radius:4px;background:rgba(8,12,18,.78);overflow:hidden;border:1px solid var(--line)}
+  #xpbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#57c46c,#b6ff7a);transition:width .15s}
+  #effects{position:absolute;left:50%;bottom:118px;transform:translateX(-50%);display:flex;gap:4px;pointer-events:none}
+  #effects span{font:10px/1 monospace;letter-spacing:1px;padding:3px 7px;border-radius:10px;
+    background:rgba(24,32,46,.85);border:1px solid var(--line);color:#d8f8c0}
+  #effects.hide{display:none}
   .slot .cnt{position:absolute;right:3px;bottom:0;font:10px/1 monospace;color:#fff;text-shadow:0 1px 0 #000}
 
   /* ---------- inventory ---------- */
@@ -205,6 +213,23 @@
   .tname{flex:1;font-size:10px;color:var(--dim);text-align:right;padding-right:4px}
   #tradehead{margin:0 0 10px;font-size:10px;color:var(--dim);text-align:center}
 
+  /* ---------- enchanting + brewing ---------- */
+  #ench,#brew{position:fixed;inset:0;display:grid;place-items:center;background:rgba(4,6,10,.6);z-index:5}
+  #ench.hide,#brew.hide{display:none}
+  #ench .invpanel,#brew .invpanel{width:min(430px,94vw)}
+  .syshead{margin:0 0 6px;font-size:10px;letter-spacing:2px;color:var(--dim);text-align:center}
+  #enchheld{display:flex;justify-content:center;margin:8px 0}
+  #enchheld .islot{width:56px;height:56px}
+  #enchinfo,#brewinfo{min-height:30px;margin:6px 0 10px;font-size:11px;color:var(--dim);text-align:center;line-height:1.5}
+  .syslist{display:flex;flex-direction:column;gap:6px}
+  .sysrow{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);
+    border-radius:7px;background:rgba(0,0,0,.26);cursor:pointer;user-select:none}
+  .sysrow:hover:not(.off){background:rgba(126,224,129,.16);border-color:var(--accent)}
+  .sysrow.off{opacity:.45;cursor:not-allowed}
+  .sysrow b{flex:1;font-size:12px;color:#eef4ff}
+  .sysrow small{font:10px/1 monospace;color:#b6ff7a}
+  .sysrow i{font-style:normal;font-size:10px;color:var(--dim)}
+
   /* ---------- death ---------- */
   #death{position:fixed;inset:0;display:grid;place-items:center;background:rgba(70,6,6,.55);z-index:5}
   #death.hide{display:none}
@@ -273,9 +298,7 @@
 </style>
 </head>
 <body>
-<a id="arcadeBack" href="../" title="Back to Arcade" aria-label="Back to Arcade" style="position:fixed;top:14px;left:14px;z-index:999999;padding:11px 20px;border:1px solid #3d4c74;border-radius:999px;background:rgba(10,13,20,.9);color:#eef2fb;font:700 17px/1.2 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;text-decoration:none;box-shadow:0 3px 12px rgba(0,0,0,.5);transition:opacity .25s">&#8592; Arcade</a>
-<div id="arcadeHot" aria-hidden="true" style="position:fixed;top:0;left:0;width:140px;height:64px;z-index:999998"></div>
-<script>(function(){var a=document.getElementById('arcadeBack'),h=document.getElementById('arcadeHot');if(!a||!h)return;var t;function show(){clearTimeout(t);a.style.opacity='1';a.style.pointerEvents='auto';}function hide(){a.style.opacity='0';a.style.pointerEvents='none';}function later(){clearTimeout(t);t=setTimeout(hide,1500);}a.addEventListener('mouseenter',show);a.addEventListener('mouseleave',later);h.addEventListener('mouseenter',show);h.addEventListener('mouseleave',later);show();t=setTimeout(hide,4000);})();</script>
+<a href="../" title="Back to Arcade" aria-label="Back to Arcade" style="position:fixed;top:10px;left:10px;z-index:999999;padding:6px 11px;border:1px solid #3d4c74;border-radius:999px;background:rgba(10,13,20,.85);color:#eef2fb;font:600 12px/1.2 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.4)">&#8592; Arcade</a>
 
 <canvas id="view"></canvas>
 <div id="tint"></div>
@@ -283,17 +306,19 @@
 <div id="hud">
   <div id="cross"></div>
   <div id="name"></div>
-  <div id="hint">LMB attack / break &middot; RMB place / eat / furnace / ignite portals &middot; walk into a portal to travel &middot; E inventory &middot; Q drop &middot; V sprint &middot; [ ] look &middot; F fly &middot; F3 stats</div>
+  <div id="hint">RMB opens tables, furnaces, chests, enchanting &amp; brewing &middot; E inventory &middot; Q drop &middot; V sprint &middot; [ ] look &middot; F fly &middot; F3 stats</div>
   <div id="stats">
+    <div id="xpwrap"><span id="xplevel">1</span><div id="xpbar"><i></i></div></div>
     <div id="hearts" class="bar2"></div>
     <div id="armorbar" class="bar2"></div>
     <div id="food" class="bar2"></div>
   </div>
+  <div id="effects" class="hide"></div>
   <div id="compass" class="hide"><i id="compassNeedle"></i><span id="compassLabel"></span></div>
   <div id="bar"></div>
   <div id="dbg"></div>
   <div id="toast"></div>
-  <div id="ver">v2.6 build 3</div>
+  <div id="ver">v2.7 build 1</div>
 </div>
 
 <div id="inv" class="hide">
@@ -349,6 +374,27 @@
   </div>
 </div>
 
+<div id="ench" class="hide">
+  <div class="invpanel">
+    <h3>Enchanting</h3>
+    <div class="syshead">Bookshelves nearby improve your choices</div>
+    <div id="enchheld"></div>
+    <div id="enchinfo"></div>
+    <div id="enchlist" class="syslist"></div>
+    <div class="invfoot">Each enchant costs 1 Lapis Lazuli + XP levels &middot; <b>E</b> / <b>Esc</b> close</div>
+  </div>
+</div>
+
+<div id="brew" class="hide">
+  <div class="invpanel">
+    <h3>Brewing Stand</h3>
+    <div class="syshead">Nether Wart is the base &middot; add one catalyst</div>
+    <div id="brewinfo"></div>
+    <div id="brewlist" class="syslist"></div>
+    <div class="invfoot">Right-click drink a potion &middot; <b>E</b> / <b>Esc</b> close</div>
+  </div>
+</div>
+
 <div id="map" class="hide">
   <div class="invpanel">
     <h3>Map</h3>
@@ -379,14 +425,14 @@
 <div id="menu" class="hide">
   <div class="panel">
     <h1>BLOCKCRAFT</h1>
-    <h2>survival + creative &middot; v2.6 &middot; farming, professions, mobs, structures &amp; weather &middot; software-rendered in canvas 2d</h2>
+    <h2>survival + creative &middot; v2.7 &middot; farming, professions, mobs, structures, weather, enchanting, brewing &amp; bosses &middot; software-rendered in canvas 2d</h2>
     <div class="grid">
       <div><b>W A S D</b> move</div>
       <div><b>Space</b> jump / swim up</div>
       <div><b>Shift / V</b> hold / toggle sprint</div>
       <div><b>Mouse</b> look around &middot; <b>[ ]</b> sensitivity</div>
       <div><b>LMB</b> mine / attack</div>
-      <div><b>RMB</b> place / eat / open furnace</div>
+      <div><b>RMB</b> place / eat / open blocks</div>
       <div><b>MMB</b> pick block</div>
       <div><b>E</b> inventory</div>
       <div><b>1-9 / Wheel</b> select</div>
@@ -396,6 +442,7 @@
       <div><b>R</b> new world</div>
       <div><b>F5</b> save now</div>
       <div><b>J</b> auto-step &middot; <b>B</b> steady camera</div>
+      <div><b>RMB</b> enchant / brew / summon wither</div>
       <div><b>F3</b> stats &middot; <b>F2</b> scale &middot; <b>M</b> mute</div>
       <div><b>Esc</b> pause</div>
     </div>
@@ -459,7 +506,7 @@ function fbm(x, y, oct) {
 }
 
 /* ---------------------------------------------------------- textures */
-const TS = 16, TN = 52;
+const TS = 16, TN = 58;
 const TEX = new Uint32Array(TS * TS * TN);
 const tileCanvas = new Array(TN);
 
@@ -683,6 +730,44 @@ function buildTextures() {
     putc(51, i, i, [232, 238, 242]); putc(51, 15 - i, i, [232, 238, 242]);
     if (i % 4 === 0) for (let j = 0; j < 16; j++) putc(51, i, j, [216, 224, 230]);
   }
+  /* 52 enchanting table top: dark stone with glowing violet runes */
+  fillTile(52, [38, 32, 52]); speckle(52, [38, 32, 52], 12, 180);
+  for (let x = 2; x < 14; x++) { putc(52, x, 2, [116, 74, 184]); putc(52, x, 13, [116, 74, 184]); }
+  for (let y = 2; y < 14; y++) { putc(52, 2, y, [116, 74, 184]); putc(52, 13, y, [116, 74, 184]); }
+  for (let i = 0; i < 6; i++) {
+    const x = 4 + ((R(51, i) * 8) | 0), y = 4 + ((R(52, i) * 8) | 0);
+    putc(52, x, y, [206, 168, 255]); putc(52, (x + 1) % 16, y, [156, 104, 226]);
+  }
+  /* 53 enchanting table side */
+  fillTile(53, [52, 44, 64]); speckle(53, [52, 44, 64], 14, 180);
+  for (let y = 0; y < 16; y += 5) for (let x = 0; x < 16; x++) putc(53, x, y, [28, 24, 38]);
+  for (let i = 0; i < 4; i++) {
+    const x = 3 + i * 3;
+    putc(53, x, 7, [150, 104, 220]); putc(53, x, 8, [206, 168, 255]); putc(53, x, 9, [150, 104, 220]);
+  }
+  /* 54 brewing stand top: dark base with three bottle sockets */
+  fillTile(54, [62, 58, 58]); speckle(54, [62, 58, 58], 12, 160);
+  for (const bx of [3, 8, 13]) {
+    for (let y = 2; y < 12; y++) for (let x = bx - 1; x <= bx + 1; x++) putc(54, x, y, [28, 30, 36]);
+    for (let y = 4; y < 10; y++) for (let x = bx - 1; x <= bx + 1; x++) putc(54, x, y, [118, 232, 176]);
+    putc(54, bx, 2, [214, 232, 236]); putc(54, bx, 3, [214, 232, 236]);
+  }
+  /* 55 brewing stand side */
+  fillTile(55, [54, 50, 50]); speckle(55, [54, 50, 50], 12, 160);
+  for (let y = 0; y < 16; y++) { putc(55, 0, y, [34, 32, 34]); putc(55, 15, y, [34, 32, 34]); }
+  for (let y = 11; y < 16; y++) for (let x = 4; x < 12; x++) putc(55, x, y, [118, 232, 176]);
+  /* 56 beacon: bright glass with a hot core */
+  fillTile(56, [92, 214, 226]); speckle(56, [92, 214, 226], 18, 160);
+  for (let y = 3; y < 13; y++) for (let x = 3; x < 13; x++)
+    if (x < 5 || x > 10 || y < 5 || y > 10) putc(56, x, y, [206, 250, 255]);
+  for (let i = 0; i < 18; i++) putc(56, (R(53, i) * 16) | 0, (R(54, i) * 16) | 0, [255, 244, 166]);
+  /* 57 lapis ore */
+  fillTile(57, [128, 128, 132]); speckle(57, [128, 128, 132], 16, 280);
+  for (let i = 0; i < 8; i++) {
+    const cx = (R(55, i) * 15) | 0, cy = (R(56, i) * 15) | 0;
+    for (let y = -1; y <= 1; y++) for (let x = -1; x <= 1; x++)
+      if (hash2(cx + x * 3, cy + y * 7) > 0.25) putc(57, cx + x, cy + y, [38, 92, 208]);
+  }
 }
 function tileImg(t) {
   if (tileCanvas[t]) return tileCanvas[t];
@@ -784,7 +869,9 @@ const T = { GRASS_TOP: 0, GRASS_SIDE: 1, DIRT: 2, STONE: 3, SAND: 4, LOG_TOP: 5,
              GOLD_BLOCK: 36, DIAMOND_BLOCK: 37, SANDSTONE: 38,
              BOOKSHELF: 39, TORCH_SIDE: 40, TORCH_FLAME: 41,
               FARMLAND: 42, WHEAT1: 43, WHEAT2: 44, WHEAT3: 45, WHEAT4: 46,
-              EMERALD_ORE: 47, BED_TOP: 48, BED_SIDE: 49, RAIL: 50, WEB: 51 };
+              EMERALD_ORE: 47, BED_TOP: 48, BED_SIDE: 49, RAIL: 50, WEB: 51,
+              ENCHANT_TOP: 52, ENCHANT_SIDE: 53, BREW_TOP: 54, BREW_SIDE: 55,
+              BEACON: 56, LAPIS_ORE: 57 };
 const AIR = 0, GRASS = 1, DIRT = 2, STONE = 3, SAND = 4, LOG = 5, LEAVES = 6,
       PLANKS = 7, COBBLE = 8, BRICK = 9, GLASS = 10, WATER = 11, BEDROCK = 12, GRAVEL = 13,
       COAL_ORE = 14, IRON_ORE = 15, GOLD_ORE = 16, DIAMOND_ORE = 17, SNOW = 18, FURNACE = 19,
@@ -795,7 +882,8 @@ const AIR = 0, GRASS = 1, DIRT = 2, STONE = 3, SAND = 4, LOG = 5, LEAVES = 6,
        SLAB = 38, WOOD_SLAB = 39, STAIRS = 40, WOOD_STAIRS = 41,
        FENCE = 42, TORCH_BLOCK = 43, GLASS_PANE = 44, BOOKSHELF = 45,
         FARMLAND = 46, WHEAT1 = 47, WHEAT2 = 48, WHEAT3 = 49, WHEAT4 = 50,
-        EMERALD_ORE = 51, BED = 52, RAIL = 53, WEB = 54;
+        EMERALD_ORE = 51, BED = 52, RAIL = 53, WEB = 54,
+         ENCHANT_TABLE = 55, BREWING_STAND = 56, BEACON_BLOCK = 57, LAPIS_ORE = 58;
 
 /* t: [top, side, bottom]   solid: collision   opaque: hides neighbour faces
    cull: drop faces between identical blocks   a: 1 = opaque pass, <1 = blended */
@@ -854,7 +942,11 @@ const BLK = [
   { n: 'Emerald Ore',  t: [T.EMERALD_ORE, T.EMERALD_ORE, T.EMERALD_ORE],  solid: 1, opaque: 1, cull: 0, a: 1 },
   { n: 'Bed',          t: [T.BED_TOP, T.BED_SIDE, T.BED_SIDE],             solid: 0, opaque: 1, cull: 1, a: 1 },
   { n: 'Rail',         t: [T.RAIL, T.RAIL, T.RAIL],                        solid: 0, opaque: 0, cull: 1, a: 1 },
-  { n: 'Cobweb',       t: [T.WEB, T.WEB, T.WEB],                           solid: 0, opaque: 0, cull: 1, a: 1 }
+  { n: 'Cobweb',       t: [T.WEB, T.WEB, T.WEB],                           solid: 0, opaque: 0, cull: 1, a: 1 },
+  { n: 'Enchanting Table', t: [T.ENCHANT_TOP, T.ENCHANT_SIDE, T.PLANKS],    solid: 1, opaque: 1, cull: 0, a: 1 },
+  { n: 'Brewing Stand', t: [T.BREW_TOP, T.BREW_SIDE, T.BREW_SIDE],          solid: 1, opaque: 0, cull: 1, a: 1 },
+  { n: 'Beacon',       t: [T.BEACON, T.BEACON, T.BEACON],                   solid: 1, opaque: 0, cull: 1, a: 0.86 },
+  { n: 'Lapis Ore',    t: [T.LAPIS_ORE, T.LAPIS_ORE, T.LAPIS_ORE],          solid: 1, opaque: 1, cull: 0, a: 1 }
 ];
 
 /* ------------------------------------------------------- block models
@@ -926,6 +1018,18 @@ BLK[BED].model = () => [
 ];
 BLK[RAIL].model = () => [bx(0, 0, 0.34, 1, 0.14, 0.66, BLK[RAIL].t)];
 BLK[WEB].model = () => [bx(0.06, 0.06, 0.06, 0.94, 0.94, 0.94, BLK[WEB].t)];
+BLK[ENCHANT_TABLE].model = () => [
+  bx(0, 0, 0, 1, 0.82, 1, [T.ENCHANT_SIDE, T.ENCHANT_SIDE, T.PLANKS]),
+  bx(0.04, 0.82, 0.04, 0.96, 1, 0.96, [T.ENCHANT_TOP, T.ENCHANT_TOP, T.ENCHANT_TOP])
+];
+BLK[BREWING_STAND].model = () => {
+  const b = [bx(0.12, 0, 0.12, 0.88, 0.22, 0.88, [T.BREW_SIDE, T.BREW_SIDE, T.BREW_SIDE]),
+             bx(0.34, 0.22, 0.34, 0.66, 0.82, 0.66, [T.BREW_SIDE, T.BREW_SIDE, T.BREW_SIDE])];
+  for (const x of [0.14, 0.44, 0.74])
+    b.push(bx(x, 0.82, 0.24, x + 0.16, 1.08, 0.4, [T.BREW_TOP, T.BREW_TOP, T.BREW_TOP]));
+  return b;
+};
+BLK[BEACON_BLOCK].model = () => [bx(0.12, 0.12, 0.12, 0.88, 0.88, 0.88, BLK[BEACON_BLOCK].t)];
 /* ------------------------------------------------- items & survival */
 const IT = { BEEF: 100, PORK: 101, MUTTON: 102, CHICKEN: 103, LEATHER: 104, WOOL: 105,
              FEATHER: 106, BONE: 107, STRING: 108, GUNPOWDER: 109, ROTTEN: 110, ARROW: 111,
@@ -946,7 +1050,9 @@ const IT = { BEEF: 100, PORK: 101, MUTTON: 102, CHICKEN: 103, LEATHER: 104, WOOL
              DHELM: 171, DCHEST: 172, DLEGS: 173, DBOOTS: 174,
              BOOK: 175, EMERALD: 176,
               SEEDS: 177, WHEAT: 178, BREAD: 179, HOE: 180, SLIME: 181,
-              MAP: 182, COMPASS: 183 };
+              MAP: 182, COMPASS: 183,
+               LAPIS: 184, WART: 185, POTION_HEAL: 186, POTION_SPEED: 187,
+               POTION_REGEN: 188, WITHER_SKULL: 189, NETHER_STAR: 190 };
 /* ------------------------------------------------------------- armor */
 /* slot 0 helmet, 1 chestplate, 2 leggings, 3 boots */
 const ARMOR_SLOTS = ['Helmet', 'Chestplate', 'Leggings', 'Boots'];
@@ -1141,6 +1247,33 @@ function defineItems() {
     rect(g, 14, 11, 4, 10, '#d24848'); rect(g, 14, 11, 4, 5, '#e86060');
     rect(g, 13, 4, 6, 4, '#9aa0a8'); rect(g, 13, 24, 6, 4, '#9aa0a8');
   });
+  R(IT.LAPIS, 'Lapis Lazuli', 0x2a5cd0, 0, g => {
+    rect(g, 6, 8, 20, 16, '#2a5cd0'); rect(g, 6, 8, 20, 4, '#4a80ec');
+    rect(g, 10, 13, 6, 5, '#7ea6ff'); rect(g, 19, 17, 4, 3, '#1c3f9a');
+  });
+  R(IT.WART, 'Nether Wart', 0x9a4c72, 0, g => {
+    rect(g, 8, 7, 16, 18, '#a05278'); rect(g, 8, 7, 16, 4, '#c06e94');
+    for (let i = 0; i < 6; i++) rect(g, 9 + (i % 3) * 5, 12 + ((i / 3) | 0) * 5, 3, 3, '#e0a0bc');
+  });
+  const potion = (id, n, col, glow) => R(id, n, col, 0, g => {
+    rect(g, 12, 3, 8, 5, '#c8c8cc'); rect(g, 8, 8, 16, 19, '#dfe8f2');
+    rect(g, 9, 13, 14, 12, glow); rect(g, 9, 13, 14, 3, '#f4fbff');
+    rect(g, 11, 9, 3, 16, 'rgba(255,255,255,.5)');
+    rect(g, 10, 26, 12, 2, '#9aa0a8');
+  });
+  potion(IT.POTION_HEAL, 'Potion of Healing', 0xff5a5a, '#e84b4b');
+  potion(IT.POTION_SPEED, 'Potion of Swiftness', 0xf2e45a, '#f0dc46');
+  potion(IT.POTION_REGEN, 'Potion of Regeneration', 0xc46ae8, '#b45cd8');
+  R(IT.WITHER_SKULL, 'Wither Skeleton Skull', 0x6c6c74, 0, g => {
+    rect(g, 7, 7, 18, 17, '#3c3c42'); rect(g, 7, 7, 18, 4, '#5a5a62');
+    rect(g, 9, 13, 5, 4, '#ff5a3c'); rect(g, 18, 13, 5, 4, '#ff5a3c');
+    rect(g, 12, 19, 8, 4, '#1c1c20'); rect(g, 14, 5, 4, 4, '#26262a');
+  });
+  R(IT.NETHER_STAR, 'Nether Star', 0xf2f2f2, 0, g => {
+    rect(g, 14, 3, 4, 26, '#f6f6fa'); rect(g, 3, 14, 26, 4, '#f6f6fa');
+    rect(g, 8, 8, 16, 16, '#d8e4f2'); rect(g, 12, 12, 8, 8, '#ffffff');
+    rect(g, 6, 6, 4, 4, '#a8c8e8'); rect(g, 22, 22, 4, 4, '#a8c8e8');
+  });
   const armorParts = ['helm', 'chest', 'legs', 'boots'];
   const armorNames = ['Helmet', 'Chestplate', 'Leggings', 'Boots'];
   ARMOR_SETS.forEach(s => {
@@ -1159,6 +1292,7 @@ DROPBLK[PORTAL] = 0; DROPBLK[END_PORTAL] = 0; DROPBLK[LAVA] = 0;
 DROPBLK[END_FRAME_FILLED] = END_FRAME;
 DROPBLK[TORCH_BLOCK] = IT.TORCH; DROPBLK[GLASS_PANE] = 0;
 DROPBLK[EMERALD_ORE] = IT.EMERALD; DROPBLK[FARMLAND] = DIRT; DROPBLK[WEB] = IT.STRING;
+DROPBLK[LAPIS_ORE] = IT.LAPIS;
 DROPBLK[WHEAT1] = 0; DROPBLK[WHEAT2] = 0; DROPBLK[WHEAT3] = 0; DROPBLK[WHEAT4] = 0;
 function blockDrop(id) { return (id in DROPBLK) ? DROPBLK[id] : id; }
 const HARD = {}; HARD[GRASS] = 0.55; HARD[DIRT] = 0.5; HARD[SAND] = 0.5; HARD[GRAVEL] = 0.6;
@@ -1174,6 +1308,7 @@ HARD[IRON_BLOCK] = 3; HARD[GOLD_BLOCK] = 3; HARD[DIAMOND_BLOCK] = 4;
 HARD[SLAB] = 1; HARD[WOOD_SLAB] = 0.7; HARD[STAIRS] = 1; HARD[WOOD_STAIRS] = 0.7;
 HARD[FENCE] = 0.6; HARD[TORCH_BLOCK] = 0.1; HARD[GLASS_PANE] = 0.3; HARD[BOOKSHELF] = 1;
 HARD[FARMLAND] = 0.5; HARD[EMERALD_ORE] = 2.2; HARD[BED] = 0.4; HARD[RAIL] = 0.2; HARD[WEB] = 0.2;
+HARD[LAPIS_ORE] = 1.9; HARD[ENCHANT_TABLE] = 3.2; HARD[BREWING_STAND] = 1.4; HARD[BEACON_BLOCK] = 3;
 HARD[WHEAT1] = 0.1; HARD[WHEAT2] = 0.1; HARD[WHEAT3] = 0.1; HARD[WHEAT4] = 0.1;
 function hardnessOf(id) { return HARD[id] !== undefined ? HARD[id] : 0.6; }
 /* stone-family + ores need a pickaxe; tier = minimum pickaxe tier to harvest */
@@ -1183,6 +1318,7 @@ ORE_TIER[OBSIDIAN] = 3; ORE_TIER[NETHERRACK] = 0; ORE_TIER[NETHER_BRICK] = 0;
 ORE_TIER[GLOWSTONE] = 0; ORE_TIER[END_STONE] = 1; ORE_TIER[END_FRAME] = 1; ORE_TIER[END_FRAME_FILLED] = 1;
 ORE_TIER[STONE_BRICK] = 0; ORE_TIER[IRON_BLOCK] = 1; ORE_TIER[GOLD_BLOCK] = 2; ORE_TIER[DIAMOND_BLOCK] = 2;
 ORE_TIER[SLAB] = 0; ORE_TIER[STAIRS] = 0; ORE_TIER[EMERALD_ORE] = 1;
+ORE_TIER[LAPIS_ORE] = 1; ORE_TIER[ENCHANT_TABLE] = 1; ORE_TIER[BEACON_BLOCK] = 2;
 const WHEAT_IDS = [WHEAT1, WHEAT2, WHEAT3, WHEAT4];
 const crops = new Set();
 const cropKey = (x, y, z) => x + ',' + y + ',' + z;
@@ -1226,6 +1362,7 @@ LOOT.spider = [[IT.STRING,0,2]];
 LOOT.pigman = [[IT.GOLD,0,1],[IT.ROTTEN,0,1]];
 LOOT.enderman = [[IT.ENDER_PEARL,1,2]];
 LOOT.dragon = [[IT.ENDER_PEARL,2,4]];
+LOOT.wither = [[IT.NETHER_STAR,1,1],[IT.WITHER_SKULL,1,3]];
 LOOT.slime = [[IT.SLIME,0,2]];
 LOOT.witch = [[IT.GUNPOWDER,0,2],[IT.ROTTEN,0,1],[IT.GOLD,0,1]];
 LOOT.villager = [[IT.EMERALD,1,2],[IT.BREAD,0,2]];
@@ -1329,7 +1466,10 @@ const RECIPES = [
   { out: [IT.BREAD, 1], shape: [[IT.WHEAT, IT.WHEAT, IT.WHEAT], [0, 0, 0], [0, 0, 0]] },
   { out: [BED, 1], shape: [[IT.WOOL, IT.WOOL, IT.WOOL], [PLANKS, PLANKS, PLANKS], [0, 0, 0]] },
   { out: [IT.MAP, 1], shape: [[PLANKS, PLANKS, PLANKS], [PLANKS, IT.FLINT, PLANKS], [0, 0, 0]] },
-  { out: [IT.COMPASS, 1], shape: [[0, IT.IRON, 0], [IT.IRON, IT.EMERALD, IT.IRON], [0, IT.IRON, 0]] }
+  { out: [IT.COMPASS, 1], shape: [[0, IT.IRON, 0], [IT.IRON, IT.EMERALD, IT.IRON], [0, IT.IRON, 0]] },
+  { out: [ENCHANT_TABLE, 1], shape: [[IT.BOOK, IT.DIAMOND, 0], [OBSIDIAN, OBSIDIAN, OBSIDIAN], [OBSIDIAN, 0, OBSIDIAN]] },
+  { out: [BREWING_STAND, 1], shape: [[0, IT.STICK, 0], [COBBLE, COBBLE, COBBLE], [0, GLOWSTONE, 0]] },
+  { out: [BEACON_BLOCK, 1], shape: [[OBSIDIAN, OBSIDIAN, OBSIDIAN], [OBSIDIAN, IT.NETHER_STAR, OBSIDIAN], [GLASS, GLASS, GLASS]] }
 ];
 function trimShape(rows) {
   let minR = 3, maxR = -1, minC = 3, maxC = -1;
@@ -1378,8 +1518,8 @@ FUEL[LOG] = SMELT_TIME * 1.5;
 FUEL[PLANKS] = SMELT_TIME * 1.5;
 FUEL[IT.STICK] = SMELT_TIME * 0.5;
 function fuelValue(id) { return FUEL[id] || 0; }
-function slotPack(s) { return s ? [s.id, s.n] : 0; }
-function slotUnpack(s) { return (s && s[1] > 0) ? { id: s[0], n: s[1] } : null; }
+function slotPack(s) { return s ? (s.e ? [s.id, s.n, s.e] : [s.id, s.n]) : 0; }
+function slotUnpack(s) { return (s && s[1] > 0) ? (s[2] ? { id: s[0], n: s[1], e: s[2] } : { id: s[0], n: s[1] }) : null; }
 const furnaceMap = new Map();
 function fkey(x, y, z) { return dim + ':' + x + ',' + y + ',' + z; }
 function furnaceAtDim(d, x, y, z, create) {
@@ -1472,6 +1612,7 @@ function stepFurnaces(sec) {
         f.in.n--; if (f.in.n <= 0) f.in = null;
         if (!f.out) f.out = { id: r[0], n: r[1] };
         else f.out.n += r[1];
+        addXP(r[0] === IT.DIAMOND ? 3 : r[0] === IT.GOLD ? 2 : r[0] === IT.IRON ? 1 : 0);
         changed = 1;
       }
     }
@@ -1837,6 +1978,7 @@ function genOverworldChunk(ch) {
       const h = hash3(x * 7 + 13, y * 11 + 5, z * 17 + 3);
       if (y < 14 && h > 0.9965) d[i] = DIAMOND_ORE;
       else if (y < 32 && h > 0.9975) d[i] = EMERALD_ORE;
+      else if (y < 26 && h > 0.9915) d[i] = LAPIS_ORE;
       else if (y < 20 && h > 0.993) d[i] = GOLD_ORE;
       else if (y < 28 && h > 0.982) d[i] = IRON_ORE;
       else if (h > 0.965) d[i] = COAL_ORE;
@@ -3000,6 +3142,23 @@ function drawMob(m) {
     return;
   }
 
+  if (M.mt === 'wither') {
+    part(0, 1.55, 0, 1.05, 1.3, 0.78, body);                                  /* rib cage */
+    part(0, 1.35, 0.45, 0.66, 0.82, 0.2, shade(body, 1.35));                  /* exposed core */
+    for (const sx of [-1, 0, 1]) {
+      part(sx * 0.48, 2.72, 0, 0.48, 0.46, 0.46, head);                       /* three heads */
+      part(sx * 0.48, 2.78, 0.25, 0.32, 0.08, 0.04, [255, 74, 52]);
+      part(sx * 0.48 - 0.1, 2.78, 0.27, 0.06, 0.06, 0.03, [255, 244, 174]);
+      part(sx * 0.48 + 0.1, 2.78, 0.27, 0.06, 0.06, 0.03, [255, 244, 174]);
+    }
+    for (const sx of [-1, 1]) {
+      part(sx * 0.78, 1.85, 0, 0.24, 0.9, 0.24, leg);                         /* arms */
+      part(sx * 0.78, 1.3, 0.08, 0.2, 0.24, 0.34, head);
+      part(sx * 0.3, 0.46, 0, 0.22, 0.85, 0.24, leg);                         /* tail tendrils */
+    }
+    return;
+  }
+
   if (M.mt === 'dragon') {
     const flap = Math.sin(m.bob * 0.8) * 0.5;
     part(0, 1.45, -0.5, 1.0, 0.85, 2.1, body);                               /* torso */
@@ -3206,6 +3365,24 @@ const MAXHP = 20, MAXFOOD = 20;
 let mode = 'survival', hp = MAXHP, food = MAXFOOD;
 let hurtT = 0, regenT = 0, starveT = 0, drownT = 0, lavaT = 0, fallY = 0, dead = 0, attackT = 0;
 let poisonT = 0, poisonTick = 0;
+/* progression: XP levels pay for enchantments; potion/beacon effects are timed */
+let xp = 0, xpLevel = 1, effSpeedT = 0, effRegenT = 0, effRegenTick = 0, witherT = 0, witherTick = 0;
+function xpForLevel(l) { const n = Math.max(0, l - 1); return Math.floor(2.5 * n * n + 15 * n); }
+function addXP(n) {
+  if (mode !== 'survival' || n <= 0) return;
+  xp += n;
+  while (xp >= xpForLevel(xpLevel + 1)) xpLevel++;
+  saveDirty = 1;
+}
+function spendLevels(n) {
+  if (xpLevel <= n) return false;
+  const target = xpLevel - n;
+  xp -= xpForLevel(xpLevel) - xpForLevel(target);
+  xpLevel = target;
+  if (xp < xpForLevel(xpLevel)) xp = xpForLevel(xpLevel);
+  saveDirty = 1;
+  return true;
+}
 /* survival keeps the usual 36 slots; creative gets a roomy inventory so the
    "Get All Items" button can hold one stack of every block and item at once */
 const INV_BASE = 36, INV_CREATIVE = 128;
@@ -3219,6 +3396,45 @@ let invOpen = 0, furnaceOpen = 0, openF = null, chestOpen = 0, openC = null,
     cursor = null, cursorX = 0, cursorY = 0;
 let fLastFlame = -1, fLastBar = -1;
 let hostiles = [], arrows = [], drops = [], spawnPt = { x: 0, y: 0, z: 0 };
+
+/* Beacons are tracked by world/dimension so only active, powered beacons grant effects. */
+const beacons = new Set();
+function beaconKey(d, x, y, z) { return d + ',' + x + ',' + y + ',' + z; }
+function trackBeacon(p, remove) {
+  const k = beaconKey(dim, p.x, p.y, p.z);
+  if (remove) beacons.delete(k); else beacons.add(k);
+  saveDirty = 1;
+}
+function beaconLayer(cx, y, cz, r) {
+  for (let dz = -r; dz <= r; dz++) for (let dx = -r; dx <= r; dx++) {
+    const b = get(cx + dx, y, cz + dz);
+    if (b !== IRON_BLOCK && b !== GOLD_BLOCK && b !== DIAMOND_BLOCK) return false;
+  }
+  return true;
+}
+function beaconPower(k) {
+  const a = String(k).split(',').map(Number);
+  if (a.length !== 4) return 0;
+  const d = a[0] | 0, x = a[1] | 0, y = a[2] | 0, z = a[3] | 0;
+  if (d !== dim || get(x, y, z) !== BEACON_BLOCK) return 0;
+  let power = 0;
+  for (let r = 1; r <= 3; r++) {
+    if (!beaconLayer(x, y - r, z, r)) break;
+    power++;
+  }
+  return power;
+}
+function nearbyBeaconPower() {
+  let best = 0;
+  for (const k of beacons) {
+    const a = String(k).split(',').map(Number);
+    if (a.length !== 4 || (a[0] | 0) !== dim) continue;
+    const dx = Math.abs(a[1] - pl.x), dy = Math.abs(a[2] - pl.y), dz = Math.abs(a[3] - pl.z);
+    if (dx > 26 || dy > 18 || dz > 26) continue;
+    best = Math.max(best, beaconPower(k));
+  }
+  return best;
+}
 
 const FSHADE = [1, 0.55, 0.78, 0.78, 0.7, 0.7];
 const MOBS = [
@@ -3235,7 +3451,8 @@ const MOBS = [
   { n: 'dragon', mt: 'dragon', b: [2.4, 1.4, 3.2], c: [42, 36, 56], h: [58, 48, 76], l: [34, 30, 46], hs: 1.1, hh: 1.5, lh: 1, lw: 0.4, sp: 1, hp: 200, legs: 0, dmg: 6, hostile: 1 },
   { n: 'villager', mt: 'villager', b: [0.62, 0.95, 0.4], c: [112, 88, 66], h: [214, 170, 132], l: [70, 54, 40], hs: 0.5, hh: 1.4, lh: 0.78, lw: 0.18, sp: 0.55, hp: 20, legs: 4 },
   { n: 'slime', mt: 'slime', b: [0.9, 0.62, 0.9], c: [86, 208, 92], h: [118, 232, 122], l: [70, 180, 76], hs: 0.42, hh: 0.55, lh: 0.3, lw: 0.2, sp: 0.85, hp: 8, legs: 0, dmg: 2, hostile: 1, hop: 1 },
-  { n: 'witch', mt: 'witch', b: [0.6, 1.0, 0.6], c: [92, 62, 122], h: [138, 186, 96], l: [58, 44, 74], hs: 0.48, hh: 1.4, lh: 0.78, lw: 0.18, sp: 0.6, hp: 26, legs: 4, dmg: 3, hostile: 1, ranged: 1 }
+  { n: 'witch', mt: 'witch', b: [0.6, 1.0, 0.6], c: [92, 62, 122], h: [138, 186, 96], l: [58, 44, 74], hs: 0.48, hh: 1.4, lh: 0.78, lw: 0.18, sp: 0.6, hp: 26, legs: 4, dmg: 3, hostile: 1, ranged: 1 },
+  { n: 'wither', mt: 'wither', b: [1.3, 1.5, 1.0], c: [44, 42, 48], h: [62, 60, 66], l: [34, 32, 38], hs: 0.72, hh: 2.2, lh: 1.2, lw: 0.3, sp: 1.15, hp: 300, legs: 0, dmg: 7, hostile: 1 }
 ];
 let animals = [];
 
@@ -3263,12 +3480,26 @@ TOOLDEF[IT.WSWORD] = { k: 'sword', dmg: 6 }; TOOLDEF[IT.CSWORD] = { k: 'sword', 
 TOOLDEF[IT.SSWORD] = { k: 'sword', dmg: 8 }; TOOLDEF[IT.GSWORD] = { k: 'sword', dmg: 9 };
 TOOLDEF[IT.ISWORD] = { k: 'sword', dmg: 10 }; TOOLDEF[IT.DSWORD] = { k: 'sword', dmg: 13 };
 function heldTool() { return mode === 'survival' ? TOOLDEF[heldId()] || null : null; }
+function heldStack() { return INV[sel] || null; }
+function enchLvl(s, k) { return (s && s.e && s.e[k]) || 0; }
+function sameEnch(s, e) { return JSON.stringify((s && s.e) || null) === JSON.stringify(e || null); }
+function displayName(s) {
+  if (!s) return '';
+  const e = s.e, marks = [];
+  if (e && e.eff) marks.push('Eff ' + e.eff);
+  if (e && e.sharp) marks.push('Sharp ' + e.sharp);
+  if (e && e.fortune) marks.push('Fort ' + e.fortune);
+  if (e && e.prot) marks.push('Prot ' + e.prot);
+  return itemName(s.id) + (marks.length ? ' \u2726 ' + marks.join(' ') : '');
+}
+function canEnchant(id) { return !!(TOOLDEF[id] || ARMOR_BY_ID[id]); }
 function toolSpeed(blk) {
   const t = heldTool(); if (!t) return 1;
-  if (t.k === 'pick' && ORE_TIER[blk] !== undefined) return t.s;
-  if (t.k === 'axe' && (blk === LOG || blk === PLANKS)) return t.s;
-  if (t.k === 'shovel' && (blk === GRASS || blk === DIRT || blk === SAND || blk === GRAVEL)) return t.s;
-  return 1;
+  let s = 1;
+  if (t.k === 'pick' && ORE_TIER[blk] !== undefined) s = t.s;
+  else if (t.k === 'axe' && (blk === LOG || blk === PLANKS)) s = t.s;
+  else if (t.k === 'shovel' && (blk === GRASS || blk === DIRT || blk === SAND || blk === GRAVEL)) s = t.s;
+  return s * (1 + enchLvl(heldStack(), 'eff') * 0.24);
 }
 function mineable(blk) {
   if (mode === 'creative') return true;
@@ -3278,14 +3509,20 @@ function mineable(blk) {
   if (!t || t.k !== 'pick') return false;
   return (t.tier || 0) >= tier;
 }
-function addItem(id, n) {
+function addItem(id, n, e) {
   if (!id || n <= 0) return n;
   for (let i = 0; i < INV.length && n > 0; i++) {
     const s = INV[i];
-    if (s && s.id === id && s.n < 64) { const t = Math.min(64 - s.n, n); s.n += t; n -= t; }
+    if (s && s.id === id && s.n < 64 && sameEnch(s, e)) {
+      const t = Math.min(64 - s.n, n); s.n += t; n -= t;
+    }
   }
   for (let i = 0; i < INV.length && n > 0; i++)
-    if (!INV[i]) { const t = Math.min(64, n); INV[i] = { id, n: t }; n -= t; }
+    if (!INV[i]) {
+      const t = Math.min(64, n);
+      INV[i] = e ? { id, n: t, e: Object.assign({}, e) } : { id, n: t };
+      n -= t;
+    }
   if (invOpen) renderInv(); else refreshHotbar();
   return n;
 }
@@ -3303,6 +3540,18 @@ function consumeSel() {
   if (!s) return;
   s.n--; if (s.n <= 0) INV[sel] = null;
   if (invOpen) renderInv(); else refreshHotbar();
+}
+function takeItem(id, n) {
+  let need = n;
+  for (let i = 0; i < INV.length && need > 0; i++) {
+    const s = INV[i];
+    if (!s || s.id !== id) continue;
+    const t = Math.min(s.n, need);
+    s.n -= t; need -= t;
+    if (s.n <= 0) INV[i] = null;
+  }
+  if (invOpen) renderInv(); else refreshHotbar();
+  return need === 0;
 }
 function tillSoil(p) {
   if (!p || (p.id !== GRASS && p.id !== DIRT)) return false;
@@ -3381,6 +3630,15 @@ function useSel() {
   if (hit && hit.id === BED) return sleepInBed(hit);
   if (held === IT.MAP) { openMap(); return; }
   if (held === IT.COMPASS) { compassHint(); return; }
+  if (held >= IT.POTION_HEAL && held <= IT.POTION_REGEN) return drinkPotion(held);
+  if (held === IT.WITHER_SKULL && hit && hit.id === SOUL_SAND) return summonWither(hit.x, hit.y, hit.z);
+  if (hit && hit.id === ENCHANT_TABLE) return openEnchant(hit.x, hit.y, hit.z);
+  if (hit && hit.id === BREWING_STAND) return openBrew(hit.x, hit.y, hit.z);
+  if (hit && hit.id === BEACON_BLOCK && held === IT.NETHER_STAR) {
+    trackBeacon({ x: hit.x, y: hit.y, z: hit.z }, false);
+    consumeSel(); sfx(920, 0.3, 'sine'); toast('beacon energized'); saveDirty = 1;
+    return;
+  }
   if (hit && hit.id === CRAFT_TABLE) { openInv('table'); return; }
   if (hit && hit.id === FURNACE) { furnaceActivate(hit.x, hit.y, hit.z); return; }
   if (hit && hit.id === CHEST) { chestActivate(hit.x, hit.y, hit.z); return; }
@@ -3424,7 +3682,8 @@ function pickEntity(maxD) {
 function attack(e) {
   if (!e || e.hp === undefined) return;
   const t = heldTool();
-  e.hp -= (t && t.k === 'sword') ? t.dmg : 5;
+  const swordDmg = (t && t.k === 'sword') ? t.dmg : 5;
+  e.hp -= swordDmg + (t ? enchLvl(heldStack(), 'sharp') * 2 : 0);
   e.hurtT = 0.18; e.flee = 3;
   const ax = e.x - pl.x, az = e.z - pl.z, al = Math.hypot(ax, az) || 1;
   e.kx = ax / al * 3.4; e.kz = az / al * 3.4;
@@ -3435,6 +3694,8 @@ function killMob(e) {
   const i = animals.indexOf(e); if (i >= 0) animals.splice(i, 1);
   const j = hostiles.indexOf(e); if (j >= 0) hostiles.splice(j, 1);
   const M = MOBS[e.kind], loot = LOOT[M.n] || [];
+  if (mode === 'survival') addXP(M.n === 'wither' ? 50 : M.n === 'dragon' ? 40 : M.hostile ? 5 : 2);
+  if (M.n === 'skeleton' && Math.random() < 0.08) addItem(IT.WITHER_SKULL, 1);
   for (const L of loot) {
     const n = L[1] + Math.floor(Math.random() * (L[2] - L[1] + 1));
     if (n > 0) { addItem(L[0], n); toast('+ ' + n + ' ' + itemName(L[0])); }
@@ -3509,6 +3770,25 @@ function stepHostiles(dt) {
       if (hop > 0.72) h.hopV = 1;
       if (h.hopV) { h.y += h.hopV * dt * 1.7; h.hopV = Math.max(0, h.hopV - dt * 3.4); }
     }
+    if (h.kind === 14) {
+      const tx = pl.x - h.x, tz = pl.z - h.z, ty = (pl.y + 3.6) - h.y;
+      const td = Math.hypot(tx, ty, tz) || 1, hd = Math.hypot(tx, tz);
+      h.x += tx / td * (hd > 5 ? 2.6 : -1.2) * dt;
+      h.z += tz / td * (hd > 5 ? 2.6 : -1.2) * dt;
+      h.y += ty / td * 2.2 * dt;
+      h.dir = Math.atan2(tx, tz);
+      if (hd < 3.2 && mode === 'survival' && !dead) {
+        h.atk -= dt;
+        if (h.atk <= 0) { hurt(M.dmg, tx / td * 3.4, tz / td * 3.4); h.atk = 1.3; }
+      }
+      h.shoot -= dt;
+      if (h.shoot <= 0 && hd > 2 && hd < 30 && mode === 'survival' && !dead) {
+        shootSkull(h); h.shoot = Math.max(0.7, 1.7 - h.hp / 400);
+      }
+      if (!muted && Math.random() < dt * 0.2) sfxAt(72, 0.5, 'sawtooth', h.x, h.y, h.z, 42);
+      if (h.hp <= 0) killMob(h);
+      continue;
+    }
     if (h.kind === 10) {
       const tx = pl.x - h.x, tz = pl.z - h.z, ty = (pl.y + 4) - h.y;
       const td = Math.hypot(tx, ty, tz) || 1;
@@ -3577,6 +3857,14 @@ function stepHostiles(dt) {
     if (at <= h.y + 1.3) h.y = at + 1;
   }
 }
+function shootSkull(h) {
+  const tx = pl.x - h.x, ty = (pl.y + 1.1) - (h.y + 2.3), tz = pl.z - h.z;
+  const l = Math.hypot(tx, ty, tz) || 1;
+  arrows.push({ x: h.x, y: h.y + 2.3, z: h.z,
+                vx: tx / l * 15, vy: ty / l * 15 + 1.2, vz: tz / l * 15,
+                life: 4, skull: 1 });
+  sfxAt(96, 0.22, 'sawtooth', h.x, h.y + 2.3, h.z, 32);
+}
 function shootArrow(h) {
   const tx = pl.x - h.x, ty = (pl.y + 1.0) - (h.y + 1.2), tz = pl.z - h.z;
   const l = Math.hypot(tx, ty, tz) || 1;
@@ -3605,8 +3893,11 @@ function stepArrows(dt) {
     if (!kill && solidAt(a.x | 0, a.y | 0, a.z | 0)) kill = true;
     if (!kill && mode === 'survival' && !dead) {
       const px = a.x - pl.x, py = a.y - (pl.y + 0.9), pz = a.z - pl.z;
-      if (px * px + py * py + pz * pz < 0.36) {
-        if (a.potion) { hurt(3, a.vx * 0.08, a.vz * 0.08); poisonT = Math.max(poisonT, 4); toast('poisoned'); }
+      if (px * px + py * py + pz * pz < (a.skull ? 0.8 : 0.36)) {
+        if (a.skull) {
+          hurt(7, a.vx * 0.16, a.vz * 0.16);
+          witherT = Math.max(witherT, 8); toast('withered');
+        } else if (a.potion) { hurt(3, a.vx * 0.08, a.vz * 0.08); poisonT = Math.max(poisonT, 4); toast('poisoned'); }
         else hurt(4, a.vx * 0.1, a.vz * 0.1);
         kill = true;
       }
@@ -3709,13 +4000,18 @@ function explode(x, y, z, power) {
 /* ------------------------------------------------------ damage + death */
 function hurt(dmg, sx, sz) {
   if (mode === 'creative' || dead || dmg <= 0 || hurtT > 0) return;
-  hp -= Math.max(0.5, dmg * (1 - armorReduction())); hurtT = 0.5;
+  let prot = 0;
+  for (const a of ARMOR) prot += enchLvl(a, 'prot');
+  const reduction = Math.min(0.82, armorReduction() + prot * 0.06);
+  hp -= Math.max(0.5, dmg * (1 - reduction)); hurtT = 0.5;
   if (sx || sz) { pl.vx += sx; pl.vz += sz; pl.vy = Math.max(pl.vy, 3.5); }
   sfx(150, 0.18, 'sawtooth');
   if (hp <= 0) { hp = 0; die(); }
 }
 function die() {
   dead = 1; invOpen = 0;
+  if (enchOpen) { enchOpen = 0; enchEl.classList.add('hide'); }
+  if (brewOpen) { brewOpen = 0; brewEl.classList.add('hide'); }
   if (tradeOpen) { tradeOpen = 0; openV = null; tradeEl.classList.add('hide'); }
   if (mapOpen) { mapOpen = 0; mapEl.classList.add('hide'); }
   document.getElementById('inv').classList.add('hide');
@@ -3724,7 +4020,7 @@ function die() {
   saveDirty = 1;
 }
 function respawn() {
-  dead = 0; hp = MAXHP; food = MAXFOOD; poisonT = 0; poisonTick = 0;
+  dead = 0; hp = MAXHP; food = MAXFOOD; poisonT = 0; poisonTick = 0; witherT = 0; witherTick = 0;
   pl.x = spawnPt.x; pl.y = spawnPt.y; pl.z = spawnPt.z; pl.vx = pl.vy = pl.vz = 0;
   fallY = pl.y;
   document.getElementById('death').classList.add('hide');
@@ -3737,14 +4033,24 @@ function stepSurvival(dt) {
     poisonTick += dt;
     if (poisonTick >= 1.2) { poisonTick = 0; hurt(1, 0, 0); }
   } else poisonTick = 0;
+  if (witherT > 0) {
+    witherT -= dt; witherTick += dt;
+    if (witherTick >= 2.2) { witherTick = 0; hurt(1, 0, 0); }
+  } else witherTick = 0;
   if (mode !== 'survival' || dead) return;
+  if (effSpeedT > 0) effSpeedT -= dt;
+  if (effRegenT > 0) {
+    effRegenT -= dt; effRegenTick += dt;
+    if (effRegenTick >= 2.5) { effRegenTick = 0; hp = Math.min(MAXHP, hp + 1); }
+  } else effRegenTick = 0;
+  const bp = nearbyBeaconPower();
   if (food <= 0) { starveT += dt; if (starveT > 4) { starveT = 0; hurt(1, 0, 0); } }
   else starveT = 0;
   const moving = Math.hypot(pl.vx, pl.vz) > 1;
-  food = Math.max(0, food - dt * (moving ? 0.045 : 0.012) * (keys['ShiftLeft'] && moving ? 2 : 1));
-  if (food >= 18 && hp < MAXHP && hp > 0 && hurtT <= 0) {
-    regenT += dt;
-    if (regenT > 3) { regenT = 0; hp = Math.min(MAXHP, hp + 1); food = Math.max(0, food - 0.5); }
+  food = Math.max(0, food - dt * (moving ? 0.045 : 0.012) * ((keys['ShiftLeft'] || sprintLock) && moving ? 2 : 1));
+  if ((food >= 18 || bp >= 2) && hp < MAXHP && hp > 0 && hurtT <= 0) {
+    regenT += dt * (bp >= 2 ? 1.7 : 1);
+    if (regenT > 3) { regenT = 0; hp = Math.min(MAXHP, hp + 1); if (bp < 2) food = Math.max(0, food - 0.5); }
   } else regenT = 0;
   if (attackT > 0) attackT -= dt;
 }
@@ -3925,8 +4231,9 @@ function physics() {
   const str = (keys['KeyD'] ? 1 : 0) - (keys['KeyA'] ? 1 : 0);
   const sprint = !!keys['ShiftLeft'] || !!sprintLock;
   const webbed = webSlowed();
+  const swift = (effSpeedT > 0 ? 1.32 : 1) * (mode === 'survival' && nearbyBeaconPower() >= 1 ? 1.22 : 1);
   const spd = (sprint ? 7.4 : 4.7) * (feet ? 0.6 : 1) * (pl.fly ? (sprint ? 2.3 : 1.4) : 1) *
-              (webbed ? 0.24 : 1) * (poisonT > 0 ? 0.86 : 1);
+              (webbed ? 0.24 : 1) * (poisonT > 0 ? 0.86 : 1) * swift;
   const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
   let mx = sy * fwd + cy * str, mz = cy * fwd - sy * str;
   const ml = Math.hypot(mx, mz) || 1; mx /= ml; mz /= ml;
@@ -4012,12 +4319,23 @@ function blockDropsFor(p) {
     : [[IT.SEEDS, 1]];
   if (p.id === GRASS && Math.random() < 0.12) return [[IT.SEEDS, 1]];
   const d = blockDrop(p.id);
-  return d ? [[d, 1]] : [];
+  if (!d) return [];
+  const f = enchLvl(heldStack(), 'fortune');
+  const ore = p.id === COAL_ORE || p.id === IRON_ORE || p.id === GOLD_ORE ||
+              p.id === DIAMOND_ORE || p.id === EMERALD_ORE || p.id === LAPIS_ORE;
+  if (ore && f > 0) return [[d, 1 + Math.min(3, Math.floor(Math.random() * (f + 1)))]];
+  return [[d, 1]];
 }
 function awardDrops(p) {
   for (const [id, n] of blockDropsFor(p)) {
     const left = addItem(id, n);
     if (left) dropItem(id, left, p.x + 0.5, p.y + 0.4, p.z + 0.5, 0, 2, 0);
+  }
+  if (mode === 'survival') {
+    const xp = (p.id === DIAMOND_ORE || p.id === EMERALD_ORE) ? 5 :
+               (p.id === LAPIS_ORE || p.id === GOLD_ORE) ? 3 :
+               (p.id === IRON_ORE || p.id === COAL_ORE) ? 2 : 0;
+    if (xp) addXP(xp);
   }
 }
 function edit(p, remove) {
@@ -4027,6 +4345,7 @@ function edit(p, remove) {
     if (p.id === BEDROCK) { toast('bedrock cannot be broken'); return; }
     if (p.id === FURNACE) removeFurnace(p.x, p.y, p.z, true);
     if (p.id === CHEST) removeChest(p.x, p.y, p.z, true);
+    if (p.id === BEACON_BLOCK) trackBeacon(p, true);
     if (p.id === FARMLAND) {
       const up = get(p.x, p.y + 1, p.z);
       if (WHEAT_IDS.indexOf(up) >= 0) {
@@ -4055,6 +4374,7 @@ function edit(p, remove) {
         nz + 1 > pl.z - hw && nz < pl.z + hw &&
         ny + 1 > pl.y && ny < pl.y + PH) { toast('no room there'); return; }
     set(nx, ny, nz, b);
+    if (b === BEACON_BLOCK) trackBeacon({ x: nx, y: ny, z: nz }, false);
     if (b === FURNACE) furnaceAt(nx, ny, nz, true);
     if (b === CHEST) chestAt(nx, ny, nz, true);
     remeshAround(nx, nz);
@@ -4130,6 +4450,7 @@ const statsEl = document.getElementById('stats');
 const heartsEl = document.getElementById('hearts');
 const armorBarEl = document.getElementById('armorbar');
 const foodEl = document.getElementById('food');
+const xpLevelEl = document.getElementById('xplevel'), xpBarEl = document.querySelector('#xpbar i'), effectsEl = document.getElementById('effects');
 const compassEl = document.getElementById('compass');
 const compassNeedleEl = document.getElementById('compassNeedle');
 const compassLabelEl = document.getElementById('compassLabel');
@@ -4150,7 +4471,7 @@ function refreshHotbar() {
     if (count > 1) { const q = document.createElement('b'); q.className = 'cnt'; q.textContent = count; d.appendChild(q); }
     const n = document.createElement('i'); n.textContent = i + 1;
     d.appendChild(n);
-    d.title = iconId ? itemName(iconId) : 'empty';
+    d.title = s ? displayName(s) : 'empty';
     bar.appendChild(d);
   }
   for (let k = 0; k < bar.children.length; k++) bar.children[k].classList.toggle('sel', k === sel);
@@ -4159,7 +4480,7 @@ function select(i) {
   sel = (i + 9) % 9;
   for (let k = 0; k < bar.children.length; k++) bar.children[k].classList.toggle('sel', k === sel);
   const id = heldId();
-  nameEl.textContent = id ? itemName(id) : '';
+  nameEl.textContent = id ? displayName(INV[sel]) : '';
   nameEl.style.opacity = 1; nameFade = 1.6;
 }
 
@@ -4178,12 +4499,23 @@ function updateHUD() {
   const hasCompass = heldId() === IT.COMPASS;
   compassEl.classList.toggle('hide', !hasCompass);
   if (hasCompass) compassHud();
-  if (mode !== 'survival') return;
+  if (mode !== 'survival') { effectsEl.classList.add('hide'); return; }
   if (hp !== hudHp) { renderBar(heartsEl, hp, 'ic'); hudHp = hp; }
   var ap = armorPoints();
   armorBarEl.style.display = ap > 0 ? 'flex' : 'none';
   if (ap !== hudArmor) { renderBar(armorBarEl, ap, 'ic shield'); hudArmor = ap; }
   if (food !== hudFood) { renderBar(foodEl, food, 'ic hunger'); hudFood = food; }
+  const need = xpForLevel(xpLevel + 1) - xpForLevel(xpLevel);
+  xpLevelEl.textContent = xpLevel;
+  xpBarEl.style.width = clamp((xp - xpForLevel(xpLevel)) / Math.max(1, need) * 100, 0, 100).toFixed(1) + '%';
+  const badges = [];
+  if (effSpeedT > 0) badges.push('SPEED ' + Math.ceil(effSpeedT) + 's');
+  if (effRegenT > 0) badges.push('REGEN ' + Math.ceil(effRegenT) + 's');
+  if (witherT > 0) badges.push('WITHER ' + Math.ceil(witherT) + 's');
+  const bp = nearbyBeaconPower();
+  if (bp > 0) badges.push('BEACON ' + bp);
+  effectsEl.classList.toggle('hide', !badges.length);
+  effectsEl.textContent = badges.join('  ');
 }
 
 /* --------------------------------------------------- inventory UI */
@@ -4294,7 +4626,7 @@ function closeInv() {
   invOpen = 0;
   for (const grid of [invCraft, tableCraft])
     for (let i = 0; i < grid.length; i++) if (grid[i]) { const s = grid[i]; addItem(s.id, s.n); grid[i] = null; }
-  if (cursor) { addItem(cursor.id, cursor.n); cursor = null; }
+  if (cursor) { addItem(cursor.id, cursor.n, cursor.e); cursor = null; }
   invEl.classList.add('hide');
   setCraftMode('inv');
   refreshHotbar();
@@ -4445,7 +4777,7 @@ function furnaceActivate(x, y, z) { openFurnace(x, y, z); }
 function closeFurnace() {
   if (!furnaceOpen) return;
   if (cursor) {
-    const left = addItem(cursor.id, cursor.n);
+    const left = addItem(cursor.id, cursor.n, cursor.e);
     if (left) dropItem(cursor.id, left, pl.x, pl.y + 0.4, pl.z, Math.sin(cam.yaw) * 2.4, 2.2, Math.cos(cam.yaw) * 2.4);
     cursor = null;
   }
@@ -4454,19 +4786,22 @@ function closeFurnace() {
   refreshHotbar(); renderCursor(); saveDirty = 1;
   view.requestPointerLock();
 }
+function copySlot(s, n) { return s && s.e ? { id: s.id, n, e: Object.assign({}, s.e) } : { id: s.id, n }; }
 function slotSwap(arr, i) {
   const s = arr[i];
   if (!cursor) { if (s) { cursor = s; arr[i] = null; } }
   else if (!s) { arr[i] = cursor; cursor = null; }
-  else if (s.id === cursor.id) { const t = Math.min(64 - s.n, cursor.n); s.n += t; cursor.n -= t; if (cursor.n <= 0) cursor = null; }
+  else if (s.id === cursor.id && sameEnch(s, cursor.e)) {
+    const t = Math.min(64 - s.n, cursor.n); s.n += t; cursor.n -= t; if (cursor.n <= 0) cursor = null;
+  }
   else { arr[i] = cursor; cursor = s; }
 }
 function slotSwapHalf(arr, i) {
   const s = arr[i];
   if (!cursor) {
-    if (s) { const half = Math.ceil(s.n / 2); cursor = { id: s.id, n: half }; s.n -= half; if (s.n <= 0) arr[i] = null; }
-  } else if (!s) { arr[i] = { id: cursor.id, n: 1 }; cursor.n--; if (cursor.n <= 0) cursor = null; }
-  else if (s.id === cursor.id) { if (s.n < 64) { s.n++; cursor.n--; if (cursor.n <= 0) cursor = null; } }
+    if (s) { const half = Math.ceil(s.n / 2); cursor = copySlot(s, half); s.n -= half; if (s.n <= 0) arr[i] = null; }
+  } else if (!s) { arr[i] = copySlot(cursor, 1); cursor.n--; if (cursor.n <= 0) cursor = null; }
+  else if (s.id === cursor.id && sameEnch(s, cursor.e)) { if (s.n < 64) { s.n++; cursor.n--; if (cursor.n <= 0) cursor = null; } }
   else { arr[i] = cursor; cursor = s; }
 }
 let hoverSlot = null;
@@ -4610,7 +4945,7 @@ function chestActivate(x, y, z) { openChest(x, y, z); }
 function closeChest() {
   if (!chestOpen) return;
   if (cursor) {
-    const left = addItem(cursor.id, cursor.n);
+    const left = addItem(cursor.id, cursor.n, cursor.e);
     if (left) dropItem(cursor.id, left, pl.x, pl.y + 0.4, pl.z, Math.sin(cam.yaw) * 2.4, 2.2, Math.cos(cam.yaw) * 2.4);
     cursor = null;
   }
@@ -4671,6 +5006,7 @@ const TRADES = [
   { p: 'cleric',     give: IT.GOLD,    gn: 6,  get: IT.EMERALD, qty: 1, label: 'Sell Gold', max: 12 },
   { p: 'cleric',     give: IT.EMERALD, gn: 4,  get: IT.ENDER_PEARL, qty: 1, label: 'Buy Ender Pearl', max: 4 },
   { p: 'cleric',     give: IT.EMERALD, gn: 2,  get: GLOWSTONE, qty: 4, label: 'Buy Glowstone', max: 8 },
+  { p: 'cleric',     give: IT.EMERALD, gn: 3,  get: IT.WART, qty: 2, label: 'Buy Nether Wart', max: 8 },
   { p: 'butcher',    give: IT.BEEF,    gn: 12, get: IT.EMERALD, qty: 1, label: 'Sell Raw Beef', max: 16 },
   { p: 'butcher',    give: IT.EMERALD, gn: 1,  get: IT.CBEET,   qty: 8, label: 'Buy Cooked Beef', max: 10 },
   { p: 'butcher',    give: IT.EMERALD, gn: 1,  get: IT.LEATHER, qty: 6, label: 'Buy Leather', max: 12 }
@@ -4760,7 +5096,7 @@ function openTrade(v) {
   closeMap();
   if (!v || v.kind !== VILLAGER_KIND || dead) return false;
   if (cursor) {
-    const left = addItem(cursor.id, cursor.n);
+    const left = addItem(cursor.id, cursor.n, cursor.e);
     if (left) dropItem(cursor.id, left, pl.x, pl.y + 0.4, pl.z, 0, 2, 0);
     cursor = null;
   }
@@ -4776,6 +5112,164 @@ function closeTrade() {
   tradeOpen = 0; openV = null;
   tradeEl.classList.add('hide');
   view.requestPointerLock();
+}
+
+/* ------------------------------------------------ enchanting + brewing UI */
+let enchOpen = 0, brewOpen = 0, enchPos = null;
+const enchEl = document.getElementById('ench'), brewEl = document.getElementById('brew');
+const enchHeldEl = document.getElementById('enchheld'), enchInfoEl = document.getElementById('enchinfo'),
+      enchListEl = document.getElementById('enchlist');
+const brewInfoEl = document.getElementById('brewinfo'), brewListEl = document.getElementById('brewlist');
+
+function bookshelfCount(x, y, z) {
+  let n = 0;
+  for (let dy = -1; dy <= 1; dy++) for (let dz = -2; dz <= 2; dz++) for (let dx = -2; dx <= 2; dx++)
+    if (get(x + dx, y + dy, z + dz) === BOOKSHELF) n++;
+  return n;
+}
+function enchOptions(id) {
+  const t = TOOLDEF[id];
+  if (t && (t.k === 'pick' || t.k === 'shovel' || t.k === 'axe')) {
+    const list = [{ k: 'eff', n: 'Efficiency', max: 4 }];
+    if (t.k === 'axe') list.push({ k: 'sharp', n: 'Sharpness', max: 5 });
+    list.push({ k: 'fortune', n: 'Fortune', max: 3 });
+    return list;
+  }
+  if (t && t.k === 'sword') return [{ k: 'sharp', n: 'Sharpness', max: 5 }, { k: 'eff', n: 'Efficiency', max: 4 }];
+  if (ARMOR_BY_ID[id]) return [{ k: 'prot', n: 'Protection', max: 4 }];
+  return [];
+}
+function enchCost(level, shelves) { return Math.min(4, 1 + Math.floor(level / 2) + (shelves < 3 ? 1 : 0)); }
+function renderEnchant() {
+  if (!enchOpen) return;
+  enchHeldEl.innerHTML = ''; enchListEl.innerHTML = '';
+  const s = heldStack(), shelves = enchPos ? bookshelfCount(enchPos.x, enchPos.y, enchPos.z) : 0;
+  if (s) {
+    enchHeldEl.appendChild(slotIconEl(s.id));
+    enchHeldEl.firstChild.title = displayName(s);
+  }
+  const opts = s ? enchOptions(s.id) : [];
+  enchInfoEl.textContent = !s ? 'Hold a tool, sword, or armor piece to enchant it.'
+    : !opts.length ? itemName(s.id) + ' cannot be enchanted.'
+    : displayName(s) + ' · ' + shelves + ' bookshelves nearby · ' + xpLevel + ' XP levels';
+  for (const o of opts) {
+    const lvl = enchLvl(s, o.k), maxed = lvl >= o.max;
+    const cost = enchCost(lvl, shelves);
+    const afford = mode === 'creative' || (xpLevel > cost && !!findItemCount(IT.LAPIS));
+    const row = document.createElement('div');
+    row.className = 'sysrow' + (maxed || !afford ? ' off' : '');
+    const name = document.createElement('b'); name.textContent = o.n + ' ' + (lvl + 1);
+    const info = document.createElement('small'); info.textContent = maxed ? 'MAX' : (mode === 'creative' ? 'free' : cost + ' lv · 1 lapis');
+    const hint = document.createElement('i'); hint.textContent = maxed ? '' : 'lvl ' + lvl + '/' + o.max;
+    row.appendChild(name); row.appendChild(info); row.appendChild(hint);
+    if (!maxed && afford) row.addEventListener('click', () => applyEnchant(o, cost));
+    enchListEl.appendChild(row);
+  }
+}
+function findItemCount(id) {
+  let n = 0;
+  for (const s of INV) if (s && s.id === id) n += s.n;
+  return n;
+}
+function applyEnchant(o, cost) {
+  const s = heldStack();
+  if (!s || enchLvl(s, o.k) >= o.max) return;
+  if (mode === 'survival') {
+    if (xpLevel <= cost) { toast('need ' + (cost + 1) + ' XP levels'); return; }
+    if (!findItemCount(IT.LAPIS)) { toast('need lapis lazuli'); return; }
+    takeItem(IT.LAPIS, 1);
+    spendLevels(cost);
+  }
+  if (!s.e) s.e = {};
+  s.e[o.k] = enchLvl(s, o.k) + 1;
+  refreshHotbar(); if (invOpen) renderInv(); renderEnchant();
+  sfxAt(880, 0.22, 'triangle', pl.x, pl.y + 1, pl.z, 12);
+  toast(o.n + ' ' + s.e[o.k]); saveDirty = 1;
+}
+function openEnchant(x, y, z) {
+  if (dead) return false;
+  enchPos = { x, y, z }; enchOpen = 1;
+  enchEl.classList.remove('hide');
+  renderEnchant();
+  if (document.pointerLockElement) document.exitPointerLock();
+  sfxAt(620, 0.18, 'sine', x + 0.5, y + 1, z + 0.5, 14);
+  return true;
+}
+function closeEnchant() {
+  if (!enchOpen) return;
+  enchOpen = 0; enchPos = null;
+  enchEl.classList.add('hide');
+  view.requestPointerLock();
+}
+
+const BREW_RECIPES = [
+  { id: IT.POTION_HEAL,   cat: GLOWSTONE, n: 'Healing I' },
+  { id: IT.POTION_SPEED,  cat: IT.WHEAT,  n: 'Swiftness I' },
+  { id: IT.POTION_REGEN,  cat: IT.SLIME,  n: 'Regeneration I' }
+];
+function renderBrew() {
+  if (!brewOpen) return;
+  brewListEl.innerHTML = '';
+  brewInfoEl.textContent = 'Nether Wart: ' + findItemCount(IT.WART) + ' · right-click a potion to drink it';
+  for (const r of BREW_RECIPES) {
+    const ready = mode === 'creative' || (findItemCount(IT.WART) > 0 && findItemCount(r.cat) > 0);
+    const row = document.createElement('div');
+    row.className = 'sysrow' + (ready ? '' : ' off');
+    const ic = slotIconEl(r.id);
+    const name = document.createElement('b'); name.textContent = r.n;
+    const info = document.createElement('small'); info.textContent = itemName(r.cat);
+    row.appendChild(ic); row.appendChild(name); row.appendChild(info);
+    if (ready) row.addEventListener('click', () => brewPotion(r));
+    brewListEl.appendChild(row);
+  }
+}
+function brewPotion(r) {
+  if (mode === 'survival') {
+    if (!findItemCount(IT.WART) || !findItemCount(r.cat)) { toast('missing ingredients'); return; }
+    takeItem(IT.WART, 1); takeItem(r.cat, 1);
+  }
+  addItem(r.id, 1);
+  sfxAt(740, 0.16, 'triangle', pl.x, pl.y + 1, pl.z, 12);
+  toast('brewed ' + itemName(r.id)); renderBrew(); saveDirty = 1;
+}
+function openBrew(x, y, z) {
+  if (dead) return false;
+  brewOpen = 1; brewEl.classList.remove('hide'); renderBrew();
+  if (document.pointerLockElement) document.exitPointerLock();
+  sfxAt(540, 0.16, 'sine', x + 0.5, y + 1, z + 0.5, 14);
+  return true;
+}
+function closeBrew() {
+  if (!brewOpen) return;
+  brewOpen = 0; brewEl.classList.add('hide');
+  view.requestPointerLock();
+}
+function drinkPotion(id) {
+  if (id === IT.POTION_HEAL) {
+    hp = Math.min(MAXHP, hp + 8); poisonT = 0; witherT = 0; toast('healed');
+  } else if (id === IT.POTION_SPEED) {
+    effSpeedT = Math.max(effSpeedT, 90); toast('swiftness');
+  } else if (id === IT.POTION_REGEN) {
+    effRegenT = Math.max(effRegenT, 45); effRegenTick = 0; toast('regeneration');
+  } else return false;
+  consumeSel(); sfx(680, 0.18, 'sine'); saveDirty = 1;
+  return true;
+}
+function summonWither(x, y, z) {
+  if (mode === 'survival' && findItemCount(IT.WITHER_SKULL) < 3) {
+    toast('need 3 wither skeleton skulls'); return false;
+  }
+  if (mode === 'survival') takeItem(IT.WITHER_SKULL, 3);
+  hostiles.push({ kind: 14, x: x + 0.5, z: z + 0.5, y: y + 2.2, dir: 0, moving: 1, walkT: 1,
+                  bob: 0, hp: MOBS[14].hp, atk: 1, fuse: 0, shoot: 2, kx: 0, kz: 0 });
+  for (let k = 0; k < 40 && parts.length < 520; k++) parts.push({
+    x: x + 0.5 + (Math.random() - 0.5) * 1.4, y: y + 1 + Math.random() * 2.4, z: z + 0.5 + (Math.random() - 0.5) * 1.4,
+    vx: (Math.random() - 0.5) * 5, vy: 1 + Math.random() * 5, vz: (Math.random() - 0.5) * 5,
+    s: 0.1, life: 0.6 + Math.random() * 0.5, r: 60, g: 56, b: 68
+  });
+  sfxAt(48, 0.9, 'sawtooth', x + 0.5, y + 1.5, z + 0.5, 50);
+  toast('THE WITHER HAS BEEN SUMMONED'); saveDirty = 1;
+  return true;
 }
 
 /* ------------------------------------------------------------- map UI */
@@ -4849,7 +5343,7 @@ function paintMap() {
 function openMap() {
   if (dead) return false;
   if (cursor) {
-    const left = addItem(cursor.id, cursor.n);
+    const left = addItem(cursor.id, cursor.n, cursor.e);
     if (left) dropItem(cursor.id, left, pl.x, pl.y + 0.4, pl.z, 0, 2, 0);
     cursor = null; renderCursor();
   }
@@ -4912,7 +5406,9 @@ addEventListener('keydown', e => {
   if (keys[k]) return;
   keys[k] = 1;
   if (k === 'KeyE') {
-    if (mapOpen) closeMap();
+    if (enchOpen) closeEnchant();
+    else if (brewOpen) closeBrew();
+    else if (mapOpen) closeMap();
     else if (pickerOpen) closePicker();
     else if (tradeOpen) closeTrade();
     else if (chestOpen) closeChest();
@@ -4922,7 +5418,9 @@ addEventListener('keydown', e => {
     return;
   }
   if (k === 'Escape') {
-    if (mapOpen) closeMap();
+    if (enchOpen) closeEnchant();
+    else if (brewOpen) closeBrew();
+    else if (mapOpen) closeMap();
     else if (pickerOpen) closePicker();
     else if (tradeOpen) closeTrade();
     else if (chestOpen) closeChest();
@@ -4965,7 +5463,7 @@ function pickHint() {
   toast((t && t.k === 'pick') ? 'needs a better pickaxe' : 'needs a pickaxe');
 }
 addEventListener('mousedown', e => {
-  if (!running || invOpen || chestOpen || tradeOpen || furnaceOpen || pickerOpen || mapOpen) return;
+  if (!running || invOpen || chestOpen || tradeOpen || furnaceOpen || pickerOpen || mapOpen || enchOpen || brewOpen) return;
   if (e.button === 0) {
     if (!dead) {
       const em = pickEntity(4.2);
@@ -4991,11 +5489,11 @@ addEventListener('wheel', e => {
 document.addEventListener('pointerlockchange', () => {
   hasPointer = document.pointerLockElement === view;
   running = hasPointer;
-  menu.classList.toggle('hide', hasPointer || invOpen || furnaceOpen || chestOpen || tradeOpen || pickerOpen || mapOpen || dead);
+  menu.classList.toggle('hide', hasPointer || invOpen || furnaceOpen || chestOpen || tradeOpen || pickerOpen || mapOpen || enchOpen || brewOpen || dead);
   if (!hasPointer) {
     keys = Object.create(null); mining = 0;
     if (savingEnabled && saveDirty) { try { saveWorld(); } catch (e) {} }
-    if (!invOpen && !furnaceOpen && !chestOpen && !tradeOpen && !pickerOpen && !mapOpen && !dead) updateMenu();
+    if (!invOpen && !furnaceOpen && !chestOpen && !tradeOpen && !pickerOpen && !mapOpen && !enchOpen && !brewOpen && !dead) updateMenu();
   }
 });
 document.addEventListener('visibilitychange', () => {
@@ -5188,13 +5686,14 @@ function saveWorld() {
     dimPos[dim] = { x: pl.x, y: pl.y, z: pl.z };
     dimSpawn[dim] = { x: spawnPt.x, y: spawnPt.y, z: spawnPt.z };
     const payload = {
-      v: 5, H, seed: worldSeed, dayT, dayCount, dim,
+      v: 6, H, seed: worldSeed, dayT, dayCount, dim,
       px: pl.x, py: pl.y, pz: pl.z, yaw: cam.yaw, pitch: cam.pitch, sel,
-      m: mode, hp, food, inv: INV.map(s => s ? [s.id, s.n] : 0),
-      ar: ARMOR.map(s => s ? [s.id, s.n] : 0),
+      m: mode, hp, food, xp, xl: xpLevel, eff: [effSpeedT, effRegenT, witherT],
+      inv: INV.map(slotPack), ar: ARMOR.map(slotPack),
       sp: [spawnPt.x, spawnPt.y, spawnPt.z],
       dp: dimPos, ds: dimSpawn,
-      e, f, fu: furn, ch: chests, gl: Array.from(generatedChests), at: Date.now()
+      e, f, fu: furn, ch: chests, gl: Array.from(generatedChests),
+      bea: Array.from(beacons), at: Date.now()
     };
     if (!currentId) {
       const list = listSaves();
@@ -5284,14 +5783,15 @@ function loadWorld(o) {
     hp = (typeof o.hp === 'number') ? o.hp : MAXHP;
     food = (typeof o.food === 'number') ? o.food : MAXFOOD;
     INV = new Array(mode === 'creative' ? INV_CREATIVE : INV_BASE).fill(null);
-    if (Array.isArray(o.inv)) for (let i = 0; i < o.inv.length && i < INV.length; i++) {
-      const s = o.inv[i];
-      if (s && s[1] > 0) INV[i] = { id: s[0], n: s[1] };
-    }
+    if (Array.isArray(o.inv)) for (let i = 0; i < o.inv.length && i < INV.length; i++)
+      INV[i] = slotUnpack(o.inv[i]);
     if (Array.isArray(o.ar)) for (let i = 0; i < 4 && i < o.ar.length; i++) {
-      const s = o.ar[i];
-      if (s && ARMOR_BY_ID[s[0]]) ARMOR[i] = { id: s[0], n: 1 };
+      const s = slotUnpack(o.ar[i]);
+      if (s && ARMOR_BY_ID[s.id]) ARMOR[i] = s;
     }
+    if (Array.isArray(o.eff)) { effSpeedT = +o.eff[0] || 0; effRegenT = +o.eff[1] || 0; witherT = +o.eff[2] || 0; }
+    xp = Math.max(0, +o.xp || 0);
+    xpLevel = Math.max(1, +o.xl || 1);
     if (Array.isArray(o.sp)) spawnPt = { x: o.sp[0], y: o.sp[1], z: o.sp[2] };
     if (dimSpawn[dim]) spawnPt = dimSpawn[dim];
   } else {
@@ -5299,6 +5799,8 @@ function loadWorld(o) {
   }
   hostiles = []; arrows = []; drops = []; dead = 0; hurtT = 0; regenT = 0; starveT = 0; drownT = 0;
   poisonT = 0; poisonTick = 0;
+  beacons.clear();
+  if (Array.isArray(o.bea)) for (const k of o.bea) beacons.add(k);
   resetCraft();
   fallY = pl.y;
   pl.fly = 0;
@@ -5313,7 +5815,7 @@ function loadWorld(o) {
 function loadWorldById(id) {
   try {
     const p = JSON.parse(localStorage.getItem('blockcraft_w_' + id));
-    if (!p || p.v < 1 || p.v > 5) return false;
+    if (!p || p.v < 1 || p.v > 6) return false;
     if (p.v < 4 && typeof p.w !== 'string') return false;
     loadWorld(p);
     currentId = id;
@@ -5397,7 +5899,8 @@ function newWorld(seed, m) {
   pl.x = 0.5; pl.y = 20; pl.z = 0.5;
   mode = (m === 'creative') ? 'creative' : 'survival';
   hp = MAXHP; food = MAXFOOD; INV = new Array(mode === 'creative' ? INV_CREATIVE : INV_BASE).fill(null); resetCraft();
-  ARMOR.fill(null); hudArmor = -1;
+  xp = 0; xpLevel = 1; effSpeedT = 0; effRegenT = 0; effRegenTick = 0; witherT = 0; witherTick = 0;
+  ARMOR.fill(null); hudArmor = -1; beacons.clear();
   hostiles = []; arrows = []; drops = []; dead = 0; hurtT = 0; regenT = 0; starveT = 0; drownT = 0; fallY = 0;
   poisonT = 0; poisonTick = 0;
   scanCrops();
