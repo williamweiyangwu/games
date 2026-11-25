@@ -190,7 +190,7 @@
 <div id="standings" class="hidden"></div>
 <div id="banner" class="hidden"></div>
 <div id="lights" class="hidden"><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div></div>
-  <div id="verTag">v2.48</div>
+  <div id="verTag">v2.50</div>
   <button id="achBtn" class="ghost">ACHIEVEMENTS</button>
   <div id="achPanel"><b style="letter-spacing:.12em">ACHIEVEMENTS</b><div id="achList" style="margin-top:8px"></div></div>
   <div id="pitMsg"></div>
@@ -3632,14 +3632,15 @@ var pr = projectTrack(c.x, c.z, c.i);
     smokes.length = 0;
   }
 
-  /* ============================== ONLINE (P2P) ======================= *
-   *  Peer-to-peer rooms over WebRTC (PeerJS). No game server is needed:  *
-   *  the room host is authoritative for the lobby and relays car states; *
-   *  every peer drives its own simulated car and streams its transform.  *
-   *  "Browse public rooms" uses a best-effort directory peer (the first  *
-   *  player to claim the well-known id runs the directory).              */
-  var NET_PREFIX = 'apexRacing-v1-';
-  var NET_HUB_ID = 'apexRacing-directory-v1';
+  /* ============================== ONLINE (MQTT) ====================== *
+   *  Rooms are hosted over a public WebSocket MQTT broker. The room host *
+   *  is authoritative for the lobby and relays car states; every driver  *
+   *  simulates their own car and streams its transform through MQTT.     */
+  var NET_PREFIX = 'apexRacing-v2/';
+  var NET_BROKERS = [
+    'wss://broker.emqx.io:8084/mqtt',
+    'wss://broker.hivemq.com:8884/mqtt'
+  ];
   var NET_MAX = ROSTER.length;          // one car per roster slot -> unique colours
   var NET_SEND_HZ = 0.066;              // ~15 state updates a second
   var netRace = false;
@@ -3648,12 +3649,12 @@ var pr = projectTrack(c.x, c.z, c.i);
     view: 'entry',          // entry | lobby
     tab: 'join',            // join | create
     name: '', role: null, selfId: null,
-    peer: null, conns: {}, room: null,
+    client: null, room: null,
     status: '', error: '', latencyMs: null,
     races: {}, lastSend: 0, pingAt: 0,
-    dirRooms: {}, dirPeer: null, dirConn: null, dirBusy: false, dirError: '',
-    hubPeer: null, hubConns: {}, hubConn: null, hubRooms: {},
-    connecting: false, selfCar: -1
+    dirRooms: {}, dirBusy: false, dirError: '',
+    connected: false, connecting: false, selfCar: -1,
+    roomTopic: null, joinTimer: null, browseClient: null
   };
 
   var netNameEl = document.getElementById('netName');
@@ -3688,44 +3689,31 @@ var pr = projectTrack(c.x, c.z, c.i);
   function netStoreName(n) {
     try { localStorage.setItem('apexRacing-name', n); } catch (e) {}
   }
-
-  var peerLib = null;
-  function netLoadPeer() {
-    if (window.Peer) return Promise.resolve(window.Peer);
-    if (peerLib) return peerLib;
-    peerLib = new Promise(function (resolve, reject) {
-      var sources = ['./lib/peerjs.min.js',
-        'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js'];
+  function netLoadMqtt() {
+    if (window.mqtt && window.mqtt.connect) return Promise.resolve(window.mqtt);
+    var sources = [
+      'https://cdn.jsdelivr.net/npm/mqtt@4.3.7/dist/mqtt.min.js',
+      'https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js'
+    ];
+    return new Promise(function (resolve, reject) {
       var tryNext = function (i) {
-        if (i >= sources.length) {
-          reject(new Error('Could not load the online library - check your connection.'));
-          return;
-        }
-        var s = document.createElement('script');
-        s.src = sources[i];
-        s.onload = function () {
-          window.Peer ? resolve(window.Peer)
-            : tryNext(i + 1);
-        };
-        s.onerror = function () { tryNext(i + 1); };
-        document.head.appendChild(s);
+        if (i >= sources.length) { reject(new Error('Could not load MQTT - check your connection.')); return; }
+        var sc = document.createElement('script');
+        sc.src = sources[i];
+        sc.onload = function () { window.mqtt && window.mqtt.connect ? resolve(window.mqtt) : tryNext(i + 1); };
+        sc.onerror = function () { tryNext(i + 1); };
+        document.head.appendChild(sc);
       };
       tryNext(0);
     });
-    return peerLib;
+  }
+  function netNewId() {
+    return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   }
   function netErrText(e) {
     if (!e) return 'Connection error.';
-    var t = e.type || '';
-    if (t === 'peer-unavailable') return 'That room code was not found.';
-    if (t === 'unavailable-id') return 'That room code is already taken.';
-    if (t === 'network' || t === 'server-error' || t === 'socket-error') {
-      return 'Could not reach the matchmaking service - check your connection.';
-    }
-    if (t === 'browser-incompatible') return 'This browser does not support WebRTC.';
-    return e.message || 'Connection error.';
+    return e.message || String(e) || 'Connection error.';
   }
-
   function netPlayer(id, name, car, host) {
     return { id: id, name: name, car: car, ready: false, host: !!host };
   }
@@ -3735,84 +3723,166 @@ var pr = projectTrack(c.x, c.z, c.i);
     for (var i = 0; i < NET_MAX; i++) if (!used[i]) return i;
     return -1;
   }
-  function netSend(conn, msg) { try { if (conn && conn.open) conn.send(msg); } catch (e) {} }
-  function netSendAll(msg) { for (var id in net.conns) netSend(net.conns[id], msg); }
   function netSelf() {
     return net.room && net.room.players.filter(function (p) { return p.id === net.selfId; })[0];
   }
 
-  /* ---- host side ---- */
-  function netHostOnData(conn, msg) {
-    if (!msg || !net.room) return;
-    var room = net.room, id = conn.peer;
-    var p = room.players.filter(function (x) { return x.id === id; })[0];
-    if (msg.type === 'hello') {
-      if (room.phase !== 'lobby' || (room.players.length >= NET_MAX && !p)) {
-        netSend(conn, { type: 'closed', reason: 'This race is already under way.' });
-        try { conn.close(); } catch (e) {}
-        return;
-      }
-      if (!p) {
-        room.players.push(netPlayer(id,
-          String(msg.name || 'RACER').slice(0, 16).toUpperCase() || 'RACER',
-          netFreeCar(room, id), false));
-      }
-      netBroadcastRoom();
-    } else if (msg.type === 'ready' && p) {
-      p.ready = !!msg.ready; netBroadcastRoom();
-    } else if (msg.type === 'rematch') {
-      if (room.players.length >= 2) netHostStart();
-    } else if (msg.type === 'select' && p) {
-      var want = msg.car;
-      var taken = room.players.some(function (x) { return x.id !== id && x.car === want; });
-      if (typeof want === 'number' && want >= 0 && want < NET_MAX && !taken) p.car = want;
-      netBroadcastRoom();
-    } else if (msg.type === 'state') {
-      net.races[id] = { st: msg.st, t: performance.now() };
-    } else if (msg.type === 'ping') {
-      netSend(conn, { type: 'pong', t: msg.t });
-    } else if (msg.type === 'pong') {
-      net.latencyMs = Math.max(0, Math.round(performance.now() - msg.t));
-    } else if (msg.type === 'leave') {
-      netHostDrop(id);
+  /* ---- MQTT transport ---- */
+  function netConnect(cb) {
+    if (net.browseClient) {
+      try { net.browseClient.end(true); } catch (e) {}
+      net.browseClient = null;
     }
+    netLoadMqtt().then(function (MQTT) {
+      var client = MQTT.connect(NET_BROKERS[0], {
+        protocolVersion: 4,
+        clientId: 'apex-' + Math.random().toString(36).slice(2, 12),
+        clean: true, keepalive: 30, reconnectPeriod: 2000, connectTimeout: 15000
+      });
+      net.client = client;
+      var done = false;
+      client.on('connect', function () {
+        if (done) return;
+        done = true; net.connected = true;
+        cb(null, client);
+      });
+      client.on('error', function (e) {
+        if (!done) { done = true; cb(e); }
+      });
+      client.on('offline', function () {
+        net.connected = false;
+      });
+      client.on('reconnect', function () {
+        net.connected = true;
+      });
+    }).catch(function (e) { cb(e); });
   }
-  function netHostDrop(id) {
-    if (!net.room) return;
-    if (id === net.selfId) return;
-    net.room.players = net.room.players.filter(function (p) { return p.id !== id; });
-    delete net.conns[id]; delete net.races[id];
-    netBroadcastRoom();
+  function netPub(topic, msg, opts) {
+    if (!net.client || !net.connected) return;
+    try { net.client.publish(topic, JSON.stringify(msg), opts || {}); } catch (e) {}
   }
-  function netBroadcastRoom() {
-    if (net.role !== 'host' || !net.room) return;
-    netSendAll({ type: 'room', room: net.room });
-    if (net.room.visibility === 'public') netHubRegister();
-    netRender();
-  }
+  function netSendAll(msg) { netPub(net.roomTopic + '/room', msg); }
 
-  /* ---- guest side ---- */
-  function netGuestOnData(msg) {
-    if (!msg) return;
+  function netOnRoomMessage(msg) {
+    if (!msg || msg.from === net.selfId) return;
+    if (net.role === 'host') {
+      var room = net.room;
+      if (!room) return;
+      var id = msg.from;
+      var p = room.players.filter(function (x) { return x.id === id; })[0];
+      if (msg.type === 'hello') {
+        if (room.phase !== 'lobby' || (room.players.length >= NET_MAX && !p)) return;
+        if (!p) {
+          room.players.push(netPlayer(id,
+            String(msg.name || 'RACER').slice(0, 16).toUpperCase() || 'RACER',
+            netFreeCar(room, id), false));
+        }
+        netBroadcastRoom();
+      } else if (msg.type === 'ready' && p) {
+        p.ready = !!msg.ready; netBroadcastRoom();
+      } else if (msg.type === 'rematch') {
+        if (room.players.length >= 2) netHostStart();
+      } else if (msg.type === 'select' && p) {
+        var want = msg.car;
+        var taken = room.players.some(function (x) { return x.id !== id && x.car === want; });
+        if (typeof want === 'number' && want >= 0 && want < NET_MAX && !taken) p.car = want;
+        netBroadcastRoom();
+      } else if (msg.type === 'state') {
+        net.races[id] = { st: msg.st, t: performance.now() };
+      } else if (msg.type === 'ping') {
+        netPub(net.roomTopic + '/room', { type: 'pong', from: net.selfId, to: id, t: msg.t });
+      } else if (msg.type === 'pong' && msg.to === net.selfId) {
+        net.latencyMs = Math.max(0, Math.round(performance.now() - msg.t));
+      } else if (msg.type === 'leave') {
+        netHostDrop(id);
+      }
+      return;
+    }
+    // guest
     if (msg.type === 'room') {
       net.room = msg.room;
-      if (net.view !== 'lobby') { net.view = 'lobby'; }
+      if (net.view !== 'lobby') net.view = 'lobby';
+      net.connecting = false;
+      if (net.joinTimer) { clearTimeout(net.joinTimer); net.joinTimer = null; }
+      net.status = 'Joined room';
       netRender();
     } else if (msg.type === 'states') {
-      for (var id in msg.states) {
-        if (id !== net.selfId) net.races[id] = { st: msg.states[id], t: performance.now() };
+      for (var sid in msg.states) {
+        if (sid !== net.selfId) net.races[sid] = { st: msg.states[sid], t: performance.now() };
       }
     } else if (msg.type === 'start') {
       netStartRace(msg.track, msg.players);
     } else if (msg.type === 'ping') {
-      netSend(net.conns.__host, { type: 'pong', t: msg.t });
-    } else if (msg.type === 'pong') {
+      netPub(net.roomTopic + '/room', { type: 'pong', from: net.selfId, to: msg.from, t: msg.t });
+    } else if (msg.type === 'pong' && msg.to === net.selfId) {
       net.latencyMs = Math.max(0, Math.round(performance.now() - msg.t));
       netRender();
     } else if (msg.type === 'closed') {
       net.error = msg.reason || 'The room closed.';
       netLeave(true);
     }
+  }
+  function netHostDrop(id) {
+    if (!net.room) return;
+    if (id === net.selfId) return;
+    net.room.players = net.room.players.filter(function (p) { return p.id !== id; });
+    delete net.races[id];
+    netBroadcastRoom();
+  }
+  function netBroadcastRoom() {
+    if (net.role !== 'host' || !net.room) return;
+    netSendAll({ type: 'room', from: net.selfId, room: net.room });
+    netDirRegister();
+    netRender();
+  }
+
+  /* ---- public directory over retained MQTT messages ---- */
+  function netDirInfo() {
+    var self = netSelf();
+    return { code: net.room.code, host: self ? self.name : net.name,
+             players: net.room.players.length, max: NET_MAX, track: net.room.track,
+             ts: Date.now() };
+  }
+  function netDirRegister() {
+    if (net.role !== 'host' || !net.room || net.room.visibility !== 'public') return;
+    netPub(NET_PREFIX + 'directory/' + net.room.code, { room: netDirInfo() }, { retain: true, qos: 0 });
+  }
+  function netDirUnregister() {
+    if (!net.room) return;
+    netPub(NET_PREFIX + 'directory/' + net.room.code, { remove: true }, { retain: true, qos: 0 });
+  }
+  function netDirApply(code, msg) {
+    if (!code || !msg) return;
+    if (msg.remove || (msg.room && Date.now() - (msg.room.ts || 0) > 60000)) delete net.dirRooms[code];
+    else if (msg.room) net.dirRooms[code] = msg.room;
+  }
+  function netBrowse() {
+    net.error = ''; net.dirBusy = true; net.dirError = ''; netRender();
+    netConnect(function (err, client) {
+      if (err) {
+        net.dirBusy = false; net.dirError = 'MQTT broker unavailable - join by code.';
+        netRender(); return;
+      }
+      net.browseClient = client;
+      client.on('message', function (topic, payload) {
+        if (topic.indexOf(NET_PREFIX + 'directory/') !== 0) return;
+        var code = topic.slice((NET_PREFIX + 'directory/').length);
+        var msg = null;
+        try { msg = JSON.parse(payload.toString()); } catch (e) { return; }
+        netDirApply(code, msg);
+        net.dirBusy = false; net.dirError = '';
+        if (net.view === 'entry') netRender();
+      });
+      client.subscribe(NET_PREFIX + 'directory/+', { qos: 0 }, function (err2) {
+        if (err2) {
+          net.dirBusy = false; net.dirError = 'Could not load public rooms - join by code.';
+          netRender(); return;
+        }
+        setTimeout(function () {
+          if (net.dirBusy) { net.dirBusy = false; netRender(); }
+        }, 2500);
+      });
+    });
   }
 
   /* ---- create / join / leave ---- */
@@ -3825,43 +3895,29 @@ var pr = projectTrack(c.x, c.z, c.i);
     if (net.connecting) return;
     net.error = ''; net.connecting = true; netRender();
     var name = netNormalizeName();
-    netLoadPeer().then(function (Peer) {
+    netConnect(function (err, client) {
+      if (err) { net.error = netErrText(err); net.connecting = false; netRender(); return; }
       var code = netRandCode();
-      var selfId = netRoomId(code);
-      var host = netPlayer(selfId, name, 0, true);
-      net.selfId = selfId; net.role = 'host';
+      var selfId = net.selfId = netNewId();
+      net.role = 'host';
+      net.roomTopic = netRoomId(code);
       net.room = {
         code: code, hostId: selfId, phase: 'lobby',
         visibility: document.getElementById('netVisibility').value,
-        track: selectedTrack, players: [host]
+        track: selectedTrack, players: [netPlayer(selfId, name, 0, true)]
       };
-      net.hubConn = null;
-      var peer = new Peer(selfId, { debug: 1 });
-      net.peer = peer;
-      var settled = false;
-      peer.on('open', function () {
-        settled = true; net.connecting = false;
+      net.races = {};
+      client.on('message', function (topic, payload) {
+        if (topic !== net.roomTopic + '/room') return;
+        var msg = null;
+        try { msg = JSON.parse(payload.toString()); } catch (e) { return; }
+        netOnRoomMessage(msg);
+      });
+      client.subscribe(net.roomTopic + '/room', { qos: 0 }, function () {
+        net.connecting = false;
         net.view = 'lobby'; net.status = 'Room open';
-        netStartComms();
-        netRender();
+        netStartComms(); netDirRegister(); netRender();
       });
-      peer.on('connection', function (conn) {
-        conn.on('open', function () { net.conns[conn.peer] = conn; });
-        conn.on('data', function (msg) { netHostOnData(conn, msg); });
-        conn.on('close', function () { netHostDrop(conn.peer); });
-        conn.on('error', function () { netHostDrop(conn.peer); });
-      });
-      peer.on('error', function (e) {
-        if (e.type === 'unavailable-id' && !settled) {   // code clash: try another
-          try { peer.destroy(); } catch (x) {}
-          net.connecting = false;
-          netCreateRoom();
-          return;
-        }
-        net.error = netErrText(e); net.connecting = false; netRender();
-      });
-    }).catch(function (e) {
-      net.error = e.message; net.connecting = false; netRender();
     });
   }
   function netJoinRoom(code) {
@@ -3870,57 +3926,52 @@ var pr = projectTrack(c.x, c.z, c.i);
     if (code.length < 4) { net.error = 'Enter the 4-character room code.'; netRender(); return; }
     net.error = ''; net.connecting = true; netRender();
     var name = netNormalizeName();
-    netLoadPeer().then(function (Peer) {
+    netConnect(function (err, client) {
+      if (err) { net.error = netErrText(err); net.connecting = false; netRender(); return; }
       net.role = 'guest';
-      var peer = new Peer({ debug: 1 });
-      net.peer = peer;
-      var settled = false;
-      peer.on('open', function (id) {
-        net.selfId = id;
-        var conn = peer.connect(netRoomId(code), { reliable: true });
-        net.conns.__host = conn;
-        conn.on('open', function () {
-          settled = true; net.connecting = false;
-          netSend(conn, { type: 'hello', name: name });
-          net.view = 'lobby'; net.status = 'Joined room';
-          netStartComms();
-          netRender();
-        });
-        conn.on('data', function (msg) { netGuestOnData(msg); });
-        conn.on('close', function () {
-          if (!settled) { net.connecting = false; net.error = 'Could not reach that room.'; netRender(); }
-          else { net.error = 'Lost connection to the room host.'; netLeave(true); }
-        });
-        conn.on('error', function () {
-          net.connecting = false; net.error = 'Could not reach that room.'; netRender();
-        });
-      });
-      peer.on('error', function (e) {
-        if (settled) return;
-        net.connecting = false; net.error = netErrText(e); netRender();
-      });
-      setTimeout(function () {
-        if (!settled && net.connecting) {
-          net.connecting = false;
-          net.error = net.error || 'The room did not respond - check the code.';
-          netRender();
+      net.selfId = netNewId();
+      net.roomTopic = netRoomId(code);
+      net.races = {};
+      client.on('message', function (topic, payload) {
+        if (topic === net.roomTopic + '/room') {
+          var msg = null;
+          try { msg = JSON.parse(payload.toString()); } catch (e) { return; }
+          netOnRoomMessage(msg);
+        } else if (topic === net.roomTopic + '/states') {
+          var stateMsg = null;
+          try { stateMsg = JSON.parse(payload.toString()); } catch (e) { return; }
+          if (stateMsg && stateMsg.from !== net.selfId) {
+            for (var sid in stateMsg.states) {
+              if (sid !== net.selfId) net.races[sid] = { st: stateMsg.states[sid], t: performance.now() };
+            }
+          }
         }
-      }, 14000);
-    }).catch(function (e) {
-      net.error = e.message; net.connecting = false; netRender();
+      });
+      client.subscribe(net.roomTopic + '/room', { qos: 0 }, function () {
+        client.subscribe(net.roomTopic + '/states', { qos: 0 });
+        netPub(net.roomTopic + '/room', { type: 'hello', from: net.selfId, name: name });
+        netStartComms();
+        net.joinTimer = setTimeout(function () {
+          if (net.connecting) {
+            net.connecting = false;
+            net.error = net.error || 'The room did not respond - check the code.';
+            netRender();
+          }
+        }, 14000);
+      });
     });
   }
   function netLeave(silent) {
-    if (net.role === 'guest' && net.conns.__host) netSend(net.conns.__host, { type: 'leave' });
+    if (net.role === 'guest') netPub(net.roomTopic + '/room', { type: 'leave', from: net.selfId });
+    if (net.role === 'host') netDirUnregister();
     netStopComms();
-    try { if (net.peer) net.peer.destroy(); } catch (e) {}
-    try { if (net.dirPeer) net.dirPeer.destroy(); } catch (e) {}
-    net.peer = null; net.dirPeer = null; net.dirConn = null;
-    net.conns = {}; net.room = null; net.role = null; net.selfId = null;
-    net.races = {}; net.hubConn = null;
-    net.racing = false;
+    if (net.joinTimer) { clearTimeout(net.joinTimer); net.joinTimer = null; }
+    try { if (net.client) net.client.end(true); } catch (e) {}
+    try { if (net.browseClient) net.browseClient.end(true); } catch (e) {}
+    net.client = null; net.browseClient = null; net.connected = false;
+    net.room = null; net.role = null; net.selfId = null;
+    net.roomTopic = null; net.races = {}; net.racing = false;
     net.view = 'entry'; net.status = ''; net.latencyMs = null;
-    netHubUnregister();
     if (netRace) netExitRace();
     if (!silent) { net.error = ''; }
     netRender();
@@ -3944,10 +3995,9 @@ var pr = projectTrack(c.x, c.z, c.i);
     netStopComms();
     netTimer = setInterval(function () {
       var now = performance.now();
-      if (now - net.pingAt > 2000) {
+      if (now - net.pingAt > 2000 && net.roomTopic) {
         net.pingAt = now;
-        netSendAll({ type: 'ping', t: now });
-        if (net.role === 'guest') netSend(net.conns.__host, { type: 'ping', t: now });
+        netPub(net.roomTopic + '/room', { type: 'ping', from: net.selfId, to: net.role === 'guest' ? net.room.hostId : null, t: now });
       }
       if (netRace) netFlushStates(now);
     }, 120);
@@ -3966,141 +4016,17 @@ var pr = projectTrack(c.x, c.z, c.i);
     if (!netRace) return;
     if (now - net.lastSend < NET_SEND_HZ * 1000) return;
     net.lastSend = now;
-    net.races[net.selfId] = { st: netSelfState(), t: now };
+    var st = netSelfState();
+    net.races[net.selfId] = { st: st, t: now };
     if (net.role === 'guest') {
-      netSend(net.conns.__host, { type: 'state', st: net.races[net.selfId].st });
+      netPub(net.roomTopic + '/room', { type: 'state', from: net.selfId, st: st });
     } else {
       var states = {};
       for (var id in net.races) states[id] = net.races[id].st;
-      netSendAll({ type: 'states', states: states });
+      netPub(net.roomTopic + '/states', { from: net.selfId, states: states });
     }
   }
 
-  /* ---- directory (browse public rooms) -------------------------------
-   *  Best-effort, server-free. The first browser to claim the well-known
-   *  directory id keeps a live list of public rooms; public hosts connect
-   *  to it to register, and anyone browsing connects to it to list. If the
-   *  directory is not reachable when you browse, this browser takes over
-   *  the id and serves an (initially empty) list.                        */
-  function netHubInfo() {
-    var self = netSelf();
-    return { code: net.room.code, host: self ? self.name : net.name,
-             players: net.room.players.length, max: NET_MAX, track: net.room.track };
-  }
-  function netHubRegister() {
-    if (net.role !== 'host' || !net.room || net.room.visibility !== 'public') return;
-    netHubConnect(function (conn) {
-      if (conn) netSend(conn, { type: 'register', room: netHubInfo() });
-    });
-  }
-  function netHubUnregister() {
-    if (net.hubConn && net.hubConn.open && net.room) {
-      netSend(net.hubConn, { type: 'unregister', code: net.room.code });
-    }
-  }
-  // Connect (or reuse a connection) to the directory. cb(conn|null).
-  function netHubConnect(cb) {
-    var HubPeer = window.Peer;
-    if (!HubPeer) { if (cb) cb(null); return; }
-    if (net.hubConn && net.hubConn.open) { if (cb) cb(net.hubConn); return; }
-    if (net.hubPending) { net.hubPending.push(cb); return; }
-    net.hubPending = [cb];
-    if (net.hubClientPeer) { try { net.hubClientPeer.destroy(); } catch (e) {} }
-    var p = new HubPeer({ debug: 0 });
-    net.hubClientPeer = p;
-    var flush = function (conn) {
-      var cbs = net.hubPending || []; net.hubPending = null;
-      cbs.forEach(function (f) { if (f) f(conn); });
-    };
-    p.on('open', function () {
-      var conn = p.connect(NET_HUB_ID, { reliable: true });
-      conn.on('open', function () { net.hubConn = conn; flush(conn); });
-      conn.on('data', function (msg) {           // directory pushes updates
-        if (msg && msg.type === 'rooms') netApplyDir(msg.rooms);
-      });
-      conn.on('close', function () { if (net.hubConn === conn) net.hubConn = null; });
-      conn.on('error', function () { if (net.hubConn === conn) net.hubConn = null; });
-    });
-    p.on('error', function () { net.hubConn = null; flush(null); });
-  }
-  function netApplyDir(rooms) {
-    net.dirRooms = {};
-    (rooms || []).forEach(function (r) { if (r && r.code) net.dirRooms[r.code] = r; });
-    net.dirBusy = false; net.dirError = '';
-    if (net.view === 'entry') netRender();
-  }
-  function netDirArray() {
-    var out = [];
-    for (var k in net.hubRooms) out.push(net.hubRooms[k]);
-    return out;
-  }
-  // Serve as the directory: answer connections with the room list.
-  function netHubHandle(conn) {
-    conn.on('data', function (msg) {
-      if (!msg) return;
-      if (msg.type === 'register' && msg.room) {
-        net.hubRooms[msg.room.code] = msg.room;
-        conn.__code = msg.room.code;
-        netHubBroadcast();
-      } else if (msg.type === 'unregister') {
-        delete net.hubRooms[msg.code || conn.__code];
-        netHubBroadcast();
-      } else if (msg.type === 'list') {
-        netSend(conn, { type: 'rooms', rooms: netDirArray() });
-      }
-    });
-    conn.on('close', function () {
-      if (conn.__code) { delete net.hubRooms[conn.__code]; netHubBroadcast(); }
-    });
-  }
-  function netHubBroadcast() {
-    for (var id in net.hubConns) netSend(net.hubConns[id], { type: 'rooms', rooms: netDirArray() });
-  }
-  // Claim the directory id in this browser (for when none is reachable).
-  function netBecomeHub(then) {
-    if (net.hubPeer) { then(); return; }
-    var HubPeer = window.Peer;
-    if (!HubPeer) { then(); return; }
-    var ok = false;
-    try { net.hubPeer = new HubPeer(NET_HUB_ID, { debug: 0 }); }
-    catch (e) { net.hubPeer = null; then(); return; }
-    net.hubPeer.on('connection', function (conn) {
-      var id = 'h' + Math.random().toString(36).slice(2);
-      net.hubConns[id] = conn;
-      conn.on('close', function () { delete net.hubConns[id]; });
-      netHubHandle(conn);
-    });
-    net.hubPeer.on('open', function () { ok = true; then(); });
-    net.hubPeer.on('error', function (e) {
-      if (!ok) { try { net.hubPeer.destroy(); } catch (x) {} net.hubPeer = null; }
-      then();
-    });
-  }
-  function netBrowse() {
-    net.error = ''; net.dirBusy = true; net.dirError = ''; netRender();
-    netLoadPeer().then(function () {
-      var finishErr = function (msg) {
-        net.dirBusy = false; net.dirError = msg || '';
-        net.dirRooms = {};
-        netRender();
-      };
-      netHubConnect(function (conn) {
-        if (conn) {
-          netSend(conn, { type: 'list' });
-          // the directory replies with 'rooms' -> netApplyDir clears dirBusy
-          setTimeout(function () {
-            if (net.dirBusy) { net.dirBusy = false; netRender(); }
-          }, 6000);
-        } else {
-          // No directory reachable -> this browser becomes it, then lists.
-          netBecomeHub(function () { netBrowse(); });
-        }
-      });
-      setTimeout(function () {
-        if (net.dirBusy && !net.hubConn) finishErr('Lobby directory is unavailable - join by code.');
-      }, 11000);
-    }).catch(function (e) { net.error = e.message; net.dirBusy = false; netRender(); });
-  }
   /* ---- race start / grid ---- */
   function netStartRace(track, players) {
     netRace = true;
@@ -4141,13 +4067,13 @@ var pr = projectTrack(c.x, c.z, c.i);
     netRender();
   }
   function netPlaceGrid(players) {
-    var ROW_GAP = 8.5, COL = 4.6;
+    var ROW_GAP = 8, COL = 3.2, STAGGER = 4;
     players.slice().sort(function (a, b) { return (a.seat || 0) - (b.seat || 0); })
       .forEach(function (pl, i) {
         var c = cars[pl.car]; if (!c) return;
-        var row = Math.floor(i / 2), side = (i % 2) ? 1 : -1;
-        var s = wrapS(LEN - 8 - row * ROW_GAP);
-        var P = offsetPos(s, side * COL);
+        var row = Math.floor(i / 2), col = i % 2;
+        var s = wrapS(LEN - 10 - row * ROW_GAP - (col ? STAGGER : 0));
+        var P = offsetPos(s, col ? COL : -COL);
         c.x = P.x; c.z = P.z; c.yaw = yawAt(s);
         c.speed = 0; c.steer = 0; c.lap = 0;
         c.vx = 0; c.vz = 0; c.ers = 0.35; c.ersActive = false; c.drifting = false; c.contact = 0;
@@ -4194,7 +4120,6 @@ var pr = projectTrack(c.x, c.z, c.i);
       var nx, nz;
       if (d > 1e-6) { nx = dx / d; nz = dz / d; }
       else { nx = Math.sin(player.yaw); nz = Math.cos(player.yaw); d = 0; }
-      // n points from the remote car to the player; use both real footprints.
       var need = carExtent(player, -nx, -nz) + carExtent(c, nx, nz) + 0.12;
       if (d >= need) continue;
       var push = need - d;
@@ -4205,7 +4130,6 @@ var pr = projectTrack(c.x, c.z, c.i);
     }
   }
   function netOnLocalFinish() {
-    // tell the field our finishing state promptly
     netFlushStates(performance.now() + 1000);
   }
 
@@ -4262,7 +4186,6 @@ var pr = projectTrack(c.x, c.z, c.i);
       document.getElementById('netJoinPane').classList.toggle('hidden', net.tab !== 'join');
       document.getElementById('netCreatePane').classList.toggle('hidden', net.tab !== 'create');
       netRenderTrackPick();
-      // public room list
       if (net.dirBusy) netRoomList.innerHTML = '<div class="netEmpty">Searching...</div>';
       else if (net.dirError) netRoomList.innerHTML = '<div class="netEmpty">' + netEsc(net.dirError) + '</div>';
       else {
@@ -4287,14 +4210,12 @@ var pr = projectTrack(c.x, c.z, c.i);
       return;
     }
 
-    // lobby
     netEntry.classList.add('hidden');
     netLobbyEl.classList.remove('hidden');
     var room = net.room;
     if (!room) return;
     document.getElementById('netRoomCodeText').textContent = room.code;
     netPingEl.textContent = net.latencyMs == null ? '' : ('PING ' + net.latencyMs + ' ms');
-    var self = netSelf();
     var isHost = net.role === 'host';
     var html = '';
     var players = room.players;
@@ -4336,7 +4257,8 @@ var pr = projectTrack(c.x, c.z, c.i);
   function netSelfReadyToggle() {
     var mine = netSelf(); if (!mine) return;
     mine.ready = !mine.ready;
-    if (net.role === 'guest') netSend(net.conns.__host, { type: 'ready', ready: mine.ready });
+    netPub(net.roomTopic + '/room', { type: 'ready', from: net.selfId, ready: mine.ready });
+    if (net.role === 'host') netBroadcastRoom();
     netRender();
   }
   function netHostStart() {
@@ -4347,7 +4269,7 @@ var pr = projectTrack(c.x, c.z, c.i);
     var players = room.players.map(function (p, i) {
       return { id: p.id, name: p.name, car: p.car, seat: i };
     });
-    netSendAll({ type: 'start', track: room.track, players: players });
+    netSendAll({ type: 'start', from: net.selfId, track: room.track, players: players });
     netStartRace(room.track, players);
   }
 
@@ -4367,7 +4289,7 @@ var pr = projectTrack(c.x, c.z, c.i);
 
   function netRematch() {
     if (net.role === 'host' && net.room) netHostStart();
-    else if (net.role === 'guest') netSend(net.conns.__host, { type: 'rematch' });
+    else if (net.role === 'guest') netPub(net.roomTopic + '/room', { type: 'rematch', from: net.selfId });
   }
   function netReturnToRoom() {
     netRace = false; started = false; paused = false; raceOver = false; net.selfCar = -1;
@@ -4420,7 +4342,8 @@ var pr = projectTrack(c.x, c.z, c.i);
     var mine = netSelf(); if (!mine) return;
     var want = parseInt(e.target.value, 10);
     mine.car = want;
-    if (net.role === 'guest') netSend(net.conns.__host, { type: 'select', car: want });
+    netPub(net.roomTopic + '/room', { type: 'select', from: net.selfId, car: want });
+    if (net.role === 'host') netBroadcastRoom();
     netRender();
   });
 
