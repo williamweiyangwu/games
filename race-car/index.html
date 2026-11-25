@@ -190,7 +190,7 @@
 <div id="standings" class="hidden"></div>
 <div id="banner" class="hidden"></div>
 <div id="lights" class="hidden"><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div></div>
-  <div id="verTag">v2.47</div>
+  <div id="verTag">v2.48</div>
   <button id="achBtn" class="ghost">ACHIEVEMENTS</button>
   <div id="achPanel"><b style="letter-spacing:.12em">ACHIEVEMENTS</b><div id="achList" style="margin-top:8px"></div></div>
   <div id="pitMsg"></div>
@@ -2315,19 +2315,22 @@ ctrl: [
       r.rotation.z = Math.PI / 2; r.position.set(tp[0], tp[1], tp[2]); cockpit.add(r);
     });
 
-    // Halo (F1) - slim central pillar and top hoop
+    // Halo (F1) - central pillar and hoop arching over the driver's head
     var haloC = new THREE.MeshLambertMaterial({ color: 0x22262e });
-    var haloPillarC = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.34, 0.05), haloC);
+    var haloPillarC = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.42, 0.07), haloC);
     haloPillarC.name = 'halo';
-    haloPillarC.position.set(0, 0.93, 0.58); cockpit.add(haloPillarC);
-    var haloTop = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.02, 8, 20, Math.PI), haloC);
+    haloPillarC.position.set(0, 0.95, 0.72); cockpit.add(haloPillarC);
+    var haloTop = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.035, 10, 28, Math.PI), haloC);
     haloTop.rotation.x = Math.PI / 2;
     haloTop.rotation.z = Math.PI;
-    haloTop.position.set(0, 1.09, 0.42); cockpit.add(haloTop);
-    [[-0.16, 1.0, 0.36], [0.16, 1.0, 0.36]].forEach(function (hp) {
-      var hs = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.18, 0.04), haloC);
-      hs.position.set(hp[0], hp[1], hp[2]); hs.rotation.x = -0.38; cockpit.add(hs);
+    haloTop.position.set(0, 1.25, -0.05); cockpit.add(haloTop);
+    [[-0.34, 1.05, -0.02], [0.34, 1.05, -0.02]].forEach(function (hp) {
+      var hs = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.36, 0.055), haloC);
+      hs.position.set(hp[0], hp[1], hp[2]); hs.rotation.x = -0.18; cockpit.add(hs);
     });
+    // Rear halo mount behind the head
+    var haloRear = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.32, 0.06), haloC);
+    haloRear.position.set(0, 1.06, -0.42); cockpit.add(haloRear);
 
     // Rectangular F1 steering wheel/yoke
     var wheelMat = new THREE.MeshLambertMaterial({ color: 0x343941 });
