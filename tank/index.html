@@ -202,9 +202,7 @@
 </style>
 </head>
 <body>
-<a id="arcadeBack" href="../" title="Back to Arcade" aria-label="Back to Arcade" style="position:fixed;top:14px;left:14px;z-index:999999;padding:11px 20px;border:1px solid #3d4c74;border-radius:999px;background:rgba(10,13,20,.9);color:#eef2fb;font:700 17px/1.2 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;text-decoration:none;box-shadow:0 3px 12px rgba(0,0,0,.5);transition:opacity .25s">&#8592; Arcade</a>
-<div id="arcadeHot" aria-hidden="true" style="position:fixed;top:0;left:0;width:140px;height:64px;z-index:999998"></div>
-<script>(function(){var a=document.getElementById('arcadeBack'),h=document.getElementById('arcadeHot');if(!a||!h)return;var t;function show(){clearTimeout(t);a.style.opacity='1';a.style.pointerEvents='auto';}function hide(){a.style.opacity='0';a.style.pointerEvents='none';}function later(){clearTimeout(t);t=setTimeout(hide,1500);}a.addEventListener('mouseenter',show);a.addEventListener('mouseleave',later);h.addEventListener('mouseenter',show);h.addEventListener('mouseleave',later);show();t=setTimeout(hide,4000);})();</script>
+<a href="../" title="Back to Arcade" aria-label="Back to Arcade" style="position:fixed;top:14px;left:14px;z-index:999999;padding:11px 20px;border:1px solid #3d4c74;border-radius:999px;background:rgba(10,13,20,.9);color:#eef2fb;font:700 17px/1.2 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;text-decoration:none;box-shadow:0 3px 12px rgba(0,0,0,.5)">&#8592; Arcade</a>
 <div id="app"></div>
 <div id="scan"></div><div id="vig"></div>
 <svg id="cross" viewBox="0 0 26 26">
@@ -367,6 +365,7 @@
           <button class="dbtn" data-map="fortress">FORTRESS</button>
         </div></div>
     </div>
+    <div style="text-align:center;font-size:11px;letter-spacing:3px;color:#7d90ad;margin-top:4px">PLAYERS</div>
     <div class="seats" id="seats"></div>
     <div class="nrow">
       <button class="nbtn" id="netReady">READY</button>
@@ -2436,7 +2435,7 @@ function netCreate(){
   netWatchdog('Opening the room');
   netConnect(()=>{
     netClearWatchdog();
-    NET.roster=[{ id:NET.localId, name, team:0, slot:0, ready:true, host:true, country:SAVE.country }];
+    NET.roster=[{ id:NET.localId, name, team:0, slot:0, ready:false, host:true, country:SAVE.country }];
     enterLobby();
     netSetMsg('netMsg','');
     netHubRegister();
@@ -2593,7 +2592,7 @@ function netRenderSeats(){
   }
   el('hostOpts').style.display = isHost?'':'none';
   el('netStart').style.display = isHost?'':'none';
-  el('netReady').style.display = isHost?'none':'';
+  el('netReady').style.display = '';
   el('netReady').textContent = (me&&me.ready)?'UNREADY':'READY';
   el('netReady').style.background = (me&&me.ready)?'#1b3b63':'';
   if(isHost) el('netStart').disabled = !NET.roster.every(m=>m.ready);
@@ -2604,11 +2603,15 @@ function netRenderSeats(){
   if(NET.role==='host') netHubRegister();   // keep the public-room listing current
 }
 function toggleReady(){
-  if(NET.role==='host') return;
   const me=NET.roster.find(m=>m.id===NET.localId); if(!me) return;
   me.ready=!me.ready;
-  if(NET.hostConn) try{ NET.hostConn.send({t:'ready', v:me.ready}); }catch(e){}
-  netRenderSeats();
+  if(NET.role==='host'){
+    netBroadcast({t:'roster', roster:NET.roster, mode:NET.selMode, ai:NET.selAi, map:NET.selMap});
+    netRenderSeats();
+  } else if(NET.hostConn){
+    try{ NET.hostConn.send({t:'ready', v:me.ready}); }catch(e){}
+    netRenderSeats();
+  }
 }
 function hostSet(mode,ai,map){
   if(NET.role!=='host') return;
@@ -2662,6 +2665,10 @@ function netBeginPlay(mode, roster, localId){
 }
 function netToLobby(){
   NET.state='lobby';
+  for(const m of NET.roster) m.ready = (m.host && NET.role==='host') ? false : (NET.role==='host' ? false : m.ready);
+  // reset all to not ready
+  NET.roster.forEach(m=> m.ready=false);
+  netBroadcast({t:'roster', roster:NET.roster, mode:NET.selMode, ai:NET.selAi, map:NET.selMap});
   netBroadcast({t:'lobby'});
   resetGame(); player=null; showBadge(false);
   netEl.classList.add('on'); modeEl.classList.add('off');
@@ -2669,6 +2676,7 @@ function netToLobby(){
 }
 function netToLobbyLocal(){
   NET.state='lobby';
+  NET.roster.forEach(m=> m.ready=false);
   resetGame(); player=null; showBadge(false);
   netEl.classList.add('on'); modeEl.classList.add('off');
   showView('lobby'); netRenderSeats();
