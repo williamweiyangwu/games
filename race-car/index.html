@@ -151,9 +151,6 @@
 </style>
 </head>
 <body>
-<a id="arcadeBack" href="../" title="Back to Arcade" aria-label="Back to Arcade" style="position:fixed;top:14px;left:14px;z-index:999999;padding:11px 20px;border:1px solid #3d4c74;border-radius:999px;background:rgba(10,13,20,.9);color:#eef2fb;font:700 17px/1.2 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;text-decoration:none;box-shadow:0 3px 12px rgba(0,0,0,.5);transition:opacity .25s">&#8592; Arcade</a>
-<div id="arcadeHot" aria-hidden="true" style="position:fixed;top:0;left:0;width:140px;height:64px;z-index:999998"></div>
-<script>(function(){var a=document.getElementById('arcadeBack'),h=document.getElementById('arcadeHot');if(!a||!h)return;var t;function show(){clearTimeout(t);a.style.opacity='1';a.style.pointerEvents='auto';}function hide(){a.style.opacity='0';a.style.pointerEvents='none';}function later(){clearTimeout(t);t=setTimeout(hide,1500);}a.addEventListener('mouseenter',show);a.addEventListener('mouseleave',later);h.addEventListener('mouseenter',show);h.addEventListener('mouseleave',later);show();t=setTimeout(hide,4000);})();</script>
 <div id="hud" class="hidden">
   <div id="speedBox"><b id="speed">0</b><span>KM/H</span></div>
   <div class="stat"><b id="lap">1/2</b><span>LAP</span></div>
@@ -193,7 +190,7 @@
 <div id="standings" class="hidden"></div>
 <div id="banner" class="hidden"></div>
 <div id="lights" class="hidden"><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div></div>
-  <div id="verTag">v2.46</div>
+  <div id="verTag">v2.47</div>
   <button id="achBtn" class="ghost">ACHIEVEMENTS</button>
   <div id="achPanel"><b style="letter-spacing:.12em">ACHIEVEMENTS</b><div id="achList" style="margin-top:8px"></div></div>
   <div id="pitMsg"></div>
@@ -2485,6 +2482,34 @@ ctrl: [
   var aiDiffErs = DIFFICULTY[1].ers;
   var aiDiffDrift = DIFFICULTY[1].drift;
 
+  function makeNameTag(name, color) {
+    var canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 64;
+    var ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 256, 64);
+    ctx.fillStyle = 'rgba(8, 14, 28, 0.78)';
+    ctx.strokeStyle = '#' + new THREE.Color(color).getHexString();
+    ctx.lineWidth = 4;
+    var r = 14, x = 8, y = 10, w = 240, h = 44;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 28px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(name, 128, 33, 220);
+    var tex = new THREE.CanvasTexture(canvas);
+    tex.needsUpdate = true;
+    var mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false });
+    var sprite = new THREE.Sprite(mat);
+    sprite.scale.set(4.8, 1.2, 1);
+    sprite.position.set(0, 2.35, 0);
+    sprite.renderOrder = 10;
+    return sprite;
+  }
+
   var cars = [];
   function makeCar(spec) {
     var c = {
@@ -2507,6 +2532,8 @@ ctrl: [
     c.body = c.mesh.getObjectByName('body');
     c.cockpit = c.mesh.getObjectByName('cockpit');
     c.wheel = c.mesh.getObjectByName('wheel');
+    c.nameTag = makeNameTag(spec.name, spec.color);
+    c.mesh.add(c.nameTag);
     scene.add(c.mesh);
     cars.push(c);
     return c;
@@ -3518,6 +3545,7 @@ var pr = projectTrack(c.x, c.z, c.i);
     // driver looks down the road, not over the car's own nose.
     if (player.body) player.body.visible = (camMode === 0);
     if (player.cockpit) player.cockpit.visible = (camMode === 1);
+    if (player.nameTag) player.nameTag.visible = (camMode === 0);
 
     var ph = heightAt(player.s);
     var tx = player.x - f.x * back;
