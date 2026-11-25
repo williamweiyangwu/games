@@ -441,9 +441,6 @@
 </style>
 </head>
 <body>
-<a id="arcadeBack" href="../" title="Back to Arcade" aria-label="Back to Arcade" style="position:fixed;top:14px;left:14px;z-index:999999;padding:11px 20px;border:1px solid #3d4c74;border-radius:999px;background:rgba(10,13,20,.9);color:#eef2fb;font:700 17px/1.2 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;text-decoration:none;box-shadow:0 3px 12px rgba(0,0,0,.5);transition:opacity .25s">&#8592; Arcade</a>
-<div id="arcadeHot" aria-hidden="true" style="position:fixed;top:0;left:0;width:140px;height:64px;z-index:999998"></div>
-<script>(function(){var a=document.getElementById('arcadeBack'),h=document.getElementById('arcadeHot');if(!a||!h)return;var t;function show(){clearTimeout(t);a.style.opacity='1';a.style.pointerEvents='auto';}function hide(){a.style.opacity='0';a.style.pointerEvents='none';}function later(){clearTimeout(t);t=setTimeout(hide,1500);}a.addEventListener('mouseenter',show);a.addEventListener('mouseleave',later);h.addEventListener('mouseenter',show);h.addEventListener('mouseleave',later);show();t=setTimeout(hide,4000);})();</script>
 
 <div id="top">
   <div id="brand">EUROPE 1939<small>MAP GAME &middot; WORLD WAR II</small></div>
@@ -2221,9 +2218,9 @@ function milPower(n){
 var DIP_COST={ally:60,pact:30,guarantee:40,peace:80};
 function dipAccept(a,b,kind){
   var m=S.mood[b]||0, gap=milPower(a)/Math.max(10,milPower(b));
-  var ch=0.32+0.055*m+(gap>1.5?0.18:0)-(kind==='peace'&&atWar(a,b)?0.1:0);
+  var ch=0.40+0.08*m+(gap>1.2?0.22:0)-(kind==='peace'&&atWar(a,b)?0.08:0);
   if(isAlly(b,a)) ch+=0.35;
-  return Math.random()<Math.max(0.08,Math.min(0.92,ch));
+  return Math.random()<Math.max(0.10,Math.min(0.95,ch));
 }
 function doDip(kind,other){
   if(!other || !NBY[other] || other===S.player) return flash('Choose another nation.');
@@ -2237,7 +2234,7 @@ function doDip(kind,other){
   if(kind==='peace' && !atWar(me,other)) return flash('You are not at war.');
   if(!dipAccept(me,other,kind)){
     S.gold[me]-=Math.round(cost/3);
-    S.mood[other]=(S.mood[other]||0)-1;
+    S.mood[other]=(S.mood[other]||0)-2;
     var word=MAP==='china'?'envoy':'ambassador';
     log(NBY[other].name+' rejected your '+word+'. Relations cooled.');
     if(typeof addMail==='function') addMail(other,me,'dip_no','Your offer was declined.',[]);
@@ -2245,7 +2242,7 @@ function doDip(kind,other){
     render(); return;
   }
   S.gold[me]-=cost;
-  S.mood[other]=(S.mood[other]||0)+2;
+  S.mood[other]=(S.mood[other]||0)+3;
   if(kind==='ally'){
     S.ally.add(k); S.pact.delete(k); delete S.pactT[k];
     ALL.forEach(function(c){
@@ -2256,8 +2253,8 @@ function doDip(kind,other){
     log(NBY[other].name+' has joined you in an alliance.');
     if(typeof addMail==='function') addMail(other,me,'dip_yes','An alliance is signed.',[]);
   }else if(kind==='pact'){
-    S.pact.add(k); S.wars.delete(k); S.pactT[k]=S.day+30;
-    log('A 30-day non-aggression pact with '+NBY[other].name+' takes effect.');
+    S.pact.add(k); S.wars.delete(k); S.pactT[k]=S.day+45;
+    log('A 45-day non-aggression pact with '+NBY[other].name+' takes effect.');
     if(typeof addMail==='function') addMail(other,me,'dip_yes','The non-aggression pact is sealed.',[]);
   }else if(kind==='guarantee'){
     S.guarantee.add(k);
@@ -2265,8 +2262,8 @@ function doDip(kind,other){
     if(typeof addMail==='function') addMail(other,me,'dip_yes','Your independence is guaranteed.',[]);
   }else{
     S.wars.delete(k); S.ally.delete(k); S.guarantee.delete(k); delete S.pactT[k];
-    S.pactT[k]=S.day+20; S.pact.add(k);
-    log('Peace with '+NBY[other].name+' - a 20-day truce begins.');
+    S.pactT[k]=S.day+30; S.pact.add(k);
+    log('Peace with '+NBY[other].name+' - a 30-day truce begins.');
     if(typeof addMail==='function') addMail(other,me,'dip_yes','Peace is agreed.',[]);
   }
   flash('Agreement reached with '+NBY[other].name+'.');
@@ -2405,7 +2402,7 @@ function foodIncome(c){
 }
 function upkeepMod(u){
   var g=generalAt(u.owner,u.loc);
-  return techEff(u.owner,'oil')*techEff(u.owner,'food')*(g?1-0.04*g.l:1);
+  return techEff(u.owner,'oil')*techEff(u.owner,'food')*(g?1-0.06*g.l:1);
 }
 function oilUp(u){
   var t=U(u.owner,u.type); if(!t) return 0;
@@ -2418,12 +2415,12 @@ function oilUp(u){
   else if(MAP==='china' && (u.type==='rocket'||u.type==='hnky')) b=1;
   if(!b) return 0;
   var tr=terrainOf(u.loc), w=weather(), g=generalAt(u.owner,u.loc);
-  return Math.round(b*techEff(u.owner,'oil')*w.oil*(tr==='snow'?1.1:1)*(g?1-0.04*g.l:1)*100)/100;
+  return Math.round(b*techEff(u.owner,'oil')*w.oil*(tr==='snow'?1.1:1)*(g?1-0.06*g.l:1)*100)/100;
 }
 function foodUp(u){
   var t=U(u.owner,u.type), b=Math.min(3,1+((t&&t.up>=3)?1:0));
   var tr=terrainOf(u.loc), w=weather();
-  return Math.round(b*techEff(u.owner,'food')*w.food*(tr==='desert'?1.2:1)*100)/100;
+  return Math.round(b*techEff(u.owner,'food')*w.food*(tr==='desert'?1.25:1)*100)/100;
 }
 function scrapWorst(c,pred){
   var us=S.units.filter(function(u){ return u.owner===c && u.hp>0 && (!pred||pred(u)); });
@@ -2681,26 +2678,26 @@ var EU_FALLBACK={ army:['infantry','mine','artillery'], air:['fighter'] };
    Each map supplies its own period names; the rules below are shared.
    ======================================================================= */
 var TECH_EU=[
-  {id:'steel',name:'Improved Metallurgy',cost:12,req:null,eff:{mine:1.20},desc:'Better furnaces: +20% gold from every mine field.'},
-  {id:'logistics',name:'Field Logistics',cost:14,req:null,eff:{food:0.80},desc:'Supply columns cut food upkeep by 20%.'},
-  {id:'combustion',name:'High-Octane Fuel',cost:16,req:null,eff:{oil:0.80},desc:'Refined fuel cuts oil burn by 20%.'},
-  {id:'armor',name:'Armoured Doctrine',cost:22,req:'steel',eff:{armor:1.22},desc:'Tanks and armoured cars hit 22% harder.'},
-  {id:'aviation',name:'Air Superiority',cost:22,req:'combustion',eff:{air:1.22},desc:'Fighters, bombers and carriers gain 22% power.'},
-  {id:'naval',name:'Naval Doctrine',cost:22,req:'combustion',eff:{navy:1.22},desc:'Fleets gain 22% power on the ocean.'},
-  {id:'guns',name:'Modern Artillery',cost:24,req:'steel',eff:{atk:1.12},desc:'Every formation gains 12% combat power.'},
-  {id:'fortify',name:'Deep Fortifications',cost:20,req:'steel',eff:{fort:1.30},desc:'Land fronts are 30% tougher and dig faster.'},
-  {id:'science',name:'Industrial Research',cost:30,req:'steel',eff:{research:1.30},desc:'Research points accumulate 30% faster.'}
+  {id:'steel',name:'Improved Metallurgy',cost:12,req:null,eff:{mine:1.30},desc:'Better furnaces: +30% gold from every mine field.'},
+  {id:'logistics',name:'Field Logistics',cost:14,req:null,eff:{food:0.72},desc:'Supply columns cut food upkeep by 28%.'},
+  {id:'combustion',name:'High-Octane Fuel',cost:16,req:null,eff:{oil:0.72},desc:'Refined fuel cuts oil burn by 28%.'},
+  {id:'armor',name:'Armoured Doctrine',cost:22,req:'steel',eff:{armor:1.30},desc:'Tanks and armoured cars hit 30% harder.'},
+  {id:'aviation',name:'Air Superiority',cost:22,req:'combustion',eff:{air:1.30},desc:'Fighters, bombers and carriers gain 30% power.'},
+  {id:'naval',name:'Naval Doctrine',cost:22,req:'combustion',eff:{navy:1.30},desc:'Fleets gain 30% power on the ocean.'},
+  {id:'guns',name:'Modern Artillery',cost:24,req:'steel',eff:{atk:1.18},desc:'Every formation gains 18% combat power.'},
+  {id:'fortify',name:'Deep Fortifications',cost:20,req:'steel',eff:{fort:1.50},desc:'Land fronts are 50% tougher and dig faster.'},
+  {id:'science',name:'Industrial Research',cost:30,req:'steel',eff:{research:1.45},desc:'Research points accumulate 45% faster.'}
 ];
 var TECH_CN=[
-  {id:'steel',name:'\u51b6\u94c1\u7cbe\u8fdb',cost:12,req:null,eff:{mine:1.20},desc:'\u7cbe\u70bc\u94c1\u5668\uff1a\u76d0\u573a\u6536\u76ca +20%\u3002'},
-  {id:'logistics',name:'\u5c6f\u7530\u6f15\u8fd0',cost:14,req:null,eff:{food:0.80},desc:'\u5c6f\u7530\u4e0e\u6f15\u8fd0\u4f7f\u7cae\u8349\u6d88\u8017\u964d 20%\u3002'},
-  {id:'combustion',name:'\u731b\u706b\u6cb9\u6cd5',cost:16,req:null,eff:{oil:0.80},desc:'\u7cbe\u70bc\u731b\u706b\u6cb9\uff0c\u71c3\u6599\u6d88\u8017\u964d 20%\u3002'},
-  {id:'armor',name:'\u91cd\u7532\u9a91\u5175',cost:22,req:'steel',eff:{armor:1.22},desc:'\u91cd\u7532\u9a91\u5175\u4e0e\u6218\u8f66\u6218\u529b +22%\u3002'},
-  {id:'aviation',name:'\u706b\u5668\u8425\u6cd5',cost:22,req:'combustion',eff:{air:1.22},desc:'\u706b\u5668\u8425\u4e0e\u63b7\u5c04\u5175\u6218\u529b +22%\u3002'},
-  {id:'naval',name:'\u821f\u5e08\u64cd\u5178',cost:22,req:'combustion',eff:{food:0.90},desc:'\u6c34\u5e08\u8fd0\u8f93\u4f7f\u7cae\u8349\u6d88\u8017\u518d\u964d 10%\u3002'},
-  {id:'guns',name:'\u795e\u81c2\u5f3a\u5f29',cost:24,req:'steel',eff:{atk:1.12},desc:'\u6240\u6709\u90e8\u4f0f\u6218\u529b +12%\u3002'},
-  {id:'fortify',name:'\u6df1\u6c9f\u9ad8\u5792',cost:20,req:'steel',eff:{fort:1.30},desc:'\u57ce\u9632\u5899\u5792\u66f4\u575a\uff0c\u7b51\u5792\u66f4\u5feb\u3002'},
-  {id:'science',name:'\u683c\u7269\u81f4\u77e5',cost:30,req:'steel',eff:{research:1.30},desc:'\u7814\u7a76\u70b9\u83b7\u53d6\u901f\u5ea6 +30%\u3002'}
+  {id:'steel',name:'\u51b6\u94c1\u7cbe\u8fdb',cost:12,req:null,eff:{mine:1.30},desc:'\u7cbe\u70bc\u94c1\u5668\uff1a\u76d0\u573a\u6536\u76ca +30%\u3002'},
+  {id:'logistics',name:'\u5c6f\u7530\u6f15\u8fd0',cost:14,req:null,eff:{food:0.72},desc:'\u5c6f\u7530\u4e0e\u6f15\u8fd0\u4f7f\u7cae\u8349\u6d88\u8017\u964d 28%\u3002'},
+  {id:'combustion',name:'\u731b\u706b\u6cb9\u6cd5',cost:16,req:null,eff:{oil:0.72},desc:'\u7cbe\u70bc\u731b\u706b\u6cb9\uff0c\u71c3\u6599\u6d88\u8017\u964d 28%\u3002'},
+  {id:'armor',name:'\u91cd\u7532\u9a91\u5175',cost:22,req:'steel',eff:{armor:1.30},desc:'\u91cd\u7532\u9a91\u5175\u4e0e\u6218\u8f66\u6218\u529b +30%\u3002'},
+  {id:'aviation',name:'\u706b\u5668\u8425\u6cd5',cost:22,req:'combustion',eff:{air:1.30},desc:'\u706b\u5668\u8425\u4e0e\u63b7\u5c04\u5175\u6218\u529b +30%\u3002'},
+  {id:'naval',name:'\u821f\u5e08\u64cd\u5178',cost:22,req:'combustion',eff:{food:0.82},desc:'\u6c34\u5e08\u8fd0\u8f93\u4f7f\u7cae\u8349\u6d88\u8017\u518d\u964d 18%\u3002'},
+  {id:'guns',name:'\u795e\u81c2\u5f3a\u5f29',cost:24,req:'steel',eff:{atk:1.18},desc:'\u6240\u6709\u90e8\u4f0f\u6218\u529b +18%\u3002'},
+  {id:'fortify',name:'\u6df1\u6c9f\u9ad8\u5792',cost:20,req:'steel',eff:{fort:1.50},desc:'\u57ce\u9632\u5899\u5792\u66f4\u575a\uff0c\u7b51\u5792\u66f4\u5feb\u3002'},
+  {id:'science',name:'\u683c\u7269\u81f4\u77e5',cost:30,req:'steel',eff:{research:1.45},desc:'\u7814\u7a76\u70b9\u83b7\u53d6\u901f\u5ea6 +45%\u3002'}
 ];
 var TECH=[];
 
@@ -2758,21 +2755,21 @@ var TERRAIN_CN={
 };
 var TERRAIN={}, TERRAIN_CACHE={};
 var TERRAIN_INFO={
-  mountains:{n:'Mountains',d:'Defenders +25% \u00b7 armour -25% \u00b7 artillery +15%'},
-  hills:{n:'Hills',d:'Defenders +12% \u00b7 artillery +15%'},
-  forest:{n:'Forest',d:'Defenders +10% \u00b7 armour -15%'},
-  plains:{n:'Open plains',d:'Armour +10% \u00b7 no cover'},
-  desert:{n:'Desert',d:'Food upkeep +20% \u00b7 armour +5%'},
-  river:{n:'River country',d:'Defenders +10% \u00b7 siege +10%'},
-  coast:{n:'Coastal',d:'Naval guns support the defence +8%'},
-  urban:{n:'Walled city',d:'Defenders +20% \u00b7 artillery -10%'}
+  mountains:{n:'Mountains',d:'Defenders +35% \u00b7 armour -30% \u00b7 artillery +18%'},
+  hills:{n:'Hills',d:'Defenders +18% \u00b7 artillery +18%'},
+  forest:{n:'Forest',d:'Defenders +16% \u00b7 armour -20%'},
+  plains:{n:'Open plains',d:'Armour +15% \u00b7 no cover'},
+  desert:{n:'Desert',d:'Food upkeep +25% \u00b7 armour +8%'},
+  river:{n:'River country',d:'Defenders +16% \u00b7 sappers +15%'},
+  coast:{n:'Coastal',d:'Naval guns support the defence +12%'},
+  urban:{n:'Walled city',d:'Defenders +28% \u00b7 artillery -12%'}
 };
 
 var WEATHER={
   clear:{n:'Clear skies',icon:'\u2600',food:1,oil:1,air:1,d:'No campaign penalties.'},
-  rain:{n:'Heavy rain',icon:'\u2601',food:1.05,oil:1,air:0.85,d:'Air power -15%.'},
-  mud:{n:'Spring mud',icon:'\u2602',food:1.10,oil:1.05,air:0.90,d:'Armour -20% \u00b7 supply +10%.'},
-  snow:{n:'Winter snow',icon:'\u2744',food:1.25,oil:1.30,air:0.80,d:'Fuel +30% \u00b7 food +25% \u00b7 air -20%.'}
+  rain:{n:'Heavy rain',icon:'\u2601',food:1.08,oil:1,air:0.78,d:'Air power -22% · grain dues +8%.'},
+  mud:{n:'Spring mud',icon:'\u2602',food:1.15,oil:1.10,air:0.82,d:'Air power -18% \u00b7 armour -25% \u00b7 supply +15%.'},
+  snow:{n:'Winter snow',icon:'\u2744',food:1.35,oil:1.40,air:0.70,d:'Fuel +40% \u00b7 food +35% \u00b7 air -30%.'}
 };
 var RANKS=[{n:'Rookie',b:1},{n:'Veteran',b:1.06},{n:'Elite',b:1.15}];
 
@@ -2786,7 +2783,7 @@ function techEff(n,key){
   TECH.forEach(function(t){ if(techDone(n,t.id) && t.eff && t.eff[key]) m*=t.eff[key]; });
   return m;
 }
-function researchRate(n){ return (1+Math.floor(mineCount(n)/2))*techEff(n,'research'); }
+function researchRate(n){ return (1.5+Math.floor(mineCount(n)/2))*techEff(n,'research'); }
 function terrainOf(id){
   if(!TERRAIN_CACHE[id]){
     var t=(TERRAIN && (TERRAIN[id] || TERRAIN[natOf(id)])) || 'plains';
@@ -2921,20 +2918,22 @@ function power(u,loc){
     m*=1+0.15*pr.fort*techEff(u.owner,'fort');       /* a dug-in land front */
   var tr=terrainOf(loc), w=weather();
   var armoured=!!(TANK_KEYS[u.type]||u.type==='tank'||u.type==='heavy'||u.type==='lt38'||u.type==='kv1');
-  if(tr==='mountains'){ if(def) m*=1.25; if(armoured) atk*=0.75; if(u.type==='artillery') atk*=1.15; }
-  else if(tr==='hills'){ if(def) m*=1.12; if(u.type==='artillery') atk*=1.15; }
-  else if(tr==='forest'){ if(def) m*=1.10; if(armoured) atk*=0.85; }
-  else if(tr==='plains'){ if(armoured) atk*=1.10; }
-  else if(tr==='desert'){ if(armoured) atk*=1.05; }
-  else if(tr==='river'){ if(def) m*=1.10; if(U(u.owner,u.type).mines) atk*=1.10; }
-  else if(tr==='coast'){ if(def) m*=1.08; }
-  else if(tr==='urban'){ if(def) m*=1.20; if(u.type==='artillery') atk*=0.90; }
+  if(tr==='mountains'){ if(def) m*=1.35; if(armoured) atk*=0.70; if(u.type==='artillery') atk*=1.18; }
+  else if(tr==='hills'){ if(def) m*=1.18; if(u.type==='artillery') atk*=1.18; }
+  else if(tr==='forest'){ if(def) m*=1.16; if(armoured) atk*=0.80; }
+  else if(tr==='plains'){ if(armoured) atk*=1.15; }
+  else if(tr==='desert'){ if(armoured) atk*=1.08; }
+  else if(tr==='river'){ if(def) m*=1.16; if(U(u.owner,u.type).mines) atk*=1.15; }
+  else if(tr==='coast'){ if(def) m*=1.12; }
+  else if(tr==='urban'){ if(def) m*=1.28; if(u.type==='artillery') atk*=0.88; }
   atk*=techEff(u.owner,'atk');
   if(t.navy) atk*=techEff(u.owner,'navy');
   if(t.air) atk*=techEff(u.owner,'air')*w.air;
-  if(armoured) atk*=techEff(u.owner,'armor')*(tr==='mud'?0.80:1);
+  if(armoured) atk*=techEff(u.owner,'armor')*(tr==='mud'?0.75:1);
   var g=generalAt(u.owner,loc);
-  if(g){ atk*=1+0.04*g.a*(def?0.45:1); m*=1+0.05*g.d*(def?1:0.35); }
+  if(g){ var gnPrestige=Math.min(10,g.prestige||0);
+    atk*=1+0.06*g.a*(def?0.55:1)+0.015*gnPrestige;
+    m*=1+0.07*g.d*(def?1:0.45)+0.015*gnPrestige; }
   atk*=RANKS[rankOf(u)].b;
   return atk*m*(0.55+0.45*u.hp/t.hp)*airMod(u.owner);
 }
@@ -4033,7 +4032,7 @@ function renderCommand(){
   if(CMD_TAB==='tech'){
     h+='<div class="cmdHead"><b>&#128300; Research &mdash; '+NBY[me].name+'</b><span>'+
        Math.floor(S.tech.pts[me]||0)+' banked points &middot; +'+researchRate(me).toFixed(1)+' per day</span></div>';
-    h+='<div class="cmdHint">Mine fields earn research points every day. Choose one project at a time &mdash; when the bank reaches its cost the upgrade is permanent and applies to all your formations.</div>';
+    h+='<div class="cmdHint">Mines and research bureaus earn points every day. Choose one project at a time &mdash; when the bank reaches its cost the upgrade is permanent and applies to all your formations.</div>';
     h+='<div class="cmdGrid">';
     TECH.forEach(function(t){
       var done=techDone(me,t.id), avail=techAvailable(me,t), active=S.tech.active[me]===t.id;
@@ -4051,7 +4050,7 @@ function renderCommand(){
   } else if(CMD_TAB==='gen'){
     var id=S.sel, pp=S.prov[id], list=roster(me), cur=generalAt(me,id);
     h+='<div class="cmdHead"><b>&#127775; Commanders &mdash; '+NBY[me].name+'</b><span>'+list.length+' officers</span></div>';
-    h+='<div class="cmdHint">Assign an officer to a territory you own: their bonuses apply to every unit of yours fighting there. Units also earn rank in combat &mdash; Rookie, Veteran and Elite &mdash; and victories add prestige to their commander.</div>';
+    h+='<div class="cmdHint">Assign an officer to a territory you own: their bonuses apply to every unit of yours fighting there. Units also earn rank in combat &mdash; Rookie, Veteran and Elite &mdash; and each victory hardens its commander: +1.5% attack and defence per win, up to ten wins.</div>';
     h+='<div class="cmdRow"><div class="nm"><b>'+NBY[id].name+'</b><div>'+
       (pp&&pp.owner===me?(cur?'Currently: '+cur.n:'Your territory &mdash; choose an officer below'):'Select one of your territories on the map first')+
       '</div></div>'+(pp&&pp.owner===me&&cur?'<button class="btn" data-cmd-act="unassign">Remove commander</button>':'')+'</div>';
@@ -4060,14 +4059,16 @@ function renderCommand(){
       var assigned=!!(cur&&cur.id===g.id);
       h+='<div class="cmdCard'+(assigned?' active':'')+'"><h4>'+g.n+
         (g.prestige?cmdPill(g.prestige+' WINS','on'):'')+'</h4>'+
-        '<div class="sub">Attack +'+(4*g.a)+'% &middot; Defence +'+(5*g.d)+'% &middot; Logistics &minus;'+(4*g.l)+'% upkeep</div>'+
+        '<div class="sub">Attack +'+(6*g.a)+'%'+(g.prestige?' <span style="color:#7fe08a">+'+(1.5*Math.min(10,g.prestige)).toFixed(1)+'%</span>':'')+
+        ' &middot; Defence +'+(7*g.d)+'%'+(g.prestige?' <span style="color:#7fe08a">+'+(1.5*Math.min(10,g.prestige)).toFixed(1)+'%</span>':'')+
+        ' &middot; Logistics &minus;'+(6*g.l)+'% upkeep</div>'+
         '<button class="btn'+(assigned?' on':'')+'" data-cmd-act="assign" data-id="'+g.id+'"'+
         ((!pp||pp.owner!==me)?' disabled':'')+'>'+(assigned?'Assigned here':'Assign here')+'</button></div>';
     });
     h+='</div>';
   } else if(CMD_TAB==='dip'){
     h+='<div class="cmdHead"><b>&#129309; Diplomacy &mdash; '+NBY[me].name+'</b><span>'+Math.floor(S.gold[me]||0)+' gold</span></div>';
-    h+='<div class="cmdHint">Pacts halt fighting for 30 days, allies share one another&rsquo;s wars, and a guarantee brings you in if that nation is attacked. An offer can be refused &mdash; a refusal costs a third of the fee.</div>';
+    h+='<div class="cmdHint">Pacts halt fighting for 45 days, peace brings a 30-day truce, allies share one another&rsquo;s wars, and a guarantee brings you in if that nation is attacked. Stronger envoys win over skeptical courts; a refusal costs a third of the fee and sours relations.</div>';
     ALL.forEach(function(n){
       if(n.id===me || n.id==='iceland') return;
       var k=warKey(me,n.id), war=atWar(me,n.id);
@@ -4089,6 +4090,11 @@ function renderCommand(){
     Object.keys(TERRAIN_INFO).forEach(function(k){
       var ti=TERRAIN_INFO[k];
       h+='<div class="cmdCard"><h4>'+ti.n+(terrainOf(id2)===k?cmdPill('HERE','on'):'')+'</h4><div class="sub">'+ti.d+'</div></div>';
+    });
+    h+='</div><div class="cmdGrid" style="margin-top:8px">';
+    Object.keys(WEATHER).forEach(function(k){
+      var wt=WEATHER[k];
+      h+='<div class="cmdCard"><h4>'+wt.icon+' '+wt.n+(weatherKey()===k?cmdPill('NOW','on'):'')+'</h4><div class="sub">'+wt.d+'</div></div>';
     });
     h+='</div>';
   }
