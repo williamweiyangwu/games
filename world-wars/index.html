@@ -529,7 +529,7 @@
 
   <section id="fighter">
     <h2 data-i18n="fighterTitle">Plane Wars: Fly a WWII Fighter</h2>
-    <p class="sub" data-i18n="fighterSub">Fly a continuous dogfight over wartime Europe — there are no waves. Allied and Axis squadrons fight each other while Axis interceptors hunt you above the battle sites marked on the map. Steer with the mouse, hold left mouse button (or touch) to fire and hold Space to boost. Every Axis kill earns one coin for the hangar, hitting a hill ends the run, and F toggles fullscreen — Esc pauses.</p>
+    <p class="sub" data-i18n="fighterSub">Fly a continuous dogfight over wartime Europe — there are no waves. Allied and Axis squadrons fight each other while Axis interceptors hunt you above the battle sites marked on the map. Turn and bank with the mouse or A/D and W/S, hold left mouse button (or touch) to fire and hold Space to boost. Every Axis kill earns one coin for the hangar, hitting a hill ends the run, and F toggles fullscreen — Esc pauses.</p>
     <div class="game-wrap" id="gameWrap">
       <canvas id="fighterCanvas" width="900" height="560"></canvas>
       <div class="reticle" aria-hidden="true"></div>
@@ -636,7 +636,7 @@ const WARS = {
     battlesDetail: "Every battle is pinned to the same Europe map used above and marked on the ground in the plane game. Open a card to see the date, the result and why that patch of ground mattered.",
     battlesAside: "Turning points · fronts · sieges · air and naval campaigns",
     fighterTitle: "Plane Wars: Fly a WWII Fighter",
-    fighterSub: "Fly a continuous dogfight over wartime Europe — there are no waves. Allied and Axis squadrons fight each other while Axis interceptors hunt you above the battle sites marked on the map. Steer with the mouse, hold left mouse button (or touch) to fire and hold Space to boost. Every Axis kill earns one coin for the hangar, hitting a hill ends the run, and F toggles fullscreen — Esc pauses.",
+    fighterSub: "Fly a continuous dogfight over wartime Europe — there are no waves. Allied and Axis squadrons fight each other while Axis interceptors hunt you above the battle sites marked on the map. Turn and bank with the mouse or A/D and W/S, hold left mouse button (or touch) to fire and hold Space to boost. Every Axis kill earns one coin for the hangar, hitting a hill ends the run, and F toggles fullscreen — Esc pauses.",
     footer: "Data compiled from public historical sources for educational purposes; some figures are estimates.",
     statDuration: "Duration", statCountries: "Belligerent nations",
     statDeaths: "Fatalities (worldwide)", statCamps: "Major camps",
@@ -2691,10 +2691,26 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
   let playerCrash = { active: false };
   let lastCrashKind = "shot";
 
-  const playerPos = new THREE.Vector3(0, 30, 0);
-  let playerVelX = 0, playerVelY = 0;
-  let targetX = 0, targetY = 30;
-  let roll = 0, pitch = 0;
+  // Heading-based flight: yaw 0 faces -Z, pitch > 0 climbs. The plane flies
+  // where its nose points, so turning is a real maneuvre instead of strafing.
+  const playerPos = new THREE.Vector3(0, 40, 0);
+  let playerVelX = 0, playerVelY = 0, playerVelZ = 0;
+  let yaw = 0, pitch = 0;
+  let targetX = 0, targetY = 40;
+  let roll = 0;
+  const forward = new THREE.Vector3(0, 0, -1);
+  const TURN_RATE = 1.75;      // keyboard yaw rate (rad/s)
+  const MOUSE_TURN = 0.0032;   // radians per pointer-lock pixel
+  function setForward(out, y, p) {
+    const cp = Math.cos(p);
+    return out.set(-Math.sin(y) * cp, Math.sin(p), -Math.cos(y) * cp);
+  }
+  function angDiff(a, b) {
+    let d = b - a;
+    while (d > Math.PI) d -= Math.PI * 2;
+    while (d < -Math.PI) d += Math.PI * 2;
+    return d;
+  }
   let health = 100, healthMax = 100;
   let runCoins = 0, runRecorded = false;
   let spawnT = 0, allyT = 0, fireT = 0, invuln = 0;
@@ -3051,7 +3067,7 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
             <button class="btn primary" id="gameStart">Take off</button>
             <button class="btn" id="gameHangar">Hangar</button>
           </div>
-          <p class="game-tip">Click or tap to lock the camera · move to steer · hold left mouse button or touch to fire · hold Space to boost · F toggles fullscreen · Esc pauses · hitting a hill ends the run</p>
+          <p class="game-tip">Click or tap to lock the camera · move the mouse or use A/D and W/S to turn and bank · hold left mouse button or touch to fire · hold Space to boost · F toggles fullscreen · Esc pauses · hitting a hill ends the run</p>
           ${leaderboardHtml()}
         </div>`;
       document.getElementById("gameStart").onclick = startGame;
@@ -3067,7 +3083,7 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
             <button class="btn" id="gameHangarPause">Hangar</button>
             <button class="btn" id="gameQuit">Restart</button>
           </div>
-          <p class="game-tip">Resume locks the mouse again · move to steer · left mouse button or touch fires · Space boosts · F toggles fullscreen · Esc pauses</p>
+          <p class="game-tip">Resume locks the mouse again · move the mouse or use A/D and W/S to turn and bank · left mouse button or touch fires · Space boosts · F toggles fullscreen · Esc pauses</p>
         </div>`;
       document.getElementById("gameResume").onclick = resumeGame;
       document.getElementById("gameHangarPause").onclick = openHangar;
@@ -3179,6 +3195,15 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
     firing = false;
     playerVelX = 0;
     playerVelY = 0;
+    playerVelZ = 0;
+    yaw = 0;
+    pitch = 0;
+    forward.set(0, 0, -1);
+    lastGroundX = 0;
+    lastGroundZ = 0;
+    ground.position.x = 0;
+    ground.position.z = 0;
+    groundTex.offset.set(0, 0);
     spawnT = 0.7;
     allyT = 1.1;
     fireT = 0;
@@ -3189,13 +3214,13 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
     respawnFlash = 0;
     playerCrash = { active: false };
     roll = 0;
-    pitch = 0;
     targetX = 0;
-    targetY = 30;
-    player.position.set(0, 30, 0);
+    targetY = 40;
+    player.position.set(0, 40, 0);
+    player.rotation.order = "YXZ";
     player.rotation.set(0, 0, 0);
     player.visible = true;
-    playerPos.set(0, 30, 0);
+    playerPos.set(0, 40, 0);
     wrap.classList.remove("hit", "boost", "crash");
     seedDogfight();
     updateHud();
@@ -3287,13 +3312,19 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
     if (health <= 0) { die(); return; }
     // A survivable terrain strike pulls out above a freshly cleared lane.
     clearSpawnZone();
+    yaw = 0;
+    pitch = 0;
+    forward.set(0, 0, -1);
+    playerVelX = 0;
+    playerVelY = 0;
+    playerVelZ = 0;
     targetX = 0;
     targetY = 44;
     player.position.set(0, 44, 0);
     playerPos.set(0, 44, 0);
+    player.rotation.order = "YXZ";
     player.rotation.set(0, 0, 0);
     roll = 0;
-    pitch = 0;
     invuln = 1.9;
     respawnFlash = 0.8;
     player.visible = true;
@@ -3330,9 +3361,19 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
     health = healthMax;
     playerCrash = { active: false };
     clearSpawnZone();
+    yaw = 0;
+    pitch = 0;
+    forward.set(0, 0, -1);
+    playerVelX = 0;
+    playerVelY = 0;
+    playerVelZ = 0;
+    roll = 0;
     targetX = 0;
-    targetY = 30;
-    player.position.set(0, 30, 0);
+    targetY = 40;
+    player.position.set(0, 40, 0);
+    playerPos.set(0, 40, 0);
+    player.rotation.order = "YXZ";
+    player.rotation.set(0, 0, 0);
     player.visible = true;
     enemyBullets.forEach(b => scene.remove(b));
     enemyBullets = [];
@@ -3380,12 +3421,17 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
   els.adClaim.addEventListener("click", () => { if (!els.adClaim.disabled) closeAd(true); });
 
   function fire() {
+    const sideX = 4.65 * Math.cos(roll), sideY = 4.65 * Math.sin(roll);
     for (const side of [-1, 1]) {
-      const dx = side * 4.65 * Math.cos(roll);
-      const dy = side * 4.65 * Math.sin(roll);
       const b = new THREE.Mesh(playerBulletGeo, playerBulletMat);
-      b.position.set(player.position.x + dx, player.position.y + dy, -6.1);
-      b.userData.prevZ = -6.1;
+      b.position.copy(player.position)
+        .addScaledVector(forward, 6.1);
+      b.position.x += side * sideX;
+      b.position.y += side * sideY;
+      b.quaternion.copy(player.quaternion);
+      b.userData.vel = forward.clone().multiplyScalar(650);
+      b.userData.prev = b.position.clone();
+      b.userData.life = 1.7;
       b.userData.damage = plane.damage;
       scene.add(b);
       bullets.push(b);
@@ -3395,22 +3441,34 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
   function spawnEnemy() { spawnPlane("axis"); }
   function spawnAlly() { spawnPlane("allied"); }
 
-  function spawnPlane(team, z) {
+  function spawnPlane(team, distance) {
     const ally = team === "allied";
     const pressure = threat();
     const bomber = !ally && Math.random() < (0.12 + pressure * 0.08);
     const type = bomber ? "bomber" : "fighter";
     const g = (ally ? allyTemplate : enemyTemplates[type]).clone(true);
     const hp = bomber ? 8 + Math.floor(pressure * 3) : (ally ? 5 : 5 + Math.floor(pressure * 2));
-    g.position.set(rand(-54, 54), rand(13, 54), z == null ? rand(-540, -430) : z + rand(-18, 18));
+    // Enter the arena ahead of the player, then turn into the melee.
+    const dist = distance == null ? rand(330, 520) : Math.abs(distance);
+    const px = player.position.x, py = player.position.y, pz = player.position.z;
+    g.position.set(
+      px + forward.x * dist + rand(-110, 110),
+      clamp(py + rand(-18, 22), 12, 72),
+      pz + forward.z * dist + rand(-110, 110)
+    );
+    const toPlayer = new THREE.Vector3(px - g.position.x, py - g.position.y, pz - g.position.z);
+    const yaw0 = Math.atan2(-toPlayer.x, -toPlayer.z) + rand(-0.45, 0.45);
+    g.rotation.order = "YXZ";
     g.userData = {
       team, type, hp, maxHp: hp,
-      speed: rand(bomber ? 16 : 26, bomber ? 28 : 42) * (ally ? 0.94 : 1),
+      speed: rand(bomber ? 24 : 34, bomber ? 36 : 52) * (ally ? 0.96 : 1),
+      yaw: yaw0, pitch: rand(-0.12, 0.12),
+      turnRate: bomber ? 0.7 : 1.7,
       phase: rand(0, 6.28),
       ampX: rand(4, 16), ampY: rand(2, 8),
       fire: rand(0.4, 1.0),
-      huntsPlayer: !ally && Math.random() < 0.62,
-      vx: 0, vy: 0,
+      huntsPlayer: !ally && Math.random() < 0.42,
+      vx: 0, vy: 0, vz: 0,
       targetT: 0, target: null, dead: false,
       baseX: g.position.x, baseY: g.position.y
     };
@@ -3419,30 +3477,26 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
   }
 
   function seedDogfight() {
-    for (let i = 0; i < 3; i++) spawnPlane("axis", -180 - i * 110);
-    for (let i = 0; i < 3; i++) spawnPlane("allied", -230 - i * 110);
+    for (let i = 0; i < 3; i++) spawnPlane("axis", 190 + i * 105);
+    for (let i = 0; i < 3; i++) spawnPlane("allied", 250 + i * 105);
   }
 
-  // Every plane looks for the nearest living opponent — including the player.
+  // Every plane turns toward the nearest living opponent in the arena.
   function pickTarget(e) {
     const ud = e.userData;
-    // Axis interceptors peel away from the melee to hunt the player.
+    // Some Axis fighters break off to hunt the player; others stay in the melee.
     if (ud.team === "axis" && ud.huntsPlayer &&
-        Math.abs(player.position.z - e.position.z) < 260) return player;
+        e.position.distanceToSquared(player.position) < 320 * 320) return player;
     const hostile = ud.team === "axis" ? "allied" : "axis";
     let best = null, bestD = Infinity;
     const consider = candidate => {
       if (!candidate || candidate === e || candidate.userData.dead) return;
       if (candidate.userData.team && candidate.userData.team !== hostile) return;
-      const dz = Math.abs(candidate.position.z - e.position.z);
-      if (dz > 300) return;
-      const dx = candidate.position.x - e.position.x;
-      const dy = candidate.position.y - e.position.y;
-      const d = dx * dx + dy * dy * 0.7 + dz * dz * 0.2;
+      const d = e.position.distanceToSquared(candidate.position);
       if (d < bestD) { bestD = d; best = candidate; }
     };
     enemies.forEach(consider);
-    consider(player);
+    if (ud.team === "axis") consider(player);
     return best;
   }
 
@@ -3492,18 +3546,20 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
 
   function aiShoot(e, target) {
     const ud = e.userData;
-    const from = new THREE.Vector3(e.position.x, e.position.y + 0.1, e.position.z + (ud.type === "bomber" ? 5 : 4));
+    const ef = setForward(new THREE.Vector3(), ud.yaw, ud.pitch);
+    const from = e.position.clone().addScaledVector(ef, ud.type === "bomber" ? 6 : 4.5);
     const speed = 150 + threat() * 18;
     const dx = target.position.x - from.x;
     const dy = target.position.y + 0.4 - from.y;
     const dz = target.position.z - from.z;
     const lead = Math.hypot(dx, dy, dz) / speed;
-    const tv = target === player ? { vx: playerVelX, vy: playerVelY } : (target.userData || {});
+    const tv = target === player ? { vx: playerVelX, vy: playerVelY, vz: playerVelZ } : (target.userData || {});
     const dir = new THREE.Vector3(dx + (tv.vx || 0) * lead * 0.7,
-                                  dy + (tv.vy || 0) * lead * 0.7, dz);
+                                  dy + (tv.vy || 0) * lead * 0.7,
+                                  dz + (tv.vz || 0) * lead * 0.7);
     dir.x += rand(-1.7, 1.7);
     dir.y += rand(-1.1, 1.1);
-    if (dir.lengthSq() < 1) dir.set(0, 0, 1);
+    if (dir.lengthSq() < 1) dir.copy(ef);
     dir.normalize().multiplyScalar(speed);
     const axis = ud.team === "axis";
     const b = new THREE.Mesh(axis ? enemyBulletGeo : allyBulletGeo, axis ? enemyBulletMat : allyBulletMat);
@@ -3516,7 +3572,8 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
     enemyBullets.push(b);
   }
 
-  function updateEnemies(dt, worldSpeed) {
+  function updateEnemies(dt) {
+    const ef = new THREE.Vector3();
     for (let i = enemies.length - 1; i >= 0; i--) {
       if (state !== "playing") return;
       const e = enemies[i];
@@ -3525,54 +3582,74 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
       ud.targetT -= dt;
       if (ud.targetT <= 0 || !ud.target || ud.target.userData.dead) {
         ud.target = pickTarget(e);
-        ud.targetT = rand(0.35, 0.7);
+        ud.targetT = rand(0.3, 0.6);
       }
-      const prevX = e.position.x, prevY = e.position.y;
-      e.position.z += (worldSpeed + ud.speed) * dt;
       const target = ud.target;
+      const prevYaw = ud.yaw;
       if (target) {
-        // Steering plus a constant jink makes the dogfights hard to read.
-        const jinkX = Math.sin(idleT * 3.1 + ud.phase) * 7;
-        const jinkY = Math.cos(idleT * 2.4 + ud.phase * 1.3) * 4;
-        const turn = (ud.type === "bomber" ? 1.0 : 2.5) * dt;
-        e.position.x += (clamp(target.position.x + jinkX, -58, 58) - e.position.x) * turn;
-        e.position.y += (clamp(target.position.y + jinkY, 9, 60) - e.position.y) * turn;
+        // Turn toward a lead point with a small jink: pursuers overshoot and
+        // circle back instead of flying in a straight line at the player.
+        const tv = target === player
+          ? { vx: playerVelX, vy: playerVelY, vz: playerVelZ }
+          : (target.userData || {});
+        const aim = new THREE.Vector3(
+          target.position.x - e.position.x + (tv.vx || 0) * 0.28,
+          target.position.y - e.position.y + (tv.vy || 0) * 0.28,
+          target.position.z - e.position.z + (tv.vz || 0) * 0.28
+        );
+        const dist = aim.length() || 1;
+        aim.x += Math.sin(idleT * 1.7 + ud.phase) * Math.min(6, dist * 0.03);
+        aim.y += Math.cos(idleT * 1.3 + ud.phase) * Math.min(4, dist * 0.02);
+        const desiredYaw = Math.atan2(-aim.x, -aim.z);
+        const horiz = Math.hypot(aim.x, aim.z) || 1;
+        const desiredPitch = clamp(Math.atan2(aim.y, horiz), -0.9, 0.9);
+        ud.yaw += clamp(angDiff(ud.yaw, desiredYaw), -ud.turnRate * dt, ud.turnRate * dt);
+        ud.pitch += clamp(desiredPitch - ud.pitch, -ud.turnRate * 0.7 * dt, ud.turnRate * 0.7 * dt);
       } else {
-        e.position.x = ud.baseX + Math.sin(idleT * 1.35 + ud.phase) * ud.ampX;
-        e.position.y = ud.baseY + Math.sin(idleT * 1.05 + ud.phase * 1.7) * ud.ampY;
+        ud.yaw += Math.sin(idleT * 0.7 + ud.phase) * 0.35 * dt;
+        ud.pitch += Math.cos(idleT * 0.5 + ud.phase) * 0.18 * dt;
       }
-      const vx = (e.position.x - prevX) / Math.max(dt, 0.0001);
-      const vy = (e.position.y - prevY) / Math.max(dt, 0.0001);
-      ud.vx = vx;
-      ud.vy = vy;
-      e.rotation.z = clamp(-vx * 0.012, -0.75, 0.75);
-      e.rotation.x = clamp(vy * 0.008, -0.35, 0.35);
-      e.rotation.y = clamp(vx * 0.003, -0.2, 0.2) + Math.sin(idleT * 2.2 + ud.phase) * 0.08;
+      ud.pitch = clamp(ud.pitch, -0.9, 0.9);
+      setForward(ef, ud.yaw, ud.pitch);
+      const prevX = e.position.x, prevY = e.position.y, prevZ = e.position.z;
+      e.position.addScaledVector(ef, ud.speed * dt);
+      if (e.position.y < 6) { e.position.y = 6; ud.pitch = Math.max(ud.pitch, 0.05); }
+      if (e.position.y > 130) { e.position.y = 130; ud.pitch = Math.min(ud.pitch, -0.05); }
+      ud.vx = (e.position.x - prevX) / Math.max(dt, 0.0001);
+      ud.vy = (e.position.y - prevY) / Math.max(dt, 0.0001);
+      ud.vz = (e.position.z - prevZ) / Math.max(dt, 0.0001);
+      e.rotation.order = "YXZ";
+      e.rotation.set(ud.pitch, ud.yaw, clamp(angDiff(prevYaw, ud.yaw) / Math.max(dt, 0.0001) * 0.32, -0.75, 0.75));
 
-      if (e.position.z > 48) {
-        killPlaneAt(i, null);
-        if (ud.team === "axis") damage(3);
+      // Recycle planes that have fallen far behind back in front of the flight.
+      if (e.position.distanceToSquared(player.position) > 1100 * 1100) {
+        const dist = rand(380, 560);
+        e.position.set(
+          player.position.x + forward.x * dist + rand(-120, 120),
+          clamp(player.position.y + rand(-16, 20), 12, 72),
+          player.position.z + forward.z * dist + rand(-120, 120)
+        );
+        ud.target = null;
+        ud.targetT = 0;
+      }
+
+      if (ud.team === "axis" && e.position.distanceToSquared(player.position) < 72) {
+        explode(e.position, 12, 0.95);
+        spawnDebris(e.position, 8, 0.9);
+        killPlaneAt(i, player);
+        damage(ud.type === "bomber" ? 26 : 18);
         if (state !== "playing") return;
         continue;
       }
 
-      if (ud.team === "axis") {
-        const dx = e.position.x - player.position.x;
-        const dy = e.position.y - player.position.y;
-        if (Math.abs(e.position.z) < 7.5 && dx * dx + dy * dy < 72) {
-          explode(e.position, 12, 0.95);
-          spawnDebris(e.position, 8, 0.9);
-          killPlaneAt(i, player);
-          damage(ud.type === "bomber" ? 26 : 18);
-          if (state !== "playing") return;
-          continue;
-        }
-      }
-
       ud.fire -= dt;
       const shootingTarget = target || (ud.team === "axis" ? player : null);
-      const inRange = shootingTarget && Math.abs(shootingTarget.position.z - e.position.z) < 220 &&
-                      e.position.z > -360 && e.position.z < 38;
+      let inRange = false;
+      if (shootingTarget) {
+        const d2 = e.position.distanceToSquared(shootingTarget.position);
+        const toT = shootingTarget.position.clone().sub(e.position).normalize();
+        inRange = d2 < 220 * 220 && toT.dot(ef) > 0.35;
+      }
       if (ud.fire <= 0 && inRange) {
         aiShoot(e, shootingTarget);
         ud.fire = ud.type === "bomber" ? rand(1.1, 1.8)
@@ -3584,28 +3661,32 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
   function updateBullets(dt) {
     for (let i = bullets.length - 1; i >= 0; i--) {
       const b = bullets[i];
-      b.userData.prevZ = b.position.z;
-      b.position.z -= 650 * dt;
-      if (b.position.z < -780) {
+      b.userData.prev.copy(b.position);
+      b.position.addScaledVector(b.userData.vel, dt);
+      b.userData.life -= dt;
+      if (b.userData.life <= 0) {
         scene.remove(b);
         bullets.splice(i, 1);
         continue;
       }
       let hit = false;
+      const p = b.userData.prev, c = b.position;
+      const vx = c.x - p.x, vy = c.y - p.y, vz = c.z - p.z;
+      const len2 = vx * vx + vy * vy + vz * vz;
       for (let j = enemies.length - 1; j >= 0; j--) {
         const e = enemies[j];
         if (e.userData.team !== "axis" || e.userData.dead) continue;
-        const zMin = Math.min(b.userData.prevZ, b.position.z) - 8;
-        const zMax = Math.max(b.userData.prevZ, b.position.z) + 8;
-        if (e.position.z < zMin || e.position.z > zMax) continue;
-        const ud = e.userData;
-        const dx = b.position.x - e.position.x;
-        const dy = b.position.y - e.position.y;
-        const r = ud.type === "bomber" ? 8.6 : 5.3;
-        if (dx * dx + dy * dy > r * r) continue;
-        ud.hp -= (b.userData.damage || 1);
+        const r = e.userData.type === "bomber" ? 8.6 : 5.3;
+        // Segment-to-plane test keeps fast shots accurate in any direction.
+        let t = len2 ? ((e.position.x - p.x) * vx + (e.position.y - p.y) * vy + (e.position.z - p.z) * vz) / len2 : 0;
+        t = clamp(t, 0, 1);
+        const dx = p.x + vx * t - e.position.x;
+        const dy = p.y + vy * t - e.position.y;
+        const dz = p.z + vz * t - e.position.z;
+        if (dx * dx + dy * dy + dz * dz > r * r) continue;
+        e.userData.hp -= (b.userData.damage || 1);
         explode(b.position, 3, 0.55);
-        if (ud.hp <= 0) killPlaneAt(j, player);
+        if (e.userData.hp <= 0) killPlaneAt(j, player);
         hit = true;
         break;
       }
@@ -3621,12 +3702,11 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
       const b = enemyBullets[i];
       b.position.addScaledVector(b.userData.vel, dt);
       b.userData.life -= dt;
-      let remove = b.userData.life <= 0 || b.position.z > 40 ||
-                   Math.abs(b.position.x) > 400 || Math.abs(b.position.y) > 160;
+      let remove = b.userData.life <= 0 || b.position.distanceToSquared(player.position) > 1100 * 1100;
       if (!remove && b.userData.team === "axis") {
         const dx = b.position.x - player.position.x;
         const dy = b.position.y - player.position.y;
-        const dz = b.position.z;
+        const dz = b.position.z - player.position.z;
         if (dx * dx + dy * dy + dz * dz < 24) {
           explode(b.position, 7, 0.7);
           damage(10);
@@ -3681,37 +3761,52 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
     }
   }
 
+  let lastGroundX = 0, lastGroundZ = 0;
   function moveScenery(dt, speed) {
+    // In an arena the plane moves through the world, so scenery is recycled
+    // around it rather than scrolled toward a fixed camera.
+    const px = player.position.x, pz = player.position.z;
     clouds.forEach(c => {
-      c.position.z += speed * dt * c.userData.speed;
-      if (c.position.z > 130) {
-        c.position.z -= 1080;
-        c.position.x = rand(-280, 280);
-        c.position.y = rand(26, 138);
+      const dx = c.position.x - px, dz = c.position.z - pz;
+      if (dx * dx + dz * dz > 980 * 980 || c.position.z > pz + 260) {
+        c.position.set(
+          px + forward.x * rand(400, 820) + rand(-320, 320),
+          rand(26, 138),
+          pz + forward.z * rand(400, 820) + rand(-320, 320)
+        );
       }
     });
     terrain.forEach(h => {
-      h.group.position.z += speed * dt * 1.12;
-      if (h.group.position.z > 155) {
-        h.group.position.z -= 1320;
-        h.group.position.x = rand(-380, 380);
-        h.x = h.group.position.x;
-        h.z = h.group.position.z;
-      } else {
-        h.z = h.group.position.z;
-        h.x = h.group.position.x;
+      const dx = h.group.position.x - px, dz = h.group.position.z - pz;
+      if (dx * dx + dz * dz > 1050 * 1050) {
+        h.group.position.set(
+          px + forward.x * rand(520, 900) + rand(-360, 360),
+          0,
+          pz + forward.z * rand(520, 900) + rand(-360, 360)
+        );
       }
+      h.x = h.group.position.x;
+      h.z = h.group.position.z;
     });
-    groundTex.offset.y += speed * dt * groundScroll;
+    // Keep the map beneath the plane, scrolling its texture against travel.
+    ground.position.x = px;
+    ground.position.z = pz;
+    groundTex.offset.x += (px - lastGroundX) / 1800;
+    groundTex.offset.y -= (pz - lastGroundZ) / 1800;
+    lastGroundX = px;
+    lastGroundZ = pz;
   }
 
+  const camDesired = new THREE.Vector3(), camLook = new THREE.Vector3();
   function updateCamera(dt) {
     const snap = cameraSnap ? 1 : 1 - Math.exp(-6.5 * dt);
     cameraSnap = false;
-    camera.position.x += (player.position.x * 0.78 - camera.position.x) * snap;
-    camera.position.y += (player.position.y + 6.4 - camera.position.y) * snap;
-    camera.position.z = 24;
-    camera.lookAt(player.position.x * 0.5, player.position.y + 1.1, -85);
+    // Chase view: behind and above the nose, looking ahead along the heading.
+    camDesired.copy(player.position).addScaledVector(forward, -34);
+    camDesired.y += 9;
+    camera.position.lerp(camDesired, snap);
+    camLook.copy(player.position).addScaledVector(forward, 60);
+    camera.lookAt(camLook);
     camera.rotation.z += roll * 0.12;
     if (shake > 0) {
       camera.position.x += rand(-shake, shake);
@@ -3730,40 +3825,41 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
       return;
     }
 
-    let ax = 0, ay = 0;
-    if (keys.ArrowLeft || keys.KeyA) ax -= 1;
-    if (keys.ArrowRight || keys.KeyD) ax += 1;
-    if (keys.ArrowUp || keys.KeyW) ay += 1;
-    if (keys.ArrowDown || keys.KeyS) ay -= 1;
-    if (ax || ay) {
-      targetX = clamp(targetX + ax * 66 * dt, -54, 54);
-      targetY = clamp(targetY + ay * 48 * dt, 10, 56);
-    }
+    // Keyboard turns the nose; pointer lock / touch steer it through yaw/pitch.
+    let ky = 0, kp = 0;
+    if (keys.ArrowLeft || keys.KeyA) ky += 1;
+    if (keys.ArrowRight || keys.KeyD) ky -= 1;
+    if (keys.ArrowUp || keys.KeyW) kp += 1;
+    if (keys.ArrowDown || keys.KeyS) kp -= 1;
+    const prevYaw = yaw;
+    if (ky) yaw += ky * TURN_RATE * dt;
+    if (kp) pitch = clamp(pitch + kp * 1.25 * dt, -0.85, 0.85);
+    yaw = ((yaw + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+    setForward(forward, yaw, pitch);
 
-    const px = player.position.x, py = player.position.y;
-    const k = 1 - Math.exp(-6 * dt);
-    player.position.x += (targetX - px) * k;
-    player.position.y += (targetY - py) * k;
+    const px = player.position.x, py = player.position.y, pz = player.position.z;
+    player.position.addScaledVector(forward, worldSpeed * dt);
+    if (player.position.y < 5) { player.position.y = 5; pitch = Math.max(pitch, -0.1); setForward(forward, yaw, pitch); }
+    if (player.position.y > 130) { player.position.y = 130; pitch = Math.min(pitch, 0.1); setForward(forward, yaw, pitch); }
     playerPos.copy(player.position);
-    const vx = (player.position.x - px) / Math.max(dt, 0.0001);
-    const vy = (player.position.y - py) / Math.max(dt, 0.0001);
-    playerVelX = vx;
-    playerVelY = vy;
-    const rollTarget = clamp(vx * 0.014, -0.7, 0.7);
-    const pitchTarget = clamp(vy * 0.008, -0.32, 0.32);
-    roll += (rollTarget - roll) * (1 - Math.exp(-7 * dt));
-    pitch += (pitchTarget - pitch) * (1 - Math.exp(-6 * dt));
-    player.rotation.z = roll;
-    player.rotation.x = pitch;
-    player.rotation.y = clamp(vx * 0.0024, -0.14, 0.14);
+    const invDt = 1 / Math.max(dt, 0.0001);
+    playerVelX = (player.position.x - px) * invDt;
+    playerVelY = (player.position.y - py) * invDt;
+    playerVelZ = (player.position.z - pz) * invDt;
+    const bankTarget = clamp(angDiff(prevYaw, yaw) * invDt * 0.28, -0.75, 0.75);
+    roll += (bankTarget - roll) * (1 - Math.exp(-7 * dt));
+    player.rotation.order = "YXZ";
+    player.rotation.set(pitch, yaw, roll);
+    targetX = player.position.x + forward.x * 120;
+    targetY = player.position.y + forward.y * 120;
     player.visible = !(invuln > 0 && Math.floor(performance.now() / 85) % 2 === 0);
     player.userData.prop.rotation.z += dt * 48;
 
     // Terrain collision: clipping a hill ends the run in a visible crash.
     for (let i = 0; i < terrain.length; i++) {
       const h = terrain[i];
-      if (Math.abs(h.z) < h.radius * 0.92 &&
-          Math.abs(player.position.x - h.x) < h.radius * 0.72 &&
+      const dx = player.position.x - h.x, dz = player.position.z - h.z;
+      if (dx * dx + dz * dz < (h.radius * 0.72) * (h.radius * 0.72) &&
           player.position.y < h.height + 2) {
         crashIntoTerrain();
         break;
@@ -3806,7 +3902,7 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
       allyT = rand(1.0, 1.7);
     }
 
-    updateEnemies(dt, worldSpeed);
+    updateEnemies(dt);
     resolveDogfightCollisions();
     if (playerCrash.active || state !== "playing") return;
     updateBullets(dt);
@@ -3823,9 +3919,9 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
     moveScenery(dt, 16);
     if (state === "idle") {
       player.visible = true;
-      player.position.y = 30 + Math.sin(idleT * 0.8) * 0.5;
-      player.rotation.z = Math.sin(idleT * 0.45) * 0.06;
-      player.rotation.x = Math.sin(idleT * 0.6) * 0.02;
+      player.position.y = 40 + Math.sin(idleT * 0.8) * 0.5;
+      player.rotation.order = "YXZ";
+      player.rotation.set(Math.sin(idleT * 0.6) * 0.02, 0, Math.sin(idleT * 0.45) * 0.06);
       player.userData.prop.rotation.z += dt * 30;
     }
     if (hitFlash > 0) hitFlash -= dt;
@@ -3908,8 +4004,9 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
 
   document.addEventListener("mousemove", ev => {
     if (!locked || state !== "playing") return;
-    targetX = clamp(targetX + (ev.movementX || 0) * 0.115, -54, 54);
-    targetY = clamp(targetY - (ev.movementY || 0) * 0.105, 10, 56);
+    // Pointer lock is a flight stick: horizontal turns the nose, vertical pitches it.
+    yaw -= (ev.movementX || 0) * MOUSE_TURN;
+    pitch = clamp(pitch - (ev.movementY || 0) * MOUSE_TURN, -0.85, 0.85);
   });
 
   document.addEventListener("pointerlockchange", () => {
@@ -3928,24 +4025,28 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
     firing = true;
     if (locked) return;
     if (ev.pointerType === "mouse") return;
-    dragState = { id: ev.pointerId, x: ev.clientX, y: ev.clientY, tx: targetX, ty: targetY };
+    dragState = { id: ev.pointerId, x: ev.clientX, y: ev.clientY };
     try { canvas.setPointerCapture(ev.pointerId); } catch (e) {}
   });
 
   canvas.addEventListener("pointermove", ev => {
     if (state !== "playing" || locked) return;
     if (dragState && ev.pointerId === dragState.id) {
-      const r = canvas.getBoundingClientRect();
-      targetX = clamp(dragState.tx + (ev.clientX - dragState.x) / Math.max(1, r.width) * 150, -54, 54);
-      targetY = clamp(dragState.ty - (ev.clientY - dragState.y) / Math.max(1, r.height) * 90, 10, 56);
+      // Touch drag turns and pitches the nose, like the mouse.
+      const dx = ev.clientX - dragState.x, dy = ev.clientY - dragState.y;
+      yaw -= dx * 0.004;
+      pitch = clamp(pitch - dy * 0.004, -0.85, 0.85);
+      dragState.x = ev.clientX;
+      dragState.y = ev.clientY;
       return;
     }
     if (ev.pointerType === "touch" || ev.pointerType === "pen") return;
+    // Without pointer lock, the cursor acts as a virtual stick.
     const r = canvas.getBoundingClientRect();
-    const nx = clamp((ev.clientX - r.left) / Math.max(1, r.width), 0, 1);
-    const ny = clamp((ev.clientY - r.top) / Math.max(1, r.height), 0, 1);
-    targetX = (nx * 2 - 1) * 54;
-    targetY = 52 - ny * 40;
+    const nx = clamp((ev.clientX - r.left) / Math.max(1, r.width) * 2 - 1, -1, 1);
+    const ny = clamp((ev.clientY - r.top) / Math.max(1, r.height) * 2 - 1, -1, 1);
+    yaw -= nx * 0.045;
+    pitch = clamp(pitch - ny * 0.035, -0.85, 0.85);
   });
 
   function endDrag(ev) {
@@ -4006,6 +4107,11 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
     teleport: (x, y, z = 0) => {
       player.position.set(x, y, z);
       playerPos.copy(player.position);
+      yaw = 0;
+      pitch = 0;
+      forward.set(0, 0, -1);
+      player.rotation.order = "YXZ";
+      player.rotation.set(0, 0, 0);
       targetX = x; targetY = y;
     },
     hills: () => terrain.map(h => ({
@@ -4024,8 +4130,19 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
       return wrecks.length;
     },
     setFiring: v => { firing = !!v; return firing; },
+    turn: (dYaw = 0, dPitch = 0) => {
+      yaw += dYaw;
+      pitch = clamp(pitch + dPitch, -0.85, 0.85);
+      setForward(forward, yaw, pitch);
+      return { yaw: Math.round(yaw * 100) / 100, pitch: Math.round(pitch * 100) / 100 };
+    },
     ghostPlanes: () => scene.children.filter(o => o.userData && o.userData.team && o.userData.maxHp && !enemies.includes(o)).length,
     fullscreen: () => isFullscreen(),
+    camera: () => ({
+      x: Math.round(camera.position.x * 10) / 10,
+      y: Math.round(camera.position.y * 10) / 10,
+      z: Math.round(camera.position.z * 10) / 10
+    }),
     toggleFullscreen,
     key: (code, down) => { keys[code] = !!down; if (state === "playing") updateHud(); return !!keys[code]; },
     planes: () => enemies.map(p => ({
@@ -4074,6 +4191,9 @@ battleModal.addEventListener("click", ev => { if (ev.target === battleModal) clo
       unlocked: unlocked.slice(),
       x: Math.round(player.position.x * 10) / 10,
       y: Math.round(player.position.y * 10) / 10,
+      z: Math.round(player.position.z * 10) / 10,
+      yaw: Math.round(yaw * 100) / 100,
+      pitch: Math.round(pitch * 100) / 100,
       targetX: Math.round(targetX * 10) / 10,
       targetY: Math.round(targetY * 10) / 10,
       health: Math.round(health),
