@@ -48,6 +48,8 @@
     color:var(--dim);text-shadow:0 1px 0 #000
   }
   .slot.sel{border-color:#fff;background:rgba(255,255,255,.16);box-shadow:0 0 0 1px rgba(0,0,0,.5)}
+  .slot.ench{border-color:#c899ff;box-shadow:0 0 8px rgba(156,104,226,.65),0 0 0 1px rgba(0,0,0,.5)}
+  .islot.ench{border-color:rgba(200,153,255,.85);box-shadow:0 0 9px rgba(156,104,226,.4)}
 
   #name{
     position:absolute;left:50%;bottom:74px;transform:translateX(-50%);
@@ -306,7 +308,7 @@
 <div id="hud">
   <div id="cross"></div>
   <div id="name"></div>
-  <div id="hint">RMB opens tables, furnaces, chests, enchanting &amp; brewing &middot; E inventory &middot; Q drop &middot; V sprint &middot; [ ] look &middot; F fly &middot; F3 stats</div>
+  <div id="hint">RMB opens tables, chests, enchanting &amp; brewing &middot; check beacons &middot; E inventory &middot; Q drop &middot; V sprint &middot; [ ] look &middot; F fly &middot; F3 stats</div>
   <div id="stats">
     <div id="xpwrap"><span id="xplevel">1</span><div id="xpbar"><i></i></div></div>
     <div id="hearts" class="bar2"></div>
@@ -318,7 +320,7 @@
   <div id="bar"></div>
   <div id="dbg"></div>
   <div id="toast"></div>
-  <div id="ver">v2.7 build 1</div>
+  <div id="ver">v2.7 build 2</div>
 </div>
 
 <div id="inv" class="hide">
@@ -377,7 +379,7 @@
 <div id="ench" class="hide">
   <div class="invpanel">
     <h3>Enchanting</h3>
-    <div class="syshead">Bookshelves nearby improve your choices</div>
+    <div class="syshead">Bookshelves raise max enchant level (up to 15)</div>
     <div id="enchheld"></div>
     <div id="enchinfo"></div>
     <div id="enchlist" class="syslist"></div>
@@ -388,7 +390,7 @@
 <div id="brew" class="hide">
   <div class="invpanel">
     <h3>Brewing Stand</h3>
-    <div class="syshead">Nether Wart is the base &middot; add one catalyst</div>
+    <div class="syshead">Nether Wart + one catalyst &middot; right-click a potion to drink</div>
     <div id="brewinfo"></div>
     <div id="brewlist" class="syslist"></div>
     <div class="invfoot">Right-click drink a potion &middot; <b>E</b> / <b>Esc</b> close</div>
@@ -442,7 +444,8 @@
       <div><b>R</b> new world</div>
       <div><b>F5</b> save now</div>
       <div><b>J</b> auto-step &middot; <b>B</b> steady camera</div>
-      <div><b>RMB</b> enchant / brew / summon wither</div>
+      <div><b>RMB</b> enchant / brew / beacon status</div>
+      <div><b>RMB</b> wither skull on soul sand</div>
       <div><b>F3</b> stats &middot; <b>F2</b> scale &middot; <b>M</b> mute</div>
       <div><b>Esc</b> pause</div>
     </div>
@@ -3435,6 +3438,13 @@ function nearbyBeaconPower() {
   }
   return best;
 }
+function inspectBeacon(x, y, z) {
+  const p = beaconPower(beaconKey(dim, x, y, z));
+  if (!p) { toast('Beacon offline · build a 3×3 iron, gold, or diamond layer below it'); return false; }
+  toast('Beacon online · power ' + p + (p >= 2 ? ' · regeneration' : ' · speed'));
+  sfxAt(880, 0.18, 'sine', x + 0.5, y + 1, z + 0.5, 16);
+  return true;
+}
 
 const FSHADE = [1, 0.55, 0.78, 0.78, 0.7, 0.7];
 const MOBS = [
@@ -3634,11 +3644,7 @@ function useSel() {
   if (held === IT.WITHER_SKULL && hit && hit.id === SOUL_SAND) return summonWither(hit.x, hit.y, hit.z);
   if (hit && hit.id === ENCHANT_TABLE) return openEnchant(hit.x, hit.y, hit.z);
   if (hit && hit.id === BREWING_STAND) return openBrew(hit.x, hit.y, hit.z);
-  if (hit && hit.id === BEACON_BLOCK && held === IT.NETHER_STAR) {
-    trackBeacon({ x: hit.x, y: hit.y, z: hit.z }, false);
-    consumeSel(); sfx(920, 0.3, 'sine'); toast('beacon energized'); saveDirty = 1;
-    return;
-  }
+  if (hit && hit.id === BEACON_BLOCK) { inspectBeacon(hit.x, hit.y, hit.z); return; }
   if (hit && hit.id === CRAFT_TABLE) { openInv('table'); return; }
   if (hit && hit.id === FURNACE) { furnaceActivate(hit.x, hit.y, hit.z); return; }
   if (hit && hit.id === CHEST) { chestActivate(hit.x, hit.y, hit.z); return; }
@@ -4464,6 +4470,7 @@ function refreshHotbar() {
     d.className = 'slot';
     let iconId = 0, count = 0;
     const s = INV[i]; if (s) { iconId = s.id; count = s.n; }
+    if (s && s.e) d.classList.add('ench');
     const c = document.createElement('canvas'); c.width = c.height = 32;
     const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
     if (iconId) g.drawImage(itemCanvas(iconId), 0, 0);
@@ -4533,9 +4540,10 @@ function renderInv() {
     d.setAttribute('data-i', i);
     const s = INV[i];
     if (s) {
+      if (s.e) d.classList.add('ench');
       d.appendChild(slotIconEl(s.id));
       if (s.n > 1) { const q = document.createElement('b'); q.className = 'cnt'; q.textContent = s.n; d.appendChild(q); }
-      d.title = itemName(s.id);
+      d.title = displayName(s);
     }
     if (i < 9) { const l = document.createElement('span'); l.className = 'ilab'; l.textContent = i + 1; d.appendChild(l); }
     invGrid.appendChild(d);
@@ -4551,7 +4559,7 @@ function renderArmor() {
     d.className = 'islot';
     d.setAttribute('data-a', i);
     const s = ARMOR[i];
-    if (s) { d.appendChild(slotIconEl(s.id)); d.title = itemName(s.id); }
+    if (s) { if (s.e) d.classList.add('ench'); d.appendChild(slotIconEl(s.id)); d.title = displayName(s); }
     else d.title = 'Empty ' + ARMOR_SLOTS[i].toLowerCase();
     armorSlotsEl.appendChild(d);
   }
@@ -4581,9 +4589,10 @@ function renderCraft() {
     d.setAttribute('data-c', i);
     const s = craftSlots[i];
     if (s) {
+      if (s.e) d.classList.add('ench');
       d.appendChild(slotIconEl(s.id));
       if (s.n > 1) { const q = document.createElement('b'); q.className = 'cnt'; q.textContent = s.n; d.appendChild(q); }
-      d.title = itemName(s.id);
+      d.title = displayName(s);
     }
     craftGridEl.appendChild(d);
   }
@@ -5123,10 +5132,14 @@ const brewInfoEl = document.getElementById('brewinfo'), brewListEl = document.ge
 
 function bookshelfCount(x, y, z) {
   let n = 0;
-  for (let dy = -1; dy <= 1; dy++) for (let dz = -2; dz <= 2; dz++) for (let dx = -2; dx <= 2; dx++)
+  /* only shelves in the two layers around the table count, capped at 15 */
+  for (let dy = 0; dy <= 1; dy++) for (let dz = -2; dz <= 2; dz++) for (let dx = -2; dx <= 2; dx++) {
+    if (!dx && !dz && !dy) continue;
     if (get(x + dx, y + dy, z + dz) === BOOKSHELF) n++;
-  return n;
+  }
+  return Math.min(15, n);
 }
+function enchMaxLevel(o, shelves) { return Math.min(o.max, 1 + Math.ceil(shelves / 3)); }
 function enchOptions(id) {
   const t = TOOLDEF[id];
   if (t && (t.k === 'pick' || t.k === 'shovel' || t.k === 'axe')) {
@@ -5151,18 +5164,21 @@ function renderEnchant() {
   const opts = s ? enchOptions(s.id) : [];
   enchInfoEl.textContent = !s ? 'Hold a tool, sword, or armor piece to enchant it.'
     : !opts.length ? itemName(s.id) + ' cannot be enchanted.'
-    : displayName(s) + ' · ' + shelves + ' bookshelves nearby · ' + xpLevel + ' XP levels';
+    : displayName(s) + ' · ' + shelves + '/15 bookshelves · ' + xpLevel + ' XP levels';
   for (const o of opts) {
-    const lvl = enchLvl(s, o.k), maxed = lvl >= o.max;
+    const lvl = enchLvl(s, o.k), cap = enchMaxLevel(o, shelves), maxed = lvl >= cap;
     const cost = enchCost(lvl, shelves);
     const afford = mode === 'creative' || (xpLevel > cost && !!findItemCount(IT.LAPIS));
     const row = document.createElement('div');
     row.className = 'sysrow' + (maxed || !afford ? ' off' : '');
     const name = document.createElement('b'); name.textContent = o.n + ' ' + (lvl + 1);
-    const info = document.createElement('small'); info.textContent = maxed ? 'MAX' : (mode === 'creative' ? 'free' : cost + ' lv · 1 lapis');
-    const hint = document.createElement('i'); hint.textContent = maxed ? '' : 'lvl ' + lvl + '/' + o.max;
+    const info = document.createElement('small');
+    info.textContent = maxed ? (cap < o.max ? 'needs ' + (cap * 3) + ' shelves' : 'MAX')
+      : (mode === 'creative' ? 'free' : cost + ' lv · 1 lapis');
+    const hint = document.createElement('i');
+    hint.textContent = maxed ? '' : 'lvl ' + lvl + '/' + cap;
     row.appendChild(name); row.appendChild(info); row.appendChild(hint);
-    if (!maxed && afford) row.addEventListener('click', () => applyEnchant(o, cost));
+    if (!maxed && afford) row.addEventListener('click', () => applyEnchant(o, cost, cap));
     enchListEl.appendChild(row);
   }
 }
@@ -5171,9 +5187,15 @@ function findItemCount(id) {
   for (const s of INV) if (s && s.id === id) n += s.n;
   return n;
 }
-function applyEnchant(o, cost) {
+function applyEnchant(o, cost, cap) {
   const s = heldStack();
-  if (!s || enchLvl(s, o.k) >= o.max) return;
+  if (!s) return;
+  const shelves = enchPos ? bookshelfCount(enchPos.x, enchPos.y, enchPos.z) : 0;
+  const limit = cap === undefined ? enchMaxLevel(o, shelves) : cap;
+  if (enchLvl(s, o.k) >= limit) {
+    toast(limit < o.max ? 'Need more bookshelves for level ' + (enchLvl(s, o.k) + 1) : 'Enchantment already MAX');
+    return;
+  }
   if (mode === 'survival') {
     if (xpLevel <= cost) { toast('need ' + (cost + 1) + ' XP levels'); return; }
     if (!findItemCount(IT.LAPIS)) { toast('need lapis lazuli'); return; }
@@ -5210,14 +5232,16 @@ const BREW_RECIPES = [
 function renderBrew() {
   if (!brewOpen) return;
   brewListEl.innerHTML = '';
-  brewInfoEl.textContent = 'Nether Wart: ' + findItemCount(IT.WART) + ' · right-click a potion to drink it';
+  const wart = findItemCount(IT.WART);
+  brewInfoEl.textContent = 'Nether Wart ' + wart + '/1 · right-click a potion to drink it';
   for (const r of BREW_RECIPES) {
-    const ready = mode === 'creative' || (findItemCount(IT.WART) > 0 && findItemCount(r.cat) > 0);
+    const catCount = findItemCount(r.cat);
+    const ready = mode === 'creative' || (wart > 0 && catCount > 0);
     const row = document.createElement('div');
     row.className = 'sysrow' + (ready ? '' : ' off');
     const ic = slotIconEl(r.id);
     const name = document.createElement('b'); name.textContent = r.n;
-    const info = document.createElement('small'); info.textContent = itemName(r.cat);
+    const info = document.createElement('small'); info.textContent = itemName(r.cat) + ' ' + catCount + '/1';
     row.appendChild(ic); row.appendChild(name); row.appendChild(info);
     if (ready) row.addEventListener('click', () => brewPotion(r));
     brewListEl.appendChild(row);
