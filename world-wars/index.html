@@ -398,6 +398,40 @@
     color: #a8b6c9; font-size: 0.8rem; line-height: 1.62; margin-top: 10px;
     padding-top: 10px; border-top: 1px solid var(--border);
   }
+  .deep-dive-block { margin: 34px 0 0 14px; padding-top: 26px; border-top: 1px solid var(--border); }
+  .deep-dive-head { margin: 0 0 16px; }
+  .deep-dive-head h3 { font-size: 1.2rem; margin: 0 0 6px; color: var(--text); }
+  .deep-dive-head p { color: var(--muted); font-size: 0.9rem; margin: 0; line-height: 1.65; }
+  .deep-dive-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+    gap: 14px;
+  }
+  .deep-card {
+    position: relative; overflow: hidden; background: linear-gradient(150deg, rgba(212,167,44,.06), transparent 42%), var(--panel);
+    border: 1px solid var(--border); border-radius: 14px; padding: 18px;
+  }
+  .deep-card::before {
+    content: ""; position: absolute; top: 0; left: 0; width: 3px; height: 100%; background: var(--gold); opacity: .7;
+  }
+  .deep-num { color: var(--gold); font-size: 0.7rem; font-weight: 800; letter-spacing: 1.6px; }
+  .deep-kicker {
+    color: var(--gold); font-size: 0.68rem; font-weight: 800; letter-spacing: 1.3px;
+    text-transform: uppercase; margin-top: 8px;
+  }
+  .deep-card h4 { font-size: 1rem; line-height: 1.4; margin: 6px 0 8px; color: var(--text); }
+  .deep-lead { color: var(--muted); font-size: 0.84rem; line-height: 1.62; margin: 0; }
+  .deep-points { list-style: none; padding: 0; margin: 14px 0 0; }
+  .deep-points li {
+    color: #a8b6c9; font-size: 0.79rem; line-height: 1.58; padding: 9px 0 9px 11px;
+    border-left: 2px solid rgba(212,167,44,.35); border-bottom: 1px solid var(--border);
+  }
+  .deep-points li:last-child { border-bottom: none; }
+  .deep-points b { display: block; color: var(--text); font-size: 0.76rem; margin-bottom: 2px; }
+  .deep-takeaway {
+    color: #c9d5e5; font-size: 0.8rem; line-height: 1.6; margin: 13px 0 0;
+    padding: 10px 11px; background: rgba(212,167,44,.07); border-radius: 9px;
+  }
+  .deep-takeaway b { color: var(--gold); }
   .chapter-subsection { margin-top: 38px; padding-top: 28px; border-top: 1px solid var(--border); }
   .chapter-subhead { margin-left: 14px; }
   .chapter-subhead h3 { font-size: 1.2rem; margin: 0 0 6px; color: var(--text); }
@@ -407,6 +441,9 @@
     .chapter-nav { grid-template-columns: 1fr 1fr; gap: 8px; margin-left: 0; }
     .chapter-tab { padding: 10px; font-size: 0.82rem; }
     .chapter-points { grid-template-columns: 1fr; margin-left: 0; }
+    .deep-dive-block { margin-left: 0; padding-top: 22px; }
+    .deep-dive-grid { grid-template-columns: 1fr; }
+    .deep-card { padding: 15px 14px; }
     .chapter-subsection { margin-top: 30px; padding-top: 22px; }
     .chapter-subhead { margin-left: 0; }
     .game-hud { font-size: 0.7rem; gap: 7px; left: 9px; right: 9px; }
@@ -549,6 +586,13 @@
         </aside>
       </div>
       <div class="chapter-points" id="startPoints"></div>
+      <section class="deep-dive-block" aria-labelledby="startDeepHead">
+        <div class="deep-dive-head" id="startDeepHead">
+          <h3 data-i18n="deepDiveTitle">Deeper context</h3>
+          <p data-i18n="deepDiveSub">Longer notes on causes, machinery, battlefields and consequences, written to sit alongside the cards above.</p>
+        </div>
+        <div class="deep-dive-grid" id="startDeepDives"></div>
+      </section>
     </section>
 
     <section id="weapons" class="chapter-panel" role="tabpanel" aria-labelledby="chapterTabWeapons">
@@ -565,6 +609,13 @@
       </div>
       <div class="weapons" id="weaponsList"></div>
       <p class="photo-credit">Photos via Wikimedia Commons, shown for educational illustration.</p>
+      <section class="deep-dive-block" aria-labelledby="weaponsDeepHead">
+        <div class="deep-dive-head" id="weaponsDeepHead">
+          <h3 data-i18n="deepDiveTitle">Deeper context</h3>
+          <p data-i18n="deepDiveSub">Longer notes on causes, machinery, battlefields and consequences, written to sit alongside the cards above.</p>
+        </div>
+        <div class="deep-dive-grid" id="weaponsDeepDives"></div>
+      </section>
     </section>
 
     <section id="battles" class="chapter-panel" role="tabpanel" aria-labelledby="chapterTabBattles">
@@ -581,6 +632,13 @@
       </div>
       <div class="weapons" id="battlesList"></div>
       <p class="photo-credit">Battle maps are drawn from the same Europe basemap used in the history section above.</p>
+      <section class="deep-dive-block" aria-labelledby="battlesDeepHead">
+        <div class="deep-dive-head" id="battlesDeepHead">
+          <h3 data-i18n="deepDiveTitle">Deeper context</h3>
+          <p data-i18n="deepDiveSub">Longer notes on causes, machinery, battlefields and consequences, written to sit alongside the cards above.</p>
+        </div>
+        <div class="deep-dive-grid" id="battlesDeepDives"></div>
+      </section>
 
       <div id="figures" class="chapter-subsection">
         <div class="chapter-subhead">
@@ -614,6 +672,13 @@
         </aside>
       </div>
       <div class="chapter-points" id="resultPoints"></div>
+      <section class="deep-dive-block" aria-labelledby="resultDeepHead">
+        <div class="deep-dive-head" id="resultDeepHead">
+          <h3 data-i18n="deepDiveTitle">Deeper context</h3>
+          <p data-i18n="deepDiveSub">Longer notes on causes, machinery, battlefields and consequences, written to sit alongside the cards above.</p>
+        </div>
+        <div class="deep-dive-grid" id="resultDeepDives"></div>
+      </section>
     </section>
   </section>
 
@@ -747,6 +812,9 @@ const WARS = {
     legendCurve: "Axis-controlled share", legendCounter: "Allied counteroffensive (1943+)", legendNode: "Key battle node",
     stateAxis: "Axis", stateOccupied: "Axis-occupied", stateAllies: "Allies", stateNeutral: "Neutral",
     axisCount: "Axis-controlled nations: {n}", stage: "Stage {i} / {n}",
+    deepDiveTitle: "Deeper context",
+    deepDiveSub: "Longer notes on causes, machinery, battlefields and consequences, written to sit alongside the cards above.",
+    deepWhy: "Why it matters",
     all: "All", pause: "Pause", resume: "Resume",
     keyEvents: "Key events", life: "Life", viewDetail: "Click for details"
   }
@@ -1084,6 +1152,160 @@ const WARS = {
   { numEn:"~70M", label:"statDeaths" },
   { numEn:"2", label:"statCamps" },
 ],
+  deepDives: {
+    start: [
+      { tag: "Before the invasion", title: "Why 1939 was not a surprise",
+        lead: "The invasion of Poland was the final step in a decade of revision and rearmament. Germany had already tested Western resolve, dismantled the Versailles settlement and rebuilt an army that European governments had struggled to constrain.",
+        points: [
+          { label: "Versailles and revision", text: "The Treaty of Versailles imposed territorial losses, reparations and military limits on Germany. Many Germans treated the settlement as a national humiliation, and Nazi propaganda used that grievance to justify rearmament, territorial revision and the return of conscription." },
+          { label: "Rhineland, Austria, Sudetenland", text: "German troops entered the demilitarised Rhineland in 1936, annexed Austria in 1938 and took the Sudetenland after the Munich agreement. Each move was presented as self-determination for German-speaking people, yet each also destroyed a defensive barrier and enlarged Germany's industrial base." },
+          { label: "Appeasement and its limits", text: "Britain and France wanted to avoid another war and had limited appetite for an early confrontation. Munich bought time for British rearmament, but it also convinced Hitler that the Western powers would accept further demands; in March 1939 Germany occupied the rest of Czechoslovakia, proving the policy had failed." },
+          { label: "The Nazi-Soviet pact", text: "The Molotov-Ribbentrop pact of August 1939 stunned the world by removing the expected barrier to a German attack on Poland. Secret protocols divided Eastern Europe into spheres of influence, giving Hitler a free hand in the west and Stalin a chance to move the Soviet frontier westward." }
+        ],
+        takeaway: "By September 1939 the diplomatic safeguards against German expansion had been dismantled one by one, and Poland stood in front of a much stronger and more confident Germany." },
+      { tag: "Blitzkrieg", title: "Speed as a strategic weapon",
+        lead: "What later became known as blitzkrieg was not a single magic weapon. It was a method that combined concentrated armour, motorised infantry, dive bombers, radios and flexible command to collapse an opponent's ability to react.",
+        points: [
+          { label: "Schwerpunkt", text: "German doctrine favoured a Schwerpunkt, or decisive point, where armour and aircraft were massed instead of spread evenly along the front. A narrow breakthrough could roll into the rear, cut railways and command centres, and turn a local success into an operational collapse." },
+          { label: "Radio and initiative", text: "Radios in tanks and aircraft let commanders change orders faster than bicycle or telephone messengers could. Junior leaders were expected to exploit gaps without waiting for detailed permission, which made the German advance faster than the slower, more centralised Allied command system." },
+          { label: "Air-ground cooperation", text: "Dive bombers acted as mobile artillery, striking strongpoints, bridges and columns just ahead of the armour. The Luftwaffe also attacked airfields and rail junctions, blinding defenders and making it difficult for them to move reserves to the threatened sector." },
+          { label: "The logistical ceiling", text: "Blitzkrieg worked best over short distances with good roads, railheads and usable fuel supplies. Panzers could outrun their infantry and supply trucks; in Poland and France this was manageable, but in the Soviet Union the same speed eventually ran into mud, distances and fuel shortages." }
+        ],
+        takeaway: "The early victories came from coordinated systems and fast decision cycles, not from tanks alone; the same method became less reliable when geography and logistics stretched it." },
+      { tag: "Sea and sky", title: "Why Britain could not be knocked out quickly",
+        lead: "Germany won the land campaign in the west, but victory over Britain required control of the Channel and the sky above it. Those were forms of power that the Wehrmacht and Luftwaffe could not simply seize by an armoured thrust.",
+        points: [
+          { label: "The Channel barrier", text: "A cross-Channel invasion needed shipping, mine clearance, air superiority and a secure lodgement. The German army had no purpose-built amphibious force capable of mounting such an operation against a determined naval defender, so Operation Sea Lion remained a plan rather than a realistic campaign." },
+          { label: "Radar and fighter control", text: "Britain's Chain Home radar stations, observation posts and fighter control rooms created an integrated air defence system. Controllers could vector Squadrons toward incoming raids instead of relying on standing patrols, allowing a smaller number of fighters to be used at the decisive place and time." },
+          { label: "Dunkirk's mixed result", text: "Operation Dynamo rescued more than 330,000 British and French troops from the beaches and ports around Dunkirk. It preserved the trained core of the British Army, but almost all heavy equipment was abandoned, and Britain still needed time and American support to rebuild a continental offensive force." },
+          { label: "Empire and imports", text: "Britain was an island nation dependent on seaborne food, oil and raw materials. The Royal Navy, the convoy system and eventually escort carriers and long-range aircraft kept those routes open, proving that pressure on a maritime supply line could be as decisive as pressure on a land frontier." }
+        ],
+        takeaway: "Britain survived because geography, air defence and sea power gave it time; that time allowed the war to widen until Germany faced enemies it could not defeat in a single campaign." },
+      { tag: "Global expansion", title: "How a European war became a world war",
+        lead: "The war that began over Poland became a global conflict because the great powers could not contain it regionally. Each new front changed the strategic arithmetic and stretched the resources of the belligerents.",
+        points: [
+          { label: "The Atlantic", text: "Germany's U-boat campaign sought to sever Britain from overseas supply, while Allied convoys, sonar, aircraft, codebreaking and mass-produced escort ships gradually made the ocean dangerous for submarines. The Battle of the Atlantic lasted for years because victory depended on shipping capacity and intelligence as much as on sinkings." },
+          { label: "The Mediterranean", text: "Italy's entry in 1940 opened a campaign across North Africa and the Mediterranean. Control of Suez, Malta and the sea lanes mattered because they connected Britain to India and the Middle East; victories at El Alamein and in Tunisia protected that imperial lifeline." },
+          { label: "Barbarossa", text: "The invasion of the Soviet Union in June 1941 created the largest land front in history. Germany destroyed enormous numbers of Soviet troops in the opening battles, but failed to take Moscow and could not exploit the Caucasus oil fields before Soviet industry relocated east and winter halted the advance." },
+          { label: "Pearl Harbor and the United States", text: "Japan's attack on Pearl Harbor in December 1941 brought the United States into the war. American industrial output, oil, aircraft and shipping then shifted the balance decisively, while the Soviet Union absorbed the main German land army." }
+        ],
+        takeaway: "Once Germany, Italy and Japan fought Britain, the Soviet Union and the United States at once, the Axis had no realistic path to a quick decision; the war became a contest of production, manpower and endurance." }
+    ],
+    weapons: [
+      { tag: "Systems thinking", title: "Weapons worked as systems, not solo wonders",
+        lead: "The machines in this chapter mattered because they were embedded in organisations. A tank needed fuel, radios, spare tracks, trained crews and infantry to hold what it captured; an aircraft needed airfields, mechanics and a command network.",
+        points: [
+          { label: "Tanks and radios", text: "Panzer III and Panzer IV formations in 1939–41 were not the largest or heaviest tanks, but they had radios, trained crews and doctrine built around concentration. A commander who could see the battlefield and talk to every unit could move faster than an opponent relying on written orders." },
+          { label: "Infantry and anti-tank guns", text: "Most armies still depended on infantry, artillery and towed anti-tank guns. German 37 mm and later 50 mm anti-tank guns, Allied 6-pounders and Soviet 45 mm guns shaped defensive tactics; as armour grew thicker, crews relied more on ambush, terrain and massed fire." },
+          { label: "Artillery and rockets", text: "Artillery remained the greatest killer on land. Soviet Katyusha rocket launchers and German Nebelwerfer batteries added area fire and psychological shock, but conventional guns still did most of the sustained work because they were more controllable and easier to supply." },
+          { label: "Maintenance and recovery", text: "A broken-down tank could be more valuable as a recovered hull than as scrap. Recovery vehicles, workshop trains and spare-part supply determined how many machines returned to battle, which is why operational losses often mattered more than battlefield wrecks." }
+        ],
+        takeaway: "Technology decided battles only when industry, doctrine and logistics allowed commanders to use it repeatedly; this is why the page treats every weapon as part of a wider fighting system." },
+      { tag: "Air power", title: "Aircraft, radar and the contest for the sky",
+        lead: "Air power changed the scale and tempo of war. It could scout, escort, bomb, strafe and rescue, but every role depended on bases, range, weather and the ability to replace aircraft and pilots.",
+        points: [
+          { label: "Spitfire and Hurricane", text: "The Spitfire became the symbol of Britain's defence, but the Hurricane actually shot down more aircraft during the Battle of Britain. Both were flown through a radar-directed control system that made limited fighter strength count; pilot fatigue and aircraft production were as important as individual performance." },
+          { label: "Bomber and escort", text: "Heavy bombers promised to break enemy industry by attacking cities, oil plants and rail networks, yet unescorted formations suffered heavy losses by day. Long-range escorts such as the P-51 Mustang, drop tanks and improved navigation shifted the air war by protecting bombers deep inside Germany." },
+          { label: "Dive bombers", text: "The Ju 87 Stuka combined precision dive bombing with sirens that frightened troops and civilians. It was highly effective in Poland and France where air superiority was assured, but vulnerable to fighters once the Luftwaffe lost control of the sky." },
+          { label: "Carriers and naval aviation", text: "Aircraft carriers replaced battleships as the centre of naval striking power in the Pacific and influenced Atlantic convoy protection. Carrier aircraft extended a fleet's reach far beyond gun range, but their success depended on radar, pilot training and the survival of the carrier itself." }
+        ],
+        takeaway: "The air war was won by networks of radar, fighters, escorts, airfields and production; the famous aircraft were the visible tips of much larger systems." },
+      { tag: "Sea lanes", title: "The battle for supply at sea",
+        lead: "The Second World War was fought as much over shipping routes as over cities. If submarines and mines could cut Britain's imports, the island would be forced out of the war without a land invasion.",
+        points: [
+          { label: "U-boats and wolfpacks", text: "German U-boats used radio-directed groups to attack convoys at night, when surfaced boats were fast and hard to detect. Convoys concentrated both merchant ships and escorts, so a successful attack could sink several vessels in a single night." },
+          { label: "Convoys and escorts", text: "Ships that sailed in convoy were harder to find and could be defended by destroyers, corvettes and later escort carriers. The reinstatement of convoys early in the war and the growth of escort forces steadily reduced losses, even when individual sinkings remained dramatic." },
+          { label: "Codebreaking and intelligence", text: "Allied codebreaking helped route convoys away from U-boat patrol lines and, later, locate submarines at sea. Intelligence worked only when combined with enough escorts and aircraft to act on it, showing how secret information had to be converted into physical force." },
+          { label: "Liberty ships and mass output", text: "American shipyards produced standardised Liberty ships on an enormous scale. A ship that took weeks to build could be lost in minutes, but mass production replaced tonnage faster than the U-boat force could destroy it." }
+        ],
+        takeaway: "The Western Allies won by protecting movement rather than merely winning engagements; keeping ships afloat allowed armies to be fed, fuelled and landed where strategy required." },
+      { tag: "Industry and fuel", title: "Production, oil and the ability to replace losses",
+        lead: "Industrial capacity was a strategic weapon. Germany could win short campaigns, but the Allied powers could replace aircraft, ships, trucks and machines at a rate the Axis could not match.",
+        points: [
+          { label: "Mass production", text: "American factories turned out aircraft, jeeps, landing craft and ships in quantities that staggered Axis planners. Standardised designs simplified repair and training, while factories could shift from civilian goods to military output under government contracts." },
+          { label: "Oil and synthetic fuel", text: "Mechanised war consumed petroleum on an immense scale. Germany relied on Russian oil before 1941 and later on synthetic plants, which became priority bombing targets; shortages restricted pilot training, armoured reserves and the movement of supplies." },
+          { label: "Rubber and rare materials", text: "Blockades and distance denied the Axis easy access to rubber and some metals. Substitutes and captured stocks helped, but Allied control of sea routes allowed a much broader material base, including American and Commonwealth resources." },
+          { label: "People in the factory", text: "Millions of women entered war industries and auxiliary services, while military conscription changed the civilian workforce. Production was not an abstract statistic: it depended on shifts, housing, transport, safety and the political decision to mobilise society." }
+        ],
+        takeaway: "The side that could keep factories running, trains moving and tanks repaired could absorb defeats; by 1943–45 that advantage lay decisively with the Allies." }
+    ],
+    battles: [
+      { tag: "How to read a battle", title: "Geography, logistics and command",
+        lead: "A battle is more than a list of units and casualties. To understand why a place mattered, look at the roads and railways, the rivers and ridges, the weather, the supply lines and the decisions available to each commander.",
+        points: [
+          { label: "Terrain", text: "Rivers, forests, hills and cities shape what weapons can do. The Ardennes hid a German armoured thrust in 1940, the Volga turned Stalingrad into a ruinous street battle, and the beaches and hedgerows of Normandy slowed the Allied landing and breakout." },
+          { label: "Supply lines", text: "Armies advance only as far as fuel, ammunition and food can follow. Rail gauge changes in the Soviet Union, destroyed bridges in Italy and overloaded ports after Normandy all limited operations as surely as enemy fire did." },
+          { label: "Command and intelligence", text: "Good commanders used reconnaissance, radar, codebreaking and aerial photography to reduce uncertainty. Bad assumptions could be fatal: the German expectation of a main Allied landing at Calais and the Soviet surprise at Barbarossa both distorted defensive planning." },
+          { label: "Timing", text: "A battle changes meaning depending on when it is fought. The Battle of Britain prevented invasion in 1940, while the Battle of the Bulge in late 1944 could not reverse the strategic balance even though it shocked the Allies." }
+        ],
+        takeaway: "The battle cards should be read as decisions under constraint; terrain and supply explain why a commander chose a plan and why the result mattered beyond the battlefield." },
+      { tag: "Eastern Front", title: "A war of annihilation on an unprecedented scale",
+        lead: "The German-Soviet front was the largest and deadliest theatre of the European war. Its battles involved millions of men, vast distances and an ideological conflict that made surrender and occupation especially brutal.",
+        points: [
+          { label: "Barbarossa, 1941", text: "Three German army groups invaded the Soviet Union along a front stretching from the Baltic to the Black Sea. Encirclements at Minsk, Smolensk and Kiev captured enormous numbers of troops, but the advance faltered before Moscow as reserves arrived, mud returned and supply lines snapped." },
+          { label: "Stalingrad, 1942–43", text: "Hitler's drive toward the Caucasus and the Volga became a battle for the city named after Stalin. Soviet Operation Uranus encircled the German Sixth Army; its surrender in February 1943 destroyed an entire field army and ended the German strategic offensive in the east." },
+          { label: "Kursk, 1943", text: "Germany attacked the Kursk salient in an attempt to regain the initiative, but Soviet deep defences, artillery, mines and tanks absorbed the assault. The German offensive stalled, and the Red Army followed with counteroffensives that kept the strategic initiative for the rest of the war." },
+          { label: "Bagration, 1944", text: "Operation Bagration destroyed Army Group Centre and drove the German front back through Belarus toward Poland and East Prussia. It demonstrated how Soviet planning, camouflage, artillery mass and mechanised exploitation had matured into a form of warfare the Wehrmacht could no longer parry." }
+        ],
+        takeaway: "The Eastern Front consumed the bulk of German land power; the Red Army's victories there made the Western Allied landing survivable and brought the war to Berlin from two directions." },
+      { tag: "Air, sea and Mediterranean", title: "The campaigns that kept Britain in the fight",
+        lead: "Britain's strategy depended on surviving in the air and at sea, then using the Mediterranean and the Atlantic as routes for imperial and Allied forces. These campaigns were slower than the panzer offensives but just as necessary.",
+        points: [
+          { label: "Battle of Britain, 1940", text: "The RAF denied Germany the air superiority required for an invasion. Radar, fighter control, resilient airfields and the willingness of pilots to keep flying under strain turned a seemingly favourable German air campaign into a strategic defeat." },
+          { label: "Battle of the Atlantic", text: "U-boats threatened to isolate Britain from American supplies. Convoys, escort carriers, improved sonar, long-range aircraft and intelligence gradually won a battle fought across thousands of square miles of ocean rather than a fixed line." },
+          { label: "El Alamein, 1942", text: "Montgomery's Eighth Army defeated Rommel's Axis forces in Egypt, preventing a German thrust toward the Suez Canal. Together with the Torch landings in North Africa, the victory cleared North Africa and opened a route into Sicily and Italy." },
+          { label: "Italy, 1943–45", text: "The invasion of Italy forced Mussolini from power and tied down German divisions in difficult mountainous terrain. The campaign advanced slowly because of weather, rivers and strong defences, but it kept pressure on Germany's southern flank." }
+        ],
+        takeaway: "These battles did not always produce dramatic territorial jumps, yet they preserved Britain, protected global supply and forced Germany to defend more fronts than it could reinforce." },
+      { tag: "Western invasion", title: "From Normandy to Berlin",
+        lead: "The Western Allies turnedindustrial superiority into a lodgement in France, then into a drive toward Germany. Success depended on landing craft, air superiority, port capacity and the ability to supply large armies after the beachhead was won.",
+        points: [
+          { label: "D-Day, 6 June 1944", text: "Amphibious and airborne landings established a beachhead on five Normandy beaches. Airborne troops seized bridges and exits, naval gunfire and aircraft covered the landing, and the mulberry harbours and pipelines helped overcome the lack of a deep-water port." },
+          { label: "Normandy breakout", text: "After weeks of fighting through hedgerows, Operation Cobra used heavy bombing to crack the German front near Saint-Lô. Patton's Third Army then exploited the gap, while German counterattacks failed to cut the beachhead's growing lodgement." },
+          { label: "Arnhem and the Bulge", text: "Operation Market Garden attempted a rapid advance through the Netherlands but failed at Arnhem. The Battle of the Bulge in December 1944 was Germany's last major western offensive; it created a salient and severe losses but exhausted reserves that were desperately needed in the east." },
+          { label: "The Rhine and Berlin", text: "Allied armies crossed the Rhine in 1945 and encircled the Ruhr, Germany's industrial heartland. Soviet forces meanwhile advanced from the east; the two fronts met near the Elbe, and Berlin fell after a destructive final battle in April." }
+        ],
+        takeaway: "The western campaign succeeded because air and naval superiority made the landing possible and industrial supply made the advance sustainable; the final defeat came when Germany was squeezed from both sides at once." }
+    ],
+    result: [
+      { tag: "Surrender", title: "Two ceremonies and a shattered Germany",
+        lead: "The European war ended in May 1945, but the machinery of victory was already dividing the continent. Germany's military collapse, political occupation and physical ruin happened at the same time.",
+        points: [
+          { label: "Reims and Karlshorst", text: "German representatives signed an unconditional surrender at Reims on 7 May and again at Berlin-Karlshorst on 8 May. The repeated ceremony reflected Soviet insistence on a formal act in the capital of the defeated regime; hostilities in Europe ceased at midnight." },
+          { label: "Occupation zones", text: "The United States, Britain, the Soviet Union and France took zones of occupation and shared control of Berlin. Each power applied different political priorities in denazification, reparations and local government, planting the administrative structure of a divided Germany." },
+          { label: "A country in ruins", text: "Cities such as Berlin, Dresden, Hamburg and Cologne had been devastated by bombing and street fighting. Bridges, railways and housing were broken; millions of displaced people needed food, shelter and paperwork before normal life could resume." },
+          { label: "The German state disappears", text: "The Nazi regime collapsed with the military defeat, and the German armed forces were disbanded. For several years Germany had no sovereign government of its own, and its future was decided largely by the victorious powers." }
+        ],
+        takeaway: "Victory did not restore the prewar order; it created an occupied Germany whose zones became the front line of a new European confrontation." },
+      { tag: "Human cost", title: "Counting the dead is not the whole story",
+        lead: "World War II killed roughly 70 million people worldwide, but totals conceal the different ways people suffered: combat, bombing, starvation, forced labour, persecution and flight.",
+        points: [
+          { label: "Soldiers and civilians", text: "The Soviet Union and China suffered the largest numbers of deaths, while Poland, Germany, Japan and many other countries lost millions more. Civilians died in air raids, sieges, massacres and famines, making this war uniquely destructive for non-combatants." },
+          { label: "The Holocaust", text: "The Nazi regime systematically murdered about six million Jews and millions of other people it classified as undesirable. The genocide was implemented through laws, deportations, camps and killing squads, and its scale became one of the central moral facts of the postwar world." },
+          { label: "Refugees and prisoners", text: "Tens of millions of people were displaced by advancing armies, forced labour and new borders. Prisoners of war marched immense distances, and survivors often returned to homes that had been destroyed or occupied by strangers." },
+          { label: "Uncertain numbers", text: "Historians disagree about exact totals because records were incomplete, borders changed and regimes falsified figures. Estimates are best read as ranges that show scale rather than as precise counts." }
+        ],
+        takeaway: "The war's consequences cannot be measured only in territory; its human legacy shaped demographics, memory and politics for generations." },
+      { tag: "Justice", title: "Nuremberg and the invention of a legal reckoning",
+        lead: "The Nuremberg trials turned wartime accusations into a documented legal record. They established that leaders could be held personally responsible for crimes committed by a state.",
+        points: [
+          { label: "The charges", text: "The International Military Tribunal tried leading Nazi officials for crimes against peace, war crimes and crimes against humanity. The indictment covered the planning of aggressive war, the treatment of occupied peoples and the systematic persecution and murder of civilians." },
+          { label: "Evidence and testimony", text: "Prosecutors used captured German documents, photographs, films and witness testimony. The sheer documentation made denial difficult and preserved a record that historians and courts could use long after the trials ended." },
+          { label: "Verdicts and punishment", text: "Twelve defendants were sentenced to death, others received prison terms and three were acquitted. The proceedings were criticised from different directions, but they created a model for later international tribunals." },
+          { label: "Limits of the process", text: "Nuremberg focused on the highest leaders and could not try every perpetrator. Many lower-level participants avoided trial, and later denazification varied sharply between occupation zones." }
+        ],
+        takeaway: "The trials did not repair the damage, but they changed the language of international justice by insisting that obedience to a criminal regime was not a complete defence." },
+      { tag: "New order", title: "From wartime alliance to divided Europe",
+        lead: "The institutions built after 1945 were meant to prevent another global war. Yet the cooperation that won the war quickly gave way to rivalry between the Western powers and the Soviet Union.",
+        points: [
+          { label: "United Nations", text: "The United Nations was founded in 1945 with a Security Council designed to give the major powers a permanent role in preventing conflict. Its creation reflected the lesson that isolation and weak collective security had failed in the 1930s." },
+          { label: "Economic settlement", text: "The Bretton Woods conference created the International Monetary Fund and the World Bank to stabilise currencies and finance reconstruction. The Marshall Plan later tied Western European recovery to American aid and market-oriented institutions." },
+          { label: "Iron Curtain", text: "Disputes over elections, reparations and the future of Germany hardened into an ideological divide. By the late 1940s the Soviet bloc and the Western states had separate political and economic systems, with Germany split into two states in 1949." },
+          { label: "Cold War military blocs", text: "NATO was formed in 1949 and the Warsaw Pact followed in 1955. Europe was no longer organised around the old balance of rival empires but around two armed camps, each claiming to defend a different vision of postwar order." }
+        ],
+        takeaway: "The result chapter ends by showing that victory over fascism created the conditions for a new struggle; the peace of 1945 was both an achievement and the beginning of the Cold War." }
+    ],
+  },
   startPoints: [
   { year:{en:"1 Sep 1939"}, text:{en:"Germany invades Poland with armour, aircraft and infantry."}, detail:{en:"The attack used concentrated tanks, dive bombers and motorised infantry to break through and encircle Polish armies. Britain and France declared war two days later but could not intervene in time; Warsaw surrendered on 27 September and the country was partitioned under the secret Soviet-German protocol."} },
   { year:{en:"10 May 1940"}, text:{en:"German panzers bypass the Maginot Line through the Ardennes."}, detail:{en:"The Allies expected the main blow in Belgium, but the German Schwerpunkt fell at Sedan. Panzers crossed the Meuse, raced to the coast and split the Allied front; the French reserve was never used effectively, and the campaign ended in six weeks."} },
@@ -1198,6 +1420,9 @@ const WARS = {
     legendCurve: "Central Powers–controlled share", legendCounter: "Allied counteroffensive (1918)", legendNode: "Key battle node",
     stateAxis: "Central Powers", stateOccupied: "Central Powers–occupied", stateAllies: "Entente", stateNeutral: "Neutral", stateDefeated: "Defeated / armistice",
     axisCount: "Central Powers–controlled nations: {n}", stage: "Stage {i} / {n}",
+    deepDiveTitle: "Deeper context",
+    deepDiveSub: "Longer notes on causes, machinery, battlefields and consequences, written to sit alongside the cards above.",
+    deepWhy: "Why it matters",
     all: "All", pause: "Pause", resume: "Resume",
     keyEvents: "Key events", life: "Life", viewDetail: "Click for details"
   }
@@ -1546,6 +1771,160 @@ const WARS = {
   { numEn:"~20M", label:"statDeaths" },
   { numEn:"4", label:"statFronts" },
 ],
+  deepDives: {
+    start: [
+      { tag: "Long causes", title: "The deep roots beneath Sarajevo",
+        lead: "The assassination of Archduke Franz Ferdinand was the trigger, not the whole explanation. Years of alliance politics, imperial rivalry, nationalism and arms racing had already made Europe volatile.",
+        points: [
+          { label: "Alliance systems", text: "The Triple Alliance and the Triple Entente were framed as defensive, but they made a local war likely to widen. Austria-Hungary relied on Germany, France sought security against Germany, and Britain's commitments to France and Belgium complicated any limited conflict." },
+          { label: "Nationalism and empire", text: "Slavic nationalism in the Balkans challenged Habsburg rule, while Serbian ambitions and Russian pan-Slav sympathy intensified the dispute. Imperial competition in Africa and Asia also created mistrust between Britain, France, Germany and Italy." },
+          { label: "Arms race", text: "Germany's naval expansion worried Britain, and continental armies grew larger and more elaborate. General Staffs drafted timetables that turned mobilisation into a machine: once started, it was difficult to stop without abandoning strategic assumptions." },
+          { label: "Balkan wars", text: "The Balkan Wars of 1912–13 weakened the Ottoman Empire, enlarged Serbia and increased Austrian anxiety about Slavic separatism. The region became a place where a single political murder could threaten the integrity of a great empire." }
+        ],
+        takeaway: "Sarajevo mattered because it ignited a structure of commitments and fears that had been building for years; the war was not inevitable, but its ingredients were already in place." },
+      { tag: "July Crisis", title: "How a local crisis became a European war",
+        lead: "In five weeks during the summer of 1914, governments exchanged ultimatums, mobilised armies and declared war. The July Crisis shows how decisions taken to deter enemies instead escalated the conflict.",
+        points: [
+          { label: "The ultimatum", text: "Austria-Hungary sent Serbia a deliberately harsh ultimatum after the assassination. Serbia accepted most terms but rejected the parts that would have compromised its sovereignty, and Austria declared war on 28 July." },
+          { label: "Russian mobilisation", text: "Russia ordered partial mobilisation in support of Serbia, then full mobilisation when diplomacy failed. Germany treated Russian mobilisation as a direct threat and declared war on Russia and, shortly afterward, on France." },
+          { label: "Belgium and Britain", text: "Germany's Schlieffen-inspired plan required passing through neutral Belgium to attack France. Belgium resisted, and Britain entered the war on 4 August, citing the violation of Belgian neutrality as well as its own strategic interests." },
+          { label: "Failure of diplomacy", text: "Ambassadors and ministers still exchanged proposals, but military timetables moved faster than negotiations. Many leaders expected a short war and underestimated how quickly a continental conflict would become a general one." }
+        ],
+        takeaway: "The July Crisis was a chain of calculated risks in which each government hoped to control escalation; instead, the mechanisms meant to provide security carried Europe into war." },
+      { tag: "Schlieffen Plan", title: "The plan that did not win the war quickly",
+        lead: "German strategy in 1914 rested on avoiding a two-front war by defeating France first. The plan demanded a wide sweep through Belgium, speed through French territory and then a transfer of forces east against Russia.",
+        points: [
+          { label: "The route through Belgium", text: "German armies crossed the Meuse and advanced through Belgium and Luxembourg, outflanking the French defensive line along the German border. Belgian fortifications and resistance delayed the timetable, but the main column still reached northern France." },
+          { label: "The Marne gap", text: "By early September the German First and Second Armies had advanced beyond their supply base and opened a gap between them. French and British forces attacked the exposed flank in the First Battle of the Marne, forcing a retreat to the Aisne." },
+          { label: "Why it failed", text: "The plan assumed speed, cooperation and a rapid French collapse. It underestimated Belgian and French resistance, British intervention, Russian mobilisation and the difficulty of moving and supplying armies over long distances." },
+          { label: "Consequences", text: "After the Marne neither side could deliver a decisive blow in the west. The war of movement ended, and both armies extended defensive lines toward the Channel in the Race to the Sea." }
+        ],
+        takeaway: "The failure of the opening plan locked Germany into the two-front war it had hoped to avoid, and the Western Front became the central symbol of stalemate." },
+      { tag: "Stalemate", title: "The war of movement ends",
+        lead: "By late 1914 the armies in France and Belgium had dug in. What began as a fast campaign became a continuous line of trenches, artillery positions and supply dumps that would hold for most of the next four years.",
+        points: [
+          { label: "Trench systems", text: "Trenches were not single ditches but layered systems with front-line positions, support trenches, reserves and communication routes. Barbed wire, machine-gun nests and artillery observation made frontal attacks extremely costly." },
+          { label: "Race to the Sea", text: "Both sides tried to outflank the other as the line moved north toward the Belgian coast. When the sea stopped further flanking, the front stabilised from the Channel to the Swiss border." },
+          { label: "New kind of war", text: "Industrial societies redirected factories, railways, mines and farms toward military production. Civilians worked in munitions plants, women replaced men in many jobs, and governments controlled food, information and labour." },
+          { label: "Other fronts continued", text: "Stalemate in the west did not mean inactivity everywhere. The Eastern Front remained mobile, Italy entered in 1915, and campaigns in the Balkans, the Middle East and Africa continued to shift territory and alliances." }
+        ],
+        takeaway: "The trenches were a symptom of a larger problem: defensive firepower had outgrown the ability of armies to move, and the belligerents had to find new ways to break the deadlock." }
+    ],
+    weapons: [
+      { tag: "Artillery", title: "The gun war that shaped the battlefield",
+        lead: "Artillery caused more casualties than any other weapon on the Western Front. It destroyed wire, knocked out machine-gun posts, cut supply routes and broke infantry attacks before they reached the trenches.",
+        points: [
+          { label: "Field and heavy guns", text: "Field guns such as the French 75 mm fired quickly and directly, while heavy howitzers lobbed large shells into trenches and behind the front. As the war continued, guns grew bigger and batteries became central to every offensive plan." },
+          { label: "Creeping barrages", text: "Attackers fired a moving curtain of shells just ahead of advancing infantry, forcing defenders to stay under cover until the attackers were close. Timing was critical: if infantry fell behind the barrage, the attack could be torn apart by machine guns." },
+          { label: "Counter-battery fire", text: "Armies used sound ranging, flash spotting and aerial observation to locate enemy guns. Silencing those guns became a prerequisite for a successful assault, because uncut wire and intact machine-gun nests made infantry attacks suicidal." },
+          { label: "Shell shortage", text: "The war consumed ammunition at a rate no army had expected. Britain's 1915 shell crisis forced a reorganisation of munitions production and showed that industrial output could determine whether an offensive was possible." }
+        ],
+        takeaway: "The war of 1914–18 was, above all, an artillery war; tanks, aircraft and gas changed tactics, but guns remained the main instrument of destruction." },
+      { tag: "Defence", title: "Machine guns, wire and the power of the defensive",
+        lead: "The machine gun did not by itself create the stalemate, but combined with barbed wire, trenches and artillery it gave defenders a powerful advantage over infantry advancing across open ground.",
+        points: [
+          { label: "Machine-gun fire", text: "A single gun could sweep no man's land with sustained fire, while riflemen and artillery added to the effect. Defenders positioned guns in mutually supporting strongpoints so that attacking one position exposed troops to fire from another." },
+          { label: "Barbed wire", text: "Wire belts slowed attackers and funnelled them into predictable lanes where machine guns and rifles could target them. Cutting wire required artillery, engineering parties or tanks, all of which had to work under fire." },
+          { label: "Deep defences", text: "By 1917 German doctrine placed fewer men in the front line and more in reserve behind it. An attack that captured the first trench then met a counterattack from fresh troops, making shallow breakthroughs difficult to exploit." },
+          { label: "Infantry tactics", text: "Armies responded with small-unit tactics, grenades, trench mortars, creeping barrages and infantry carrying Lewis guns. These methods improved local results but rarely restored the open manoeuvre of 1914." }
+        ],
+        takeaway: "Defence was not passive; it was an active system of fire, obstacles and reserves that forced attackers to solve the whole battlefield before they could gain ground." },
+      { tag: "New weapons", title: "Tanks and poison gas in search of a breakthrough",
+        lead: "Both sides introduced weapons intended to restore movement. Tanks could cross wire and trenches, while gas could disable defenders, but neither immediately solved the problem of exploitation.",
+        points: [
+          { label: "Mark I tank", text: "The British Mark I first appeared at Flers–Courcelette on the Somme in September 1916. Its tracks crushed wire and its shape crossed trenches, but slow speed, heat, mechanical failure and small numbers limited what it could achieve." },
+          { label: "German and French tanks", text: "Germany produced the A7V, while France developed the lighter Renault FT with a rotating turret. The FT's layout became the template for future tanks, even though the first World War tanks were still too few and unreliable to win campaigns alone." },
+          { label: "Poison gas", text: "Chlorine, phosgene and mustard gas caused panic, blindness and suffocation, and forced armies to develop masks and drill. Gas could contaminate an area and disrupt defensive positions, but wind and weather made it unpredictable and it rarely produced a clean breakthrough." },
+          { label: "Combined arms", text: "The most successful attacks combined artillery preparation, infantry waves, tanks, aircraft and engineers. At Amiens in 1918 these elements worked together well enough to begin the Hundred Days, pointing toward mechanised warfare." }
+        ],
+        takeaway: "New weapons did not abolish the stalemate by themselves; they mattered when armies learned to combine them with artillery, infantry and logistics." },
+      { tag: "Air and sea", title: "Aircraft and submarines extend the war",
+        lead: "The First World War was also fought above the trenches and beneath the sea. Aircraft began as reconnaissance tools, while U-boats challenged the trade routes that kept Britain supplied.",
+        points: [
+          { label: "Reconnaissance aircraft", text: "Early aircraft spotted enemy movements, directed artillery and photographed trenches. Air superiority became important because a commander who could see the battlefield could target reserves and batteries more effectively." },
+          { label: "Fighters and aces", text: "Fighters such as the Sopwith Camel and Fokker Dr.I contested the sky over the front. The publicity around aces captured the public imagination, but the real air war depended on squadrons, production, training and reliable engines." },
+          { label: "Jutland and blockade", text: "The Battle of Jutland in 1916 was the largest fleet action of the war, yet Britain maintained its naval blockade of Germany. The blockade restricted German imports and contributed to severe shortages at home, while the German fleet remained a threatening fleet-in-being." },
+          { label: "Unrestricted submarine warfare", text: "Germany declared unrestricted U-boat warfare in 1917 to cut Britain's sea supply. It sank many ships but failed to force a British collapse, and the campaign helped bring the United States into the war." }
+        ],
+        takeaway: "Air and naval power made the war truly modern: observation from above and attacks on commerce below the surface affected armies and civilians far from the front line." }
+    ],
+    battles: [
+      { tag: "Western Front", title: "Why the Western Front became a killing ground",
+        lead: "The battles in France and Belgium are often remembered as futile attrition. They were also attempts to solve a real strategic problem: how to break a defended line without losing an entire army in the process.",
+        points: [
+          { label: "First Marne, 1914", text: "The French and British counterattack halted the German advance and forced a retreat to the Aisne. It ended hopes of a quick German victory and began the long stalemate." },
+          { label: "Verdun, 1916", text: "Germany attacked the French fortress city to bleed the French army and wreck its morale. The battle lasted months and produced devastating casualties on both sides; the French held, and Verdun became a symbol of national endurance." },
+          { label: "Somme, 1916", text: "The Allied offensive was intended to relieve pressure on Verdun and break the German line. A week-long bombardment failed to cut enough wire, and the first day produced catastrophic British losses; later attacks gained ground at terrible cost and introduced the tank." },
+          { label: "Passchendaele and Amiens", text: "Third Ypres, or Passchendaele, in 1917 became associated with mud and misery for limited territorial gain. Amiens in 1918 showed that better coordinated artillery, tanks, aircraft and infantry could restore movement on a limited but decisive scale." }
+        ],
+        takeaway: "The Western Front's battles must be read together: early failures taught armies how to plan artillery, trains, reserves and combined arms, and the learning is visible in the faster advances of 1918." },
+      { tag: "Eastern Front", title: "A mobile war with enormous distances",
+        lead: "While the Western Front stalled, the war against Russia and Romania remained far more fluid. Armies covered vast distances, encircled large forces and suffered dramatic collapses.",
+        points: [
+          { label: "Tannenberg, 1914", text: "German forces defeated the Russian Second Army in East Prussia and took tens of thousands of prisoners. The victory protected German territory and elevated Hindenburg and Ludendorff, who later dominated German strategy." },
+          { label: "Gorlice and the Eastern Front", text: "A German-Austrian breakthrough at Gorlice in 1915 drove the Russian army back hundreds of kilometres and changed the map of Eastern Europe. Unlike the west, the front could still move because distances were greater and defensive systems less dense." },
+          { label: "Brusilov Offensive, 1916", text: "Russia attacked along a broad front and achieved the largest Austro-Hungarian collapse of the war. The offensive showed that the Habsburg army was fragile and forced Germany to divert troops from other theatres." },
+          { label: "Romania and Italy", text: "Romania joined the Entente in 1916 and was quickly overrun, while Italy fought a grinding war against Austria-Hungary in the Alps. The Italian defeat at Caporetto in 1917 triggered political crisis, but the front recovered with Allied support." }
+        ],
+        takeaway: "The Eastern Front kept the Central Powers stretched and helped explain why Germany sought a decisive victory in 1918 before American manpower could arrive in force." },
+      { tag: "Sea and empire", title: "Gallipoli, Jutland and the global war",
+        lead: "The First World War was not confined to Europe. Campaigns in the Dardanelles, the North Sea, the Middle East and Africa connected the fate of empires to control of sea routes and colonial territory.",
+        points: [
+          { label: "Gallipoli, 1915–16", text: "Allied forces landed on the Gallipoli peninsula to open a route to Constantinople and support Russia. Strong Ottoman defences, difficult terrain and disease led to a costly evacuation; the campaign became central to Turkish and Australian national memory." },
+          { label: "Jutland, 1916", text: "Britain's Grand Fleet and Germany's High Seas Fleet fought a vast naval battle off Denmark. Germany inflicted heavy losses but did not break the blockade or gain control of the sea, so the strategic result favoured Britain." },
+          { label: "Middle East", text: "Ottoman entry threatened the Suez Canal and British India. Campaigns in Sinai, Palestine and Mesopotamia, alongside Arab revolts, eventually broke Ottoman power in the region and redrew its borders." },
+          { label: "U-boat campaign", text: "Germany's submarines attacked merchant shipping around the British Isles. The campaign brought the United States closer to war and forced the Allies to organise convoys, patrols and replacements on an industrial scale." }
+        ],
+        takeaway: "The battle map is European, but the war was connected by shipping and empire; events at a strait or in an ocean could change decisions on the continent." },
+      { tag: "Final year", title: "The offensives that broke the stalemate",
+        lead: "In 1918 both sides tried to win before the balance shifted further. Germany gambled on a rapid victory in the west; the Allies answered with coordinated offensives that steadily recovered the initiative.",
+        points: [
+          { label: "Spring Offensive", text: "Germany attacked with stormtroop units, short bombardments and infiltration tactics, hoping to split the Allied armies before American forces arrived. The offensive made large gains but outran supplies and left exposed salients." },
+          { label: "Second Marne", text: "French, British and American forces halted the German advance near the Marne in July 1918. The German army had spent its best reserves, and the strategic initiative passed to the Allies." },
+          { label: "Amiens and the Hundred Days", text: "The Amiens offensive used tanks, aircraft, artillery and infantry in closer cooperation than earlier battles. From August onward the Allies advanced almost continuously, forcing the German army back toward its own frontier." },
+          { label: "Home fronts collapse", text: "Military defeats combined with blockade, food shortages and revolution. The German monarchy fell in November, and the army's leaders concluded that an armistice had to be requested before the country collapsed completely." }
+        ],
+        takeaway: "The stalemate ended not with one miraculous weapon but with improved combined arms, fresh American manpower and the exhaustion of the Central Powers' armies and home fronts." }
+    ],
+    result: [
+      { tag: "Armistice", title: "Eleven November and the end of the fighting",
+        lead: "The armistice stopped the guns, but it was not a peace treaty. It was a military agreement that disarmed Germany while the political future of Europe remained undecided.",
+        points: [
+          { label: "The railway carriage", text: "German delegates met Allied representatives in a railway carriage in the Forest of Compiègne and signed the armistice on 11 November 1918. The same location had symbolic weight because it had also been associated with earlier German military successes." },
+          { label: "Terms of the ceasefire", text: "Germany agreed to evacuate occupied territories, surrender artillery, machine guns, aircraft and ships, and allow Allied forces to occupy the Rhineland. The naval blockade continued until a final peace settlement was reached." },
+          { label: "The eleventh hour", text: "Fighting was scheduled to stop at 11 a.m. on the eleventh day of the eleventh month. Units kept firing until the deadline in some places, and the sudden silence became one of the best remembered moments of the war." },
+          { label: "Ceasefire versus peace", text: "The armistice did not settle borders, reparations or political responsibility. Those questions were left to a peace conference that would take months and produce treaties that many people considered unjust or unstable." }
+        ],
+        takeaway: "The armistice ended the killing but opened a second, political phase of the war in which governments argued over guilt, money, borders and the future of empires." },
+      { tag: "Empires", title: "The old empires come apart",
+        lead: "Four major imperial systems were weakened or destroyed by the war. In their place appeared revolutions, new states and contested borders that would shape European politics for decades.",
+        points: [
+          { label: "Russia", text: "The Provisional Government failed to end the war or solve the food crisis, and the Bolsheviks seized power in October 1917. Russia left the war through the Treaty of Brest-Litovsk and then descended into civil war." },
+          { label: "Austria-Hungary", text: "Military defeat, nationality movements and economic collapse broke the Habsburg monarchy into successor states. Former provinces became the basis for new countries, but mixed populations produced disputes over borders and minorities." },
+          { label: "Germany", text: "The Kaiser abdicated and a republic was declared as the army and home front collapsed. The new government had to accept defeat, sign the armistice and then negotiate a treaty that would be blamed for economic hardship." },
+          { label: "Ottoman Empire", text: "The Ottoman Empire lost the war and was partitioned by the Treaty of Sèvres, later revised after the Turkish War of Independence. The end of Ottoman rule transformed the eastern Mediterranean and the Middle East." }
+        ],
+        takeaway: "The war destroyed not only armies but the political architecture of Central and Eastern Europe; the new states carried unresolved nationality and economic problems into the interwar period." },
+      { tag: "Peace treaties", title: "Paris and the settlement that satisfied no one",
+        lead: "The Paris Peace Conference produced a series of treaties rather than one single settlement. Each treaty reflected the victors' priorities, the collapse of the defeated empires and the principle of national self-determination applied unevenly.",
+        points: [
+          { label: "Treaty of Versailles", text: "Germany lost territory, accepted restrictions on its armed forces and agreed to pay reparations. Article 231 assigned responsibility for the war to Germany and its allies, a clause deeply resented in German politics." },
+          { label: "Saint-Germain and Trianon", text: "The treaties with Austria and Hungary recognised new states in Central Europe, including Czechoslovakia and Yugoslavia. Hungary lost substantial territory, and millions of Hungarian-speaking people found themselves outside the new borders." },
+          { label: "Self-determination and its limits", text: "Woodrow Wilson's principle promised peoples a voice in their political future, but borders were drawn through mixed regions and strategic concerns often overrode ethnic ones. Mandates in the former Ottoman and German colonies were administered by the victors." },
+          { label: "Economic consequences", text: "Reparations, war debts, inflation and disrupted trade made recovery difficult. The new states had to build administrations and economies while coping with refugees, minorities and ruined infrastructure." }
+        ],
+        takeaway: "The treaties ended the legal state of war, but many Germans, Hungarians and others viewed them as imposed settlements; that resentment became a powerful force in the 1920s and 1930s." },
+      { tag: "Unfinished peace", title: "An unstable order after 1919",
+        lead: "The League of Nations and the new borders were meant to secure peace. Instead, the interwar years were marked by economic crisis, revisionist politics and weak collective action.",
+        points: [
+          { label: "League of Nations", text: "The League was founded to settle disputes and prevent aggression through collective security. It achieved some diplomatic successes but lacked an army of its own and depended on the willingness of major powers to act." },
+          { label: "Revisionist states", text: "Germany, Italy and Hungary challenged parts of the settlement. They used minority questions, economic hardship and national pride to demand changes, while France sought alliances to preserve the new order." },
+          { label: "Great Depression", text: "The economic crash of 1929 undermined democratic governments and intensified unemployment and political extremism. Reparations and war debts became even harder to manage, and extremist parties gained support." },
+          { label: "Memory and warning", text: "The war's scale changed how people thought about conflict, diplomacy and civilians under arms. The failure to prevent a second global war remains one of the central lessons of the period." }
+        ],
+        takeaway: "The result chapter closes by showing that 1918 did not end the crisis of European order; it replaced imperial war with an unstable peace that would collapse in 1939." }
+    ],
+  },
   startPoints: [
   { year:{en:"28 Jun 1914"}, text:{en:"Archduke Franz Ferdinand is assassinated in Sarajevo."}, detail:{en:"Gavrilo Princip shot the Habsburg heir and his wife in the Bosnian capital. Austria-Hungary treated the murder as a challenge to the empire, and Germany promised unconditional support, turning a local crime into an international crisis."} },
   { year:{en:"Jul 1914"}, text:{en:"Ultimatums and mobilisation turn the July Crisis into a European war."}, detail:{en:"Austria-Hungary's ultimatum to Serbia was deliberately harsh, and its declaration of war on 28 July triggered Russian mobilisation. Germany declared war on Russia and France, invaded Belgium, and Britain entered on 4 August; the carefully planned alliance system had produced a general war."} },
@@ -1625,6 +2004,7 @@ let battles = war.battles;
 let seaLabels = war.seaLabels;
 let startPoints = war.startPoints;
 let resultPoints = war.resultPoints;
+let deepDives = war.deepDives;
 let figures = war.figures;
 let figurePhoto = war.figurePhoto;
 let controlData = war.controlData;
@@ -2054,6 +2434,28 @@ function renderChapterPoints(id, points) {
       <div class="txt">${battleEsc(tt(p.text))}</div>
       ${p.detail ? `<div class="detail">${battleEsc(tt(p.detail))}</div>` : ""}
     </div>`).join("");
+}
+function deepText(value) { return typeof value === "string" ? value : tt(value); }
+function renderDeepDives() {
+  const targets = {
+    start: "startDeepDives", weapons: "weaponsDeepDives",
+    battles: "battlesDeepDives", result: "resultDeepDives"
+  };
+  Object.keys(targets).forEach(key => {
+    const el = document.getElementById(targets[key]);
+    if (!el) return;
+    el.innerHTML = ((deepDives && deepDives[key]) || []).map((d, i) => `
+      <article class="deep-card">
+        <div class="deep-num">DEEP DIVE ${String(i + 1).padStart(2, "0")}</div>
+        <div class="deep-kicker">${battleEsc(deepText(d.tag))}</div>
+        <h4>${battleEsc(deepText(d.title))}</h4>
+        <p class="deep-lead">${battleEsc(deepText(d.lead))}</p>
+        <ul class="deep-points">
+          ${(d.points || []).map(p => `<li><b>${battleEsc(deepText(p.label))}</b>${battleEsc(deepText(p.text))}</li>`).join("")}
+        </ul>
+        <p class="deep-takeaway"><b>${battleEsc(t("deepWhy"))}:</b> ${battleEsc(deepText(d.takeaway))}</p>
+      </article>`).join("");
+  });
 }
 function setChapter(id) {
   if (!document.getElementById(id)) return;
@@ -4420,6 +4822,7 @@ function applyI18n() {
   renderMap();
   renderChapterPoints("startPoints", startPoints);
   renderChapterPoints("resultPoints", resultPoints);
+  renderDeepDives();
   renderFigures();
   renderWeapons();
   closeBattle();
@@ -4445,6 +4848,7 @@ function setWarData(id) {
   seaLabels = war.seaLabels;
   startPoints = war.startPoints;
   resultPoints = war.resultPoints;
+  deepDives = war.deepDives;
   figures = war.figures;
   figurePhoto = war.figurePhoto;
   controlData = war.controlData;
