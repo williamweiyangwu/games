@@ -190,7 +190,7 @@
 <div id="standings" class="hidden"></div>
 <div id="banner" class="hidden"></div>
 <div id="lights" class="hidden"><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div></div>
-  <div id="verTag">v2.51</div>
+  <div id="verTag">v2.52</div>
   <button id="achBtn" class="ghost">ACHIEVEMENTS</button>
   <div id="achPanel"><b style="letter-spacing:.12em">ACHIEVEMENTS</b><div id="achList" style="margin-top:8px"></div></div>
   <div id="pitMsg"></div>
@@ -4903,7 +4903,7 @@ var pr = projectTrack(c.x, c.z, c.i);
     if (raceLineMesh) { scene.remove(raceLineMesh); raceLineMesh.geometry.dispose(); raceLineMesh.material.dispose(); raceLineMesh = null; }
     if (!raceLineOn) return;
     var pos = [], col = [];
-    var GREEN = [0.22, 1.0, 0.47], RED = [1.0, 0.22, 0.16];
+    var GREEN = [0.22, 1.0, 0.47], BRAKE = GREEN;   // brake boards match the racing line
     function vert(p, y, c) { pos.push(p[0], y, p[1]); col.push(c[0], c[1], c[2]); }
     function tri(a, b, c, colour, y) { vert(a, y + 0.078, colour); vert(b, y + 0.078, colour); vert(c, y + 0.078, colour); }
     // one arrow = a filled head triangle + a tail rectangle, laid flat on the road
@@ -4915,14 +4915,14 @@ var pr = projectTrack(c.x, c.z, c.i);
       tri(w(tail[0][0], tail[0][1]), w(tail[1][0], tail[1][1]), w(tail[2][0], tail[2][1]), GREEN, y);
       tri(w(tail[0][0], tail[0][1]), w(tail[2][0], tail[2][1]), w(tail[3][0], tail[3][1]), GREEN, y);
     }
-    // three red boards across the racing line: the F1-style braking zone before
-    // each corner. They sit on top of the green arrows so the tutorial shows
-    // both WHERE to drive and WHEN to brake.
+    // three green boards across the racing line: the braking zone before
+    // each corner. They match the arrows so the tutorial shows WHERE to
+    // drive and WHEN to brake in the same colour.
     function addBrakeBar(s, lat, halfW, len) {
       var a = offsetPos(s - len/2, lat - halfW), b = offsetPos(s - len/2, lat + halfW);
       var c = offsetPos(s + len/2, lat + halfW), d = offsetPos(s + len/2, lat - halfW);
-      vert([a.x, a.z], a.y + 0.105, RED); vert([b.x, b.z], b.y + 0.105, RED); vert([c.x, c.z], c.y + 0.105, RED);
-      vert([a.x, a.z], a.y + 0.105, RED); vert([c.x, c.z], c.y + 0.105, RED); vert([d.x, d.z], d.y + 0.105, RED);
+      vert([a.x, a.z], a.y + 0.105, BRAKE); vert([b.x, b.z], b.y + 0.105, BRAKE); vert([c.x, c.z], c.y + 0.105, BRAKE);
+      vert([a.x, a.z], a.y + 0.105, BRAKE); vert([c.x, c.z], c.y + 0.105, BRAKE); vert([d.x, d.z], d.y + 0.105, BRAKE);
     }
     for (var s = 0; s < LEN; s += 15) {
       var k = kappaAt(s);
@@ -5048,12 +5048,12 @@ var pr = projectTrack(c.x, c.z, c.i);
     </p>
     <p style="line-height:1.7;opacity:0.9;margin-top:10px">
       <b>RACING LINE (green arrows):</b> Shows the ideal path. Enter wide, hit the <b>apex</b> (inside of the turn), exit wide for maximum speed.<br>
-      <span style="color:#ff6b5e"><b>RED BRAKE BOARDS:</b></span> The three red bars before each corner are the braking zone. Brake at the first bar, then release as you turn in.
+      <span style="color:#38ff78"><b>GREEN BRAKE BOARDS:</b></span> The three green bars before each corner are the braking zone, matching the racing line. Brake at the first bar, then release as you turn in.
     </p>
     <p style="line-height:1.7;opacity:0.9;margin-top:8px">
       <b>WHEN TO DO WHAT:</b><br>
       • <b>Straights:</b> Full throttle. Use ERS (SPACE) when clear ahead.<br>
-      • <b>Before corners:</b> Brake at the red boards on the racing line (S/↓), down to a controllable speed.<br>
+      • <b>Before corners:</b> Brake at the green boards on the racing line (S/↓), down to a controllable speed.<br>
       • <b>Turn-in:</b> Ease off brake, steer smoothly toward the apex.<br>
       • <b>Mid-corner:</b> Maintain steady throttle/steering; avoid sudden inputs.<br>
       • <b>Corner exit:</b> Unwind steering and accelerate progressively.<br>
@@ -5072,7 +5072,7 @@ var pr = projectTrack(c.x, c.z, c.i);
       <b>LAPS ROLLER:</b> Drag the LAPS slider in the menu to set the race length from 1 to 50 laps. Pick your real F1 circuit from the TRACK cards above.
     </p>
     <p style="line-height:1.7;opacity:0.9;margin-top:8px">
-      <b>RACING LINE:</b> Bright green arrows show the suggested path; red boards show where to brake before each corner. Use the button below to switch them on or off at any time.
+      <b>RACING LINE:</b> Bright green arrows show the suggested path; matching green boards show where to brake before each corner. Use the button below to switch them on or off at any time.
     </p>
     <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
       <button id="closeTutorial">CLOSE</button>
