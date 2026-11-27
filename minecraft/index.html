@@ -320,7 +320,7 @@
   <div id="bar"></div>
   <div id="dbg"></div>
   <div id="toast"></div>
-  <div id="ver">v2.7 build 2</div>
+  <div id="ver">v2.7 build 3</div>
 </div>
 
 <div id="inv" class="hide">
@@ -1706,11 +1706,18 @@ function heightEnd(x, z) {
   const base = fbm(x * 0.008 + s + 101, z * 0.008 + 57, 4);
   return clamp(Math.floor(17 + (base - 0.5) * 10), 12, 25);
 }
+function plainMask(x, z) {
+  const s = seedOff;
+  return clamp((fbm(x * 0.0035 + 811 + s, z * 0.0035 + 613, 3) - 0.38) * 3.2, 0, 1);
+}
 function heightAt(x, z) {
   if (dim === NETHER) return heightNether(x, z);
   if (dim === END) return heightEnd(x, z);
   const s = seedOff;
   const cont = fbm(x * 0.018 + s, z * 0.018 + 7, 4);
+  /* broad plains flatten the lowlands while mountain ranges stay intact */
+  const flat = plainMask(x, z);
+  const rolling = (cont - 0.5) * 14 * (1 - flat * 0.85);
   /* mountain ranges: a broad region mask gates sharp ridged crests */
   const mask = fbm(x * 0.0026 + 317 + s, z * 0.0026 + 211, 3);
   const r1 = 1 - Math.abs(fbm(x * 0.0072 + 91 + s, z * 0.0072 + 37, 4) * 2 - 1);
@@ -1718,7 +1725,7 @@ function heightAt(x, z) {
   const ridge = Math.pow(r1, 2.6) * 0.78 + Math.pow(r2, 3.4) * 0.22;
   const strength = clamp((mask - 0.40) * 3.6, 0, 1);
   const peaks = ridge * strength * 36;
-  return clamp(Math.floor(SEA + 2 + (cont - 0.5) * 14 + peaks), 1, H - 5);
+  return clamp(Math.floor(SEA + 2 + rolling + peaks), 1, H - 5);
 }
 
 function computeTop(ch) {
@@ -2914,23 +2921,24 @@ function texBox(cx, cy, cz, s, tiles) {
 /* -------------------------------------------- third-person red person */
 function drawPlayer() {
   const r = 220, g = 50, b = 46, skin = 0.88, dark = 0.62;
+  const yaw = cam.yaw, ca = Math.cos(yaw), sa = Math.sin(yaw);
   const sw = Math.sin(pl.bob) * 0.6;
-  const fx = Math.sin(cam.yaw), fz = Math.cos(cam.yaw);
-  const rx = Math.cos(cam.yaw), rz = -Math.sin(cam.yaw);   /* sideways vector (perpendicular to facing) */
-  const sway = Math.abs(Math.sin(pl.bob)) * 0.05;
+  const sway = Math.abs(Math.sin(pl.bob)) * 0.025;
   const sR = r * skin | 0, sG = g * skin | 0, sB = b * skin | 0;
   const dR = r * dark | 0, dG = g * dark | 0, dB = b * dark | 0;
   const HC = armorColor(0), CC = armorColor(1), LC = armorColor(2), BC = armorColor(3);
   const headC = HC || [r, g, b], bodyC = CC || [sR, sG, sB], legC = LC || [dR, dG, dB];
-  boxFaces(pl.x, pl.y + 1.52, pl.z, 0.5, 0.5, 0.5, headC[0], headC[1], headC[2]);    /* head */
-  boxFaces(pl.x, pl.y + 1.02 + sway, pl.z, 0.62, 0.62, 0.34, bodyC[0], bodyC[1], bodyC[2]); /* torso */
-  boxFaces(pl.x + rx * 0.40 + fx * sw * 0.10, pl.y + 1.00 + sway, pl.z + rz * 0.40 + fz * sw * 0.10, 0.18, 0.52, 0.18, bodyC[0], bodyC[1], bodyC[2]); /* arm */
-  boxFaces(pl.x - rx * 0.40 - fx * sw * 0.10, pl.y + 1.00 + sway, pl.z - rz * 0.40 - fz * sw * 0.10, 0.18, 0.52, 0.18, bodyC[0], bodyC[1], bodyC[2]); /* arm */
-  boxFaces(pl.x + rx * 0.16 + fx * sw * 0.18, pl.y + 0.34, pl.z + rz * 0.16 + fz * sw * 0.18, 0.24, 0.68, 0.24, legC[0], legC[1], legC[2]); /* leg */
-  boxFaces(pl.x - rx * 0.16 - fx * sw * 0.18, pl.y + 0.34, pl.z - rz * 0.16 - fz * sw * 0.18, 0.24, 0.68, 0.24, legC[0], legC[1], legC[2]); /* leg */
-  if (BC) {
-    boxFaces(pl.x + rx * 0.16 + fx * sw * 0.18, pl.y + 0.10, pl.z + rz * 0.16 + fz * sw * 0.18, 0.26, 0.20, 0.26, BC[0], BC[1], BC[2]);
-    boxFaces(pl.x - rx * 0.16 - fx * sw * 0.18, pl.y + 0.10, pl.z - rz * 0.16 - fz * sw * 0.18, 0.26, 0.20, 0.26, BC[0], BC[1], BC[2]);
+  /* Every part uses the same yaw and local offsets, so limbs stay attached
+     to the torso even while the camera turns. Sizes overlap instead of merely touching. */
+  const part = (side, up, fwd, w, h, d, c) =>
+    boxFacesRot(pl.x + side * ca + fwd * sa, pl.y + up + sway, pl.z - side * sa + fwd * ca,
+                w, h, d, yaw, c[0], c[1], c[2]);
+  part(0, 1.06, 0, 0.70, 0.78, 0.38, bodyC);                    /* torso */
+  part(0, 1.56, 0.02, 0.54, 0.54, 0.54, headC);                 /* head */
+  for (const sx of [-1, 1]) {
+    part(sx * 0.42, 1.04, sx * sw * 0.05, 0.22, 0.70, 0.22, bodyC); /* arms overlap torso sides */
+    part(sx * 0.17, 0.38, -sx * sw * 0.08, 0.26, 0.76, 0.26, legC); /* legs overlap torso bottom */
+    if (BC) part(sx * 0.17, 0.12, -sx * sw * 0.08, 0.28, 0.24, 0.28, BC);
   }
 }
 
