@@ -190,17 +190,17 @@
 <div id="standings" class="hidden"></div>
 <div id="banner" class="hidden"></div>
 <div id="lights" class="hidden"><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div></div>
-  <div id="verTag">v2.52</div>
+  <div id="verTag">v2.53</div>
   <button id="achBtn" class="ghost">ACHIEVEMENTS</button>
   <div id="achPanel"><b style="letter-spacing:.12em">ACHIEVEMENTS</b><div id="achList" style="margin-top:8px"></div></div>
   <div id="pitMsg"></div>
 
 <div id="pitMenu" class="overlay hidden">
   <h1>PIT STOP</h1>
-  <p class="pitNote">Your car is driving itself to the pit box at the 80 km/h limit. Choose fresh tyres and repairs, then confirm. The stop takes about 2.6 s (plus 1.2 s for repairs) once the car is jacked up.</p>
+  <p class="pitNote">Your car drives itself to the pit box at the 80 km/h limit. Choose fresh tyres and repairs, then confirm. The stop takes about 2.6 s (plus 1.2 s for repairs) once the car is jacked up — after that you drive out yourself.</p>
   <div class="pitRow"><div class="pickLabel">TYRES</div><div id="pitTyrePick" class="cards"></div></div>
   <div id="pitRepairRow" class="sel"><span id="pitRepairMark">&#9745;</span> REPAIR DAMAGE &mdash; +1.2s STOP TIME</div>
-  <div class="menuBtns"><button id="pitConfirmBtn">CONFIRM &amp; REJOIN</button></div>
+  <div class="menuBtns"><button id="pitConfirmBtn">CONFIRM &amp; DRIVE OUT</button></div>
 </div>
 
   <div id="touchControls">
@@ -2598,7 +2598,7 @@ ctrl: [
       wheelSpin: 0, wobble: 0,
       remote: false, hidden: false, id: null,
       tyre: 1, tyreWear: 0, damage: 0, damageState: 0, retired: false, exploded: false, wrecked: false,
-      inPits: false, pitPhase: 0, pitT: 0, pitted: false, jumpStart: false,
+      inPits: false, pitExitLock: false, pitPhase: 0, pitT: 0, pitted: false, jumpStart: false,
       pitCount: 0, lastPitLap: -1, penalty: 0, lightPenalty: 0, pos: 0, gridSlot: -1,
       aiPit: 0, aiPitT: 0, aiPitTyre: 1, pitSpeedWarned: false
     };
@@ -2852,6 +2852,7 @@ ctrl: [
       c.exploded = false;
       c.wrecked = false;
       c.inPits = false;
+      c.pitExitLock = false;
       c.aiPit = 0; c.aiPitT = 0; c.pitSpeedWarned = false;
       c.pitPhase = 0;
       c.pitT = 0;
@@ -2962,7 +2963,7 @@ ctrl: [
       c.best = Infinity; c.finished = false; c.finishTime = 0;
       c.lapStart = 0; c.wobble = 0; c.halfPassed = false; c.stuck = 0;
       c.rev = 0; c.revDist = 0; c.revLock = 0; c.driftPulse = 0; c.driftWait = 0;
-      c.penalty = 0; c.lightPenalty = 0; c.inPits = false; c.aiPit = 0; c.aiPitT = 0; c.pitSpeedWarned = false; c.pitPhase = 0; c.pitT = 0;
+      c.penalty = 0; c.lightPenalty = 0; c.inPits = false; c.pitExitLock = false; c.aiPit = 0; c.aiPitT = 0; c.pitSpeedWarned = false; c.pitPhase = 0; c.pitT = 0;
       c.retired = false; c.exploded = false; c.wrecked = false; c.jumpStart = false;
       c.i = -1;
       var pr = projectTrack(c.x, c.z, -1);
@@ -3001,6 +3002,7 @@ ctrl: [
         c.exploded = false;
         c.wrecked = false;
         c.inPits = false;
+        c.pitExitLock = false;
       c.aiPit = 0; c.aiPitT = 0; c.pitSpeedWarned = false;
         c.pitPhase = 0;
         c.pitT = 0;
@@ -4150,6 +4152,7 @@ var pr = projectTrack(c.x, c.z, c.i);
         c.best = Infinity; c.finished = false; c.finishTime = 0; c.lapStart = 0;
         c.wobble = 0; c.halfPassed = false; c.stuck = 0;
         c.rev = 0; c.revDist = 0; c.revLock = 0; c.driftPulse = 0; c.driftWait = 0;
+        c.inPits = false; c.pitExitLock = false; c.pitPhase = 0; c.aiPit = 0;
         c.i = -1;
         var pr = projectTrack(c.x, c.z, -1);
         c.s = pr.s; c.prevS = pr.s; c.lat = pr.lat; c.i = pr.i;
@@ -4705,7 +4708,7 @@ var pr = projectTrack(c.x, c.z, c.i);
   var PIT_STOP_SECONDS = 2.6;           // realistic tyre-change stationary time
   var PIT_REPAIR_SECONDS = 1.2;         // extra time for bodywork repairs
   var pitAuto = false;                  // autopilot is driving the player car
-  var pitPhase = 0;                     // 0 idle / 1 to box / 3 service / 2 rejoin
+  var pitPhase = 0;                     // 0 idle / 1 to box / 3 service
   var pitServiceTime = 0;               // autopilot / service elapsed time
   var pitChosenTyre = 1;
   var pitDoRepair = true;
@@ -4747,7 +4750,6 @@ var pr = projectTrack(c.x, c.z, c.i);
     return dist > 12 ? PIT_SPEED : Math.max(0, (dist - 2.5) * 1.8);
   }
   function pitDrive(c, dt) {
-    if (pitPhase === 2) return pitFollow(c, 0, 18);       // rejoin the racing line
     return pitFollow(c, PIT_LAT, pitApproachSpeed(c));    // drive into the box
   }
   /* AI pit stops: the field now really pits for worn tyres / damage, using
@@ -4835,8 +4837,9 @@ var pr = projectTrack(c.x, c.z, c.i);
     if (pitDoRepair) player.damage = 0;
     player.pitCount = (player.pitCount || 0) + 1;
     player.inPits = false;
-    pitPhase = 2; pitServiceTime = 0;
-    flash('PIT STOP COMPLETE — REJOINING');
+    player.pitExitLock = true;   // stay out of autopilot until the pit lane is cleared
+    pitAuto = false; pitPhase = 0; pitServiceTime = 0;
+    flash('PIT STOP COMPLETE — YOU DRIVE OUT');
   }
 
   function updatePit(dt) {
@@ -4846,6 +4849,7 @@ var pr = projectTrack(c.x, c.z, c.i);
       if (pitMenuEl && !pitMenuEl.classList.contains('hidden')) pitMenuEl.classList.add('hidden');
       return;
     }
+    if (player.pitExitLock && !inPitArea(player)) player.pitExitLock = false;
     if (pitAuto) {
       pitServiceTime += dt;
       if (pitPhase === 1) {
@@ -4869,21 +4873,14 @@ var pr = projectTrack(c.x, c.z, c.i);
           msg.textContent = 'PIT STOP — ' + left.toFixed(1) + 's · ' + (pitDoRepair ? 'TYRES + REPAIR' : 'TYRES ONLY');
         }
         if (pitServiceTime >= need) completeService();
-      } else if (pitPhase === 2) {
-        if (msg) { msg.style.display='block'; msg.style.background='rgba(0,0,0,.75)'; msg.textContent='LEAVING PIT LANE...'; }
-        var s2 = wrapS(player.s);
-        var clear = !(s2 > wrapS(LEN - 90) || s2 < 12);
-        if ((Math.abs(player.lat) < 3 && clear) || pitServiceTime > 16) {
-          pitAuto = false; pitPhase = 0;
-          if (msg) msg.style.display = 'none';
-        }
       }
       return;
     }
     if (nearPitApproach(player)) {
       if (msg) { msg.style.display='block'; msg.style.background='rgba(0,0,0,.75)'; msg.textContent='PIT LANE AHEAD — press P · 80 KM/H SPEED LIMIT'; }
-      // Entering the pit lane physically also hands control to the autopilot.
-      if (inPitArea(player) && Math.abs(player.speed) < 14) beginPit();
+      // Entering the pit lane physically hands control to the approach autopilot,
+      // but never immediately after a completed stop.
+      if (inPitArea(player) && Math.abs(player.speed) < 14 && !player.pitExitLock) beginPit();
     } else if (msg) msg.style.display = 'none';
   }
 
@@ -5066,7 +5063,7 @@ var pr = projectTrack(c.x, c.z, c.i);
       <b>RACE START:</b> 5 red lights illuminate, then all go out — accelerate on lights out. Accelerating early = jump start (+10s penalty).
     </p>
     <p style="line-height:1.7;opacity:0.9;margin-top:8px">
-      <b>PIT STOPS:</b> Follow the yellow chevrons and the big <b>PIT ENTRY</b> gantry on the approach, then press <b>P</b>. The car obeys the 80 km/h pit limit, drives to its box and stops for a real ~2.6 s tyre change (+1.2 s with repairs). Choose your compound in the menu. The AI pits too when tyres wear or damage builds.
+      <b>PIT STOPS:</b> Follow the yellow chevrons and the big <b>PIT ENTRY</b> gantry on the approach, then press <b>P</b>. The car auto-drives into its box at the 80 km/h pit limit for a real ~2.6 s tyre change (+1.2 s with repairs). Choose your compound in the menu; after the stop you drive out yourself. The AI pits too when tyres wear or damage builds.
     </p>
     <p style="line-height:1.7;opacity:0.9;margin-top:8px">
       <b>LAPS ROLLER:</b> Drag the LAPS slider in the menu to set the race length from 1 to 50 laps. Pick your real F1 circuit from the TRACK cards above.
