@@ -190,14 +190,14 @@
 <div id="standings" class="hidden"></div>
 <div id="banner" class="hidden"></div>
 <div id="lights" class="hidden"><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div></div>
-  <div id="verTag">v2.53</div>
+  <div id="verTag">v2.54</div>
   <button id="achBtn" class="ghost">ACHIEVEMENTS</button>
   <div id="achPanel"><b style="letter-spacing:.12em">ACHIEVEMENTS</b><div id="achList" style="margin-top:8px"></div></div>
   <div id="pitMsg"></div>
 
 <div id="pitMenu" class="overlay hidden">
   <h1>PIT STOP</h1>
-  <p class="pitNote">Your car drives itself to the pit box at the 80 km/h limit. Choose fresh tyres and repairs, then confirm. The stop takes about 2.6 s (plus 1.2 s for repairs) once the car is jacked up — after that you drive out yourself.</p>
+  <p class="pitNote">Your car drives itself off the circuit and down the separate pit road to the box at the 80 km/h limit. Choose fresh tyres and repairs, then confirm. The stop takes about 2.6 s (plus 1.2 s for repairs) once the car is jacked up — after that you drive out yourself.</p>
   <div class="pitRow"><div class="pickLabel">TYRES</div><div id="pitTyrePick" class="cards"></div></div>
   <div id="pitRepairRow" class="sel"><span id="pitRepairMark">&#9745;</span> REPAIR DAMAGE &mdash; +1.2s STOP TIME</div>
   <div class="menuBtns"><button id="pitConfirmBtn">CONFIRM &amp; DRIVE OUT</button></div>
@@ -377,7 +377,17 @@
   var KERB_W = 1.6;     // red/white kerb width (m)
   var RUNOFF_LAT = HALF_W + KERB_W + 3.4;    // outer edge of the grass run-off (m)
   var GRAVEL_LAT = RUNOFF_LAT + 2.6;         // outer edge of the gravel traps (m)
-  var RAIL_LAT = GRAVEL_LAT + 0.8;           // guardrail (m)
+  var RAIL_LAT = GRAVEL_LAT + 0.8;           // guardrail / pit-wall line (m)
+  /* The pit is a separate road outside the main guardrail, not a stripe on the
+   * track edge. Its inner edge is the existing guardrail line; the rail gaps at
+   * pit entry/exit are where cars cross between the two roads. */
+  var PIT_W = 6.6;                           // pit road width (m)
+  var PIT_LAT = -(RAIL_LAT + PIT_W / 2);     // pit road centre
+  var PIT_INNER_LAT = PIT_LAT + PIT_W / 2;   // wall side (closest to the track)
+  var PIT_OUTER_LAT = PIT_LAT - PIT_W / 2;   // garage side
+  var PIT_RAIL_LAT = PIT_OUTER_LAT - 1.2;    // outer pit barrier
+  var PIT_LAT_MIN = PIT_OUTER_LAT + 0.7;
+  var PIT_LAT_MAX = PIT_INNER_LAT - 0.7;
   var TOTAL_LAPS = 2;
   var CAR_R = 2.3;      // collision radius (m)
   /* Half-extent of a car along a horizontal direction (nx,nz). The body is far
@@ -401,6 +411,16 @@
       var d = Math.abs(ss - z.s); d = Math.min(d, LEN - d);
       if (d < z.half) return true;
     }
+    return false;
+  }
+  // The separate pit road and its paved entry/exit links count as asphalt, so
+  // the autopilot is not braked by the run-off it has to cross to reach them.
+  function onPitSurface(c) {
+    var s = wrapS(c.s), lat = c.lat;
+    if (s < pitRoadStart() || s > pitRoadEnd()) return false;
+    if (lat <= PIT_INNER_LAT + 0.5 && lat >= PIT_OUTER_LAT - 0.5) return true;
+    if (lat <= -HALF_W && lat >= PIT_INNER_LAT + 0.5 &&
+        ((s <= pitEntryEnd()) || (s >= pitExitStart()))) return true;
     return false;
   }
 
@@ -1434,6 +1454,13 @@ ctrl: [
   }
   function railLatLimit(s, side) {
     var lim = Math.min(RAIL_LAT, clearLatAt(s)), k = signedKappaAt(s);
+    // In the pit corridor the normal guardrail becomes the inner pit wall. Let
+    // cars reach the separate road outside it; the added wall solids still stop
+    // them crossing anywhere except the two marked gaps.
+    if (side < 0) {
+      var ext = RAIL_LAT + (Math.abs(PIT_RAIL_LAT) - RAIL_LAT) * pitRailBlend(s);
+      if (ext > lim) lim = ext;
+    }
     if (Math.abs(k) > 1e-7 && side * k < 0) lim = Math.min(lim, OFFSET_SAFETY / Math.abs(k));
     return lim;
   }
@@ -1655,16 +1682,39 @@ ctrl: [
     return new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true }));
   }
 
+  // Arc helpers used by partial walls with entry/exit gaps.
+  function arcContains(s, a, b) {
+    s = wrapS(s); a = wrapS(a); b = wrapS(b);
+    return a <= b ? (s >= a && s <= b) : (s >= a || s <= b);
+  }
+  function arcOverlap(s0, s1, a, b) {
+    return arcContains(s0, a, b) || arcContains(s1, a, b) || arcContains((s0 + s1) / 2, a, b);
+  }
+
   // Solid 3D guardrail: a closed box section (inner face, outer face and top)
   // instead of the old flat panels whose diagonal seams read as triangles.
-  function wall(lat, h, y0, inward, cA) {
+  // opts.s0/s1 build only part of the loop; opts.skips leaves real gaps.
+  function wall(lat, h, y0, inward, cA, opts) {
     cA = cA || [0.93, 0.93, 0.93];
-    var SEG = Math.max(300, trackSteps(3)), pos = [], nor = [], col = [], idx = [], W = 0.55;
+    opts = opts || {};
+    var sStart = opts.s0 == null ? 0 : opts.s0;
+    var sEnd = opts.s1 == null ? LEN : opts.s1;
+    var skips = opts.skips || [];
+    var SEG = (opts.s0 == null && opts.s1 == null)
+      ? Math.max(300, trackSteps(3))
+      : Math.max(40, Math.ceil((sEnd - sStart) / 3));
+    var pos = [], nor = [], col = [], idx = [], W = 0.55;
     function v(p, y) { pos.push(p.x, y + p.y, p.z); col.push(cA[0], cA[1], cA[2]); }
     function n(x, y, z) { nor.push(x, y, z); }
     function quad(a, b, c, d) { idx.push(a, b, c, a, c, d); }
     for (var i = 0; i < SEG; i++) {
-      var s0 = i / SEG * LEN, s1 = (i + 1) / SEG * LEN;
+      var s0 = sStart + (sEnd - sStart) * i / SEG;
+      var s1 = sStart + (sEnd - sStart) * (i + 1) / SEG;
+      var skip = false;
+      for (var sk = 0; sk < skips.length; sk++) {
+        if (arcOverlap(s0, s1, skips[sk][0], skips[sk][1])) { skip = true; break; }
+      }
+      if (skip) continue;
       var l0 = geomLat(s0, lat), l1 = geomLat(s1, lat);
       var l0b = geomLat(s0, lat - inward * W), l1b = geomLat(s1, lat - inward * W);
       // Prevent degenerate zero-width wall panels if fold clamp collapses faces.
@@ -1822,8 +1872,11 @@ ctrl: [
     // No painted centre line: modern F1 circuits use the kerbs and edge lines.
     // The player's green racing line remains available as a separate toggle.
 
-    // Continuous solid Armco-style barrier on both sides of the circuit.
-    world.add(wall(-RAIL_LAT, 1.5, 0, 1, P.wallA));
+    // Armco-style barrier on both sides. The pit-side rail is open at the pit
+    // entry and exit so cars can leave the circuit for the separate pit road.
+    world.add(wall(-RAIL_LAT, 1.5, 0, 1, P.wallA, {
+      skips: [[pitEntryStart(), pitEntryEnd()], [pitExitStart(), pitExitEnd()]]
+    }));
     world.add(wall(RAIL_LAT, 1.5, 0, -1, P.wallA));
 
     /* ---- start / finish: chequered band, timing line, gantry, flags ---- */
@@ -1928,8 +1981,12 @@ ctrl: [
       // CAR_R of reach, so a leg any closer than RAIL_LAT + 1.15 + CAR_R would
       // be clipped through the wall by a rail-hugging car.
       var LEG_LAT = RAIL_LAT + 3.6;
+      // The pit-side leg used to stand in the middle of the new pit road. Put
+      // it outside the outer pit barrier instead, and widen the cross-beam.
+      var PIT_LEG_LAT = Math.abs(PIT_RAIL_LAT) + 2.5;
       [-1, 1].forEach(function (side) {
-        var p = offsetPos(0, side * LEG_LAT);
+        var lat = side < 0 ? PIT_LEG_LAT : LEG_LAT;
+        var p = offsetPos(0, side * lat);
         var leg = new THREE.Mesh(new THREE.BoxGeometry(1.2, 10, 1.2), steel);
         leg.position.set(p.x, 5, p.z);
         leg.rotation.y = g0;
@@ -1937,7 +1994,8 @@ ctrl: [
         addSolid(p.x, p.z, 0.9, 0.9, 0);
       });
       var mid = offsetPos(0, 0);
-      var beam = new THREE.Mesh(new THREE.BoxGeometry((LEG_LAT + 1.4) * 2, 1.6, 1.3), steel);
+      var beamHalf = Math.max(PIT_LEG_LAT, LEG_LAT) + 1.4;
+      var beam = new THREE.Mesh(new THREE.BoxGeometry(beamHalf * 2, 1.6, 1.3), steel);
       beam.position.set(mid.x, 10.4, mid.z);
       beam.rotation.y = g0;
       world.add(beam);
@@ -1986,145 +2044,150 @@ ctrl: [
       });
     })();
 
-    // ---- pit lane (physical geometry near start/finish) ----
+    // ---- separate pit road outside the main guardrail ----
     (function buildPitLane() {
-      var pitMat = new THREE.MeshLambertMaterial({ color: 0x59616e });
-      var pitLineMat = new THREE.MeshBasicMaterial({ color: 0xffe94a });
+      var pitMat = new THREE.MeshLambertMaterial({ color: 0x4d545f });
       var pitWhite = new THREE.MeshBasicMaterial({ color: 0xffffff });
       var pitBox = new THREE.MeshLambertMaterial({ color: 0x252b36 });
-      var pitLat = -(HALF_W + 3.2);
-      var pitW = 4.2;
-      // build pit road segments
-      var segs = 70;
-      var total = 78;
+      var sStart = pitRoadStart(), sEnd = pitRoadEnd(), total = sEnd - sStart;
+      var segs = 90;
+
+      // Paved entry/exit links cross the old run-off. Without these the cars
+      // would be scrubbing through gravel before they even reach the pit road.
+      var linkColor = [0.30, 0.33, 0.37];
+      world.add(ribbon(-HALF_W - 0.3, PIT_INNER_LAT + 0.2, 0.024, linkColor,
+        pitEntryStart(), pitEntryEnd(), 18));
+      world.add(ribbon(-HALF_W - 0.3, PIT_INNER_LAT + 0.2, 0.024, linkColor,
+        pitExitStart(), pitExitEnd(), 12));
+
+      // The pit road is its own asphalt band, with yellow wall-side and white
+      // garage-side edge lines. It is not layered over the circuit/run-off.
       for (var i = 0; i < segs; i++) {
-        var sa = wrapS(LEN - 86 + (i/segs)*total);
-        var sb = wrapS(LEN - 86 + ((i+1)/segs)*total);
-        var a1 = offsetPos(sa, pitLat - pitW/2), a2 = offsetPos(sa, pitLat + pitW/2);
-        var b1 = offsetPos(sb, pitLat - pitW/2), b2 = offsetPos(sb, pitLat + pitW/2);
+        var sa = sStart + (i / segs) * total;
+        var sb = sStart + ((i + 1) / segs) * total;
+        var a1 = offsetPos(sa, PIT_OUTER_LAT), a2 = offsetPos(sa, PIT_INNER_LAT);
+        var b1 = offsetPos(sb, PIT_OUTER_LAT), b2 = offsetPos(sb, PIT_INNER_LAT);
         var g = new THREE.BufferGeometry();
         var verts = new Float32Array([
-          a1.x,0.028+a1.y,a1.z, a2.x,0.028+a2.y,a2.z, b2.x,0.028+b2.y,b2.z,
-          a1.x,0.028+a1.y,a1.z, b2.x,0.028+b2.y,b2.z, b1.x,0.028+b1.y,b1.z
+          a1.x, 0.028 + a1.y, a1.z, a2.x, 0.028 + a2.y, a2.z, b2.x, 0.028 + b2.y, b2.z,
+          a1.x, 0.028 + a1.y, a1.z, b2.x, 0.028 + b2.y, b2.z, b1.x, 0.028 + b1.y, b1.z
         ]);
-        g.setAttribute('position', new THREE.BufferAttribute(verts,3));
+        g.setAttribute('position', new THREE.BufferAttribute(verts, 3));
         g.computeVertexNormals();
         world.add(new THREE.Mesh(g, pitMat));
-        // yellow edge line on track side
-        var e1 = offsetPos(sa, pitLat + pitW/2 - 0.15), e2 = offsetPos(sb, pitLat + pitW/2 - 0.15);
-        var eg = new THREE.BufferGeometry();
-        var ea = offsetPos(sa, pitLat+pitW/2), eb = offsetPos(sb, pitLat+pitW/2);
-        var ev = new Float32Array([
-          e1.x,0.032+e1.y,e1.z, ea.x,0.032+ea.y,ea.z, eb.x,0.032+eb.y,eb.z,
-          e1.x,0.032+e1.y,e1.z, eb.x,0.032+eb.y,eb.z, e2.x,0.032+e2.y,e2.z
-        ]);
-        eg.setAttribute('position', new THREE.BufferAttribute(ev,3));
-        eg.computeVertexNormals();
-        world.add(new THREE.Mesh(eg, pitLineMat));
+        flatMark(sa, sb, PIT_INNER_LAT - 0.45, PIT_INNER_LAT - 0.15, 0xffe94a, 0.034);
+        flatMark(sa, sb, PIT_OUTER_LAT + 0.15, PIT_OUTER_LAT + 0.45, 0xffffff, 0.034);
       }
+
       // Large yellow/white approach chevrons peel off the racing line and point
-      // directly at the pit entrance, so it is visible well before the line.
-      for (var q = 0; q < 11; q++) {
-        var ca = wrapS(LEN - 132 + q * 4.4);
+      // at the gap in the guardrail, so the separate road is obvious early.
+      for (var q = 0; q < 13; q++) {
+        var ca = wrapS(LEN - 148 + q * 4.4);
         var cb = wrapS(ca + 2.6);
-        var lat0 = -1.6 - q * 0.95;
+        var lat0 = -1.6 - q * 0.78;
         flatMark(ca, cb, lat0, lat0 + 0.55, q % 2 ? 0xffe94a : 0xffffff, 0.048);
       }
-      for (var q2 = 0; q2 < 5; q2++) {
-        var ra = wrapS(LEN - 116 + q2 * 6);
+      for (var q2 = 0; q2 < 6; q2++) {
+        var ra = wrapS(LEN - 140 + q2 * 6);
         flatMark(ra, wrapS(ra + 3), -HALF_W + 1.2, -HALF_W + 2.4, 0xffd400, 0.05);
       }
-      // pit entry/exit markers
-      [LEN-86, LEN-8].forEach(function(ss){
+
+      // Entry/exit markers sit in the two guardrail gaps.
+      [pitEntryStart(), pitExitEnd()].forEach(function (ss) {
         var s = wrapS(ss);
-        var y = yawAt(s);
-        var m = offsetPos(s, pitLat + pitW/2 + 1.0);
+        var m = offsetPos(s, PIT_INNER_LAT + 1.4);
         var mark = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.04, 5.0), pitWhite);
-        mark.position.set(m.x, 0.035, m.z);
-        mark.rotation.y = y;
+        mark.position.set(m.x, 0.035 + m.y, m.z);
+        mark.rotation.y = yawAt(s);
         world.add(mark);
-        // cone-like marker
-        var cone = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.9, 16), new THREE.MeshLambertMaterial({color:0xff6600}));
-        cone.position.set(m.x, 0.45, m.z);
+        var cone = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.9, 16), new THREE.MeshLambertMaterial({ color: 0xff6600 }));
+        cone.position.set(m.x, 0.45 + m.y, m.z);
         world.add(cone);
       });
-      // pit boxes
+
+      // Garage boxes sit behind the outer pit barrier, not on the racing surface.
       for (var b = 0; b < 7; b++) {
-        var sbx = wrapS(LEN - 76 + b*9);
-        var pb = offsetPos(sbx, pitLat - pitW/2 - 1.2);
-        var box = new THREE.Mesh(new THREE.BoxGeometry(5.0, 0.05, 7.0), pitBox);
-        box.position.set(pb.x, 0.03, pb.z);
+        var sbx = wrapS(LEN - 84 + b * 8);
+        var pb = offsetPos(sbx, PIT_OUTER_LAT - 3.4);
+        var box = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.05, 7.0), pitBox);
+        box.position.set(pb.x, 0.03 + pb.y, pb.z);
         box.rotation.y = yawAt(sbx);
         world.add(box);
-        // box outline
-        var ob = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.055, 0.2), pitWhite);
-        ob.position.set(pb.x, 0.032, pb.z);
+        var ob = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.055, 0.2), pitWhite);
+        ob.position.set(pb.x, 0.032 + pb.y, pb.z);
         ob.rotation.y = yawAt(sbx);
         world.add(ob);
       }
-      // pit wall
-      for (var w = 0; w < 34; w++) {
-        var sw = wrapS(LEN - 84 + (w/33)*72);
-        var pw = offsetPos(sw, pitLat - pitW/2 - 2.6);
-        var wall = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.2, 2.4), new THREE.MeshLambertMaterial({color:0x9aa0a8}));
-        wall.position.set(pw.x, 0.6, pw.z);
-        wall.rotation.y = yawAt(sw);
-        world.add(wall);
+
+      // Outer pit barrier: a continuous wall on the garage side of the new road.
+      world.add(wall(PIT_RAIL_LAT, 1.4, 0, 1, P.wallA, { s0: sStart, s1: sEnd }));
+
+      // Physics backstops for the widened pit corridor: the inner wall only
+      // exists between the gaps; the outer wall runs the whole pit road.
+      function addWallSolids(lat, s0, s1, hw, count) {
+        var step = (s1 - s0) / count;
+        for (var j = 0; j < count; j++) {
+          var ws = s0 + step * (j + 0.5);
+          var p = offsetPos(ws, lat);
+          addSolid(p.x, p.z, hw, step / 2 + 0.15, yawAt(ws));
+        }
       }
-      // big ground label
+      // Extra 5 m clearance at each end so a car's nose can finish crossing the
+      // gap before it meets the solid part of the wall.
+      addWallSolids(PIT_INNER_LAT + 1.2, pitEntryEnd() + 5, pitExitStart() - 5, 0.25, 24);
+      addWallSolids(PIT_RAIL_LAT - 0.2, sStart, sEnd, 0.35, 38);
+
+      // Big labels and gantry.
       try {
-        var lpos = offsetPos(wrapS(LEN - 46), pitLat);
+        var lpos = offsetPos(wrapS(LEN - 49), PIT_LAT);
         var lbl = new THREE.Mesh(
-          new THREE.PlaneGeometry(10, 2.2),
-          new THREE.MeshBasicMaterial({map: signTexture('PIT LANE','#162033','#7CFF9A'), side:THREE.DoubleSide, transparent:true})
+          new THREE.PlaneGeometry(11, 2.2),
+          new THREE.MeshBasicMaterial({ map: signTexture('PIT LANE', '#162033', '#7CFF9A'), side: THREE.DoubleSide, transparent: true })
         );
-        lbl.position.set(lpos.x, 0.038, lpos.z);
-        lbl.rotation.x = -Math.PI/2;
+        lbl.position.set(lpos.x, 0.038 + lpos.y, lpos.z);
+        lbl.rotation.x = -Math.PI / 2;
         world.add(lbl);
-      } catch(e){}
-      // huge ground label on the approach
+      } catch (e) {}
       try {
-        var ap = offsetPos(wrapS(LEN - 120), -5.5);
+        var ap = offsetPos(wrapS(LEN - 160), -5.5);
         var aLabel = new THREE.Mesh(
           new THREE.PlaneGeometry(16, 3.4),
-          new THREE.MeshBasicMaterial({map: signTexture('PIT ENTRY', '#111827', '#ffd75e'), side:THREE.DoubleSide, transparent:true})
+          new THREE.MeshBasicMaterial({ map: signTexture('PIT ENTRY', '#111827', '#ffd75e'), side: THREE.DoubleSide, transparent: true })
         );
-        aLabel.position.set(ap.x, 0.055, ap.z);
-        aLabel.rotation.x = -Math.PI/2;
+        aLabel.position.set(ap.x, 0.055 + ap.y, ap.z);
+        aLabel.rotation.x = -Math.PI / 2;
         world.add(aLabel);
-      } catch(e){}
-      // overhead PIT sign on the pit side
+      } catch (e) {}
       try {
-        var sp = offsetPos(wrapS(LEN - 88), -(HALF_W + 1.0));
-        var sign = new THREE.Mesh(new THREE.PlaneGeometry(9,2.8), new THREE.MeshBasicMaterial({map: signTexture('PIT ENTRY','#c62828','#ffffff'), side:THREE.DoubleSide}));
-        sign.position.set(sp.x, 6.2, sp.z);
-        sign.rotation.y = yawAt(wrapS(LEN - 88)) + Math.PI;
+        var sp = offsetPos(wrapS(LEN - 112), PIT_INNER_LAT + 2.2);
+        var sign = new THREE.Mesh(new THREE.PlaneGeometry(9, 2.8), new THREE.MeshBasicMaterial({ map: signTexture('PIT ENTRY', '#c62828', '#ffffff'), side: THREE.DoubleSide }));
+        sign.position.set(sp.x, 6.2 + sp.y, sp.z);
+        sign.rotation.y = yawAt(wrapS(LEN - 112)) + Math.PI;
         world.add(sign);
-        var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,6.2,8), new THREE.MeshLambertMaterial({color:0x888}));
-        pole.position.set(sp.x, 3.1, sp.z);
+        var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 6.2, 8), new THREE.MeshLambertMaterial({ color: 0x888 }));
+        pole.position.set(sp.x, 3.1 + sp.y, sp.z);
         world.add(pole);
-      } catch(e){}
-      // full-width gantry: impossible to miss when approaching the pits
+      } catch (e) {}
       try {
-        var gantryS = wrapS(LEN - 104);
+        var gantryS = wrapS(LEN - 128);
         var gp = offsetPos(gantryS, 0);
         var board = new THREE.Mesh(
           new THREE.PlaneGeometry(17, 3.8),
-          new THREE.MeshBasicMaterial({map: signTexture('PIT ENTRY', '#b91c1c', '#ffe94a'), side:THREE.DoubleSide})
+          new THREE.MeshBasicMaterial({ map: signTexture('PIT ENTRY', '#b91c1c', '#ffe94a'), side: THREE.DoubleSide })
         );
-        board.position.set(gp.x, 7.4, gp.z);
+        board.position.set(gp.x, 7.4 + gp.y, gp.z);
         board.rotation.y = yawAt(gantryS) + Math.PI;
         world.add(board);
         [-1, 1].forEach(function (side) {
           var pp = offsetPos(gantryS, side * (HALF_W + 1.1));
-          var leg = new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.18,7.4,8), new THREE.MeshLambertMaterial({color:0xb8c0cc}));
-          leg.position.set(pp.x, 3.7, pp.z);
+          var leg = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 7.4, 8), new THREE.MeshLambertMaterial({ color: 0xb8c0cc }));
+          leg.position.set(pp.x, 3.7 + pp.y, pp.z);
           world.add(leg);
-          var beacon = new THREE.Mesh(new THREE.SphereGeometry(0.7,12,8), new THREE.MeshBasicMaterial({color:0xffd400}));
-          beacon.position.set(pp.x, 7.6, pp.z);
+          var beacon = new THREE.Mesh(new THREE.SphereGeometry(0.7, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffd400 }));
+          beacon.position.set(pp.x, 7.6 + pp.y, pp.z);
           world.add(beacon);
         });
-      } catch(e){}
+      } catch (e) {}
     })();
 
     // F1-style DRS zone markers
@@ -2152,6 +2215,9 @@ ctrl: [
     for (var ti = 0; ti < 240; ti++) {
       var ts = (ti / 240) * LEN;
       var tside = (ti % 2) ? 1 : -1;
+      // Keep the pit side of the start/finish straight clear: trees used to
+      // grow in the middle of the new pit road and stop cars leaving the box.
+      if (tside < 0 && (ts >= pitRoadStart() || ts < 8)) continue;
       var tp = offsetPos(ts, tside * (RAIL_LAT + 9 + (ti % 7) * 6));
       if (!clearOfTrack(tp.x, tp.z, RAIL_LAT + 3)) continue;
       var sc = 3.2 + (ti % 4) * 0.7;
@@ -3315,16 +3381,17 @@ var pr = projectTrack(c.x, c.z, c.i);
     // speed -- otherwise a car stopped in the gravel could never drive out (the
     // old "stuck in the railings" bug, worst of all on the boggy marsh).
     var alat = Math.abs(c.lat);
-    var off = alat - HALF_W;
+    var onPit = onPitSurface(c);
+    var off = onPit ? 0 : alat - HALF_W;
     var offBrake = 0;
-    if (alat > HALF_W - 2.2 && alat < HALF_W) offBrake += 5;
+    if (!onPit && alat > HALF_W - 2.2 && alat < HALF_W) offBrake += 5;
     if (off > 0) {
       offBrake += 3 + Math.min(off, 20) * 0.5;
       c.steer *= (1 - Math.min(0.6, off * 0.06) * dt);
     }
     if (off > 0 && off <= KERB_W) {
       offBrake += 0.6;                              // light rumble strip
-    } else if (inGravel(c.s, alat)) {
+    } else if (!onPit && inGravel(c.s, alat)) {
       offBrake += 9;                                // beached in the stones
       c.steer *= (1 - Math.min(0.85, 1.2 * dt));
     }
@@ -4700,9 +4767,8 @@ var pr = projectTrack(c.x, c.z, c.i);
   })();
 
   // ---- Pit stop logic: autopilot + service menu -----------------------
-  var PIT_LAT = -(HALF_W + 3.2);        // centre of the physical pit lane
-  var PIT_LAT_MIN = -HALF_W - 4.8;
-  var PIT_LAT_MAX = -HALF_W - 1.2;
+  // The pit road's lateral geometry lives with the track widths above; this
+  // section only owns arc-length ranges, speeds and service timing.
   var PIT_SPEED = 20;                   // autopilot cruise speed (~72 km/h)
   var PIT_LIMIT = 22.2;                 // F1 pit-lane speed limit: 80 km/h
   var PIT_STOP_SECONDS = 2.6;           // realistic tyre-change stationary time
@@ -4716,6 +4782,22 @@ var pr = projectTrack(c.x, c.z, c.i);
   var pitMenuEl = document.getElementById('pitMenu');
   function pitBoxS() { return wrapS(LEN - 49); }   // middle pit box
   function dS(a, b) { var d = Math.abs(a - b); return Math.min(d, LEN - d); }
+  function smooth01(t) { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); }
+
+  // The new pit road sits beside the start/finish straight, just before the
+  // line. Entry is a wide gap in the pit-side guardrail; exit is a second gap.
+  function pitRoadStart() { return wrapS(LEN - 118); }
+  function pitRoadEnd() { return wrapS(LEN - 2); }
+  function pitEntryStart() { return pitRoadStart(); }
+  function pitEntryEnd() { return wrapS(LEN - 86); }
+  function pitExitStart() { return wrapS(LEN - 24); }
+  function pitExitEnd() { return pitRoadEnd(); }
+  // Smoothly widen the physics barrier only where the pit road actually runs.
+  function pitRailBlend(s) {
+    var u = wrapS(s), a = pitRoadStart(), b = pitRoadEnd(), ramp = 20;
+    if (u < a || u > b) return 0;
+    return Math.max(0, Math.min(1, (u - a) / ramp, (b - u) / ramp));
+  }
   function aiTyreChoice() {
     if (selectedWeather === 3) return 4;           // full wet
     if (selectedWeather === 2) return 3;           // intermediate
@@ -4724,18 +4806,39 @@ var pr = projectTrack(c.x, c.z, c.i);
 
   function inPitArea(c) {
     var s = wrapS(c.s);
-    var inS = (s > wrapS(LEN - 86) || s < wrapS(6));
+    var inS = s >= pitRoadStart() && s <= pitRoadEnd();
     return inS && c.lat < PIT_LAT_MAX && c.lat > PIT_LAT_MIN;
   }
   function nearPitApproach(c) {
     var s = wrapS(c.s);
-    return (s > wrapS(LEN - 180) || s < 40);
+    // Only before (or inside) the entry gap. The grid sits after the pit entry,
+    // so pressing P at startup must not send the car back toward the pit box.
+    return s > wrapS(LEN - 190) && s < pitEntryEnd();
+  }
+
+  // Peel off the racing line through the entry gap, then follow the separate
+  // pit road. AI exits through the second gap; the player drives out manually.
+  function pitEntryLat(c) {
+    var s = wrapS(c.s), a = pitEntryStart(), b = pitEntryEnd();
+    if (s <= a) return -3.5;
+    if (s >= b) return PIT_LAT;
+    return -3.5 + (PIT_LAT + 3.5) * smooth01((s - a) / (b - a));
+  }
+  function pitExitLat(c) {
+    var s = wrapS(c.s), a = pitExitStart(), b = pitExitEnd();
+    // Once the car crosses the start/finish line it has already rejoined the
+    // circuit. Without this wrap guard s becomes small again, matches s <= a
+    // and the autopilot wrongly dives back toward the pit road.
+    if (s < 40) return 0;
+    if (s <= a) return PIT_LAT;
+    if (s >= b) return 0;
+    return PIT_LAT * (1 - smooth01((s - a) / (b - a)));
   }
 
   /* Pure-pursuit path follower shared by the player autopilot and the AI.
    * `targetLat` is the lane to follow, `targetSpeed` the speed to hold. */
   function pitFollow(c, targetLat, targetSpeed) {
-    var aim = offsetPos(c.s + (targetLat === 0 ? 12 : 7), targetLat);
+    var aim = offsetPos(c.s + (Math.abs(targetLat) < 0.3 ? 12 : 7), targetLat);
     var desired = Math.atan2(aim.x - c.x, aim.z - c.z);
     var err = wrapPi(desired - c.yaw);
     var steer = Math.max(-1, Math.min(1, err * 4.5));
@@ -4744,20 +4847,24 @@ var pr = projectTrack(c.x, c.z, c.i);
     else brake = Math.min(1, (c.speed - targetSpeed) / 5);
     return { throttle: throttle, brake: brake, steer: steer, handbrake: false, ers: false };
   }
-  // Ease down to a stop as the car approaches its pit box.
+  // Ease down to a stop as the car approaches its pit box. The entry gap is
+  // taken slowly because the pit road is well outside the racing surface.
   function pitApproachSpeed(c) {
     var dist = dS(wrapS(c.s), pitBoxS());
-    return dist > 12 ? PIT_SPEED : Math.max(0, (dist - 2.5) * 1.8);
+    var speed = dist > 12 ? PIT_SPEED : Math.max(0, (dist - 2.5) * 1.8);
+    var s = wrapS(c.s);
+    if (s > pitEntryStart() && s < pitEntryEnd()) speed = Math.min(speed, 11);
+    return speed;
   }
   function pitDrive(c, dt) {
-    return pitFollow(c, PIT_LAT, pitApproachSpeed(c));    // drive into the box
+    return pitFollow(c, pitEntryLat(c), pitApproachSpeed(c));    // drive into the box
   }
   /* AI pit stops: the field now really pits for worn tyres / damage, using
-   * the same pit lane, stationary service time and speed limit as the player. */
+   * the same separate pit road, service time and speed limit as the player. */
   function aiPitDrive(c, dt) {
     var s = wrapS(c.s);
     if (c.aiPit === 1) {
-      var inp = pitFollow(c, PIT_LAT, pitApproachSpeed(c));
+      var inp = pitFollow(c, pitEntryLat(c), pitApproachSpeed(c));
       if (dS(s, pitBoxS()) < 3.5 && Math.abs(c.speed) < 1.2) { c.aiPit = 2; c.aiPitT = 0; }
       return inp;
     }
@@ -4773,10 +4880,13 @@ var pr = projectTrack(c.x, c.z, c.i);
       return { throttle: 0, brake: 1, steer: 0, handbrake: false, ers: false };
     }
     if (c.aiPit === 3) {
-      var clear = !(s > wrapS(LEN - 90) || s < 12);
-      if ((Math.abs(c.lat) < 3 && clear) || c.aiPitT > 18) c.aiPit = 0;
+      // The exit finishes after the line has wrapped to a small s too.
+      var clear = s >= pitExitEnd() || s < 40;
+      if ((Math.abs(c.lat) < 3.5 && clear) || c.aiPitT > 18) c.aiPit = 0;
       else c.aiPitT += dt;
-      return pitFollow(c, 0, 18);
+      var exitLat = pitExitLat(c);
+      var exitSpeed = Math.abs(exitLat) > 0.3 ? 11 : 18;
+      return pitFollow(c, exitLat, exitSpeed);
     }
     return aiDrive(c, dt);
   }
@@ -4880,7 +4990,8 @@ var pr = projectTrack(c.x, c.z, c.i);
       if (msg) { msg.style.display='block'; msg.style.background='rgba(0,0,0,.75)'; msg.textContent='PIT LANE AHEAD — press P · 80 KM/H SPEED LIMIT'; }
       // Entering the pit lane physically hands control to the approach autopilot,
       // but never immediately after a completed stop.
-      if (inPitArea(player) && Math.abs(player.speed) < 14 && !player.pitExitLock) beginPit();
+      if (inPitArea(player) && wrapS(player.s) < pitEntryEnd() &&
+          Math.abs(player.speed) < 14 && !player.pitExitLock) beginPit();
     } else if (msg) msg.style.display = 'none';
   }
 
@@ -5063,7 +5174,7 @@ var pr = projectTrack(c.x, c.z, c.i);
       <b>RACE START:</b> 5 red lights illuminate, then all go out — accelerate on lights out. Accelerating early = jump start (+10s penalty).
     </p>
     <p style="line-height:1.7;opacity:0.9;margin-top:8px">
-      <b>PIT STOPS:</b> Follow the yellow chevrons and the big <b>PIT ENTRY</b> gantry on the approach, then press <b>P</b>. The car auto-drives into its box at the 80 km/h pit limit for a real ~2.6 s tyre change (+1.2 s with repairs). Choose your compound in the menu; after the stop you drive out yourself. The AI pits too when tyres wear or damage builds.
+      <b>PIT STOPS:</b> Follow the yellow chevrons and the big <b>PIT ENTRY</b> gantry, then press <b>P</b>. The car leaves the circuit through a gap in the guardrail and follows a separate pit road, not a stripe on the track edge. It auto-drives into its box at the 80 km/h pit limit for a real ~2.6 s tyre change (+1.2 s with repairs). Choose your compound in the menu; after the stop you drive out yourself. The AI pits too when tyres wear or damage builds.
     </p>
     <p style="line-height:1.7;opacity:0.9;margin-top:8px">
       <b>LAPS ROLLER:</b> Drag the LAPS slider in the menu to set the race length from 1 to 50 laps. Pick your real F1 circuit from the TRACK cards above.
