@@ -190,14 +190,14 @@
 <div id="standings" class="hidden"></div>
 <div id="banner" class="hidden"></div>
 <div id="lights" class="hidden"><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div></div>
-  <div id="verTag">v2.54</div>
+  <div id="verTag">v2.55</div>
   <button id="achBtn" class="ghost">ACHIEVEMENTS</button>
   <div id="achPanel"><b style="letter-spacing:.12em">ACHIEVEMENTS</b><div id="achList" style="margin-top:8px"></div></div>
   <div id="pitMsg"></div>
 
 <div id="pitMenu" class="overlay hidden">
   <h1>PIT STOP</h1>
-  <p class="pitNote">Your car drives itself off the circuit and down the separate pit road to the box at the 80 km/h limit. Choose fresh tyres and repairs, then confirm. The stop takes about 2.6 s (plus 1.2 s for repairs) once the car is jacked up — after that you drive out yourself.</p>
+  <p class="pitNote">Your car drives itself through the guardrail gap, across the safety buffer and down a pit road behind a second barrier. It stops at the box at the 80 km/h limit. Choose fresh tyres and repairs, then confirm. The stop takes about 2.6 s (plus 1.2 s for repairs) once the car is jacked up — after that you drive out yourself.</p>
   <div class="pitRow"><div class="pickLabel">TYRES</div><div id="pitTyrePick" class="cards"></div></div>
   <div id="pitRepairRow" class="sel"><span id="pitRepairMark">&#9745;</span> REPAIR DAMAGE &mdash; +1.2s STOP TIME</div>
   <div class="menuBtns"><button id="pitConfirmBtn">CONFIRM &amp; DRIVE OUT</button></div>
@@ -378,12 +378,13 @@
   var RUNOFF_LAT = HALF_W + KERB_W + 3.4;    // outer edge of the grass run-off (m)
   var GRAVEL_LAT = RUNOFF_LAT + 2.6;         // outer edge of the gravel traps (m)
   var RAIL_LAT = GRAVEL_LAT + 0.8;           // guardrail / pit-wall line (m)
-  /* The pit is a separate road outside the main guardrail, not a stripe on the
-   * track edge. Its inner edge is the existing guardrail line; the rail gaps at
-   * pit entry/exit are where cars cross between the two roads. */
+  /* The pit is a separate road well outside the main guardrail, not a stripe on
+   * the track edge. A wide safety buffer and a second barrier keep it apart from
+   * the circuit; only the two marked gaps let cars cross between them. */
+  var PIT_GAP = 8.0;                         // buffer between main rail and pit road (m)
   var PIT_W = 6.6;                           // pit road width (m)
-  var PIT_LAT = -(RAIL_LAT + PIT_W / 2);     // pit road centre
-  var PIT_INNER_LAT = PIT_LAT + PIT_W / 2;   // wall side (closest to the track)
+  var PIT_INNER_LAT = -(RAIL_LAT + PIT_GAP); // pit-side barrier, outside the main rail
+  var PIT_LAT = PIT_INNER_LAT - PIT_W / 2;   // pit road centre
   var PIT_OUTER_LAT = PIT_LAT - PIT_W / 2;   // garage side
   var PIT_RAIL_LAT = PIT_OUTER_LAT - 1.2;    // outer pit barrier
   var PIT_LAT_MIN = PIT_OUTER_LAT + 0.7;
@@ -1454,9 +1455,8 @@ ctrl: [
   }
   function railLatLimit(s, side) {
     var lim = Math.min(RAIL_LAT, clearLatAt(s)), k = signedKappaAt(s);
-    // In the pit corridor the normal guardrail becomes the inner pit wall. Let
-    // cars reach the separate road outside it; the added wall solids still stop
-    // them crossing anywhere except the two marked gaps.
+    // In the pit corridor let cars cross the buffer to the separate road. The
+    // inner pit wall and its solids stop them entering anywhere except the gaps.
     if (side < 0) {
       var ext = RAIL_LAT + (Math.abs(PIT_RAIL_LAT) - RAIL_LAT) * pitRailBlend(s);
       if (ext > lim) lim = ext;
@@ -2052,13 +2052,25 @@ ctrl: [
       var sStart = pitRoadStart(), sEnd = pitRoadEnd(), total = sEnd - sStart;
       var segs = 90;
 
-      // Paved entry/exit links cross the old run-off. Without these the cars
-      // would be scrubbing through gravel before they even reach the pit road.
+      // A concrete apron fills the buffer between the circuit guardrail and
+      // the pit-side barrier, so the two roads read as genuinely separate.
+      world.add(ribbon(-RAIL_LAT - 0.6, PIT_INNER_LAT + 0.6, 0.012,
+        [0.20, 0.22, 0.25], sStart, sEnd, 48));
+
+      // Paved entry/exit links cross the buffer. Without these the cars would
+      // be scrubbing through gravel before they even reach the pit road.
       var linkColor = [0.30, 0.33, 0.37];
       world.add(ribbon(-HALF_W - 0.3, PIT_INNER_LAT + 0.2, 0.024, linkColor,
         pitEntryStart(), pitEntryEnd(), 18));
       world.add(ribbon(-HALF_W - 0.3, PIT_INNER_LAT + 0.2, 0.024, linkColor,
         pitExitStart(), pitExitEnd(), 12));
+
+      // Inner pit barrier: a second wall outside the main guardrail. It shares
+      // the entry/exit gaps so cars can cross the buffer only in those places.
+      world.add(wall(PIT_INNER_LAT, 1.2, 0, 1, P.wallA, {
+        s0: sStart, s1: sEnd,
+        skips: [[pitEntryStart(), pitEntryEnd()], [pitExitStart(), pitExitEnd()]]
+      }));
 
       // The pit road is its own asphalt band, with yellow wall-side and white
       // garage-side edge lines. It is not layered over the circuit/run-off.
@@ -2081,14 +2093,14 @@ ctrl: [
 
       // Large yellow/white approach chevrons peel off the racing line and point
       // at the gap in the guardrail, so the separate road is obvious early.
-      for (var q = 0; q < 13; q++) {
-        var ca = wrapS(LEN - 148 + q * 4.4);
+      for (var q = 0; q < 15; q++) {
+        var ca = wrapS(LEN - 185 + q * 4.4);
         var cb = wrapS(ca + 2.6);
-        var lat0 = -1.6 - q * 0.78;
+        var lat0 = -1.6 - q * 0.72;
         flatMark(ca, cb, lat0, lat0 + 0.55, q % 2 ? 0xffe94a : 0xffffff, 0.048);
       }
-      for (var q2 = 0; q2 < 6; q2++) {
-        var ra = wrapS(LEN - 140 + q2 * 6);
+      for (var q2 = 0; q2 < 7; q2++) {
+        var ra = wrapS(LEN - 175 + q2 * 6);
         flatMark(ra, wrapS(ra + 3), -HALF_W + 1.2, -HALF_W + 2.4, 0xffd400, 0.05);
       }
 
@@ -2107,7 +2119,7 @@ ctrl: [
 
       // Garage boxes sit behind the outer pit barrier, not on the racing surface.
       for (var b = 0; b < 7; b++) {
-        var sbx = wrapS(LEN - 84 + b * 8);
+        var sbx = wrapS(LEN - 100 + b * 8);
         var pb = offsetPos(sbx, PIT_OUTER_LAT - 3.4);
         var box = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.05, 7.0), pitBox);
         box.position.set(pb.x, 0.03 + pb.y, pb.z);
@@ -2139,7 +2151,7 @@ ctrl: [
 
       // Big labels and gantry.
       try {
-        var lpos = offsetPos(wrapS(LEN - 49), PIT_LAT);
+        var lpos = offsetPos(wrapS(LEN - 68), PIT_LAT);
         var lbl = new THREE.Mesh(
           new THREE.PlaneGeometry(11, 2.2),
           new THREE.MeshBasicMaterial({ map: signTexture('PIT LANE', '#162033', '#7CFF9A'), side: THREE.DoubleSide, transparent: true })
@@ -2149,7 +2161,7 @@ ctrl: [
         world.add(lbl);
       } catch (e) {}
       try {
-        var ap = offsetPos(wrapS(LEN - 160), -5.5);
+        var ap = offsetPos(wrapS(LEN - 188), -5.5);
         var aLabel = new THREE.Mesh(
           new THREE.PlaneGeometry(16, 3.4),
           new THREE.MeshBasicMaterial({ map: signTexture('PIT ENTRY', '#111827', '#ffd75e'), side: THREE.DoubleSide, transparent: true })
@@ -2159,10 +2171,10 @@ ctrl: [
         world.add(aLabel);
       } catch (e) {}
       try {
-        var sp = offsetPos(wrapS(LEN - 112), PIT_INNER_LAT + 2.2);
+        var sp = offsetPos(wrapS(LEN - 120), PIT_INNER_LAT + 2.2);
         var sign = new THREE.Mesh(new THREE.PlaneGeometry(9, 2.8), new THREE.MeshBasicMaterial({ map: signTexture('PIT ENTRY', '#c62828', '#ffffff'), side: THREE.DoubleSide }));
         sign.position.set(sp.x, 6.2 + sp.y, sp.z);
-        sign.rotation.y = yawAt(wrapS(LEN - 112)) + Math.PI;
+        sign.rotation.y = yawAt(wrapS(LEN - 120)) + Math.PI;
         world.add(sign);
         var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 6.2, 8), new THREE.MeshLambertMaterial({ color: 0x888 }));
         pole.position.set(sp.x, 3.1 + sp.y, sp.z);
@@ -2234,6 +2246,7 @@ ctrl: [
       var sy = yawAt(gs);
       var SW = 12, SD = 30;                            // half width / half depth
       [-1, 1].forEach(function (side) {
+        if (side < 0 && (gs >= pitRoadStart() || gs < 8)) return;
         var sp = offsetPos(gs, side * (RAIL_LAT + 15));
         if (!footprintClear(sp.x, sp.z, sy, SW, SD, RAIL_LAT + 2.5)) return;
         var stand = new THREE.Mesh(new THREE.BoxGeometry(SW * 2, 13, SD * 2),
@@ -4780,17 +4793,17 @@ var pr = projectTrack(c.x, c.z, c.i);
   var pitDoRepair = true;
   var pitMenuConfirmed = false;
   var pitMenuEl = document.getElementById('pitMenu');
-  function pitBoxS() { return wrapS(LEN - 49); }   // middle pit box
+  function pitBoxS() { return wrapS(LEN - 68); }   // middle pit box
   function dS(a, b) { var d = Math.abs(a - b); return Math.min(d, LEN - d); }
   function smooth01(t) { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); }
 
-  // The new pit road sits beside the start/finish straight, just before the
-  // line. Entry is a wide gap in the pit-side guardrail; exit is a second gap.
-  function pitRoadStart() { return wrapS(LEN - 118); }
+  // The pit road sits beyond a wide buffer beside the start/finish straight.
+  // Longer gaps let cars cross the extra distance without a violent swerve.
+  function pitRoadStart() { return wrapS(LEN - 155); }
   function pitRoadEnd() { return wrapS(LEN - 2); }
   function pitEntryStart() { return pitRoadStart(); }
-  function pitEntryEnd() { return wrapS(LEN - 86); }
-  function pitExitStart() { return wrapS(LEN - 24); }
+  function pitEntryEnd() { return wrapS(LEN - 105); }
+  function pitExitStart() { return wrapS(LEN - 35); }
   function pitExitEnd() { return pitRoadEnd(); }
   // Smoothly widen the physics barrier only where the pit road actually runs.
   function pitRailBlend(s) {
@@ -5174,7 +5187,7 @@ var pr = projectTrack(c.x, c.z, c.i);
       <b>RACE START:</b> 5 red lights illuminate, then all go out — accelerate on lights out. Accelerating early = jump start (+10s penalty).
     </p>
     <p style="line-height:1.7;opacity:0.9;margin-top:8px">
-      <b>PIT STOPS:</b> Follow the yellow chevrons and the big <b>PIT ENTRY</b> gantry, then press <b>P</b>. The car leaves the circuit through a gap in the guardrail and follows a separate pit road, not a stripe on the track edge. It auto-drives into its box at the 80 km/h pit limit for a real ~2.6 s tyre change (+1.2 s with repairs). Choose your compound in the menu; after the stop you drive out yourself. The AI pits too when tyres wear or damage builds.
+      <b>PIT STOPS:</b> Follow the yellow chevrons and the big <b>PIT ENTRY</b> gantry, then press <b>P</b>. The car leaves the circuit through a guardrail gap, crosses a wide buffer and follows a pit road behind a second barrier — not a stripe on the track edge. It auto-drives into its box at the 80 km/h pit limit for a real ~2.6 s tyre change (+1.2 s with repairs). Choose your compound in the menu; after the stop you drive out yourself. The AI pits too when tyres wear or damage builds.
     </p>
     <p style="line-height:1.7;opacity:0.9;margin-top:8px">
       <b>LAPS ROLLER:</b> Drag the LAPS slider in the menu to set the race length from 1 to 50 laps. Pick your real F1 circuit from the TRACK cards above.
