@@ -1383,31 +1383,12 @@ REF.Match = (function () {
     this.emit('foul', f);
   };
 
-  /* where the foul happened, in words the referee can act on */
-  Match.prototype.foulText = function (f) {
-    var att = 1 - f.team;
-    var dir = this.teams[att].dir;
-    var gx = dir * (F.L / 2);
-    var dg = Math.sqrt((gx - f.pos.x) * (gx - f.pos.x) + f.pos.z * f.pos.z);
-    var inBox = Math.abs(gx - f.pos.x) < 16.5 && Math.abs(f.pos.z) < 20.16;
-    var where = inBox ? 'inside the penalty area'
-      : (dg > 60 ? 'deep in his own half'
-        : (dg > 38 ? 'in midfield' : 'about ' + Math.round(dg) + ' m from goal'));
-    var side = Math.abs(f.pos.z) < 8 ? 'central' : (f.pos.z > 0 ? 'right of centre' : 'left of centre');
-    var verb = f.severity === 'hard' ? 'clatters through'
-      : (f.severity === 'soft' ? 'clips' : 'takes out');
-    var txt = f.offender.name + ' ' + verb + ' ' + f.victim.name + ' ' + where + ', ' + side + '.';
-    if (inBox) txt += ' The foul is in the box — the penalty spot is in play.';
-    return txt;
-  };
-
   Match.prototype.askFoul = function (f) {
     var self = this;
     this.decision = {
       kind: 'foul',
       kicker: 'FOUL  ·  ' + Math.floor(this.min) + "'",
       title: 'How do you deal with it?',
-      text: this.foulText(f),
       options: [
         { id: 'ignore', label: 'Play on', sub: 'No foul', tone: 'ghost' },
         { id: 'warn', label: 'Have a word', sub: 'No card', tone: 'warn' },

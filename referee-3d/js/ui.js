@@ -570,7 +570,9 @@ REF.UI = (function () {
     if (!dec) { hideDecision(); return; }
     $('dec-kicker').textContent = dec.kicker || 'DECISION';
     $('dec-title').textContent = dec.title || '';
-    $('dec-text').textContent = dec.text || '';
+    var decText = $('dec-text');
+    decText.textContent = dec.text || '';
+    decText.style.display = dec.text ? '' : 'none';
     var box = $('dec-actions');
     box.innerHTML = '';
     dec.options.forEach(function (o) {
