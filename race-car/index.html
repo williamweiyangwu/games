@@ -101,8 +101,6 @@
   #ersTrack{width:132px;height:9px;border-radius:6px;background:rgba(255,255,255,.16);overflow:hidden;margin-top:6px}
   #ersFill{height:100%;width:0%;background:linear-gradient(90deg,#37c9ff,#5affc0)}
   #ersBox.full #ersFill{background:linear-gradient(90deg,#ffd75e,#ff6a18)}
-  #driftTag{font-size:10px;letter-spacing:.22em;color:#ffd75e;opacity:0;margin-top:4px;transition:opacity .1s}
-  #driftTag.on{opacity:1}
   #ersTag{font-size:10px;letter-spacing:.22em;color:#ff4d4d;opacity:0;margin-top:2px;transition:opacity .1s}
   #ersTag.on{opacity:1}
   #ersBox.using #ersTrack{box-shadow:0 0 12px rgba(55,201,255,.95)}
@@ -131,7 +129,6 @@
 #tGas{right:16px;bottom:40%;width:84px;height:84px}
 #tBrake{right:16px;bottom:12%;width:84px;height:64px}
 #tBoost{right:114px;bottom:40%;width:68px;height:68px;border-radius:50%}
-#tHB{right:114px;bottom:12%;width:68px;height:54px}
 #achBtn{position:fixed;top:10px;right:10px;z-index:30;padding:8px 14px;font-size:12px}
 #achPanel{position:fixed;top:50px;right:10px;z-index:35;background:rgba(14,21,38,.97);border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:14px;max-width:340px;max-height:65vh;overflow:auto;display:none}
 #achPanel.show{display:block}
@@ -161,7 +158,7 @@
   <div class="stat" id="tyreBox"><b id="tyreWear">0%</b><span>TYRE WEAR</span></div>
   <div class="stat" id="ersBox"><b id="ersPct">35%</b><span>ERS</span>
     <div id="ersTrack"><div id="ersFill" style="width:35%"></div></div>
-    <div id="driftTag">DRIFT</div><div id="ersTag">ERS</div></div>
+    <div id="ersTag">ERS</div></div>
   <div id="statusDock">
     <div id="tyreCell" class="tcDiagram" aria-label="Tyre condition">
       <svg class="tcCar" viewBox="0 0 116 116" aria-hidden="true">
@@ -190,7 +187,7 @@
 <div id="standings" class="hidden"></div>
 <div id="banner" class="hidden"></div>
 <div id="lights" class="hidden"><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div><div class="light"></div></div>
-  <div id="verTag">v2.55</div>
+  <div id="verTag">v2.56</div>
   <button id="achBtn" class="ghost">ACHIEVEMENTS</button>
   <div id="achPanel"><b style="letter-spacing:.12em">ACHIEVEMENTS</b><div id="achList" style="margin-top:8px"></div></div>
   <div id="pitMsg"></div>
@@ -209,7 +206,6 @@
     <div id="tGas" class="tbtn">GAS</div>
     <div id="tBrake" class="tbtn">BRK</div>
     <div id="tBoost" class="tbtn">ERS</div>
-    <div id="tHB" class="tbtn">DRIFT</div>
   </div>
 
 <div id="menu" class="overlay">
@@ -241,8 +237,7 @@
 <div class="keys">
     <b>W</b>/<b>↑</b> throttle &nbsp;·&nbsp; <b>S</b>/<b>↓</b> brake / reverse &nbsp;·&nbsp; 
     <b>A</b><b>D</b>/<b>←</b><b>→</b> steer<br>
-    <b>SPACE</b> ERS deploy &nbsp;·&nbsp; <b>SHIFT</b> handbrake drift &nbsp;·&nbsp; 
-    <b>C</b> camera &nbsp;·&nbsp; <b>R</b> restart &nbsp;·&nbsp; <b>M</b> sound &nbsp;·&nbsp; <b>P</b> automatic pit stop &nbsp;·&nbsp; <b>ESC</b> pause<br>
+    <b>SPACE</b> ERS deploy &nbsp;·&nbsp; <b>C</b> camera &nbsp;·&nbsp; <b>R</b> restart &nbsp;·&nbsp; <b>M</b> sound &nbsp;·&nbsp; <b>P</b> automatic pit stop &nbsp;·&nbsp; <b>ESC</b> pause<br>
     22-DRIVER F1 GRID &nbsp;·&nbsp; REAL GPS CIRCUITS &nbsp;·&nbsp; 5 RED LIGHTS &nbsp;·&nbsp; REAL PIT STOPS &amp; 80 KM/H LIMIT &nbsp;·&nbsp; RAIN &amp; WEAR
   </div>
 </div>
@@ -2621,10 +2616,10 @@ ctrl: [
    * the AI cars' real grip and top speed so the raised targets are reachable,
    * and `brake` is the safety margin before a corner: hard AI brakes later.   */
   var DIFFICULTY = [
-    { name: 'EASY',   scale: 0.80, grip: 0.82, phys: 0.94, brake: 50, ers: 1.00, drift: 0.0, blurb: 'relaxed pace' },
-    { name: 'NORMAL', scale: 0.92, grip: 1.00, phys: 1.00, brake: 34, ers: 0.75, drift: 0.6, blurb: 'even match' },
-    { name: 'HARD',   scale: 1.08, grip: 1.32, phys: 1.20, brake: 22, ers: 0.50, drift: 1.0, blurb: 'ruthless' },
-    { name: 'EXPERT', scale: 1.18, grip: 1.60, phys: 1.42, brake: 14, ers: 0.35, drift: 1.0, blurb: 'merciless' }
+    { name: 'EASY',   scale: 0.80, grip: 0.82, phys: 0.94, brake: 50, ers: 1.00, blurb: 'relaxed pace' },
+    { name: 'NORMAL', scale: 0.92, grip: 1.00, phys: 1.00, brake: 34, ers: 0.75, blurb: 'even match' },
+    { name: 'HARD',   scale: 1.08, grip: 1.32, phys: 1.20, brake: 22, ers: 0.50, blurb: 'ruthless' },
+    { name: 'EXPERT', scale: 1.18, grip: 1.60, phys: 1.42, brake: 14, ers: 0.35, blurb: 'merciless' }
   ];
   var aiDiff = 1;
   var aiDiffScale = DIFFICULTY[1].scale;
@@ -2632,7 +2627,6 @@ ctrl: [
   var aiDiffPhys = DIFFICULTY[1].phys;
   var aiDiffBrake = DIFFICULTY[1].brake;
   var aiDiffErs = DIFFICULTY[1].ers;
-  var aiDiffDrift = DIFFICULTY[1].drift;
 
   function makeNameTag(name, color) {
     var canvas = document.createElement('canvas');
@@ -2670,8 +2664,8 @@ ctrl: [
       accel: spec.accel, top: spec.top, grip: spec.grip, handling: spec.handling,
       mesh: buildCar(spec.color, spec.accent, spec.style),
       x: 0, z: 0, yaw: 0, speed: 0, steer: 0,
-      vx: 0, vz: 0, ers: 0, ersActive: false, drifting: false, contact: 0, stuck: 0,
-      rev: 0, revDist: 0, revLock: 0, driftPulse: 0, driftWait: 0,
+      vx: 0, vz: 0, ers: 0, ersActive: false, contact: 0, stuck: 0,
+      rev: 0, revDist: 0, revLock: 0,
       lap: 0, s: 0, prevS: 0, lat: 0, i: -1, halfPassed: false,
       lapStart: 0, best: Infinity, finished: false, finishTime: 0,
       wheelSpin: 0, wobble: 0,
@@ -2887,7 +2881,7 @@ ctrl: [
       var el = document.createElement('div');
       el.className = 'card' + (i === aiDiff ? ' sel' : '');
       el.innerHTML = '<b>' + d.name + '</b><span>' + d.blurb + '</span>';
-      el.addEventListener('click', function () { aiDiff = i; aiDiffScale = d.scale; aiDiffGrip = d.grip; aiDiffPhys = d.phys; aiDiffBrake = d.brake; aiDiffErs = d.ers; aiDiffDrift = d.drift; renderPickers(); updateMenuText(); });
+      el.addEventListener('click', function () { aiDiff = i; aiDiffScale = d.scale; aiDiffGrip = d.grip; aiDiffPhys = d.phys; aiDiffBrake = d.brake; aiDiffErs = d.ers; renderPickers(); updateMenuText(); });
       dp.appendChild(el);
     });
   }
@@ -3038,10 +3032,10 @@ ctrl: [
       c.x = P.x; c.z = P.z;
       c.yaw = yawAt(s);
       c.speed = 0; c.steer = 0; c.lap = 0;
-      c.vx = 0; c.vz = 0; c.ers = 0.35; c.ersActive = false; c.drifting = false; c.contact = 0;
+      c.vx = 0; c.vz = 0; c.ers = 0.35; c.ersActive = false; c.contact = 0;
       c.best = Infinity; c.finished = false; c.finishTime = 0;
       c.lapStart = 0; c.wobble = 0; c.halfPassed = false; c.stuck = 0;
-      c.rev = 0; c.revDist = 0; c.revLock = 0; c.driftPulse = 0; c.driftWait = 0;
+      c.rev = 0; c.revDist = 0; c.revLock = 0;
       c.penalty = 0; c.lightPenalty = 0; c.inPits = false; c.pitExitLock = false; c.aiPit = 0; c.aiPitT = 0; c.pitSpeedWarned = false; c.pitPhase = 0; c.pitT = 0;
       c.retired = false; c.exploded = false; c.wrecked = false; c.jumpStart = false;
       c.i = -1;
@@ -3070,7 +3064,7 @@ ctrl: [
       pitAuto = false; pitPhase = 0;
       var pm = document.getElementById('pitMenu'); if (pm) pm.classList.add('hidden');
       var pmsg = document.getElementById('pitMsg'); if (pmsg) pmsg.style.display = 'none';
-      _achErs = false; _achDrift = false;
+      _achErs = false;
       TOTAL_LAPS = selectedLaps;
       cars.forEach(function (c) {
         c.tyre = selectedTyre;
@@ -3184,20 +3178,6 @@ ctrl: [
       target += 20;
     }
 
-    // handbrake / drift: AI can drift for show
-    if (c.driftPulse > 0) c.driftPulse -= dt;
-    if (c.driftWait > 0) c.driftWait -= dt;
-    var slip = c.vx * rt.x + c.vz * rt.z;
-    var driftOK = aiDiffDrift > 0 && c.driftPulse <= 0 && c.driftWait <= 0;
-    if (!reversing && driftOK && Math.abs(c.speed) > 12 &&
-        c.speed > target * 1.15 && gap > 12 &&
-        Math.abs(latErr) < 2.5 && Math.abs(err) < 0.4 &&
-        Math.abs(slip) > 1.2) {
-      c.driftPulse = 0.4 + 0.3 * aiDiffDrift;
-    }
-    var drifting = aiDiffDrift > 0 && !reversing && c.driftPulse > 0;
-    if (drifting) { c.driftWait = 2.0; }
-
     if (c.speed < target) throttle = 1;
     else { brake = Math.min(1, (c.speed - target) / 6); throttle = 0; }
 
@@ -3249,12 +3229,12 @@ ctrl: [
       } else {
         if (Math.abs(c.speed) < 0.8) c.stuck = (c.stuck || 0) + dt; else c.stuck = 0;
         if (c.stuck > 1.2 && (pathClear || c.stuck > 3.0)) {
-          c.rev = 1.6; c.revDist = 0; c.stuck = 0; c.driftPulse = 0;
+          c.rev = 1.6; c.revDist = 0; c.stuck = 0;
         }
       }
     }
 
-    return { throttle: throttle, brake: brake, steer: steerCmd, handbrake: drifting, ers: wantErs };
+    return { throttle: throttle, brake: brake, steer: steerCmd, ers: wantErs };
   }
 
   /* ---------------------------------- physics ----------------------- */
@@ -3334,7 +3314,7 @@ ctrl: [
 
     // A wrecked car is out of the race: no throttle, no steering, no recovery.
     if (c.wrecked) {
-      c.vx = 0; c.vz = 0; c.speed = 0; c.ersActive = false; c.drifting = false;
+      c.vx = 0; c.vz = 0; c.speed = 0; c.ersActive = false;
       syncMesh(c);
       return;
     }
@@ -3349,7 +3329,6 @@ ctrl: [
     // asking the tyres for something they cannot deliver.
     if (c !== player) { gripRate *= aiDiffPhys; top *= aiDiffPhys; }
     c.ersActive = !c.finished && !!input.ers && c.ers > 0.02;
-    if (input.handbrake) gripRate *= 0.10;     // handbrake breaks lateral grip -> Drift: the tail steps out and holds the slide
 
     if (!c.finished) {
       if (c.ersActive) { accel *= 2.1; top += 14; }
@@ -3357,7 +3336,6 @@ ctrl: [
       var dV = input.throttle * accel * dt
              - input.brake * BRAKE * dt
              - (DRAG * vF * Math.abs(vF) + ROLL * surf.roll * Math.sign(vF || 1)) * dt;
-      if (input.handbrake) dV -= vF * 0.05 * dt;   // faint scrub only: a drift slides, it does not brake
       c.vx += fw.x * dV; c.vz += fw.z * dV;
 
       vF = c.vx * fw.x + c.vz * fw.z;          // clamp forward speed
@@ -3377,7 +3355,6 @@ ctrl: [
     var steerAuthority = 2.3 * c.handling / (1 + Math.abs(vSteer) * 0.045);
     c.steer += (input.steer - c.steer) * Math.min(1, dt * 9);
     var yawRate = c.steer * steerAuthority * Math.min(1, Math.abs(vSteer) / 7) * Math.sign(vSteer || 1);
-    if (input.handbrake) yawRate *= 1.85;      // Drift: the tail swings out sharply while the handbrake is held
     c.yaw += yawRate * dt;                     // heading turns, velocity lags -> slip
 
     c.x += c.vx * dt;
@@ -3430,9 +3407,9 @@ var pr = projectTrack(c.x, c.z, c.i);
      * its velocity is reflected off the wall: a graze keeps most of its speed, a
      * square hit loses almost all of it. The nose is then eased down the barrier
      * so a square hit turns into a slide instead of pinning the car in place.  */
-    // Keep the WHOLE car inside the rail, including the nose while the car is
-    // sideways in a drift. A fixed radius let a rotated nose poke through the
-    // barrier, so clearance now follows the car's real lateral half-extent.
+    // Keep the WHOLE car inside the rail, including the nose when the car is
+    // rotated across the track. A fixed radius let a rotated nose poke through
+    // the barrier, so clearance now follows the real lateral half-extent.
     var NV = normalAt(c.s);
     var TV = tangentAt(c.s);
     var hx0 = Math.sin(c.yaw), hz0 = Math.cos(c.yaw);
@@ -3494,31 +3471,22 @@ var pr = projectTrack(c.x, c.z, c.i);
 
     // Anti-spin: for a short window after a car-to-car bump, ease the nose back
     // onto the direction the car is actually travelling. A crash can therefore
-    // never leave the car rotating on the spot -- but this only runs while the
-    // car moves FORWARDS and not on the handbrake, so a deliberate drift (which
-    // points the nose away from travel) is left completely untouched.
+    // never leave the car rotating on the spot. This only runs while the car is
+    // moving forwards.
     if (c.contact > 0) {
       c.contact -= dt;
-      if (!input.handbrake) {
-        var hx = Math.sin(c.yaw), hz = Math.cos(c.yaw);
-        var vfwd = c.vx * hx + c.vz * hz;
-        if (vfwd > 3) {
-          var dyaw = wrapPi(Math.atan2(c.vx, c.vz) - c.yaw);
-          c.yaw += dyaw * Math.min(1, 8 * dt);
-        }
+      var hx = Math.sin(c.yaw), hz = Math.cos(c.yaw);
+      var vfwd = c.vx * hx + c.vz * hz;
+      if (vfwd > 3) {
+        var dyaw = wrapPi(Math.atan2(c.vx, c.vz) - c.yaw);
+        c.yaw += dyaw * Math.min(1, 8 * dt);
       }
     }
 
-    // derive HUD/AI speed, then drift -> ERS bookkeeping
+    // derive HUD speed, then ERS bookkeeping
     var fwd = { x: Math.sin(c.yaw), z: Math.cos(c.yaw) };
-    var rgt = { x: -fwd.z, z: fwd.x };
     c.speed = c.vx * fwd.x + c.vz * fwd.z;
-    var slip = Math.abs(c.vx * rgt.x + c.vz * rgt.z);
-    // A drift only counts while BOTH steering AND on the handbrake (SHIFT).
-    // Steering alone is just turning, and SHIFT alone on a straight is just
-    // scrubbing speed -- neither fills the ERS meter.
-    c.drifting = !c.finished && input.handbrake && Math.abs(input.steer) > 0.1 && Math.abs(c.speed) > 4 && slip > 1.5;
-    // ERS starts at 35% and recovers 2% per second; drifting gives none.
+    // ERS starts at 35% and recovers 2% per second.
     if (c.ersActive) c.ers = Math.max(0, c.ers - 0.2 * dt);
     else c.ers = Math.min(1, (c.ers || 0) + 0.02 * dt);
 
@@ -3556,11 +3524,7 @@ var pr = projectTrack(c.x, c.z, c.i);
   function syncMesh(c) {
     c.mesh.position.set(c.x, heightAt(c.s), c.z);
     c.mesh.rotation.y = c.yaw;
-    // Drift: lean the body into the slide so the tail visibly hangs out.
-    var velYaw = Math.atan2(c.vx, c.vz);
-    var slip = wrapPi(velYaw - c.yaw);
-    var targetRoll = c.drifting ? Math.max(-0.14, Math.min(0.14, -slip * 0.4)) : 0;
-    c.mesh.rotation.z += (targetRoll - c.mesh.rotation.z) * 0.2;
+    c.mesh.rotation.z += (0 - c.mesh.rotation.z) * 0.2;
     if (c.wheel) c.wheel.rotation.z = -c.steer * 2.1;   // turn the wheel with the steering
   }
 
@@ -3622,14 +3586,13 @@ var pr = projectTrack(c.x, c.z, c.i);
 
   /* ---------------------------------- player input ------------------ */
   var player = cars[0];
-  var touchState = { gas:0, brake:0, left:0, right:0, ers:0, hb:0 };
+  var touchState = { gas:0, brake:0, left:0, right:0, ers:0 };
   function readPlayer() {
     var th = (keys.KeyW || keys.ArrowUp || touchState.gas) ? 1 : 0;
     var br = (keys.KeyS || keys.ArrowDown || touchState.brake) ? 1 : 0;
     var st = 0;
     if (keys.KeyA || keys.ArrowLeft || touchState.left) st += 1;   // positive steer grows yaw = left
     if (keys.KeyD || keys.ArrowRight || touchState.right) st -= 1;
-    var hb = !!(keys.ShiftLeft || keys.ShiftRight || touchState.hb);       // handbrake -> kick the tail out
     var bo = !!(keys.Space || touchState.ers);                                // ERS
     var gp = navigator.getGamepads ? navigator.getGamepads()[0] : null;
     if (gp) {
@@ -3637,14 +3600,13 @@ var pr = projectTrack(c.x, c.z, c.i);
       if (Math.abs(ax) > 0.12) st = -ax;
       if (gp.buttons[7] && gp.buttons[7].value > 0.1) th = 1;
       if (gp.buttons[6] && gp.buttons[6].value > 0.1) br = 1;
-      if (gp.buttons[0] && gp.buttons[0].pressed) hb = true;
       if (gp.buttons[5] && gp.buttons[5].pressed) bo = true;   // RB = ers
     }
     // throttle early detection during lights
     if (started && !lightsOut && th > 0.01 && player && !player.jumpStart) {
       player.jumpStart = true; player.lightPenalty = 10; flash('JUMP START! +10s');
     }
-    return { throttle: th, brake: br, steer: st, handbrake: hb, ers: bo };
+    return { throttle: th, brake: br, steer: st, ers: bo };
   }
 
   /* ---------------------------------- standings --------------------- */
@@ -4161,7 +4123,7 @@ var pr = projectTrack(c.x, c.z, c.i);
       x: player.x, z: player.z, yaw: player.yaw, speed: player.speed,
       lap: player.lap, s: player.s, best: isFinite(player.best) ? player.best : -1,
       finished: player.finished, finishTime: player.finishTime,
-      ers: player.ers, ersActive: player.ersActive, drifting: player.drifting
+      ers: player.ers, ersActive: player.ersActive
     };
   }
   function netFlushStates(now) {
@@ -4228,10 +4190,10 @@ var pr = projectTrack(c.x, c.z, c.i);
         var P = offsetPos(s, col ? COL : -COL);
         c.x = P.x; c.z = P.z; c.yaw = yawAt(s);
         c.speed = 0; c.steer = 0; c.lap = 0;
-        c.vx = 0; c.vz = 0; c.ers = 0.35; c.ersActive = false; c.drifting = false; c.contact = 0;
+        c.vx = 0; c.vz = 0; c.ers = 0.35; c.ersActive = false; c.contact = 0;
         c.best = Infinity; c.finished = false; c.finishTime = 0; c.lapStart = 0;
         c.wobble = 0; c.halfPassed = false; c.stuck = 0;
-        c.rev = 0; c.revDist = 0; c.revLock = 0; c.driftPulse = 0; c.driftWait = 0;
+        c.rev = 0; c.revDist = 0; c.revLock = 0;
         c.inPits = false; c.pitExitLock = false; c.pitPhase = 0; c.aiPit = 0;
         c.i = -1;
         var pr = projectTrack(c.x, c.z, -1);
@@ -4253,7 +4215,7 @@ var pr = projectTrack(c.x, c.z, c.i);
       c.speed = st.speed || 0;
       c.lap = st.lap | 0; c.s = st.s || 0;
       c.ers = st.ers || 0;
-      c.ersActive = !!st.ersActive; c.drifting = !!st.drifting;
+      c.ersActive = !!st.ersActive;
       c.best = (typeof st.best === 'number' && st.best >= 0) ? st.best : c.best;
       c.finished = !!st.finished;
       c.finishTime = st.finishTime || 0;
@@ -4570,8 +4532,8 @@ var pr = projectTrack(c.x, c.z, c.i);
         // While the pit autopilot is engaged the car drives itself; the service
         // menu is open so the player can choose tyres and repairs meanwhile.
         var pin = pitAuto ? pitDrive(player, dt) : readPlayer();
-        if (player.wrecked) pin = { throttle: 0, brake: 1, steer: 0, handbrake: false, ers: false };
-        if (!player.finished) stepCar(player, pin, dt); else stepCar(player, { throttle: 0, brake: 1, steer: 0, handbrake: false }, dt);
+        if (player.wrecked) pin = { throttle: 0, brake: 1, steer: 0, ers: false };
+        if (!player.finished) stepCar(player, pin, dt); else stepCar(player, { throttle: 0, brake: 1, steer: 0 }, dt);
         checkPitSpeed(player);
         if (!raceOver && !pitAuto && pin.throttle > 0.2 && Math.abs(player.speed) < 0.8) recoveryTimer += dt;
         else recoveryTimer = 0;
@@ -4604,7 +4566,7 @@ var pr = projectTrack(c.x, c.z, c.i);
             // or the black smoke would never be emitted.
             if (c.wrecked) { if (Math.random() < 0.45) spawnSmoke(c, true); return; }
             if (c.retired) return;
-            if (c.ersActive || c.drifting) spawnSmoke(c);
+            if (c.ersActive) spawnSmoke(c);
           });
         }
         updateSmoke(dt);
@@ -4630,7 +4592,6 @@ var pr = projectTrack(c.x, c.z, c.i);
         document.getElementById('ersBox').classList.toggle('full', (player.ers || 0) > 0.999);
         document.getElementById('ersBox').classList.toggle('using', player.ersActive);
         document.getElementById('ersTag').classList.toggle('on', player.ersActive);
-        document.getElementById('driftTag').classList.toggle('on', player.drifting);
         if (document.getElementById('damagePct')) document.getElementById('damagePct').textContent = Math.round(player.damage || 0) + '%';
         if (document.getElementById('tyreWear')) document.getElementById('tyreWear').textContent = Math.round((player.tyreWear || 0) * 100) + '%';
         // Bottom-right tyre condition car diagram.
@@ -4693,7 +4654,7 @@ var pr = projectTrack(c.x, c.z, c.i);
   function wireTouch() {
     var map = [
       ['tGas','gas'], ['tBrake','brake'], ['tLeft','left'], ['tRight','right'],
-      ['tBoost','ers'], ['tHB','hb']
+      ['tBoost','ers']
     ];
     map.forEach(function(m){
       var el = document.getElementById(m[0]);
@@ -4717,7 +4678,6 @@ var pr = projectTrack(c.x, c.z, c.i);
     {id:'podium', name:'Podium', desc:'Finish in top 3'},
     {id:'no_damage', name:'Clean Race', desc:'Finish with less than 10% damage'},
     {id:'ers_user', name:'ERS Deploy', desc:'Use ERS during a race'},
-    {id:'drifter', name:'Drifter', desc:'Drift during a race'},
     {id:'all_tracks', name:'Explorer', desc:'Race on 5 different tracks', progress:true},
     {id:'champion', name:'Champion', desc:'Win 3 races', progress:true}
   ];
@@ -4858,7 +4818,7 @@ var pr = projectTrack(c.x, c.z, c.i);
     var throttle = 0, brake = 0;
     if (c.speed < targetSpeed - 0.4) throttle = Math.min(1, (targetSpeed - c.speed) / 4 + 0.25);
     else brake = Math.min(1, (c.speed - targetSpeed) / 5);
-    return { throttle: throttle, brake: brake, steer: steer, handbrake: false, ers: false };
+    return { throttle: throttle, brake: brake, steer: steer, ers: false };
   }
   // Ease down to a stop as the car approaches its pit box. The entry gap is
   // taken slowly because the pit road is well outside the racing surface.
@@ -4890,7 +4850,7 @@ var pr = projectTrack(c.x, c.z, c.i);
         c.pitCount = (c.pitCount || 0) + 1;
         c.aiPit = 3; c.aiPitT = 0;
       }
-      return { throttle: 0, brake: 1, steer: 0, handbrake: false, ers: false };
+      return { throttle: 0, brake: 1, steer: 0, ers: false };
     }
     if (c.aiPit === 3) {
       // The exit finishes after the line has wrapped to a small s too.
@@ -5090,7 +5050,7 @@ var pr = projectTrack(c.x, c.z, c.i);
 
   // Add tyre/damage/ERS-achievement hooks into frame loop via wrapper
   // (We'll also patch the loop by adding calls; easier to add a small updater)
-  var _achErs = false, _achDrift = false;
+  var _achErs = false;
   function updateConsumables(dt) {
     if (!started || !lightsOut || raceOver) return;
     cars.forEach(function(c){
@@ -5098,12 +5058,12 @@ var pr = projectTrack(c.x, c.z, c.i);
       var sp = Math.abs(c.speed);
       var prevWear = c.tyreWear || 0;
       c.tyreWear = Math.min(1, prevWear + sp * 0.000004 * dt * (TYRES[c.tyre||1]?TYRES[c.tyre||1].wear:1));
-      // Four-corner wear: steering loads the outside tyres, drifting/ersActive
-      // cooks the rears. A tyre change drops the overall wear, so reset the
-      // individual corners at the same moment.
+      // Four-corner wear: steering loads the outside tyres and ERS use cooks
+      // the rears. A tyre change drops the overall wear, so reset the individual
+      // corners at the same moment.
       if (!c.tyreWear4 || c.tyreWear < prevWear - 0.02) c.tyreWear4 = [0, 0, 0, 0];
       var turn = Math.max(-1, Math.min(1, (c.steer || 0) * 2.2));
-      var rearExtra = (c.drifting ? 0.55 : 0) + (c.ersActive ? 0.35 : 0);
+      var rearExtra = c.ersActive ? 0.35 : 0;
       var factors = [
         1 + Math.max(0, turn) * 0.75 - Math.min(0, turn) * 0.25,
         1 + Math.max(0, -turn) * 0.75 - Math.min(0, -turn) * 0.25,
@@ -5132,7 +5092,6 @@ var pr = projectTrack(c.x, c.z, c.i);
       }
     });
     if (player && player.ersActive) { if(!_achErs){ _achErs=true; unlockAch('ers_user'); } }
-    if (player && player.drifting) { if(!_achDrift){ _achDrift=true; unlockAch('drifter'); } }
     updatePit(dt);
   }
   // patch frame: wrap requestAnimationFrame by injecting updateConsumables
@@ -5163,7 +5122,7 @@ var pr = projectTrack(c.x, c.z, c.i);
     <p style="line-height:1.6;opacity:0.9">
       <b>CONTROLS:</b><br>
       W / ↑ — Throttle &nbsp;|&nbsp; S / ↓ — Brake/Reverse<br>
-      A/D / ←/→ — Steering &nbsp;|&nbsp; SHIFT — Handbrake Drift<br>
+      A/D / ←/→ — Steering<br>
       SPACE — ERS Deploy &nbsp;|&nbsp; C — Camera &nbsp;|&nbsp; R — Restart<br>
       M — Mute &nbsp;|&nbsp; ESC — Pause &nbsp;|&nbsp; Touch buttons on mobile
     </p>
@@ -5178,10 +5137,10 @@ var pr = projectTrack(c.x, c.z, c.i);
       • <b>Turn-in:</b> Ease off brake, steer smoothly toward the apex.<br>
       • <b>Mid-corner:</b> Maintain steady throttle/steering; avoid sudden inputs.<br>
       • <b>Corner exit:</b> Unwind steering and accelerate progressively.<br>
-      • <b>Tight hairpins:</b> Brake harder, consider a small drift with SHIFT for rotation, then power out.
+      • <b>Tight hairpins:</b> Brake harder, keep the steering smooth, then power out.
     </p>
     <p style="line-height:1.7;opacity:0.9;margin-top:8px">
-      <b>ERS:</b> You start at <b>35%</b> and recharge <b>2% every second</b>. Drifting does not charge it — save SPACE for the straights.
+      <b>ERS:</b> You start at <b>35%</b> and recharge <b>2% every second</b>. Save SPACE for the straights.
     </p>
     <p style="line-height:1.7;opacity:0.9;margin-top:8px">
       <b>RACE START:</b> 5 red lights illuminate, then all go out — accelerate on lights out. Accelerating early = jump start (+10s penalty).
